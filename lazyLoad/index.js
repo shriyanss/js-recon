@@ -7,8 +7,9 @@ const lazyload = async (url, output) => {
     const tech = await frameworkDetect(url);
 
     if (tech !== null) {
-        if (tech === "next") {
+        if (tech.name === "next") {
             console.log(chalk.green("[✓] Next.js detected"));
+            console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
         }
     } else {
         console.log(chalk.magenta("[!] Framework not detected :("))
