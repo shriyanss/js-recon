@@ -1,5 +1,5 @@
 const { program } = require("commander");
-const lazyLoad = require("./lazyLoad").default;
+const lazyLoad = require("./lazyload").default;
 const endpoints = require("./endpoints").default;
 
 program.version("0.0.1").description("JS Recon Tool");
