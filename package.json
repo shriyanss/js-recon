@@ -10,11 +10,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "axios": "^1.9.0",
+    "@babel/parser": "^7.27.4",
+    "@babel/traverse": "^7.27.4",
     "chalk": "^5.4.1",
     "cheerio": "^1.0.0",
     "commander": "^14.0.0",
-    "puppeteer": "^24.9.0"
+    "fs": "^0.0.1-security",
+    "inquirer": "^12.6.3",
+    "path": "^0.12.7",
+    "prettier": "^3.5.3",
+    "puppeteer": "^24.9.0",
+    "vm2": "^3.9.19"
   },
   "type": "module"
 }
