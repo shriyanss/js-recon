@@ -1,6 +1,6 @@
-const { program } = require("commander");
-const lazyLoad = require("./lazyload").default;
-const endpoints = require("./endpoints").default;
+import { program } from "commander";
+import lazyload from "./lazyload/index.js";
+import endpoints from "./endpoints/index.js";
 
 program.version("0.0.1").description("JS Recon Tool");
 
@@ -8,9 +8,9 @@ program
   .command("lazyload")
   .description("Run lazy load module")
   .requiredOption("-u, --url <url>", "Target URL")
-  .option("-o, --output <file>", "Output file")
-  .action((cmd) => {
-    lazyLoad(cmd.url, cmd.output);
+  .option("-o, --output <directory>", "Output directory")
+  .action(async (cmd) => {
+    await lazyload(cmd.url, cmd.output);
   });
 
 program
