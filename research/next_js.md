@@ -3,6 +3,9 @@
 To detect Next.js, following techniques can be used: 
 - Iterate through all the HTML tags, and find `src`, `srcSet` or `imageSrcSet` attribute with value starting with`/next/` in the page source
 
+## Embedded JS files
+A lot of JS files were identified from the page source by inspecting the value of `src` attribute of `script` tags. These included files like `main.js`, `polyfills.js`, `webpack.js` etc.
+
 ## Lazy Loaded files
 ### Analysis of [Vercel Docs](https://vercel.com/docs)
 Upon analysis of page source and HTTP requests, it was found that the webpack filename had a pattern of `webpack-<hash>.js`. So, webpack JS files were identified and fetched.
