@@ -12,7 +12,14 @@ import { VM } from "vm2";
 import prettier from "prettier";
 import * as cheerio from "cheerio";
 
-// find the JS files from script src of the webpage
+  /**
+   * Asynchronously fetches the given URL and extracts JavaScript file URLs
+   * from script tags present in the HTML content.
+   *
+   * @param {string} url - The URL of the webpage to fetch and parse.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of
+   * absolute URLs pointing to JavaScript files found in script tags.
+   */
 const getJSScriptSrc = async (url) => {
   let js_urls = [];
   // get the page source
@@ -62,7 +69,15 @@ const getJSScriptSrc = async (url) => {
   return js_urls;
 };
 
-// find the lazy JS files from the code
+  /**
+   * Asynchronously fetches the given URL and extracts JavaScript file URLs
+   * from webpack's require.ensure() function.
+   *
+   * @param {string} url - The URL of the webpage to fetch and parse.
+   * @returns {Promise<string[]>} - A promise that resolves to an array of
+   * absolute URLs pointing to JavaScript files found in require.ensure()
+   * functions.
+   */
 const getLazyResources = async (url) => {
   const browser = await puppeteer.launch({
     headless: true,
@@ -238,8 +253,15 @@ const getLazyResources = async (url) => {
   return final_urls;
 };
 
-// helper function to get the host and directory name from the URL
-function getURLDirectory(url) {
+/**
+ * Extracts the host and directory path from a given URL.
+ *
+ * @param {string} url - The URL to be processed.
+ * @returns {Object} An object containing:
+ *   - host: The hostname of the URL (e.g., "vercel.com" or "localhost:3000").
+ *   - directory: The directory path, excluding the filename if present (e.g., "/static/js").
+ */
+const getURLDirectory = (url) => {
   const u = new URL(url);
   const pathname = u.pathname;
 
@@ -252,7 +274,15 @@ function getURLDirectory(url) {
   };
 }
 
-// function to download JS files to the output directory
+/**
+ * Downloads a list of URLs and saves them as files in the specified output directory.
+ * It creates the necessary subdirectories based on the URL's host and path.
+ * If the URL does not end with `.js`, it is skipped.
+ * The function logs the progress and any errors to the console.
+ * @param {string[]} urls - An array of URLs to be downloaded.
+ * @param {string} output - The directory where the downloaded files will be saved.
+ * @returns {Promise<void>}
+ */
 const downloadFiles = async (urls, output) => {
   console.log(chalk.cyan(`[i] Downloading ${urls.length} JS chunks`));
   fs.mkdirSync(output, { recursive: true });
@@ -284,6 +314,24 @@ const downloadFiles = async (urls, output) => {
   console.log(chalk.green(`[✓] Downloaded JS chunks to ${output} directory`));
 };
 
+/**
+ * Downloads all the lazy loaded JS files from a given URL.
+ * It detects Next.js by looking for the presence of a webpack JS file
+ * and uses the following techniques to find the lazy loaded files:
+ * 1. Finds the webpack JS file by looking for a script tag with a src
+ *    attribute that starts with "/next/". This is done by iterating through
+ *    all script tags and checking the src attribute.
+ * 2. Parses the webpack JS file to find functions that end with ".js". These
+ *    functions are assumed to return the path of the lazy loaded JS file.
+ * 3. Iterates through all integers, till 1000000, and passes it to the found
+ *    function to get the output. If the output does not include "undefined",
+ *    it is added to the list of lazy loaded files.
+ * 4. Downloads the lazy loaded files and saves them as files in the specified
+ *    output directory.
+ * @param {string} url - The URL to be processed.
+ * @param {string} output - The directory where the downloaded files will be saved.
+ * @returns {Promise<void>}
+ */
 const lazyload = async (url, output) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
