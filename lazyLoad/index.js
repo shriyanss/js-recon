@@ -10,8 +10,60 @@ const traverse = _traverse.default;
 import inquirer from "inquirer";
 import { VM } from "vm2";
 import prettier from "prettier";
+import * as cheerio from "cheerio";
 
-const getResources = async (url) => {
+// find the JS files from script src of the webpage
+const getJSScriptSrc = async (url) => {
+  let js_urls = [];
+  // get the page source
+  const res = await fetch(url);
+  const pageSource = await res.text();
+
+  // cheerio to parse the page source
+  const $ = cheerio.load(pageSource);
+
+  // find all script tags
+  const scriptTags = $("script");
+
+  // iterate through script tags
+  for (const scriptTag of scriptTags) {
+    // get the src attribute
+    const src = $(scriptTag).attr("src");
+
+    // see if the src is a JS file
+    if (
+      src !== undefined &&
+      src.match(/(https:\/\/[a-zA-Z0-9_\_\.]+\/.+\.js\??.*|\/.+\.js\??.*)/)
+    ) {
+      // if the src starts with /, like `/static/js/a.js` find the absolute URL
+      if (src.startsWith("/")) {
+        const absoluteUrl = new URL(url).origin + src;
+        js_urls.push(absoluteUrl);
+      } else if (src.match(/^[^/]/)) {
+        // if the src is a relative URL, like `static/js/a.js` find the absolute URL
+        // Get directory URL (origin + path without filename)
+        const pathParts = new URL(url).pathname.split("/");
+        pathParts.pop(); // remove filename from last
+        const directory = new URL(url).origin + pathParts.join("/") + "/";
+
+        js_urls.push(directory + src);
+      } else {
+        js_urls.push(src);
+      }
+    }
+  }
+
+  console.log(
+    chalk.green(
+      `[✓] Found ${js_urls.length} JS files from the src of script tags`
+    )
+  );
+
+  return js_urls;
+};
+
+// find the lazy JS files from the code
+const getLazyResources = async (url) => {
   const browser = await puppeteer.launch({
     headless: true,
   });
@@ -149,7 +201,7 @@ const getResources = async (url) => {
     timeout: 2000,
     sandbox: {},
   });
-  
+
   let js_paths = [];
   try {
     const func = vm.run(urlBuilderFunc);
@@ -165,7 +217,7 @@ const getResources = async (url) => {
     }
   } catch (err) {
     console.error("Unsafe or invalid code:", err.message);
-    return
+    return;
   }
 
   if (js_paths.length > 0) {
@@ -186,18 +238,41 @@ const getResources = async (url) => {
   return final_urls;
 };
 
+// helper function to get the host and directory name from the URL
+function getURLDirectory(url) {
+  const u = new URL(url);
+  const pathname = u.pathname;
+
+  // Remove filename (last part after final /) if it ends with .js or any file extension
+  const dir = pathname.replace(/\/[^\/?#]+\.[^\/?#]+$/, "");
+
+  return {
+    host: u.host, // e.g., "vercel.com" or "localhost:3000"
+    directory: dir, // e.g., "/static/js"
+  };
+}
+
+// function to download JS files to the output directory
 const downloadFiles = async (urls, output) => {
-  console.log(chalk.cyan(`[i] Downloading JS chunks`));
+  console.log(chalk.cyan(`[i] Downloading ${urls.length} JS chunks`));
   fs.mkdirSync(output, { recursive: true });
 
   const downloadPromises = urls.map(async (url) => {
     try {
-      if (url.endsWith(".js")) {
+      if (url.match(/\.js/)) {
+        // get the directory of the url
+        const { host, directory } = getURLDirectory(url);
+        // make the directory inside the output folder
+        const childDir = path.join(output, host, directory);
+        fs.mkdirSync(childDir, { recursive: true });
         const res = await fetch(url);
-        const file = await res.text();
-        const filename = url.split("/").pop();
-        const filePath = path.join(output, filename);
-        fs.writeFileSync(filePath, await prettier.format(file, { parser: "babel" }));
+        const file = `// JS Source: ${url}\n${await res.text()}`;
+        const filename = url.split("/").pop().match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
+        const filePath = path.join(childDir, filename);
+        fs.writeFileSync(
+          filePath,
+          await prettier.format(file, { parser: "babel" })
+        );
       }
     } catch (err) {
       console.error(chalk.red(`[!] Failed to download: ${url}`), err.message);
@@ -205,7 +280,6 @@ const downloadFiles = async (urls, output) => {
   });
 
   await Promise.all(downloadPromises);
-
 
   console.log(chalk.green(`[✓] Downloaded JS chunks to ${output} directory`));
 };
@@ -220,11 +294,14 @@ const lazyload = async (url, output) => {
       console.log(chalk.green("[✓] Next.js detected"));
       console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-      // get the resources
-      const resources = await getResources(url);
+      // find the JS files from script src of the webpage
+      const jsFiles = await getJSScriptSrc(url);
+
+      // get lazy resources
+      const lazyResources = await getLazyResources(url);
 
       // download the resources
-      await downloadFiles(resources, output);
+      await downloadFiles([...jsFiles, ...lazyResources], output);
     }
   } else {
     console.log(chalk.red("[!] Framework not detected :("));
