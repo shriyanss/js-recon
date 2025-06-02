@@ -1,8 +1,9 @@
 import { program } from "commander";
 import lazyload from "./lazyload/index.js";
 import endpoints from "./endpoints/index.js";
+import CONFIG from "./globalConfig.js";
 
-program.version("0.0.1").description("JS Recon Tool");
+program.version(CONFIG.version).description(CONFIG.toolDesc);
 
 program
   .command("lazyload")
