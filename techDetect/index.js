@@ -1,7 +1,16 @@
 import chalk from "chalk";
-import * as cheerio from 'cheerio';
+import * as cheerio from "cheerio";
 
-// returns data in format { detected: "<name of the framework>", evidence: "<evidence>" }
+/**
+ * Detects if a webpage uses Next.js by checking if any HTML tag has a src,
+ * srcset, or imageSrcSet attribute that starts with "/_next/".
+ * @param {CheerioStatic} $ - The Cheerio object containing the parsed HTML.
+ * @returns {Promise<{detected: boolean, evidence: string}>}
+ *   A promise that resolves to an object with two properties:
+ *   - detected: A boolean indicating whether Next.js was detected.
+ *   - evidence: A string with the evidence of the detection, or an empty string
+ *     if Next.js was not detected.
+ */
 const checkNextJS = async ($) => {
   let detected = false;
   let evidence = "";
@@ -31,6 +40,14 @@ const checkNextJS = async ($) => {
   return { detected, evidence };
 };
 
+/**
+ * Detects the front-end framework used by a webpage.
+ * @param {string} url - The URL of the webpage to be detected.
+ * @returns {Promise<{name: string, evidence: string}> | null}
+ *   A promise that resolves to an object with two properties:
+ *   - name: A string indicating the detected framework, or null if no framework was detected.
+ *   - evidence: A string with the evidence of the detection, or an empty string if no framework was detected.
+ */
 const frameworkDetect = async (url) => {
   console.log(chalk.cyan("[i] Detecting front-end framework"));
 
