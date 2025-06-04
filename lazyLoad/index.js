@@ -314,6 +314,19 @@ const downloadFiles = async (urls, output) => {
   console.log(chalk.green(`[✓] Downloaded JS chunks to ${output} directory`));
 };
 
+/**
+ * Downloads all the lazy loaded JS files from a given URL.
+ *
+ * It opens a headless browser instance, navigates to the given URL, and
+ * intercepts all the requests. It checks if the request is a JS file
+ * and if it is a GET request. If both conditions are satisfied, the URL
+ * is added to the array of URLs. Finally, it closes the browser instance
+ * and returns the array of URLs.
+ *
+ * @param {string} url - The URL of the webpage to fetch and parse.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of
+ * absolute URLs pointing to JavaScript files found in the page.
+ */
 const downloadLoadedJs = async (url) => {
   const browser = await puppeteer.launch({
     headless: true,
