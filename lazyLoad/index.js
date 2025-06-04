@@ -364,7 +364,7 @@ const downloadLoadedJs = async (url) => {
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const lazyload = async (url, output) => {
+const lazyLoad = async (url, output) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
   const tech = await frameworkDetect(url);
@@ -394,4 +394,4 @@ const lazyload = async (url, output) => {
   }
 };
 
-export default lazyload;
+export default lazyLoad;
