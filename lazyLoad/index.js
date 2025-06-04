@@ -15,6 +15,9 @@ import * as cheerio from "cheerio";
 // custom request module
 import makeRequest from "../utility/makeReq.js";
 
+// globals
+let scope = [];
+
   /**
    * Asynchronously fetches the given URL and extracts JavaScript file URLs
    * from script tags present in the HTML content.
@@ -287,14 +290,32 @@ const getURLDirectory = (url) => {
  * @returns {Promise<void>}
  */
 const downloadFiles = async (urls, output) => {
-  console.log(chalk.cyan(`[i] Downloading ${urls.length} JS chunks`));
+  console.log(chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`));
   fs.mkdirSync(output, { recursive: true });
+
+  // to store ignored JS domain
+  let ignoredJSFiles = [];
+  let ignoredJSDomains = [];
+
+  let download_count = 0;
 
   const downloadPromises = urls.map(async (url) => {
     try {
       if (url.match(/\.js/)) {
         // get the directory of the url
         const { host, directory } = getURLDirectory(url);
+
+        // check scope of file. Only if in scope, download it
+        if (!scope.includes("*")) {
+          if (!scope.includes(host)) {
+            ignoredJSFiles.push(url);
+            if (!ignoredJSDomains.includes(host)) {
+              ignoredJSDomains.push(host);
+            }
+            return;
+          }
+        }
+        
         // make the directory inside the output folder
         const childDir = path.join(output, host, directory);
         fs.mkdirSync(childDir, { recursive: true });
@@ -306,6 +327,7 @@ const downloadFiles = async (urls, output) => {
           filePath,
           await prettier.format(file, { parser: "babel" })
         );
+        download_count++;
       }
     } catch (err) {
       console.error(chalk.red(`[!] Failed to download: ${url}`), err.message);
@@ -314,7 +336,13 @@ const downloadFiles = async (urls, output) => {
 
   await Promise.all(downloadPromises);
 
-  console.log(chalk.green(`[✓] Downloaded JS chunks to ${output} directory`));
+  if (ignoredJSFiles.length > 0) {
+    console.log(chalk.yellow(`[i] Ignored ${ignoredJSFiles.length} JS files across ${ignoredJSDomains.length} domain(s) - ${ignoredJSDomains.join(", ")}`));
+  }
+
+  if (download_count > 0) {
+    console.log(chalk.green(`[✓] Downloaded ${download_count} JS chunks to ${output} directory`));
+  }
 };
 
 /**
@@ -380,8 +408,14 @@ const downloadLoadedJs = async (url) => {
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const lazyLoad = async (url, output) => {
+const lazyLoad = async (url, output, strictScope) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
+
+  if (strictScope) {
+    scope.push(new URL(url).host);
+  } else {
+    scope.push("*");
+  }
 
   const tech = await frameworkDetect(url);
 

@@ -10,8 +10,9 @@ program
   .description("Run lazy load module")
   .requiredOption("-u, --url <url>", "Target URL")
   .option("-o, --output <directory>", "Output directory", "output")
+  .option("--strict-scope", "Download JS files from only the input URL domain", false)
   .action(async (cmd) => {
-    await lazyLoad(cmd.url, cmd.output);
+    await lazyLoad(cmd.url, cmd.output, cmd.strictScope);
   });
 
 program
