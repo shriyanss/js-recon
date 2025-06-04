@@ -12,6 +12,9 @@ import { VM } from "vm2";
 import prettier from "prettier";
 import * as cheerio from "cheerio";
 
+// custom request module
+import makeRequest from "../utility/makeReq.js";
+
   /**
    * Asynchronously fetches the given URL and extracts JavaScript file URLs
    * from script tags present in the HTML content.
@@ -23,7 +26,7 @@ import * as cheerio from "cheerio";
 const getJSScriptSrc = async (url) => {
   let js_urls = [];
   // get the page source
-  const res = await fetch(url);
+  const res = await makeRequest(url);
   const pageSource = await res.text();
 
   // cheerio to parse the page source
@@ -126,7 +129,7 @@ const getLazyResources = async (url) => {
   }
 
   // parse the webpack JS file
-  const res = await fetch(webpack_js);
+  const res = await makeRequest(webpack_js);
   const webpack_js_source = await res.text();
 
   // parse it with @babel/*
@@ -295,7 +298,7 @@ const downloadFiles = async (urls, output) => {
         // make the directory inside the output folder
         const childDir = path.join(output, host, directory);
         fs.mkdirSync(childDir, { recursive: true });
-        const res = await fetch(url);
+        const res = await makeRequest(url);
         const file = `// JS Source: ${url}\n${await res.text()}`;
         const filename = url.split("/").pop().match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
         const filePath = path.join(childDir, filename);
