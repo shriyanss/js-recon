@@ -314,6 +314,38 @@ const downloadFiles = async (urls, output) => {
   console.log(chalk.green(`[✓] Downloaded JS chunks to ${output} directory`));
 };
 
+const downloadLoadedJs = async (url) => {
+  const browser = await puppeteer.launch({
+    headless: true,
+  });
+
+  const page = await browser.newPage();
+
+  await page.setRequestInterception(true);
+
+  let js_urls = [];
+  page.on("request", async (request) => {
+    // get the request url
+    const url = request.url();
+
+    // see if the request is a JS file, and is a get request
+    if (
+      request.method() === "GET" &&
+      url.match(/https?:\/\/[a-z\._\-]+\/.+\.js\??.*/)
+    ) {
+      js_urls.push(url);
+    }
+
+    await request.continue();
+  });
+
+  await page.goto(url);
+
+  await browser.close();
+
+  return js_urls;
+};
+
 /**
  * Downloads all the lazy loaded JS files from a given URL.
  * It detects Next.js by looking for the presence of a webpack JS file
@@ -354,6 +386,10 @@ const lazyload = async (url, output) => {
   } else {
     console.log(chalk.red("[!] Framework not detected :("));
     console.log(chalk.magenta(CONFIG.notFoundMessage));
+    console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+    const js_urls = await downloadLoadedJs(url);
+    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+    await downloadFiles(js_urls, output);
     return;
   }
 };
