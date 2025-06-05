@@ -11,8 +11,9 @@ program
   .requiredOption("-u, --url <url>", "Target URL")
   .option("-o, --output <directory>", "Output directory", "output")
   .option("--strict-scope", "Download JS files from only the input URL domain", false)
+  .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
   .action(async (cmd) => {
-    await lazyLoad(cmd.url, cmd.output, cmd.strictScope);
+    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","));
   });
 
 program
