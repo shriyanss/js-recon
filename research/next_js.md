@@ -26,3 +26,78 @@ self.__next_f.push([1,"14:I[41498,[\"3867\",\"static/chunks/b6d67c9f-618ea7c61a7
 ```
 
 To handle this, a feature was implemented to get the JS files from the inline `<script>` tags as well.
+
+## Client-Side Paths/URLs
+Client-side paths/URLs are web addresses handled by the browser using JavaScript, usually without reloading the page. They are used for navigation, API requests, and loading resources dynamically within the client environment.
+
+### Analysis of [X.ai](https://x.ai)
+Upon inspection of the client side paths, it was found that they are present in `href` across JS chunks.
+
+These are a part of a list, which contains objects with keys like `href` (string), `label` (string), `active` (boolean) and `children` (array of objects of the same type).
+
+For instance, here's a example of such a list:
+```js
+let L = [
+    {
+      href: "/grok",
+      label: "Grok",
+      active: e.startsWith("/grok"),
+      children: [
+        { href: "/grok", label: "For Everyone", active: "/grok" == e },
+        {
+          href: "/grok/business",
+          label: "For Business",
+          active: "/grok/business" == e,
+        },
+      ],
+    },
+    {
+      href: "/api",
+      label: "API",
+      active: e.startsWith("/api"),
+      children: [
+        { href: "/api#capabilities", label: "Overview" },
+        {
+          href: "https://docs.x.ai/docs/models?cluster=us-east-1#detailed-pricing-for-all-grok-models",
+          label: "Pricing",
+          external: !0,
+        },
+        {
+          href: "https://console.x.ai",
+          label: "API Console Login",
+          external: !0,
+        },
+        {
+          href: "https://docs.x.ai",
+          label: "Documentation",
+          external: !0,
+        },
+      ],
+    },
+    { href: "/company", label: "Company", active: "/company" == e },
+    { href: "/colossus", label: "Colossus", active: "/colossus" == e },
+    {
+      href: "/careers",
+      label: "Careers",
+      active: e.startsWith("/careers"),
+    },
+    { href: "/news", label: "News", active: e.startsWith("/news") },
+]
+```
+
+Possible methodology: The tool can iterate over all the JS chunks, and find the list of objects with keys like `href` (string), `label` (string), `active` (boolean) and `children` (array of objects of the same type). Then, it can organize them in a report.
+
+### Analyis of [1Password](https://1password.com)
+It was found that the client-side paths were stored in mostly stored in a way like:
+```js
+let s = JSON.parse(
+          '["/state-of-enterprise-security-report/thank-you/",......"/webinars/1p-quarterly-security-spotlight-and-roadmap-review/thank-you/"]',
+)
+```
+
+Some similar pattern was also observed in [OpenAI](https://openai.com), however, the full analysis of OpenAI's client-side paths is not done at the time of writing this.
+
+It was also found that some paths were stored directly as a list. For example:
+```js
+let n = ["/pricing/xam", "/pricing/password-manager"];
+```
