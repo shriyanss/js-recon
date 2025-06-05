@@ -408,13 +408,13 @@ const downloadLoadedJs = async (url) => {
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const lazyLoad = async (url, output, strictScope) => {
+const lazyLoad = async (url, output, strictScope, inputScope) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
   if (strictScope) {
     scope.push(new URL(url).host);
   } else {
-    scope.push("*");
+    scope = inputScope;
   }
 
   const tech = await frameworkDetect(url);
