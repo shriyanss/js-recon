@@ -93,8 +93,6 @@ const next_getJSScript = async (url) => {
               js_path_dir = js_url.replace(/\/[^\/]+\.js.*$/, "");
             }
           }
-
-          console.log(js_path_dir + "/" + filename);
           js_urls.push(js_path_dir + "/" + filename);
         }
       }
