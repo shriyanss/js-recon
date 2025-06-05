@@ -8,13 +8,15 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import inquirer from "inquirer";
-import { VM } from "vm2";
 import prettier from "prettier";
 import * as cheerio from "cheerio";
+import { URL } from "url";
 
 // custom request module
 import makeRequest from "../utility/makeReq.js";
-import { URL } from "url";
+
+// sandboxed execution module
+import execFunc from "../utility/runSandboxed.js";
 
 // globals
 let scope = [];
@@ -256,18 +258,14 @@ const next_getLazyResources = async (url) => {
 
   const urlBuilderFunc = `(() => (${final_Func}))()`;
 
-  const vm = new VM({
-    timeout: 2000,
-    sandbox: {},
-  });
-
   let js_paths = [];
   try {
-    const func = vm.run(urlBuilderFunc);
+    // rather than fuzzing, grep the integers from the func code
+    const integers = final_Func.match(/\d+/g);
 
     // iterate through all integers, till 1000000, and get the output
-    for (let i = 0; i < 1000000; i++) {
-      const output = func(i);
+    for (const i of integers) {
+      const output = execFunc(urlBuilderFunc, parseInt(i));
       if (output.includes("undefined")) {
         continue;
       } else {
