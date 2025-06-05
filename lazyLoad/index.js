@@ -17,6 +17,7 @@ import makeRequest from "../utility/makeReq.js";
 
 // globals
 let scope = [];
+let js_urls = [];
 
   /**
    * Asynchronously fetches the given URL and extracts JavaScript file URLs
@@ -27,7 +28,6 @@ let scope = [];
    * absolute URLs pointing to JavaScript files found in script tags.
    */
 const getJSScriptSrc = async (url) => {
-  let js_urls = [];
   // get the page source
   const res = await makeRequest(url);
   const pageSource = await res.text();
@@ -51,7 +51,9 @@ const getJSScriptSrc = async (url) => {
       // if the src starts with /, like `/static/js/a.js` find the absolute URL
       if (src.startsWith("/")) {
         const absoluteUrl = new URL(url).origin + src;
-        js_urls.push(absoluteUrl);
+        if (!js_urls.includes(absoluteUrl)) {
+          js_urls.push(absoluteUrl);
+        }
       } else if (src.match(/^[^/]/)) {
         // if the src is a relative URL, like `static/js/a.js` find the absolute URL
         // Get directory URL (origin + path without filename)
@@ -59,9 +61,13 @@ const getJSScriptSrc = async (url) => {
         pathParts.pop(); // remove filename from last
         const directory = new URL(url).origin + pathParts.join("/") + "/";
 
-        js_urls.push(directory + src);
+        if (!js_urls.includes(directory + src)) {
+          js_urls.push(directory + src);
+        }
       } else {
-        js_urls.push(src);
+        if (!js_urls.includes(src)) {
+          js_urls.push(src);
+        }
       }
     }
   }
@@ -93,8 +99,6 @@ const getLazyResources = async (url) => {
 
   await page.setRequestInterception(true);
 
-  let js_urls = [];
-
   page.on("request", async (request) => {
     // get the request url
     const url = request.url();
@@ -104,7 +108,9 @@ const getLazyResources = async (url) => {
       request.method() === "GET" &&
       url.match(/https?:\/\/[a-z\._\-]+\/.+\.js\??.*/)
     ) {
-      js_urls.push(url);
+      if (!js_urls.includes(url)) {
+        js_urls.push(url);
+      }
     }
 
     await request.continue();
@@ -431,7 +437,11 @@ const lazyLoad = async (url, output, strictScope, inputScope) => {
       const lazyResources = await getLazyResources(url);
 
       // download the resources
-      await downloadFiles([...jsFiles, ...lazyResources], output);
+      if (lazyResources) {
+        await downloadFiles([...jsFiles, ...lazyResources], output);
+      } else {
+        await downloadFiles(jsFiles, output);
+      }
     }
   } else {
     console.log(chalk.red("[!] Framework not detected :("));
