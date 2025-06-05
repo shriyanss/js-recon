@@ -193,7 +193,7 @@ const getLazyResources = async (url) => {
 
   let final_Func;
   for (const func of functions) {
-    if (func.source.match(/\".js"$/)) {
+    if (func.source.match(/"\.js".{0,15}$/)) {
       console.log(
         chalk.green(`[✓] Found JS chunk having the following source`)
       );
@@ -327,7 +327,21 @@ const downloadFiles = async (urls, output) => {
         fs.mkdirSync(childDir, { recursive: true });
         const res = await makeRequest(url);
         const file = `// JS Source: ${url}\n${await res.text()}`;
-        const filename = url.split("/").pop().match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
+        let filename;
+        try {
+          filename = url.split("/").pop().match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
+        } catch (err) {
+          // split the URL into multiple chunks. then iterate
+          // through it, and find whatever matches with JS ext
+          const chunks = url.split("/");
+          for (const chunk of chunks) {
+            if (chunk.match(/\.js$/)) {
+              filename = chunk;
+              break;
+            }
+          }
+        }
+
         const filePath = path.join(childDir, filename);
         fs.writeFileSync(
           filePath,
