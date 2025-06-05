@@ -14,20 +14,21 @@ import * as cheerio from "cheerio";
 
 // custom request module
 import makeRequest from "../utility/makeReq.js";
+import { URL } from "url";
 
 // globals
 let scope = [];
 let js_urls = [];
 
-  /**
-   * Asynchronously fetches the given URL and extracts JavaScript file URLs
-   * from script tags present in the HTML content.
-   *
-   * @param {string} url - The URL of the webpage to fetch and parse.
-   * @returns {Promise<string[]>} - A promise that resolves to an array of
-   * absolute URLs pointing to JavaScript files found in script tags.
-   */
-const getJSScriptSrc = async (url) => {
+/**
+ * Asynchronously fetches the given URL and extracts JavaScript file URLs
+ * from script tags present in the HTML content.
+ *
+ * @param {string} url - The URL of the webpage to fetch and parse.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of
+ * absolute URLs pointing to JavaScript files found in script tags.
+ */
+const next_getJSScript = async (url) => {
   // get the page source
   const res = await makeRequest(url);
   const pageSource = await res.text();
@@ -69,28 +70,56 @@ const getJSScriptSrc = async (url) => {
           js_urls.push(src);
         }
       }
+    } else {
+      // if the script tag is inline, it could contain static JS URL
+      // to get these, simply regex from the JS script
+
+      const js_script = $(scriptTag).html();
+      const matches = js_script.match(/static\/chunks\/[a-zA-Z0-9_\-]+\.js/g);
+
+      if (matches) {
+        const uniqueMatches = [...new Set(matches)];
+        for (const match of uniqueMatches) {
+          // if it is using that static/chunks/ pattern, I can just get the filename
+          const filename = match.replace("static/chunks/", "");
+
+          // go through the already found URLs, coz they will have it (src attribute 
+          // is there before inline things)
+
+          let js_path_dir;
+
+          for (const js_url of js_urls) {
+            if (!js_path_dir && new URL(js_url).host === new URL(url).host && new URL(js_url).pathname.includes("static/chunks/")) {
+              js_path_dir = js_url.replace(/\/[^\/]+\.js.*$/, "");
+            }
+          }
+
+          console.log(js_path_dir + "/" + filename);
+          js_urls.push(js_path_dir + "/" + filename);
+        }
+      }
     }
   }
 
   console.log(
     chalk.green(
-      `[✓] Found ${js_urls.length} JS files from the src of script tags`
-    )
+      `[✓] Found ${js_urls.length} JS files from the script tags`,
+    ),
   );
 
   return js_urls;
 };
 
-  /**
-   * Asynchronously fetches the given URL and extracts JavaScript file URLs
-   * from webpack's require.ensure() function.
-   *
-   * @param {string} url - The URL of the webpage to fetch and parse.
-   * @returns {Promise<string[]>} - A promise that resolves to an array of
-   * absolute URLs pointing to JavaScript files found in require.ensure()
-   * functions.
-   */
-const getLazyResources = async (url) => {
+/**
+ * Asynchronously fetches the given URL and extracts JavaScript file URLs
+ * from webpack's require.ensure() function.
+ *
+ * @param {string} url - The URL of the webpage to fetch and parse.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of
+ * absolute URLs pointing to JavaScript files found in require.ensure()
+ * functions.
+ */
+const next_getLazyResources = async (url) => {
   const browser = await puppeteer.launch({
     headless: true,
   });
@@ -195,7 +224,7 @@ const getLazyResources = async (url) => {
   for (const func of functions) {
     if (func.source.match(/"\.js".{0,15}$/)) {
       console.log(
-        chalk.green(`[✓] Found JS chunk having the following source`)
+        chalk.green(`[✓] Found JS chunk having the following source`),
       );
       console.log(chalk.yellow(func.source));
       final_Func = func.source;
@@ -218,7 +247,7 @@ const getLazyResources = async (url) => {
   user_verified = await askCorrectFuncConfirmation();
   if (user_verified == true) {
     console.log(
-      chalk.green("[✓] Proceeding with the selected function to fetch files")
+      chalk.green("[✓] Proceeding with the selected function to fetch files"),
     );
   }
 
@@ -284,7 +313,7 @@ const getURLDirectory = (url) => {
     host: u.host, // e.g., "vercel.com" or "localhost:3000"
     directory: dir, // e.g., "/static/js"
   };
-}
+};
 
 /**
  * Downloads a list of URLs and saves them as files in the specified output directory.
@@ -296,7 +325,9 @@ const getURLDirectory = (url) => {
  * @returns {Promise<void>}
  */
 const downloadFiles = async (urls, output) => {
-  console.log(chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`));
+  console.log(
+    chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`),
+  );
   fs.mkdirSync(output, { recursive: true });
 
   // to store ignored JS domain
@@ -321,7 +352,7 @@ const downloadFiles = async (urls, output) => {
             return;
           }
         }
-        
+
         // make the directory inside the output folder
         const childDir = path.join(output, host, directory);
         fs.mkdirSync(childDir, { recursive: true });
@@ -329,7 +360,10 @@ const downloadFiles = async (urls, output) => {
         const file = `// JS Source: ${url}\n${await res.text()}`;
         let filename;
         try {
-          filename = url.split("/").pop().match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
+          filename = url
+            .split("/")
+            .pop()
+            .match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
         } catch (err) {
           // split the URL into multiple chunks. then iterate
           // through it, and find whatever matches with JS ext
@@ -345,7 +379,7 @@ const downloadFiles = async (urls, output) => {
         const filePath = path.join(childDir, filename);
         fs.writeFileSync(
           filePath,
-          await prettier.format(file, { parser: "babel" })
+          await prettier.format(file, { parser: "babel" }),
         );
         download_count++;
       }
@@ -357,11 +391,19 @@ const downloadFiles = async (urls, output) => {
   await Promise.all(downloadPromises);
 
   if (ignoredJSFiles.length > 0) {
-    console.log(chalk.yellow(`[i] Ignored ${ignoredJSFiles.length} JS files across ${ignoredJSDomains.length} domain(s) - ${ignoredJSDomains.join(", ")}`));
+    console.log(
+      chalk.yellow(
+        `[i] Ignored ${ignoredJSFiles.length} JS files across ${ignoredJSDomains.length} domain(s) - ${ignoredJSDomains.join(", ")}`,
+      ),
+    );
   }
 
   if (download_count > 0) {
-    console.log(chalk.green(`[✓] Downloaded ${download_count} JS chunks to ${output} directory`));
+    console.log(
+      chalk.green(
+        `[✓] Downloaded ${download_count} JS chunks to ${output} directory`,
+      ),
+    );
   }
 };
 
@@ -445,10 +487,10 @@ const lazyLoad = async (url, output, strictScope, inputScope) => {
       console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
       // find the JS files from script src of the webpage
-      const jsFiles = await getJSScriptSrc(url);
+      const jsFiles = await next_getJSScript(url);
 
       // get lazy resources
-      const lazyResources = await getLazyResources(url);
+      const lazyResources = await next_getLazyResources(url);
 
       // download the resources
       if (lazyResources) {
