@@ -19,6 +19,8 @@ import { URL } from "url";
 // globals
 let scope = [];
 let js_urls = [];
+let req_queue = 0;
+let max_req_queue;
 
 /**
  * Asynchronously fetches the given URL and extracts JavaScript file URLs
@@ -243,10 +245,13 @@ const next_getLazyResources = async (url) => {
   };
 
   user_verified = await askCorrectFuncConfirmation();
-  if (user_verified == true) {
+  if (user_verified === true) {
     console.log(
       chalk.green("[✓] Proceeding with the selected function to fetch files"),
     );
+  } else {
+    console.log(chalk.red("[!] Not executing function."));
+    return [];
   }
 
   const urlBuilderFunc = `(() => (${final_Func}))()`;
@@ -271,7 +276,7 @@ const next_getLazyResources = async (url) => {
     }
   } catch (err) {
     console.error("Unsafe or invalid code:", err.message);
-    return;
+    return [];
   }
 
   if (js_paths.length > 0) {
@@ -333,6 +338,7 @@ const downloadFiles = async (urls, output) => {
   let ignoredJSDomains = [];
 
   let download_count = 0;
+  let queue = 0;
 
   const downloadPromises = urls.map(async (url) => {
     try {
@@ -354,7 +360,16 @@ const downloadFiles = async (urls, output) => {
         // make the directory inside the output folder
         const childDir = path.join(output, host, directory);
         fs.mkdirSync(childDir, { recursive: true });
+
+        // check if queue is full. If so, then wait for random time between
+        // 50 to 300 ms. Then, check again, and loop the process
+        while (queue >= max_req_queue) {
+          await new Promise((resolve) => setTimeout(resolve, Math.random() * 250 + 50));
+        }
+        queue++;
         const res = await makeRequest(url);
+        queue--;
+
         const file = `// JS Source: ${url}\n${await res.text()}`;
         let filename;
         try {
@@ -382,7 +397,7 @@ const downloadFiles = async (urls, output) => {
         download_count++;
       }
     } catch (err) {
-      console.error(chalk.red(`[!] Failed to download: ${url}`), err.message);
+      console.error(chalk.red(`[!] Failed to download: ${url}`));
     }
   });
 
@@ -468,7 +483,7 @@ const downloadLoadedJs = async (url) => {
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const lazyLoad = async (url, output, strictScope, inputScope) => {
+const lazyLoad = async (url, output, strictScope, inputScope, threads) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
   if (strictScope) {
@@ -476,6 +491,8 @@ const lazyLoad = async (url, output, strictScope, inputScope) => {
   } else {
     scope = inputScope;
   }
+
+  max_req_queue = threads;
 
   const tech = await frameworkDetect(url);
 

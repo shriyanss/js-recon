@@ -12,8 +12,9 @@ program
   .option("-o, --output <directory>", "Output directory", "output")
   .option("--strict-scope", "Download JS files from only the input URL domain", false)
   .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
+  .option("-t, --threads <threads>", "Number of threads to use", 10)
   .action(async (cmd) => {
-    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","));
+    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads);
   });
 
 program
