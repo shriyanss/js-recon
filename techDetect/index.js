@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import * as cheerio from "cheerio";
+import makeRequest from "../utility/makeReq.js";
 
 /**
  * Detects if a webpage uses Next.js by checking if any HTML tag has a src,
@@ -52,7 +53,11 @@ const frameworkDetect = async (url) => {
   console.log(chalk.cyan("[i] Detecting front-end framework"));
 
   // get the page source
-  const res = await fetch(url);
+  const res = await makeRequest(url);
+
+  if (res === null) {
+    return;
+  }
 
   const pageSource = await res.text();
 
