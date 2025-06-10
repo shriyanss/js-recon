@@ -55,6 +55,10 @@ const frameworkDetect = async (url) => {
   // get the page source
   const res = await makeRequest(url);
 
+  if (res === null) {
+    return;
+  }
+
   const pageSource = await res.text();
 
   // cheerio to parse the page source

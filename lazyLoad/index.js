@@ -87,13 +87,17 @@ const next_getJSScript = async (url) => {
           // if it is using that static/chunks/ pattern, I can just get the filename
           const filename = match.replace("static/chunks/", "");
 
-          // go through the already found URLs, coz they will have it (src attribute 
+          // go through the already found URLs, coz they will have it (src attribute
           // is there before inline things)
 
           let js_path_dir;
 
           for (const js_url of js_urls) {
-            if (!js_path_dir && new URL(js_url).host === new URL(url).host && new URL(js_url).pathname.includes("static/chunks/")) {
+            if (
+              !js_path_dir &&
+              new URL(js_url).host === new URL(url).host &&
+              new URL(js_url).pathname.includes("static/chunks/")
+            ) {
               js_path_dir = js_url.replace(/\/[^\/]+\.js.*$/, "");
             }
           }
@@ -104,9 +108,7 @@ const next_getJSScript = async (url) => {
   }
 
   console.log(
-    chalk.green(
-      `[✓] Found ${js_urls.length} JS files from the script tags`,
-    ),
+    chalk.green(`[✓] Found ${js_urls.length} JS files from the script tags`),
   );
 
   return js_urls;
@@ -362,7 +364,9 @@ const downloadFiles = async (urls, output) => {
         // check if queue is full. If so, then wait for random time between
         // 50 to 300 ms. Then, check again, and loop the process
         while (queue >= max_req_queue) {
-          await new Promise((resolve) => setTimeout(resolve, Math.random() * 250 + 50));
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.random() * 250 + 50),
+          );
         }
         queue++;
         const res = await makeRequest(url);
@@ -432,6 +436,11 @@ const downloadFiles = async (urls, output) => {
  * absolute URLs pointing to JavaScript files found in the page.
  */
 const downloadLoadedJs = async (url) => {
+  if (!url.match(/https?:\/\/[a-zA-Z0-9\._\-]+/)) {
+    console.log(chalk.red("[!] Invalid URL"));
+    return;
+  }
+
   const browser = await puppeteer.launch({
     headless: true,
   });
@@ -484,42 +493,61 @@ const downloadLoadedJs = async (url) => {
 const lazyLoad = async (url, output, strictScope, inputScope, threads) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
-  if (strictScope) {
-    scope.push(new URL(url).host);
+  let urls;
+
+  // check if the url is file or a URL
+  if (fs.existsSync(url)) {
+    urls = fs.readFileSync(url, "utf-8").split("\n");
+    // remove the empty lines
+    urls = urls.filter((url) => url.trim() !== "");
+  } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
+    urls = [url];
   } else {
-    scope = inputScope;
+    console.log(chalk.red("[!] Invalid URL or file path"));
+    return;
   }
 
-  max_req_queue = threads;
+  for (const url of urls) {
+    console.log(chalk.cyan(`[i] Processing ${url}`));
 
-  const tech = await frameworkDetect(url);
+    if (strictScope) {
+      scope.push(new URL(url).host);
+    } else {
+      scope = inputScope;
+    }
 
-  if (tech !== null) {
-    if (tech.name === "next") {
-      console.log(chalk.green("[✓] Next.js detected"));
-      console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+    max_req_queue = threads;
 
-      // find the JS files from script src of the webpage
-      const jsFiles = await next_getJSScript(url);
+    const tech = await frameworkDetect(url);
 
-      // get lazy resources
-      const lazyResources = await next_getLazyResources(url);
+    if (tech) {
+      if (tech.name === "next") {
+        console.log(chalk.green("[✓] Next.js detected"));
+        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-      // download the resources
-      if (lazyResources) {
-        await downloadFiles([...jsFiles, ...lazyResources], output);
-      } else {
-        await downloadFiles(jsFiles, output);
+        // find the JS files from script src of the webpage
+        const jsFiles = await next_getJSScript(url);
+
+        // get lazy resources
+        const lazyResources = await next_getLazyResources(url);
+
+        // download the resources
+        if (lazyResources) {
+          await downloadFiles([...jsFiles, ...lazyResources], output);
+        } else {
+          await downloadFiles(jsFiles, output);
+        }
+      }
+    } else {
+      console.log(chalk.red("[!] Framework not detected :("));
+      console.log(chalk.magenta(CONFIG.notFoundMessage));
+      console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+      const js_urls = await downloadLoadedJs(url);
+      if (js_urls && js_urls.length > 0) {
+        console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+        await downloadFiles(js_urls, output);
       }
     }
-  } else {
-    console.log(chalk.red("[!] Framework not detected :("));
-    console.log(chalk.magenta(CONFIG.notFoundMessage));
-    console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-    const js_urls = await downloadLoadedJs(url);
-    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-    await downloadFiles(js_urls, output);
-    return;
   }
 };
 
