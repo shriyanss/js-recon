@@ -132,3 +132,4 @@ dist
 # js-recon specific
 output
 output/*
+strings.json
