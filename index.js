@@ -2,6 +2,7 @@ import { program } from "commander";
 import lazyLoad from "./lazyLoad/index.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
+import strings from "./strings/index.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 
@@ -24,6 +25,14 @@ program
   .option("-o, --output <file>", "Output file")
   .action((cmd) => {
     endpoints(cmd.url, cmd.output);
+  });
+
+program
+  .command("strings")
+  .description("Extract strings from JS files")
+  .requiredOption("-d, --directory <directory>", "Directory containing JS files")
+  .action((cmd) => {
+    strings(cmd.directory);
   });
 
 program.parse(process.argv);
