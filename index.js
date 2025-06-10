@@ -31,8 +31,9 @@ program
   .command("strings")
   .description("Extract strings from JS files")
   .requiredOption("-d, --directory <directory>", "Directory containing JS files")
+  .option("-o, --output <file>", "JSON file to save the strings", "strings.json")
   .action((cmd) => {
-    strings(cmd.directory);
+    strings(cmd.directory, cmd.output);
   });
 
 program.parse(process.argv);
