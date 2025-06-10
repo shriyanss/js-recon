@@ -1,3 +1,4 @@
+import chalk from "chalk";
 
 // random user agents
 const UAs = [
