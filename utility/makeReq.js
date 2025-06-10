@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import puppeteer from "puppeteer";
 
 // random user agents
 const UAs = [
@@ -86,7 +87,51 @@ const makeRequest = async (url, args) => {
             continue;
         }
     }
-    return res;
+
+    const preservedRes = res.clone();
+
+    // check if this is a firewall
+    // CF first
+    const resp_text = await res.text();
+    if (resp_text.includes("/?bm-verify=")) {
+        console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
+        // if it is, load it in a headless browser
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--disable-setuid-sandbox",
+                "--no-sandbox",
+            ],
+        });
+        const page = await browser.newPage();
+        await page.goto(url);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const content = await page.content();
+        await browser.close();
+        return new Response(content);
+    } else if (resp_text.includes("<title>Just a moment...</title>")) {
+        console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
+        // if it is, load it in a headless browser
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--disable-setuid-sandbox",
+                "--no-sandbox",
+            ],
+        });
+        const page = await browser.newPage();
+        await page.goto(url);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const content = await page.content();
+        await browser.close();
+        return new Response(content);
+    }
+
+    return preservedRes;
 }
 
 export default makeRequest;
