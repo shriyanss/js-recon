@@ -133,3 +133,4 @@ dist
 output
 output/*
 strings.json
+extracted_urls.json

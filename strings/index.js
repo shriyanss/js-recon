@@ -14,7 +14,7 @@ const traverse = _traverse.default;
  * @param {string} directory - The directory to scan for .js files
  * @param {string} output_file - The file to write the extracted strings to
  */
-const strings = async (directory, output_file) => {
+const strings = async (directory, output_file, extract_urls, extracted_url_path) => {
     console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
     // check if the directory exists
@@ -78,6 +78,43 @@ const strings = async (directory, output_file) => {
     fs.writeFileSync(output_file, formatted);
 
     console.log(chalk.green(`[✓] Extracted strings to ${output_file}`));
+
+    if (extract_urls) {
+        console.log(chalk.cyan("[i] Extracting URLs and paths from strings"));
+
+        let urls = [];
+        let paths = [];
+
+        for (const file of Object.keys(all_strings)) {
+            for (const string of all_strings[file]) {
+                if (string.match(/^https?:\/\/[a-zA-Z0-9\.\-_]+\/?.*$/)) { // like https://site.com
+                    urls.push(string);
+                }
+                if (string.match(/^\/.+$/)) { // like /path/resource
+                    paths.push(string);
+                }
+                if (string.match(/^[a-zA-Z0-9_\-]\/[a-zA-Z0-9_\-].*$/)) { // like path/to/resource
+                    paths.push(string);
+                }
+            }
+        }
+
+        // dedupe the two lists
+        urls = [...new Set(urls)];
+        paths = [...new Set(paths)];
+
+        console.log(chalk.cyan(`[i] Found ${urls.length} URLs and ${paths.length} paths`));
+
+        // write to a JSON file
+        const formatted_urls = await prettier.format(JSON.stringify({ urls, paths }), {
+            parser: "json",
+            printWidth: 80,
+            singleQuote: true,
+        });
+        fs.writeFileSync(extracted_url_path, formatted_urls);
+
+        console.log(chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}`));
+    }
 };
 
 export default strings;
