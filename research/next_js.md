@@ -11,3 +11,93 @@ A lot of JS files were identified from the page source by inspecting the value o
 Upon analysis of page source and HTTP requests, it was found that the webpack filename had a pattern of `webpack-<hash>.js`. So, webpack JS files were identified and fetched.
 
 Upon inspection of the webpack JS file, it was found that code was distributed into several functions. It was observed that the function responsible for returning the JS path ended with `".js"`. This observation was seen multiple times in the Next.js apps by the developer (aka web researcher), hence it bacame a standard method to get the path of the JS files.
+
+### Analysis of [X.ai](https://x.ai)
+It was found that most of the things were done in a similar way, however, some extra chars were present after `".js"` in the function responsible for returning JS path in the webpack JS file.
+
+To handle this, the regex was modified to also include some additional characters at the end.
+```js
+.match(/"\.js".{0,15}$/)
+```
+
+Also, it was found that very less URLs were present in the `webpack.js` file (4 at the time of analysis). Upon further inspection, it was found that the URLs are present in the inline `<script>` tags returned in the page source. For example:
+```
+self.__next_f.push([1,"14:I[41498,[\"3867\",\"static/chunks/b6d67c9f-618ea7c61a79562d.js\",\"5017\",\"static/chunks/622eaf3d-350d2142e11f9e13.js\",\"1889\",\"static/chunks/0fd4459a-4e25f772815e6f19.js\",\"4406\",\"static/chunks/4406-fdbbb31c90e98725.js\",\"8627\",\"static/chunks/8627-54829c23d6b1a53f.js\",\"6520\",\"static/chunks/6520-f51ddcfa4e30ebc8.js\",\"1296\",\"static/chunks/1296-b8c2dd03773a40db.js\",\"8922\",\"static/chunks/8922-f01acc4fc5fecfad.js\",\"6929\",\"static/chunks/6929-a636a59ffdb51b17.js\",\"2601\"......snip....../chunks/b6d67c9f-"])
+```
+
+To handle this, a feature was implemented to get the JS files from the inline `<script>` tags as well.
+
+## Client-Side Paths/URLs
+Client-side paths/URLs are web addresses handled by the browser using JavaScript, usually without reloading the page. They are used for navigation, API requests, and loading resources dynamically within the client environment.
+
+### Analysis of [X.ai](https://x.ai)
+Upon inspection of the client side paths, it was found that they are present in `href` across JS chunks.
+
+These are a part of a list, which contains objects with keys like `href` (string), `label` (string), `active` (boolean) and `children` (array of objects of the same type).
+
+For instance, here's a example of such a list:
+```js
+let L = [
+    {
+      href: "/grok",
+      label: "Grok",
+      active: e.startsWith("/grok"),
+      children: [
+        { href: "/grok", label: "For Everyone", active: "/grok" == e },
+        {
+          href: "/grok/business",
+          label: "For Business",
+          active: "/grok/business" == e,
+        },
+      ],
+    },
+    {
+      href: "/api",
+      label: "API",
+      active: e.startsWith("/api"),
+      children: [
+        { href: "/api#capabilities", label: "Overview" },
+        {
+          href: "https://docs.x.ai/docs/models?cluster=us-east-1#detailed-pricing-for-all-grok-models",
+          label: "Pricing",
+          external: !0,
+        },
+        {
+          href: "https://console.x.ai",
+          label: "API Console Login",
+          external: !0,
+        },
+        {
+          href: "https://docs.x.ai",
+          label: "Documentation",
+          external: !0,
+        },
+      ],
+    },
+    { href: "/company", label: "Company", active: "/company" == e },
+    { href: "/colossus", label: "Colossus", active: "/colossus" == e },
+    {
+      href: "/careers",
+      label: "Careers",
+      active: e.startsWith("/careers"),
+    },
+    { href: "/news", label: "News", active: e.startsWith("/news") },
+]
+```
+
+Possible methodology: The tool can iterate over all the JS chunks, and find the list of objects with keys like `href` (string), `label` (string), `active` (boolean) and `children` (array of objects of the same type). Then, it can organize them in a report.
+
+### Analyis of [1Password](https://1password.com)
+It was found that the client-side paths were stored in mostly stored in a way like:
+```js
+let s = JSON.parse(
+          '["/state-of-enterprise-security-report/thank-you/",......"/webinars/1p-quarterly-security-spotlight-and-roadmap-review/thank-you/"]',
+)
+```
+
+Some similar pattern was also observed in [OpenAI](https://openai.com), however, the full analysis of OpenAI's client-side paths is not done at the time of writing this.
+
+It was also found that some paths were stored directly as a list. For example:
+```js
+let n = ["/pricing/xam", "/pricing/password-manager"];
+```
