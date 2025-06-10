@@ -32,8 +32,10 @@ program
   .description("Extract strings from JS files")
   .requiredOption("-d, --directory <directory>", "Directory containing JS files")
   .option("-o, --output <file>", "JSON file to save the strings", "strings.json")
+  .option("-e, --extract-urls", "Extract URLs from strings", false)
+  .option("--extracted-url-path <file>", "Output JSON file for extracted URLs and paths", "extracted_urls.json")
   .action((cmd) => {
-    strings(cmd.directory, cmd.output);
+    strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath);
   });
 
 program.parse(process.argv);
