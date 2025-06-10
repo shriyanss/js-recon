@@ -15,6 +15,10 @@ Whenever the client is restricted by Cloudflare, it returns a HTML page with a J
 ```
 
 ### Bypass
+#### #1
 The most common way to bypass this is to use a browser environment, such as a headless browser.
 
 To achive this task, a detection mechanism is added in the custom function to make HTTP requests. If CF is detected, it will load the page in a headless browser, and then return the content.
+
+#### #2
+Utilizing a browser plugin to fetch the contents is a more advanced way to bypass this. The user can install the plugin in their testing browser, and as they navigate the site, the plugin will fetch the contents and send then to the server for processing (which would be included in the js-recon tool).
