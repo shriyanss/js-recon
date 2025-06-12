@@ -35,7 +35,9 @@ const strings = async (directory, output_file, extract_urls, extracted_url_path)
     let js_files_path = [];
     for (const file of jsFiles) {
         const filePath = path.join(directory, file);
-        js_files_path.push(filePath);
+        if (!fs.lstatSync(filePath).isDirectory()) {
+            js_files_path.push(filePath);
+        }
     }
 
     console.log(chalk.cyan(`[i] Found ${js_files_path.length} JS files`));

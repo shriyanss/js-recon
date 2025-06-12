@@ -21,4 +21,15 @@ The most common way to bypass this is to use a browser environment, such as a he
 To achive this task, a detection mechanism is added in the custom function to make HTTP requests. If CF is detected, it will load the page in a headless browser, and then return the content.
 
 #### #2
-Utilizing a browser plugin to fetch the contents is a more advanced way to bypass this. The user can install the plugin in their testing browser, and as they navigate the site, the plugin will fetch the contents and send then to the server for processing (which would be included in the js-recon tool).
+Utilizing a browser plugin to fetch the contents is a more advanced way to bypass this. The user can install the plugin in their testing browser/proxy, and as they navigate the site, the plugin will get the contents and send then to the server for processing (it would be like a caching system).
+
+#### #3
+The `makeRequest()` can be modified to send headers that a browser would send. These include:
+- `User-Agent` of a browser
+- `Accept`
+- `Accept-Language`
+- `Sec-Fetch-Site: same-origin`
+- `Sec-Fetch-Mode: cors`
+- `Sec-Fetch-Dest: empty`
+- `Referer`
+- `Origin`

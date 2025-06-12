@@ -18,10 +18,12 @@ import makeRequest from "../utility/makeReq.js";
 // sandboxed execution module
 import execFunc from "../utility/runSandboxed.js";
 
+import subsequentRequests from "./subsequentRequests.js";
+import { getURLDirectory } from "../utility/urlUtils.js";
+
 // globals
 let scope = [];
 let js_urls = [];
-let req_queue = 0;
 let max_req_queue;
 
 /**
@@ -298,27 +300,6 @@ const next_getLazyResources = async (url) => {
 };
 
 /**
- * Extracts the host and directory path from a given URL.
- *
- * @param {string} url - The URL to be processed.
- * @returns {Object} An object containing:
- *   - host: The hostname of the URL (e.g., "vercel.com" or "localhost:3000").
- *   - directory: The directory path, excluding the filename if present (e.g., "/static/js").
- */
-const getURLDirectory = (url) => {
-  const u = new URL(url);
-  const pathname = u.pathname;
-
-  // Remove filename (last part after final /) if it ends with .js or any file extension
-  const dir = pathname.replace(/\/[^\/?#]+\.[^\/?#]+$/, "");
-
-  return {
-    host: u.host, // e.g., "vercel.com" or "localhost:3000"
-    directory: dir, // e.g., "/static/js"
-  };
-};
-
-/**
  * Downloads a list of URLs and saves them as files in the specified output directory.
  * It creates the necessary subdirectories based on the URL's host and path.
  * If the URL does not end with `.js`, it is skipped.
@@ -490,7 +471,15 @@ const downloadLoadedJs = async (url) => {
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const lazyLoad = async (url, output, strictScope, inputScope, threads) => {
+const lazyLoad = async (
+  url,
+  output,
+  strictScope,
+  inputScope,
+  threads,
+  subsequentRequestsFlag,
+  urlsFile,
+) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
   let urls;
@@ -526,17 +515,31 @@ const lazyLoad = async (url, output, strictScope, inputScope, threads) => {
         console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
         // find the JS files from script src of the webpage
-        const jsFiles = await next_getJSScript(url);
+        const jsFilesFromScriptTag = await next_getJSScript(url);
 
         // get lazy resources
-        const lazyResources = await next_getLazyResources(url);
+        const lazyResourcesFromWebpack = await next_getLazyResources(url);
+        let lazyResourcesFromSubsequentRequests;
+
+        if (subsequentRequestsFlag) {
+          // get JS files from subsequent requests
+          lazyResourcesFromSubsequentRequests = await subsequentRequests(
+            url,
+            urlsFile,
+            threads,
+            output,
+            js_urls
+          );
+        }
 
         // download the resources
-        if (lazyResources) {
-          await downloadFiles([...jsFiles, ...lazyResources], output);
-        } else {
-          await downloadFiles(jsFiles, output);
-        }
+        // but combine them first
+        let jsFilesToDownload = [...(jsFilesFromScriptTag || []), ...(lazyResourcesFromWebpack || []), ...(lazyResourcesFromSubsequentRequests || [])];
+
+        // dedupe the files
+        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+        await downloadFiles(jsFilesToDownload, output);
       }
     } else {
       console.log(chalk.red("[!] Framework not detected :("));
