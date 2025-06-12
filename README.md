@@ -81,3 +81,22 @@ For example, you can try this with [1Password](https://1password.com):
 ```bash
 node index.js strings -d output/1password.com -o strings.json
 ```
+
+## Examples
+### Get all possible JS files for a Next.js app
+*You can read the full research for the same [here](research/next_js.md#lazy-loaded-files)*
+
+First of all, run the lazy load module (strict scope and 1 thread for accurate results) [research1](research/next_js.md#analysis-of-vercel-docs):
+```bash
+node index.js lazyload -u <url> -o <output> --strict-scope -t 1
+```
+
+Then, get all the strings from the JS files found. Also, extract URLs and paths found in those JS files.:
+```bash
+node index.js strings -d <directory> -o <output> -e
+```
+
+Finally, parse those URLs and paths to get more JS files (note the `--subsequent-requests` flag apart from `--strict-scope` and `--threads`) [research](research/next_js.md#analysis-of-xai):
+```bash
+node index.js endpoints -u <url> -o <output> --strict-scope -t 1 --subsequent-requests
+```
