@@ -14,8 +14,10 @@ program
   .option("--strict-scope", "Download JS files from only the input URL domain", false)
   .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
   .option("-t, --threads <threads>", "Number of threads to use", 1)
+  .option("--subsequent-requests", "Download JS files from subsequent requests", false)
+  .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
   .action(async (cmd) => {
-    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads);
+    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, cmd.subsequentRequests, cmd.urlsFile);
   });
 
 program
