@@ -33,3 +33,6 @@ The `makeRequest()` can be modified to send headers that a browser would send. T
 - `Sec-Fetch-Dest: empty`
 - `Referer`
 - `Origin`
+
+#### #4
+Utilizing AWS API Gateway or similar services to rotate IP addresses can help in bypassing the firewall. This, however, could be blocked by the by CF if it is configured to block requests from AWS or similar ISPs.
