@@ -10,8 +10,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-api-gateway": "^3.829.0",
+    "@aws-sdk/client-apigatewayv2": "^3.829.0",
     "@babel/parser": "^7.27.4",
     "@babel/traverse": "^7.27.4",
+    "aws-sdk": "^2.1692.0",
+    "aws-sdk-js-codemod": "^2.4.5",
     "chalk": "^5.4.1",
     "cheerio": "^1.0.0",
     "commander": "^14.0.0",

@@ -3,6 +3,7 @@ import lazyLoad from "./lazyLoad/index.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
+import apiGateway from "./api_gateway/index.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 
@@ -39,5 +40,20 @@ program
   .action((cmd) => {
     strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath);
   });
+
+program
+.command("api-gateway")
+.description("Configure AWS API Gateway to rotate IP addresses")
+.option("-i, --init", "Initialize the config file (create API)", false)
+.option("-d, --destroy <id>", "Destroy API with the given ID")
+.option("--destroy-all", "Destroy all the API created by this tool in all regions", false)
+.option("-r, --region <region>", "AWS region (default: random region)")
+.option("-a, --access-key <access-key>", "AWS access key (if not provided, AWS_ACCESS_KEY_ID environment variable will be used)")
+.option("-s, --secret-key <secret-key>", "AWS secret key (if not provided, AWS_SECRET_ACCESS_KEY environment variable will be used)")
+.option("-c, --config <config>", "Name of the config file", "api_gateway_config.json")
+.option("-l, --list", "List all the API created by this tool", false)
+.action((cmd) => {
+    apiGateway(cmd.init, cmd.destroy, cmd.destroyAll, cmd.list, cmd.region, cmd.accessKey, cmd.secretKey, cmd.config);
+});
 
 program.parse(process.argv);
