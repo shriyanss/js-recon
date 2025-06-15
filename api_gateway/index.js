@@ -57,6 +57,12 @@ let configFile;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+  /**
+   * Create a new API Gateway.
+   *
+   * @async
+   * @returns {Promise<void>}
+   */
 const createGateway = async () => {
   console.log(chalk.cyan("[i] Creating API Gateway"));
   const client = new APIGatewayClient({
@@ -117,6 +123,13 @@ const createGateway = async () => {
   console.log(chalk.green(`[✓] Config saved to ${configFile}`));
 };
 
+/**
+ * Destroy an API Gateway.
+ *
+ * @async
+ * @param {string} id - The ID of the API Gateway to destroy.
+ * @returns {Promise<void>}
+ */
 const destroyGateway = async (id) => {
   console.log(chalk.cyan("[i] Destroying API Gateway"));
   if (!id) {
@@ -155,6 +168,12 @@ const destroyGateway = async (id) => {
   console.log(chalk.green(`[✓] Destroyed API Gateway: ${id}`));
 };
 
+/**
+ * Destroy all API Gateways.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 const destroyAllGateways = async () => {
   console.log(chalk.cyan("[i] Destroying all API Gateways"));
   //   read the config file
@@ -192,6 +211,12 @@ const destroyAllGateways = async () => {
   console.log(chalk.green("[✓] Destroyed all API Gateways"));
 };
 
+/**
+ * List all API Gateways.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 const listGateways = async () => {
   console.log(chalk.cyan("[i] Listing all API Gateways"));
 
@@ -221,6 +246,20 @@ const listGateways = async () => {
   }
 };
 
+/**
+ * Main function for API Gateway.
+ *
+ * @async
+ * @param {boolean} initInput - Whether to initialize the API Gateway.
+ * @param {string} destroyInput - The ID of the API Gateway to destroy.
+ * @param {boolean} destroyAllInput - Whether to destroy all API Gateways.
+ * @param {boolean} listInput - Whether to list all API Gateways.
+ * @param {string} regionInput - The region to use.
+ * @param {string} accessKey - The access key to use.
+ * @param {string} secretKey - The secret key to use.
+ * @param {string} configInput - The config file to use.
+ * @returns {Promise<void>}
+ */
 const apiGateway = async (
   initInput,
   destroyInput,
