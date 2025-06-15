@@ -130,9 +130,11 @@ const destroyGateway = async (id) => {
 
   console.log(chalk.bgGreen("Name:"), chalk.green(name));
   console.log(chalk.bgGreen("ID:"), chalk.green(id));
-  console.log(chalk.bgGreen("Region:"), chalk.green(region));
+  console.log(chalk.bgGreen("Region:"), chalk.green(config[name].region));
+  region = config[name].region;
 
   const client = new APIGatewayClient({
+    region,
     credentials: {
       accessKeyId: aws_access_key,
       secretAccessKey: aws_secret_key,
@@ -158,15 +160,15 @@ const destroyAllGateways = async () => {
   //   read the config file
   let config = JSON.parse(fs.readFileSync(configFile));
 
-  const client = new APIGatewayClient({
-    credentials: {
-      accessKeyId: aws_access_key,
-      secretAccessKey: aws_secret_key,
-    },
-  });
-
   //   destroy all the gateways
   for (const [key, value] of Object.entries(config)) {
+    const client = new APIGatewayClient({
+      region: value.region,
+      credentials: {
+        accessKeyId: aws_access_key,
+        secretAccessKey: aws_secret_key,
+      },
+    });
     console.log(
       chalk.cyan(
         `[i] Destroying API Gateway: ${key} : ${value.id} : ${value.region}`,
@@ -176,13 +178,13 @@ const destroyAllGateways = async () => {
     const command = new DeleteRestApiCommand({
       restApiId: value.id,
     });
+    await sleep(30000);
     await client.send(command);
     console.log(
       chalk.green(
         `[✓] Destroyed API Gateway: ${key} : ${value.id} : ${value.region}`,
       ),
     );
-    await sleep(30000);
   }
 
   // nullify the config file
