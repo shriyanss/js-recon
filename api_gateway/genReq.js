@@ -4,10 +4,11 @@ import {
   GetResourcesCommand,
   PutMethodCommand,
   PutIntegrationCommand,
-  CreateDeploymentCommand, // Added CreateDeploymentCommand
-  CreateStageCommand,
+  //   CreateDeploymentCommand, // Added CreateDeploymentCommand
+  //   CreateStageCommand,
   PutIntegrationResponseCommand,
   PutMethodResponseCommand,
+  TestInvokeMethodCommand,
 } from "@aws-sdk/client-api-gateway";
 import fs from "fs";
 import md5 from "md5";
@@ -88,63 +89,72 @@ const get = async (configFile, url) => {
   const newIntegrationResponse = await client.send(newIntegrationCommand);
   await sleep(100);
 
-  // Generate dynamic stage name
-  const dynamicStageName = `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  console.log(chalk.blue(`[*] Using dynamic stage name: ${dynamicStageName}`));
-
-  // Create a deployment
-  const createDeploymentCommand = new CreateDeploymentCommand({
-    restApiId: config[apiGateway].id,
-    stageName: dynamicStageName, // Use dynamic stage name
-    description: `Deployment for ${url} at ${new Date().toISOString()} to stage ${dynamicStageName}`
-  });
-  const deploymentResponse = await client.send(createDeploymentCommand);
-  console.log(chalk.green("[+] Deployment created:"), deploymentResponse.id);
-  console.log(deploymentResponse);
-  await sleep(100);
-
-// create a new method response
-const newMethodResponseCommand = new PutMethodResponseCommand({
+  // create a new method response
+  const newMethodResponseCommand = new PutMethodResponseCommand({
     httpMethod: "GET",
     resourceId: newResourceResponse.id,
     restApiId: config[apiGateway].id,
     statusCode: "200",
   });
   const newMethodResponseResponse = await client.send(newMethodResponseCommand);
-  console.log(newMethodResponseResponse);
   await sleep(100);
 
-// put integration response
-const putIntegrationResponseCommand = new PutIntegrationResponseCommand({
+  // put integration response
+  const putIntegrationResponseCommand = new PutIntegrationResponseCommand({
     httpMethod: "GET",
     resourceId: newResourceResponse.id,
     restApiId: config[apiGateway].id,
     statusCode: "200",
   });
-  const putIntegrationResponseResponse = await client.send(putIntegrationResponseCommand);
-  console.log(putIntegrationResponseResponse);
+  const putIntegrationResponseResponse = await client.send(
+    putIntegrationResponseCommand,
+  );
   await sleep(100);
 
+  // Generate dynamic stage name
+  //   const dynamicStageName = `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  //   console.log(chalk.blue(`[*] Using dynamic stage name: ${dynamicStageName}`));
+
+  // Create a deployment
+  //   const createDeploymentCommand = new CreateDeploymentCommand({
+  //     restApiId: config[apiGateway].id,
+  //     stageName: dynamicStageName,
+  //     description: `Deployment for ${url} at ${new Date().toISOString()} to stage ${dynamicStageName}`,
+  //   });
+  //   const deploymentResponse = await client.send(createDeploymentCommand);
+  //   console.log(chalk.green("[+] Deployment created:"), deploymentResponse.id);
+  //   await sleep(100);
+
+  const testInvokeMethodQuery = new TestInvokeMethodCommand({
+    httpMethod: "GET",
+    resourceId: newResourceResponse.id,
+    restApiId: config[apiGateway].id,
+  });
+  const testInvokeMethodResponse = await client.send(testInvokeMethodQuery);
+  await sleep(100);
+
+  console.log(testInvokeMethodResponse.body);
 
   // create a new stage
-//   const newStageCommand = new CreateStageCommand({
-//     restApiId: config[apiGateway].id,
-//     stageName: dynamicStageName, // Use dynamic stage name
-//     deploymentId: deploymentResponse.id, // Use the ID from the deployment
-//     cacheClusterEnabled: false,
-//     // cacheClusterSize: "0", // Removed as cacheClusterEnabled is false
-//     methodSettings: [
-//       {
-//         httpMethod: "*",
-//         // resourceId: "*", // This might need to be more specific if you don't want it for all resources
-//         throttlingBurstLimit: 5,
-//         throttlingRateLimit: 10,
-//       },
-//     ],
-//   });
-//   const newStageResponse = await client.send(newStageCommand);
-//   await sleep(100);
-//   console.log(newStageResponse);
+  //   dynamicStageName = `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  //   const newStageCommand = new CreateStageCommand({
+  //     restApiId: config[apiGateway].id,
+  //     stageName: dynamicStageName, // Use dynamic stage name
+  //     deploymentId: deploymentResponse.id, // Use the ID from the deployment
+  //     cacheClusterEnabled: false,
+  //     // cacheClusterSize: "0", // Removed as cacheClusterEnabled is false
+  //     methodSettings: [
+  //       {
+  //         httpMethod: "*",
+  //         // resourceId: "*", // This might need to be more specific if you don't want it for all resources
+  //         throttlingBurstLimit: 5,
+  //         throttlingRateLimit: 10,
+  //       },
+  //     ],
+  //   });
+  //   const newStageResponse = await client.send(newStageCommand);
+  //   await sleep(100);
+  //   console.log(newStageResponse);
 };
 
 get("../api_gateway_config.json", "https://x.ai");
