@@ -4,7 +4,7 @@ import {
   GetResourcesCommand,
   PutMethodCommand,
   PutIntegrationCommand,
-  //   CreateDeploymentCommand, // Added CreateDeploymentCommand
+  //   CreateDeploymentCommand,
   //   CreateStageCommand,
   PutIntegrationResponseCommand,
   PutMethodResponseCommand,
@@ -13,12 +13,13 @@ import {
 import fs from "fs";
 import md5 from "md5";
 import chalk from "chalk";
+import * as globals from "../utility/globals.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const get = async (configFile, url) => {
+const get = async (url, headers) => {
   // read the config file
-  let config = JSON.parse(fs.readFileSync(configFile));
+  let config = JSON.parse(fs.readFileSync(globals.apiGatewayConfigFile));
   // select a random api gateway
   let apiGateway =
     Object.keys(config)[Math.floor(Math.random() * Object.keys(config).length)];
@@ -34,82 +35,107 @@ const get = async (configFile, url) => {
   // get the root resource id
   const getResourceCommand = new GetResourcesCommand({
     restApiId: config[apiGateway].id,
+    limit: 999999999,
   });
   const getResourceResponse = await client.send(getResourceCommand);
   await sleep(200);
 
   // before creating a resource, check if the resource already exists
   const resourceExists = getResourceResponse.items.find(
-    (item) => item.path === md5(url),
+    (item) => item.pathPart === md5(url),
   );
 
   let newResourceResponse;
   if (resourceExists) {
-    console.log(chalk.yellow("[!] Resource already exists"));
+    // console.log(chalk.yellow("[!] Resource already exists"));
     newResourceResponse = {
       id: resourceExists.id,
     };
   } else {
     // create a new resource
+    let rootId;
+    if (getResourceResponse.items.find((item) => item.path === "/")) {
+      rootId = getResourceResponse.items.find((item) => item.path === "/").id;
+    } else {
+      rootId = getResourceResponse.items[0].parentId;
+    }
     const newResourceCommand = new CreateResourceCommand({
       restApiId: config[apiGateway].id,
-      parentId: getResourceResponse.items.find((item) => item.path === "/").id,
+      parentId: rootId,
       pathPart: md5(url), // md5 of the url
     });
     newResourceResponse = await client.send(newResourceCommand);
     await sleep(200);
+
+    // add a new method
+    const newMethodCommand = new PutMethodCommand({
+      restApiId: config[apiGateway].id,
+      resourceId: newResourceResponse.id,
+      httpMethod: "GET",
+      authorizationType: "NONE",
+      requestParameters: {
+        "method.request.header.RSC": false,
+        "method.request.header.User-Agent": false,
+        "method.request.header.Referer": false,
+        "method.request.header.Accept": false,
+        "method.request.header.Accept-Language": false,
+        "method.request.header.Accept-Encoding": false,
+        "method.request.header.Content-Type": false,
+        "method.request.header.Content-Length": false,
+        "method.request.header.Origin": false,
+        "method.request.header.X-Forwarded-For": false,
+        "method.request.header.X-Forwarded-Host": false,
+        "method.request.header.X-IP": false,
+        "method.request.header.X-Forwarded-Proto": false,
+        "method.request.header.X-Forwarded-Port": false,
+        "method.request.header.Sec-Fetch-Site": false,
+        "method.request.header.Sec-Fetch-Mode": false,
+        "method.request.header.Sec-Fetch-Dest": false,
+      },
+      integrationHttpMethod: "GET",
+      type: "HTTP",
+      timeoutInMillis: 29000,
+    });
+    const newMethodResponse = await client.send(newMethodCommand);
+    await sleep(100);
+
+    // create new integration
+    const newIntegrationCommand = new PutIntegrationCommand({
+      restApiId: config[apiGateway].id,
+      resourceId: newResourceResponse.id,
+      httpMethod: "GET",
+      integrationHttpMethod: "GET",
+      type: "HTTP",
+      timeoutInMillis: 29000,
+      uri: url,
+    });
+    const newIntegrationResponse = await client.send(newIntegrationCommand);
+    await sleep(100);
+
+    // create a new method response
+    const newMethodResponseCommand = new PutMethodResponseCommand({
+      httpMethod: "GET",
+      resourceId: newResourceResponse.id,
+      restApiId: config[apiGateway].id,
+      statusCode: "200",
+    });
+    const newMethodResponseResponse = await client.send(
+      newMethodResponseCommand,
+    );
+    await sleep(100);
+
+    // put integration response
+    const putIntegrationResponseCommand = new PutIntegrationResponseCommand({
+      httpMethod: "GET",
+      resourceId: newResourceResponse.id,
+      restApiId: config[apiGateway].id,
+      statusCode: "200",
+    });
+    const putIntegrationResponseResponse = await client.send(
+      putIntegrationResponseCommand,
+    );
+    await sleep(100);
   }
-
-  // add a new method
-  const newMethodCommand = new PutMethodCommand({
-    restApiId: config[apiGateway].id,
-    resourceId: newResourceResponse.id,
-    httpMethod: "GET",
-    authorizationType: "NONE",
-    requestParameters: {
-      "method.request.header.RSC": false,
-    },
-    integrationHttpMethod: "GET",
-    type: "HTTP",
-    timeoutInMillis: 29000,
-  });
-  const newMethodResponse = await client.send(newMethodCommand);
-  await sleep(100);
-
-  // create new integration
-  const newIntegrationCommand = new PutIntegrationCommand({
-    restApiId: config[apiGateway].id,
-    resourceId: newResourceResponse.id,
-    httpMethod: "GET",
-    integrationHttpMethod: "GET",
-    type: "HTTP",
-    timeoutInMillis: 29000,
-    uri: url,
-  });
-  const newIntegrationResponse = await client.send(newIntegrationCommand);
-  await sleep(100);
-
-  // create a new method response
-  const newMethodResponseCommand = new PutMethodResponseCommand({
-    httpMethod: "GET",
-    resourceId: newResourceResponse.id,
-    restApiId: config[apiGateway].id,
-    statusCode: "200",
-  });
-  const newMethodResponseResponse = await client.send(newMethodResponseCommand);
-  await sleep(100);
-
-  // put integration response
-  const putIntegrationResponseCommand = new PutIntegrationResponseCommand({
-    httpMethod: "GET",
-    resourceId: newResourceResponse.id,
-    restApiId: config[apiGateway].id,
-    statusCode: "200",
-  });
-  const putIntegrationResponseResponse = await client.send(
-    putIntegrationResponseCommand,
-  );
-  await sleep(100);
 
   // Generate dynamic stage name
   //   const dynamicStageName = `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -129,11 +155,14 @@ const get = async (configFile, url) => {
     httpMethod: "GET",
     resourceId: newResourceResponse.id,
     restApiId: config[apiGateway].id,
+    headers: headers || {},
   });
   const testInvokeMethodResponse = await client.send(testInvokeMethodQuery);
   await sleep(100);
 
-  console.log(testInvokeMethodResponse.body);
+  const body = await testInvokeMethodResponse.body;
+
+  return body;
 
   // create a new stage
   //   dynamicStageName = `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -157,4 +186,4 @@ const get = async (configFile, url) => {
   //   console.log(newStageResponse);
 };
 
-get("../api_gateway_config.json", "https://x.ai");
+export { get };
