@@ -5,6 +5,7 @@ import {
   DeleteRestApiCommand,
 } from "@aws-sdk/client-api-gateway";
 import fs from "fs";
+import checkFeasibility from "./checkFeasibility.js";
 
 // read the docs for all the methods for api gateway at https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/api-gateway/
 // for the rate limits, refer to https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html
@@ -269,8 +270,21 @@ const apiGateway = async (
   accessKey,
   secretKey,
   configInput,
+  feasibilityInput,
+  feasibilityUrlInput,
 ) => {
   console.log(chalk.cyan("[i] Loading 'API Gateway' module"));
+
+  // if feasibility is true, check feasibility
+  if (feasibilityInput) {
+    if (!feasibilityUrlInput) {
+      console.log(chalk.red("[!] Please provide a URL to check feasibility of"));
+      return;
+    }
+    await checkFeasibility(feasibilityUrlInput);
+    return;
+  }
+
   // configure the access and secret key
   aws_access_key = accessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
   aws_secret_key = secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;

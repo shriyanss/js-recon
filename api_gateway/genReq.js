@@ -14,9 +14,16 @@ import fs from "fs";
 import md5 from "md5";
 import chalk from "chalk";
 import * as globals from "../utility/globals.js";
+import checkFireWallBlocking from "./checkFireWallBlocking.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Given a URL, generates a new API Gateway for it and returns the response of the URL.
+ * @param {string} url The URL to generate an API Gateway for.
+ * @param {object} [headers] The headers to include in the request.
+ * @returns {Promise<string>} The response of the URL.
+ */
 const get = async (url, headers) => {
   // read the config file
   let config = JSON.parse(fs.readFileSync(globals.apiGatewayConfigFile));
@@ -161,6 +168,15 @@ const get = async (url, headers) => {
   await sleep(100);
 
   const body = await testInvokeMethodResponse.body;
+
+  // check if any firewall is there in the way
+  const isFireWallBlocking = await checkFireWallBlocking(body);
+  
+  if (isFireWallBlocking) {
+    console.log(chalk.red("[!] Firewall detected"));
+    console.log(chalk.magenta("[!] Please try again without API Gateway"));
+    process.exit(1);
+  }
 
   return body;
 
