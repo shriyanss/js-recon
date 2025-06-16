@@ -3,6 +3,8 @@ import lazyLoad from "./lazyLoad/index.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
+import apiGateway from "./api_gateway/index.js";
+import * as globals from "./utility/globals.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 
@@ -16,7 +18,11 @@ program
   .option("-t, --threads <threads>", "Number of threads to use", 1)
   .option("--subsequent-requests", "Download JS files from subsequent requests", false)
   .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
+  .option("--api-gateway", "Generate requests using API Gateway", false)
+  .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
   .action(async (cmd) => {
+    globals.setApiGatewayConfigFile(cmd.apiGatewayConfig);
+    globals.setUseApiGateway(cmd.apiGateway);
     await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, cmd.subsequentRequests, cmd.urlsFile);
   });
 
@@ -39,5 +45,24 @@ program
   .action((cmd) => {
     strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath);
   });
+
+program
+  .command("api-gateway")
+  .description("Configure AWS API Gateway to rotate IP addresses")
+  .option("-i, --init", "Initialize the config file (create API)", false)
+  .option("-d, --destroy <id>", "Destroy API with the given ID")
+  .option("--destroy-all", "Destroy all the API created by this tool in all regions", false)
+  .option("-r, --region <region>", "AWS region (default: random region)")
+  .option("-a, --access-key <access-key>", "AWS access key (if not provided, AWS_ACCESS_KEY_ID environment variable will be used)")
+  .option("-s, --secret-key <secret-key>", "AWS secret key (if not provided, AWS_SECRET_ACCESS_KEY environment variable will be used)")
+  .option("-c, --config <config>", "Name of the config file", ".api_gateway_config.json")
+  .option("-l, --list", "List all the API created by this tool", false)
+  .option("--feasibility", "Check feasibility of API Gateway", false)
+  .option("--feasibility-url <url>", "URL to check feasibility of")
+  .action((cmd) => {
+    globals.setApiGatewayConfigFile(cmd.config);
+    globals.setUseApiGateway(true);
+    apiGateway(cmd.init, cmd.destroy, cmd.destroyAll, cmd.list, cmd.region, cmd.accessKey, cmd.secretKey, cmd.config, cmd.feasibility, cmd.feasibilityUrl);
+});
 
 program.parse(process.argv);
