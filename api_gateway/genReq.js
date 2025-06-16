@@ -173,7 +173,6 @@ const get = async (url, headers) => {
   const isFireWallBlocking = await checkFireWallBlocking(body);
   
   if (isFireWallBlocking) {
-    console.log(chalk.red("[!] Firewall detected"));
     console.log(chalk.magenta("[!] Please try again without API Gateway"));
     process.exit(1);
   }
