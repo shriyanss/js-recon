@@ -9,6 +9,7 @@ import {
   PutIntegrationResponseCommand,
   PutMethodResponseCommand,
   TestInvokeMethodCommand,
+  DeleteResourceCommand,
 } from "@aws-sdk/client-api-gateway";
 import fs from "fs";
 import md5 from "md5";
@@ -171,7 +172,16 @@ const get = async (url, headers) => {
 
   // check if any firewall is there in the way
   const isFireWallBlocking = await checkFireWallBlocking(body);
-  
+
+  // delete the resource
+  const deleteResourceCommand = new DeleteResourceCommand({
+    restApiId: config[apiGateway].id,
+    resourceId: newResourceResponse.id,
+  });
+  try {
+    await client.send(deleteResourceCommand);
+  } catch {}
+
   if (isFireWallBlocking) {
     console.log(chalk.magenta("[!] Please try again without API Gateway"));
     process.exit(1);
