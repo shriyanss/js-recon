@@ -27,6 +27,19 @@ self.__next_f.push([1,"14:I[41498,[\"3867\",\"static/chunks/b6d67c9f-618ea7c61a7
 
 To handle this, a feature was implemented to get the JS files from the inline `<script>` tags as well.
 
+Upon researching further, it was found that additional JS files were being returned in the subsequent HTTP requests. For example, the file at `https://x.ai/_next/static/chunks/app/careers/page-9e04dce6fed05790.js` was loaded from a request to `https://x.ai/careers?_rsc=jwl50`.
+
+Request to `https://x.ai/careers?_rsc=jwl50` should be made with a special header called `RSC: 1` in order to get access to additional JS file paths. This request can be also sent to `/` with the same header to get more files.
+
+Possible solution: To handle this, the strings can be extracted from the page sources, and then requests to them can be made along with this request header. If it returns a `200 OK`, then it can be also added to the list of JS files. 
+
+### Analysis of [OpenAI](https://openai.com)
+Upon inspection of HTTP requests, a similar behavior of sending the requests with `RSC: 1` header to get additional JS files was found.
+
+However, a slight difference was found. When sending the request to `/business` with the same header, the server returned a different (`308 Permanent Redirect` to `/business/`) response. This can be handled by sending the request to `/business/` with the same header.
+
+Additionally, it was noticed that when the requests were sent without the `RSC: 1` header, the request got blocked by Cloudflare, and it resulted in a `403 Forbidden` response with a message `Just a moment...`. This could indicate a potential firewall bypass
+
 ## Client-Side Paths/URLs
 Client-side paths/URLs are web addresses handled by the browser using JavaScript, usually without reloading the page. They are used for navigation, API requests, and loading resources dynamically within the client environment.
 
