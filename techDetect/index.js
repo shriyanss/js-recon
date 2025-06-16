@@ -55,7 +55,7 @@ const frameworkDetect = async (url) => {
   // get the page source
   const res = await makeRequest(url);
 
-  if (res === null) {
+  if (res === null || res === undefined) {
     return;
   }
 
