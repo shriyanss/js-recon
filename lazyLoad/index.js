@@ -6,7 +6,6 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
 
-
 // Next.js
 import subsequentRequests from "./next_js/next_SubsequentRequests.js";
 import next_getJSScript from "./next_js/next_GetJSScript.js";
@@ -15,24 +14,22 @@ import next_getLazyResources from "./next_js/next_GetLazyResources.js";
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
 import nuxt_stringAnalysisJSFiles from "./nuxt_js/nuxt_stringAnalysisJSFiles.js";
+import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 
-
 // import global vars
 import * as globals from "./globals.js";
 
-
-
 /**
  * Downloads all lazy-loaded JavaScript files from the specified URL or file containing URLs.
- * 
- * The function detects the JavaScript framework used by the webpage (e.g., Next.js, Nuxt.js) 
- * and utilizes specific techniques to find and download lazy-loaded JS files. 
+ *
+ * The function detects the JavaScript framework used by the webpage (e.g., Next.js, Nuxt.js)
+ * and utilizes specific techniques to find and download lazy-loaded JS files.
  * It supports subsequent requests for additional JS files if specified.
- * 
+ *
  * @param {string} url - The URL or path to a file containing a list of URLs to process.
  * @param {string} output - The directory where downloaded files will be saved.
  * @param {boolean} strictScope - Whether to restrict downloads to the input URL domain.
@@ -79,7 +76,6 @@ const lazyLoad = async (
     globals.setMaxReqQueue(threads);
     globals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
 
-
     const tech = await frameworkDetect(url);
 
     if (tech) {
@@ -101,13 +97,17 @@ const lazyLoad = async (
             urlsFile,
             threads,
             output,
-            globals.getJsUrls() // Pass the global js_urls
+            globals.getJsUrls(), // Pass the global js_urls
           );
         }
 
         // download the resources
         // but combine them first
-        let jsFilesToDownload = [...(jsFilesFromScriptTag || []), ...(lazyResourcesFromWebpack || []), ...(lazyResourcesFromSubsequentRequests || [])];
+        let jsFilesToDownload = [
+          ...(jsFilesFromScriptTag || []),
+          ...(lazyResourcesFromWebpack || []),
+          ...(lazyResourcesFromSubsequentRequests || []),
+        ];
         // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
         // This is because those functions now push to the global js_urls via setters.
         // The return values of next_getJSScript and next_getLazyResources might be the same array instance
@@ -118,20 +118,31 @@ const lazyLoad = async (
         jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
         await downloadFiles(jsFilesToDownload, output);
-      }
-      else if (tech.name === "vue") {
+      } else if (tech.name === "vue") {
         console.log(chalk.green("[✓] Vue.js detected"));
         console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-      }
-      else if (tech.name === "nuxt") {
+      } else if (tech.name === "nuxt") {
         console.log(chalk.green("[✓] Nuxt.js detected"));
         console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+        let jsFilesToDownload = [];
 
         // find the files from the page source
         const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
         const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
 
-        let jsFilesToDownload = [...(jsFilesFromPageSource || []), ...(jsFilesFromStringAnalysis || [])];
+        jsFilesToDownload.push(...jsFilesFromPageSource);
+        jsFilesToDownload.push(...jsFilesFromStringAnalysis);
+        // dedupe the files
+        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+        let jsFilesFromAST = [];
+        console.log(chalk.cyan("[i] Analyzing functions in the files found"));
+        for (const jsFile of jsFilesToDownload) {
+          jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+        }
+
+        jsFilesToDownload.push(...jsFilesFromAST);
 
         jsFilesToDownload.push(...globals.getJsUrls());
 
