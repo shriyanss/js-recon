@@ -1,8 +1,11 @@
+import chalk from "chalk";
 import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 import * as cheerio from "cheerio";
 
 const nuxt_getFromPageSource = async (url) => {
+  console.log(chalk.cyan("[i] Analyzing page source"));
+
   // get the page source
   const res = await makeRequest(url);
   const pageSource = await res.text();
@@ -63,6 +66,10 @@ const nuxt_getFromPageSource = async (url) => {
       }
     }
   }
+
+  console.log(
+    chalk.green(`[✓] Found ${getJsUrls().length} JS files from the page source`),
+  );
 
   return getJsUrls();
 };
