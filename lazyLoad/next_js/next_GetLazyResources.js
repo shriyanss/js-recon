@@ -165,7 +165,7 @@ const next_getLazyResources = async (url) => {
     // rather than fuzzing, grep the integers from the func code
     const integers = final_Func.match(/\d+/g);
     if (integers) { // Check if integers were found
-        // iterate through all integers, till 1000000, and get the output
+        // iterate through all integers, and get the output
         for (const i of integers) {
         const output = execFunc(urlBuilderFunc, parseInt(i));
         if (output.includes("undefined")) {
