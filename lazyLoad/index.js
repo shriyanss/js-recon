@@ -14,6 +14,7 @@ import next_getLazyResources from "./next_js/next_GetLazyResources.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
+import nuxt_stringAnalysisJSFiles from "./nuxt_js/nuxt_stringAnalysisJSFiles.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -129,8 +130,9 @@ const lazyLoad = async (
 
         // find the files from the page source
         const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
+        const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
 
-        let jsFilesToDownload = [...(jsFilesFromPageSource || [])];
+        let jsFilesToDownload = [...(jsFilesFromPageSource || []), ...(jsFilesFromStringAnalysis || [])];
 
         jsFilesToDownload.push(...globals.getJsUrls());
 
