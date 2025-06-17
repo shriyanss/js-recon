@@ -8,9 +8,9 @@ import { URL } from "url";
 
 
 // Next.js
-import subsequentRequests from "./next_js/subsequentRequests.js";
-import next_getJSScript from "./next_js/nextGetJSScript.js";
-import next_getLazyResources from "./next_js/nextGetLazyResources.js";
+import subsequentRequests from "./next_js/next_SubsequentRequests.js";
+import next_getJSScript from "./next_js/next_GetJSScript.js";
+import next_getLazyResources from "./next_js/next_GetLazyResources.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
