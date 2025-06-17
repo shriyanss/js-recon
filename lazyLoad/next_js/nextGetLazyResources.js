@@ -4,10 +4,10 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import inquirer from "inquirer";
-import CONFIG from "../globalConfig.js";
-import makeRequest from "../utility/makeReq.js";
-import execFunc from "../utility/runSandboxed.js";
-import { getJsUrls, pushToJsUrls } from "./globals.js"; // Import js_urls functions
+import CONFIG from "../../globalConfig.js";
+import makeRequest from "../../utility/makeReq.js";
+import execFunc from "../../utility/runSandboxed.js";
+import { getJsUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 
 /**
  * Asynchronously fetches the given URL and extracts JavaScript file URLs
