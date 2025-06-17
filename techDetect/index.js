@@ -71,6 +71,30 @@ const checkVueJS = async ($) => {
   return { detected, evidence };
 };
 
+
+const checkNuxtJS = async ($)=>{
+    let detected = false;
+    let evidence = "";
+
+    // go through the page source, and check for "/_nuxt" in the src or href attribute
+    $("*").each((_, el)=>{
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "src" || attrName === "href") {
+                    if (attrValue.includes("/_nuxt")) {
+                        detected = true;
+                        evidence = `${attrName} :: ${attrValue}`;
+                    }
+                }
+            }
+        }
+    });
+
+    return { detected, evidence };
+}
+
 /**
  * Detects the front-end framework used by a webpage.
  * @param {string} url - The URL of the webpage to be detected.
@@ -117,6 +141,12 @@ const frameworkDetect = async (url) => {
   if (result_checkNextJS.detected === true) {
     return { name: "next", evidence: result_checkNextJS.evidence };
   } else if (result_checkVueJS.detected === true) {
+    console.log(chalk.green("[✓] Vue.js detected"));
+    console.log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
+    const result_checkNuxtJS = await checkNuxtJS($);
+    if (result_checkNuxtJS.detected === true) {
+      return { name: "nuxt", evidence: result_checkNuxtJS.evidence };
+    }
     return { name: "vue", evidence: result_checkVueJS.evidence };
   }
 
