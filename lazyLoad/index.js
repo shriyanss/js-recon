@@ -114,6 +114,10 @@ const lazyLoad = async (
 
         await downloadFiles(jsFilesToDownload, output);
       }
+      else if (tech.name === "vue") {
+        console.log(chalk.green("[✓] Vue.js detected"));
+        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+      }
     } else {
       console.log(chalk.red("[!] Framework not detected :("));
       console.log(chalk.magenta(CONFIG.notFoundMessage));

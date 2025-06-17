@@ -1,6 +1,6 @@
 # Next.js Research
 ## Tech Detection
-To detect Next.js, following techniques can be used: 
+To detect Next.js, following technique(s) can be used: 
 - Iterate through all the HTML tags, and find `src`, `srcSet` or `imageSrcSet` attribute with value starting with`/_next/` in the page source
 
 ## Embedded JS files
