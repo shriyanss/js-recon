@@ -118,6 +118,10 @@ const lazyLoad = async (
         console.log(chalk.green("[✓] Vue.js detected"));
         console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
       }
+      else if (tech.name === "nuxt") {
+        console.log(chalk.green("[✓] Nuxt.js detected"));
+        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+      }
     } else {
       console.log(chalk.red("[!] Framework not detected :("));
       console.log(chalk.magenta(CONFIG.notFoundMessage));
