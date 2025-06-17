@@ -12,25 +12,29 @@ let analyzedFiles = [];
 let filesFound = [];
 
 const parseJSFileContent = async (content) => {
-  const ast = parser.parse(content, {
-    sourceType: "module",
-    plugins: ["jsx", "typescript"],
-  });
+  try {
+    const ast = parser.parse(content, {
+      sourceType: "module",
+      plugins: ["jsx", "typescript"],
+    });
 
-  let foundJsFiles = {};
+    let foundJsFiles = {};
 
-  traverse(ast, {
-    StringLiteral(path) {
-      const value = path.node.value;
-      if (value.startsWith("./") && value.endsWith(".js")) {
-        foundJsFiles[value] = value;
-      } else if (value.startsWith("../") && value.endsWith(".js")) {
-        foundJsFiles[value] = value;
-      }
-    },
-  });
+    traverse(ast, {
+      StringLiteral(path) {
+        const value = path.node.value;
+        if (value.startsWith("./") && value.endsWith(".js")) {
+          foundJsFiles[value] = value;
+        } else if (value.startsWith("../") && value.endsWith(".js")) {
+          foundJsFiles[value] = value;
+        }
+      },
+    });
 
-  return foundJsFiles;
+    return foundJsFiles;
+  } catch (error) {
+    return {};
+  }
 };
 
 const nuxt_stringAnalysisJSFiles = async (url) => {
@@ -86,9 +90,7 @@ const nuxt_stringAnalysisJSFiles = async (url) => {
   filesFound = [...new Set(filesFound)];
 
   console.log(
-    chalk.green(
-      `[✓] Found ${filesFound.length} JS files from string analysis`,
-    ),
+    chalk.green(`[✓] Found ${filesFound.length} JS files from string analysis`),
   );
 
   return filesFound;

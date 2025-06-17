@@ -17,7 +17,7 @@ Similar to Gitlab's About Page, Vue Mastery had `<link>` tags with `rel` attribu
 
 Additionally, there were some `<script>` tags found with `src` attribute as the path to the JS files, which started with `/_nuxt`.
 
-Upon analysis of JS files that can be donwloasded with the above two methods, it was found that some of the JS files containeed functions to generate dynamic JS files based on the function. One of such function was found in https://www.vuemastery.com/_nuxt/2551e78.js, which was present in a `<script>` tag on the home page source. The function responsible for generating dynamic JS files is:
+Upon analysis of JS files that can be downloaded with the above two methods, it was found that some of the JS files contained functions to generate dynamic JS files based on the function. One of such function was found in https://www.vuemastery.com/_nuxt/2551e78.js, which was present in a `<script>` tag on the home page source. The function responsible for generating dynamic JS files is:
 ```js
 f.p = "/_nuxt/",
 // --snip--
