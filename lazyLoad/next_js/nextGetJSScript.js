@@ -2,8 +2,8 @@
 import chalk from "chalk";
 import { URL } from "url";
 import * as cheerio from "cheerio";
-import makeRequest from "../utility/makeReq.js";
-import { getJsUrls, pushToJsUrls } from "./globals.js";
+import makeRequest from "../../utility/makeReq.js";
+import { getJsUrls, pushToJsUrls } from "../globals.js";
 
 /**
  * Asynchronously fetches the given URL and extracts JavaScript file URLs

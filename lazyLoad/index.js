@@ -6,11 +6,16 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
 
-import subsequentRequests from "./subsequentRequests.js";
 
-// Import functions from new modules
-import next_getJSScript from "./nextGetJSScript.js";
-import next_getLazyResources from "./nextGetLazyResources.js";
+// Next.js
+import subsequentRequests from "./next_js/subsequentRequests.js";
+import next_getJSScript from "./next_js/nextGetJSScript.js";
+import next_getLazyResources from "./next_js/nextGetLazyResources.js";
+
+// Nuxt.js
+import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
+
+// generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 
@@ -121,6 +126,18 @@ const lazyLoad = async (
       else if (tech.name === "nuxt") {
         console.log(chalk.green("[✓] Nuxt.js detected"));
         console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+        // find the files from the page source
+        const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
+
+        let jsFilesToDownload = [...(jsFilesFromPageSource || [])];
+
+        jsFilesToDownload.push(...globals.getJsUrls());
+
+        // dedupe the files
+        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+        await downloadFiles(jsFilesToDownload, output);
       }
     } else {
       console.log(chalk.red("[!] Framework not detected :("));
