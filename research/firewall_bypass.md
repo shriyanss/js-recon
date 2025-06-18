@@ -36,3 +36,15 @@ The `makeRequest()` can be modified to send headers that a browser would send. T
 
 #### #4
 Utilizing AWS API Gateway or similar services to rotate IP addresses can help in bypassing the firewall. This, however, could be blocked by the by CF if it is configured to block requests from AWS or similar ISPs.
+
+## Vercel
+### Detection
+Whenever the client is restricted by Vercel, it returns a HTML page with a JS challenge to be solved. However, the JS is can't be executed by Node.JS. It would need a browser environment.
+
+The title of this webpage is "Vercel Security Checkpoint". This page contains a script with path `/.well-known/vercel/security/static/challenge.v2.min.js`.
+
+### Bypass
+#### #1
+Opening the URLs in a browser which is using a proxy, and then exporting to a file can help get the contents of the files.
+
+To implement this, [mitmproxy](https://mitmproxy.org) can be used, as it is a simple-to-use CLI tool that can be used on any system.
