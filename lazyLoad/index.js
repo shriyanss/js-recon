@@ -25,7 +25,8 @@ import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 
 // import global vars
-import * as globals from "./globals.js";
+import * as lazyLoadGlobals from "./globals.js";
+import * as globals from "../utility/globals.js";
 
 /**
  * Downloads all lazy-loaded JavaScript files from the specified URL or file containing URLs.
@@ -54,6 +55,13 @@ const lazyLoad = async (
 ) => {
   console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
+  // if cache enabled, check if the cache file exists or not. If no, then create a new one
+  if (!globals.getDisableCache()) {
+    if (!fs.existsSync(globals.getRespCacheFile())) {
+      fs.writeFileSync(globals.getRespCacheFile(), "{}");
+    }
+  }
+
   let urls;
 
   // check if the url is file or a URL
@@ -72,13 +80,13 @@ const lazyLoad = async (
     console.log(chalk.cyan(`[i] Processing ${url}`));
 
     if (strictScope) {
-      globals.pushToScope(new URL(url).host);
+      lazyLoadGlobals.pushToScope(new URL(url).host);
     } else {
-      globals.setScope(inputScope);
+      lazyLoadGlobals.setScope(inputScope);
     }
 
-    globals.setMaxReqQueue(threads);
-    globals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
+    lazyLoadGlobals.setMaxReqQueue(threads);
+    lazyLoadGlobals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
 
     const tech = await frameworkDetect(url);
 
@@ -101,7 +109,7 @@ const lazyLoad = async (
             urlsFile,
             threads,
             output,
-            globals.getJsUrls(), // Pass the global js_urls
+            lazyLoadGlobals.getJsUrls(), // Pass the global js_urls
           );
         }
 
@@ -116,7 +124,7 @@ const lazyLoad = async (
         // This is because those functions now push to the global js_urls via setters.
         // The return values of next_getJSScript and next_getLazyResources might be the same array instance
         // or a new one depending on their implementation, so explicitly get the global one here.
-        jsFilesToDownload.push(...globals.getJsUrls());
+        jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
 
         // dedupe the files
         jsFilesToDownload = [...new Set(jsFilesToDownload)];
@@ -148,7 +156,7 @@ const lazyLoad = async (
 
         jsFilesToDownload.push(...jsFilesFromAST);
 
-        jsFilesToDownload.push(...globals.getJsUrls());
+        jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
 
         // dedupe the files
         jsFilesToDownload = [...new Set(jsFilesToDownload)];
