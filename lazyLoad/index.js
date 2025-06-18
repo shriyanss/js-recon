@@ -6,35 +6,37 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
 
-import subsequentRequests from "./subsequentRequests.js";
+// Next.js
+import subsequentRequests from "./next_js/next_SubsequentRequests.js";
+import next_getJSScript from "./next_js/next_GetJSScript.js";
+import next_getLazyResources from "./next_js/next_GetLazyResources.js";
 
-// Import functions from new modules
-import next_getJSScript from "./nextGetJSScript.js";
-import next_getLazyResources from "./nextGetLazyResources.js";
+// Nuxt.js
+import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
+import nuxt_stringAnalysisJSFiles from "./nuxt_js/nuxt_stringAnalysisJSFiles.js";
+import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
+
+// generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
-
 
 // import global vars
 import * as globals from "./globals.js";
 
-
 /**
- * Downloads all the lazy loaded JS files from a given URL.
- * It detects Next.js by looking for the presence of a webpack JS file
- * and uses the following techniques to find the lazy loaded files:
- * 1. Finds the webpack JS file by looking for a script tag with a src
- *    attribute that starts with "/next/". This is done by iterating through
- *    all script tags and checking the src attribute.
- * 2. Parses the webpack JS file to find functions that end with ".js". These
- *    functions are assumed to return the path of the lazy loaded JS file.
- * 3. Iterates through all integers, till 1000000, and passes it to the found
- *    function to get the output. If the output does not include "undefined",
- *    it is added to the list of lazy loaded files.
- * 4. Downloads the lazy loaded files and saves them as files in the specified
- *    output directory.
- * @param {string} url - The URL to be processed.
- * @param {string} output - The directory where the downloaded files will be saved.
+ * Downloads all lazy-loaded JavaScript files from the specified URL or file containing URLs.
+ *
+ * The function detects the JavaScript framework used by the webpage (e.g., Next.js, Nuxt.js)
+ * and utilizes specific techniques to find and download lazy-loaded JS files.
+ * It supports subsequent requests for additional JS files if specified.
+ *
+ * @param {string} url - The URL or path to a file containing a list of URLs to process.
+ * @param {string} output - The directory where downloaded files will be saved.
+ * @param {boolean} strictScope - Whether to restrict downloads to the input URL domain.
+ * @param {string[]} inputScope - Specific domains to download JS files from.
+ * @param {number} threads - The number of threads to use for downloading files.
+ * @param {boolean} subsequentRequestsFlag - Whether to include JS files from subsequent requests.
+ * @param {string} urlsFile - The JSON file containing additional URLs for subsequent requests.
  * @returns {Promise<void>}
  */
 const lazyLoad = async (
@@ -74,7 +76,6 @@ const lazyLoad = async (
     globals.setMaxReqQueue(threads);
     globals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
 
-
     const tech = await frameworkDetect(url);
 
     if (tech) {
@@ -96,17 +97,53 @@ const lazyLoad = async (
             urlsFile,
             threads,
             output,
-            globals.getJsUrls() // Pass the global js_urls
+            globals.getJsUrls(), // Pass the global js_urls
           );
         }
 
         // download the resources
         // but combine them first
-        let jsFilesToDownload = [...(jsFilesFromScriptTag || []), ...(lazyResourcesFromWebpack || []), ...(lazyResourcesFromSubsequentRequests || [])];
+        let jsFilesToDownload = [
+          ...(jsFilesFromScriptTag || []),
+          ...(lazyResourcesFromWebpack || []),
+          ...(lazyResourcesFromSubsequentRequests || []),
+        ];
         // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
         // This is because those functions now push to the global js_urls via setters.
         // The return values of next_getJSScript and next_getLazyResources might be the same array instance
         // or a new one depending on their implementation, so explicitly get the global one here.
+        jsFilesToDownload.push(...globals.getJsUrls());
+
+        // dedupe the files
+        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+        await downloadFiles(jsFilesToDownload, output);
+      } else if (tech.name === "vue") {
+        console.log(chalk.green("[✓] Vue.js detected"));
+        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+      } else if (tech.name === "nuxt") {
+        console.log(chalk.green("[✓] Nuxt.js detected"));
+        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+        let jsFilesToDownload = [];
+
+        // find the files from the page source
+        const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
+        const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
+
+        jsFilesToDownload.push(...jsFilesFromPageSource);
+        jsFilesToDownload.push(...jsFilesFromStringAnalysis);
+        // dedupe the files
+        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+        let jsFilesFromAST = [];
+        console.log(chalk.cyan("[i] Analyzing functions in the files found"));
+        for (const jsFile of jsFilesToDownload) {
+          jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+        }
+
+        jsFilesToDownload.push(...jsFilesFromAST);
+
         jsFilesToDownload.push(...globals.getJsUrls());
 
         // dedupe the files

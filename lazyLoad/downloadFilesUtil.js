@@ -85,14 +85,18 @@ const downloadFiles = async (urls, output) => {
         }
 
         const filePath = path.join(childDir, filename);
-        fs.writeFileSync(
-          filePath,
-          await prettier.format(file, { parser: "babel" }),
-        );
+        try {
+            fs.writeFileSync(
+                filePath,
+                await prettier.format(file, { parser: "babel" }),
+            );
+        } catch (err) {
+            console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
+        }
         download_count++;
       }
     } catch (err) {
-      console.error(chalk.red(`[!] Failed to download: ${url}`), err);
+      console.error(chalk.red(`[!] Failed to download: ${url}`));
     }
   });
 
