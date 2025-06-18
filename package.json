@@ -1,13 +1,16 @@
 {
-  "name": "js-recon",
+  "name": "@shriyanss/js-recon",
   "version": "1.0.0",
-  "description": "",
+  "description": "JS Recon Tool",
   "main": "index.js",
+  "bin": {
+    "js-recon": "./index.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Shriyans Sudhi",
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-api-gateway": "^3.829.0",
@@ -25,5 +28,13 @@
     "puppeteer": "^24.9.0",
     "ses": "^1.13.0"
   },
-  "type": "module"
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shriyanss/js-recon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shriyanss/js-recon/issues"
+  },
+  "homepage": "https://github.com/shriyanss/js-recon#readme"
 }
