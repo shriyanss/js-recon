@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { program } from "commander";
 import lazyLoad from "./lazyLoad/index.js";
 import endpoints from "./endpoints/index.js";
