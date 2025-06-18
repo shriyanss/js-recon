@@ -151,7 +151,7 @@ const next_getLazyResources = async (url) => {
   user_verified = await askCorrectFuncConfirmation();
   if (user_verified === true) {
     console.log(
-      chalk.green("[✓] Proceeding with the selected function to fetch files"),
+      chalk.cyan("[i] Proceeding with the selected function to fetch files"),
     );
   } else {
     console.log(chalk.red("[!] Not executing function."));

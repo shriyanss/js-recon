@@ -89,8 +89,8 @@ const nuxt_astParse = async (url) => {
       const user_verified = await askCorrectFuncConfirmation();
       if (user_verified === true) {
         console.log(
-          chalk.green(
-            "[✓] Proceeding with the selected function to fetch files",
+          chalk.cyan(
+            "[i] Proceeding with the selected function to fetch files",
           ),
         );
 
