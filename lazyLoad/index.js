@@ -150,6 +150,9 @@ const lazyLoad = async (
         jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
         await downloadFiles(jsFilesToDownload, output);
+      } else if (tech.name === "svelte") {
+        console.log(chalk.green("[✓] Svelte detected"));
+        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
       }
     } else {
       console.log(chalk.red("[!] Framework not detected :("));

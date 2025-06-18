@@ -95,6 +95,59 @@ const checkNuxtJS = async ($)=>{
     return { detected, evidence };
 }
 
+const checkSvelte = async ($)=>{
+    let detected = false;
+    let evidence = "";
+
+    // go through the page source, and check for all the class names of all HTML tags
+    $("*").each((_, el)=>{
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "class") {
+                    if (attrValue.includes("svelte-")) {
+                        detected = true;
+                        evidence = `${attrName} :: ${attrValue}`;
+                    }
+                }
+            }
+        }
+    });
+
+    // now, search for the svelte- id of all elements
+    $("*").each((_, el)=>{
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "id") {
+                    if (attrValue.includes("svelte-")) {
+                        detected = true;
+                        evidence = `${attrName} :: ${attrValue}`;
+                    }
+                }
+            }
+        }
+    });
+
+    // now, check for the data-sveltekit-reload attribute
+    $("*").each((_, el)=>{
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "data-sveltekit-reload") {
+                    detected = true;
+                    evidence = `${attrName} :: ${attrValue}`;
+                }
+            }
+        }
+    });
+
+    return { detected, evidence };
+}
+
 /**
  * Detects the front-end framework used by a webpage.
  * @param {string} url - The URL of the webpage to be detected.
@@ -137,6 +190,7 @@ const frameworkDetect = async (url) => {
   // check all technologies one by one
   const result_checkNextJS = await checkNextJS($);
   const result_checkVueJS = await checkVueJS($);
+  const result_checkSvelte = await checkSvelte($);
 
   if (result_checkNextJS.detected === true) {
     return { name: "next", evidence: result_checkNextJS.evidence };
@@ -148,6 +202,8 @@ const frameworkDetect = async (url) => {
       return { name: "nuxt", evidence: result_checkNuxtJS.evidence };
     }
     return { name: "vue", evidence: result_checkVueJS.evidence };
+  } else if (result_checkSvelte.detected === true) {
+    return { name: "svelte", evidence: result_checkSvelte.evidence };
   }
 
   return null;
