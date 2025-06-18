@@ -16,6 +16,10 @@ import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
 import nuxt_stringAnalysisJSFiles from "./nuxt_js/nuxt_stringAnalysisJSFiles.js";
 import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 
+// Svelte
+import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
+import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
+
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
@@ -153,6 +157,21 @@ const lazyLoad = async (
       } else if (tech.name === "svelte") {
         console.log(chalk.green("[✓] Svelte detected"));
         console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+        let jsFilesToDownload = [];
+
+        // find the files from the page source
+        const jsFilesFromPageSource = await svelte_getFromPageSource(url);
+        jsFilesToDownload.push(...jsFilesFromPageSource);
+
+        // analyze the strings now
+        const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
+        jsFilesToDownload.push(...jsFilesFromStringAnalysis);
+
+        // dedupe the files
+        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+        await downloadFiles(jsFilesToDownload, output);
       }
     } else {
       console.log(chalk.red("[!] Framework not detected :("));
