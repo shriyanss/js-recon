@@ -135,3 +135,4 @@ output/*
 strings.json
 extracted_urls.json
 .api_gateway_config.json
+.resp_cache.json
