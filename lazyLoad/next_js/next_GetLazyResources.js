@@ -4,10 +4,10 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import inquirer from "inquirer";
-import CONFIG from "../globalConfig.js";
-import makeRequest from "../utility/makeReq.js";
-import execFunc from "../utility/runSandboxed.js";
-import { getJsUrls, pushToJsUrls } from "./globals.js"; // Import js_urls functions
+import CONFIG from "../../globalConfig.js";
+import makeRequest from "../../utility/makeReq.js";
+import execFunc from "../../utility/runSandboxed.js";
+import { getJsUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 
 /**
  * Asynchronously fetches the given URL and extracts JavaScript file URLs
@@ -165,7 +165,7 @@ const next_getLazyResources = async (url) => {
     // rather than fuzzing, grep the integers from the func code
     const integers = final_Func.match(/\d+/g);
     if (integers) { // Check if integers were found
-        // iterate through all integers, till 1000000, and get the output
+        // iterate through all integers, and get the output
         for (const i of integers) {
         const output = execFunc(urlBuilderFunc, parseInt(i));
         if (output.includes("undefined")) {

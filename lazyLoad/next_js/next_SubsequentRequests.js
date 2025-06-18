@@ -1,9 +1,9 @@
 import chalk from "chalk";
 import fs from "fs";
 import path from "path";
-import { getURLDirectory } from "../utility/urlUtils.js";
+import { getURLDirectory } from "../../utility/urlUtils.js";
 // custom request module
-import makeRequest from "../utility/makeReq.js";
+import makeRequest from "../../utility/makeReq.js";
 
 let queue = [];
 let max_queue;
