@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import * as cheerio from "cheerio";
 import makeRequest from "../utility/makeReq.js";
+import puppeteer from "puppeteer";
 
 /**
  * Detects if a webpage uses Next.js by checking if any HTML tag has a src,
@@ -42,6 +43,59 @@ const checkNextJS = async ($) => {
 };
 
 /**
+ * Detects if a webpage uses Vue.js by checking if any HTML tag has a data-v-* attribute.
+ * @param {CheerioStatic} $ - The Cheerio object containing the parsed HTML.
+ * @returns {Promise<{detected: boolean, evidence: string}>}
+ *   A promise that resolves to an object with two properties:
+ *   - detected: A boolean indicating whether Vue.js was detected.
+ *   - evidence: A string with the evidence of the detection, or an empty string
+ *     if Vue.js was not detected.
+ */
+const checkVueJS = async ($) => {
+  let detected = false;
+  let evidence = "";
+
+  $("*").each((_, el) => {
+    const tag = $(el).get(0).tagName;
+    const attribs = el.attribs;
+    if (attribs) {
+      for (const [attrName, attrValue] of Object.entries(attribs)) {
+        if (attrName.startsWith("data-v-")) {
+          detected = true;
+          evidence = `${tag} :: ${attrName}`;
+        }
+      }
+    }
+  });
+
+  return { detected, evidence };
+};
+
+
+const checkNuxtJS = async ($)=>{
+    let detected = false;
+    let evidence = "";
+
+    // go through the page source, and check for "/_nuxt" in the src or href attribute
+    $("*").each((_, el)=>{
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "src" || attrName === "href") {
+                    if (attrValue.includes("/_nuxt")) {
+                        detected = true;
+                        evidence = `${attrName} :: ${attrValue}`;
+                    }
+                }
+            }
+        }
+    });
+
+    return { detected, evidence };
+}
+
+/**
  * Detects the front-end framework used by a webpage.
  * @param {string} url - The URL of the webpage to be detected.
  * @returns {Promise<{name: string, evidence: string}> | null}
@@ -55,20 +109,45 @@ const frameworkDetect = async (url) => {
   // get the page source
   const res = await makeRequest(url);
 
-  if (res === null || res === undefined) {
-    return;
-  }
+  // get the page source in the browser
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      "--disable-setuid-sandbox",
+      "--no-sandbox",
+    ],
+  });
+  const page = await browser.newPage();
+  await page.goto(url);
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  const pageSource = await page.content();
+  await browser.close();
 
-  const pageSource = await res.text();
+  // if (res === null || res === undefined) {
+  //   return;
+  // }
+
+  // const pageSource = await res.text();
 
   // cheerio to parse the page source
   const $ = cheerio.load(pageSource);
 
   // check all technologies one by one
   const result_checkNextJS = await checkNextJS($);
+  const result_checkVueJS = await checkVueJS($);
 
   if (result_checkNextJS.detected === true) {
     return { name: "next", evidence: result_checkNextJS.evidence };
+  } else if (result_checkVueJS.detected === true) {
+    console.log(chalk.green("[✓] Vue.js detected"));
+    console.log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
+    const result_checkNuxtJS = await checkNuxtJS($);
+    if (result_checkNuxtJS.detected === true) {
+      return { name: "nuxt", evidence: result_checkNuxtJS.evidence };
+    }
+    return { name: "vue", evidence: result_checkVueJS.evidence };
   }
 
   return null;
