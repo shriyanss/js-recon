@@ -35,7 +35,7 @@ const parseJSFileContent = async (content) => {
 
     return foundJsFiles;
   } catch (error) {
-    console.error(error);
+    // console.error(error);
     return {};
   }
 };
