@@ -7,6 +7,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import t from "@babel/types";
 import resolvePath from "../../utility/resolvePath.js";
+import * as globals from "../../utility/globals.js";
 
 const nuxt_astParse = async (url) => {
   let filesFound = [];
@@ -73,27 +74,30 @@ const nuxt_astParse = async (url) => {
       );
       console.log(chalk.yellow(func.source));
 
-      // ask for confirmation, then proceed
-      const askCorrectFuncConfirmation = async () => {
-        const { value } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "value",
-            message: "Is this the correct function?",
-            default: true,
-          },
-        ]);
-        return value;
-      };
+      if (!globals.getYes()) {
+        const askCorrectFuncConfirmation = async () => {
+          const { value } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "value",
+              message: "Is this the correct function?",
+              default: true,
+            },
+          ]);
+          return value;
+        };
 
-      const user_verified = await askCorrectFuncConfirmation();
-      if (user_verified === true) {
-        console.log(
-          chalk.cyan(
-            "[i] Proceeding with the selected function to fetch files",
-          ),
-        );
-
+        const user_verified = await askCorrectFuncConfirmation();
+        if (user_verified === true) {
+          console.log(
+            chalk.cyan(
+              "[i] Proceeding with the selected function to fetch files",
+            ),
+          );
+        } else {
+          console.log(chalk.red("[!] Not executing function."));
+          continue;
+        }
         // get the value of the unknown vars
         // first, get the name of the unknown function
         const unknownVarAst = parser.parse(`(${func.source})`, {
