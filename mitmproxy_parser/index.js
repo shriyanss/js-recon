@@ -55,9 +55,23 @@ const mitmproxy_parser = async () => {
 
   // the api request to send the info for HTTP request
   mitmproxy_parser_server.post("/mitmparse", (req, res) => {
-    console.log(
-      chalk.cyan(`[i] Received request from mitmdump: ${req.body.url}`),
-    );
+    const url = req.body.url;
+    const method = req.body.method;
+    const path = req.body.path;
+    const requestHeaders = req.body.request_headers;
+    const status_code = req.body.status_code;
+    const responseHeaders = req.body.response_headers;
+    const requestContent = req.body.request_content;
+    const responseContent = req.body.response_content;
+
+    const response = new Response(responseContent, {
+      status: status_code,
+      headers: responseHeaders,
+    });
+
+    // add this response to the queue
+    queue.addResponse(url, response);
+
     res.send("ok");
   });
 
@@ -70,23 +84,18 @@ const mitmproxy_parser = async () => {
     }
   });
 
-  const server = mitmproxy_parser_server.listen(
-    globals.getMitmParseServerPort(),
-    () => {
-      console.log(
-        chalk.cyan(
-          `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
-        ),
-      );
-      console.log(
-        chalk.bgGreen(
-          `Open ${baseUrl} in browser with proxy to mitmproxy port, and certificate authority added.`,
-        ),
-      );
-    },
-  );
+  // const server = mitmproxy_parser_server.listen(
+  //   globals.getMitmParseServerPort(),
+  //   () => {
+  //     console.log(
+  //       chalk.cyan(
+  //         `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
+  //       ),
+  //     );
+  //   },
+  // );
 
-  return server;
+  return mitmproxy_parser_server;
 };
 
 export default mitmproxy_parser;

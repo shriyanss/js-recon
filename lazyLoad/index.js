@@ -5,6 +5,7 @@ import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
+import inquirer from "inquirer";
 
 // Next.js
 import subsequentRequests from "./next_js/next_SubsequentRequests.js";
@@ -71,13 +72,49 @@ const lazyLoad = async (
 
   // handle mitm things if enabled
   if (globals.getMitm()) {
-    // first, start the handler server
+    // start the handler server
     mitmproxyParserServer = await mitmproxy_parser();
 
+    mitmproxyParserServer.listen(
+      globals.getMitmParseServerPort(),
+      () => {
+        console.log(
+          chalk.cyan(
+            `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
+          ),
+        );
+      },
+    );
+
+    // wait for 5s
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // start the mitmproxy server
     mitmProcessInstance = await mitmproxy();
+
+    // wait for 5s
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    console.log(
+      chalk.bgGreen(
+        `Open http://localhost:${globals.getMitmParseServerPort()} in browser with proxy to mitmproxy port, and certificate authority added.`,
+      ),
+    );
+
+    // wait for user confirmation
+    const answer = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "started",
+        message: "Have you opened the mitmproxy parser page?",
+        default: true,
+      },
+    ]);
+
+    if (!answer.started) {
+      console.log(chalk.red(`[!] mitmproxy parser page not opened`));
+      process.exit(1);
+    }
   }
 
   let urls;
@@ -213,15 +250,15 @@ const lazyLoad = async (
   }
 
   // kill the mitmproxy process
-  // if (mitmProcessInstance !== null) {
-  //   console.log(chalk.yellow("[i] Attempting to kill mitmdump process..."));
-  //   mitmProcessInstance.kill();
-  //   console.log(chalk.green("[✓] mitmdump process kill signal sent."));
-  // } else {
-  //   console.log(
-  //     chalk.red("[!] mitmproxy process instance not found, cannot kill."),
-  //   );
-  // }
+  if (mitmProcessInstance !== null) {
+    console.log(chalk.yellow("[i] Attempting to kill mitmdump process..."));
+    mitmProcessInstance.kill();
+    console.log(chalk.green("[✓] mitmdump process kill signal sent."));
+  } else {
+    console.log(
+      chalk.red("[!] mitmproxy process instance not found, cannot kill."),
+    );
+  }
 
   // kill the mitmproxy parser server
   if (mitmproxyParserServer !== null) {
