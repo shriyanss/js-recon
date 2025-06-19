@@ -8,6 +8,7 @@ import CONFIG from "../../globalConfig.js";
 import makeRequest from "../../utility/makeReq.js";
 import execFunc from "../../utility/runSandboxed.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
+import * as globals from "../../utility/globals.js";
 
 /**
  * Asynchronously fetches the given URL and extracts JavaScript file URLs
@@ -130,32 +131,39 @@ const next_getLazyResources = async (url) => {
     }
   }
 
-  if (!final_Func) { // Added check if final_Func was not found
-    console.log(chalk.red("[!] No suitable function found in webpack JS for lazy loading."));
+  if (!final_Func) {
+    // Added check if final_Func was not found
+    console.log(
+      chalk.red(
+        "[!] No suitable function found in webpack JS for lazy loading.",
+      ),
+    );
     return [];
   }
 
   //   ask through input if this is the right thing
-  const askCorrectFuncConfirmation = async () => {
-    const { confirmed } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirmed",
-        message: "Is this the correct function?",
-        default: true,
-      },
-    ]);
-    return confirmed;
-  };
+  if (!globals.getYes()) {
+    const askCorrectFuncConfirmation = async () => {
+      const { confirmed } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirmed",
+          message: "Is this the correct function?",
+          default: true,
+        },
+      ]);
+      return confirmed;
+    };
 
-  user_verified = await askCorrectFuncConfirmation();
-  if (user_verified === true) {
-    console.log(
-      chalk.cyan("[i] Proceeding with the selected function to fetch files"),
-    );
-  } else {
-    console.log(chalk.red("[!] Not executing function."));
-    return [];
+    user_verified = await askCorrectFuncConfirmation();
+    if (user_verified === true) {
+      console.log(
+        chalk.cyan("[i] Proceeding with the selected function to fetch files"),
+      );
+    } else {
+      console.log(chalk.red("[!] Not executing function."));
+      return [];
+    }
   }
 
   const urlBuilderFunc = `(() => (${final_Func}))()`;
@@ -164,16 +172,17 @@ const next_getLazyResources = async (url) => {
   try {
     // rather than fuzzing, grep the integers from the func code
     const integers = final_Func.match(/\d+/g);
-    if (integers) { // Check if integers were found
-        // iterate through all integers, and get the output
-        for (const i of integers) {
+    if (integers) {
+      // Check if integers were found
+      // iterate through all integers, and get the output
+      for (const i of integers) {
         const output = execFunc(urlBuilderFunc, parseInt(i));
         if (output.includes("undefined")) {
-            continue;
+          continue;
         } else {
-            js_paths.push(output);
+          js_paths.push(output);
         }
-        }
+      }
     }
   } catch (err) {
     console.error("Unsafe or invalid code:", err.message);
