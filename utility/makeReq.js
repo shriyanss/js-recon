@@ -76,7 +76,7 @@ const readCache = async (url, headers) => {
     const rscEnabled = headers["RSC"] ? true : false;
     if (rscEnabled) {
       if (cache[url].rsc) {
-        return Response(atob(cache[url].rsc.body_b64), {
+        return new Response(atob(cache[url].rsc.body_b64), {
           status: cache[url].rsc.status,
           headers: cache[url].rsc.resp_headers,
         });
@@ -94,6 +94,9 @@ const readCache = async (url, headers) => {
 }
 
 const writeCache = async (url, headers, response) => {
+  // clone the response
+  const clonedResponse = response.clone();
+
   // if cache exists, return
   if (await readCache(url, headers) !== null) {
     // console.log("cache already exists for ", url);
@@ -106,10 +109,10 @@ const writeCache = async (url, headers, response) => {
     cache[url] = {};
   }
 
-  const body = btoa(encodeURIComponent(await response.text()).replace(/%([0-9A-F]{2})/g,
+  const body = btoa(encodeURIComponent(await clonedResponse.text()).replace(/%([0-9A-F]{2})/g,
     (match, p1) => String.fromCharCode(`0x${p1}`)));
-  const status = response.status;
-  const resp_headers = response.headers;
+  const status = clonedResponse.status;
+  const resp_headers = clonedResponse.headers;
   if (headers["RSC"]) {
     cache[url].rsc = {
       req_headers: headers,
