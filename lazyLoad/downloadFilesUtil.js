@@ -30,6 +30,9 @@ const downloadFiles = async (urls, output) => {
 
   const downloadPromises = urls.map(async (url) => {
     try {
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.random() * 4950 + 50),
+      );
       if (url.match(/\.js/)) {
         // get the directory of the url
         const { host, directory } = getURLDirectory(url);
@@ -49,21 +52,21 @@ const downloadFiles = async (urls, output) => {
         const childDir = path.join(output, host, directory);
         fs.mkdirSync(childDir, { recursive: true });
 
+        let res;
         try {
-          queue++;
-          // check if queue is full. If so, then wait for random time between
-          // 50 to 300 ms. Then, check again, and loop the process
-          while (queue > getMaxReqQueue()) {
+          // Wait until there is an available slot in the request queue
+          while (queue >= getMaxReqQueue()) {
             await new Promise((resolve) =>
               setTimeout(resolve, Math.random() * 250 + 50),
             );
           }
-          const res = await makeRequest(url);
+          queue++; // acquire a slot in the queue
+
+          res = await makeRequest(url);
         } catch (err) {
           console.error(chalk.red(`[!] Failed to download: ${url}`));
         } finally {
           queue--;
-          return;
         }
 
         const file = `// JS Source: ${url}\n${await res.text()}`;
