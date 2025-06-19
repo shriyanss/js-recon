@@ -46,7 +46,9 @@ const htmlContent = `
 const mitmproxy_parser = async () => {
   const mitmproxy_parser_server = express();
 
-  mitmproxy_parser_server.use(express.json());
+  // add body parsing middleware to properly read JSON and URL-encoded payloads coming from mitmproxy scripts
+  mitmproxy_parser_server.use(express.json({ limit: "50mb" }));
+  mitmproxy_parser_server.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
   // the homepage to open the links requested
   mitmproxy_parser_server.get("/", (req, res) => {
@@ -64,12 +66,24 @@ const mitmproxy_parser = async () => {
     const requestContent = req.body.request_content;
     const responseContent = req.body.response_content;
 
-    const response = new Response(responseContent, {
-      status: status_code,
-      headers: responseHeaders,
-    });
+    // Construct Response safely – omit body for status codes that must not include one
+    let response;
+    if ([204, 304].includes(status_code)) {
+      response = new Response(null, {
+        status: status_code,
+        headers: responseHeaders,
+      });
+    } else {
+      response = new Response(responseContent, {
+        status: status_code,
+        headers: responseHeaders,
+      });
+    }
+
+    console.log(response);
 
     // add this response to the queue
+    console.log("adding response");
     queue.addResponse(url, response);
 
     res.send("ok");
@@ -84,18 +98,18 @@ const mitmproxy_parser = async () => {
     }
   });
 
-  // const server = mitmproxy_parser_server.listen(
-  //   globals.getMitmParseServerPort(),
-  //   () => {
-  //     console.log(
-  //       chalk.cyan(
-  //         `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
-  //       ),
-  //     );
-  //   },
-  // );
+  const server = mitmproxy_parser_server.listen(
+    globals.getMitmParseServerPort(),
+    () => {
+      console.log(
+        chalk.cyan(
+          `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
+        ),
+      );
+    },
+  );
 
-  return mitmproxy_parser_server;
+  return server;
 };
 
 export default mitmproxy_parser;

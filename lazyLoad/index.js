@@ -75,16 +75,16 @@ const lazyLoad = async (
     // start the handler server
     mitmproxyParserServer = await mitmproxy_parser();
 
-    mitmproxyParserServer.listen(
-      globals.getMitmParseServerPort(),
-      () => {
-        console.log(
-          chalk.cyan(
-            `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
-          ),
-        );
-      },
-    );
+    // mitmproxyParserServer.listen(
+    //   globals.getMitmParseServerPort(),
+    //   () => {
+    //     console.log(
+    //       chalk.cyan(
+    //         `[i] MITM parse server running on port ${globals.getMitmParseServerPort()}`,
+    //       ),
+    //     );
+    //   },
+    // );
 
     // wait for 5s
     await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -250,15 +250,15 @@ const lazyLoad = async (
   }
 
   // kill the mitmproxy process
-  if (mitmProcessInstance !== null) {
-    console.log(chalk.yellow("[i] Attempting to kill mitmdump process..."));
-    mitmProcessInstance.kill();
-    console.log(chalk.green("[✓] mitmdump process kill signal sent."));
-  } else {
-    console.log(
-      chalk.red("[!] mitmproxy process instance not found, cannot kill."),
-    );
-  }
+  // if (mitmProcessInstance !== null) {
+  //   console.log(chalk.yellow("[i] Attempting to kill mitmdump process..."));
+  //   mitmProcessInstance.kill();
+  //   console.log(chalk.green("[✓] mitmdump process kill signal sent."));
+  // } else {
+  //   console.log(
+  //     chalk.red("[!] mitmproxy process instance not found, cannot kill."),
+  //   );
+  // }
 
   // kill the mitmproxy parser server
   if (mitmproxyParserServer !== null) {

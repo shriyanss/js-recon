@@ -144,17 +144,20 @@ const makeRequest = async (url, args) => {
 
   // then, if mitm is enabled, add the url to the queue
   if (globals.getMitm()) {
+    console.log(chalk.cyan(`[i] mitm added: ${url}`));
     queue.addRequest(url);
-    // now, wait for a response.
-    while (true) {
-      const response = queue.getResponse(url);
-      if (response) {
-        // add this to the cache
-        console.log(chalk.cyan(`[i] resolved: ${url}`));
-        await writeCache(url, args?.headers || {}, response);
-        return response;
-      }
-    }
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    console.log(chalk.cyan(`[i] mitm resolved: ${url}`));
+    
+    // while (true) {
+    //   const response = queue.getResponse(url);
+    //   if (response) {
+    //     // add this to the cache
+    //     console.log(chalk.cyan(`[i] resolved: ${url}`));
+    //     await writeCache(url, args?.headers || {}, response);
+    //     return response;
+    //   }
+    // }
   }
 
 

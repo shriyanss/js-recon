@@ -24,8 +24,10 @@
     "fs": "^0.0.1-security",
     "inquirer": "^12.6.3",
     "md5": "^2.3.0",
+    "node-fetch": "^3.3.2",
     "path": "^0.12.7",
     "prettier": "^3.5.3",
+    "proxy-agent": "^6.5.0",
     "puppeteer": "^24.9.0",
     "ses": "^1.13.0"
   },
