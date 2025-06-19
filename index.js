@@ -23,11 +23,19 @@ program
   .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
   .option("--cache-file <file>", "File to contain response cache", ".resp_cache.json")
   .option("--disable-cache", "Disable response caching", false)
+  .option("--mitm", "Use mitmproxy (use this if firewall is blocking requests)", false)
+  .option("--mitm-port <port>", "MITM server port", 8585)
+  .option("--mitm-parse-script <script>", "MITM parse script", ".mitm_parser.py")
+  .option("--mitm-parse-server-port <port>", "MITM parse server port", 8686)
   .action(async (cmd) => {
     globals.setApiGatewayConfigFile(cmd.apiGatewayConfig);
     globals.setUseApiGateway(cmd.apiGateway);
     globals.setDisableCache(cmd.disableCache);
     globals.setRespCacheFile(cmd.cacheFile);
+    globals.setMitm(cmd.mitm);
+    globals.setMitmPort(cmd.mitmPort);
+    globals.setMitmParseScript(cmd.mitmParseScript);
+    globals.setMitmParseServerPort(cmd.mitmParseServerPort);
     await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, cmd.subsequentRequests, cmd.urlsFile);
   });
 

@@ -3,6 +3,7 @@ import puppeteer from "puppeteer";
 import * as globals from "./globals.js";
 import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
+import * as queue from "../mitmproxy_parser/queue.js";
 
 // random user agents
 const UAs = [
@@ -139,6 +140,11 @@ const makeRequest = async (url, args) => {
     if (cachedResponse !== null) {
       return cachedResponse;
     }
+  }
+
+  // then, if mitm is enabled, add the url to the queue
+  if (globals.getMitm()) {
+    queue.addRequest(url);
   }
 
 

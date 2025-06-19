@@ -24,9 +24,16 @@ import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 
+// mitmproxy
+import mitmproxy from "../mitmproxy/index.js";
+import mitmproxy_parser from "../mitmproxy_parser/index.js";
+
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
+
+let mitmProcessInstance = null;
+let mitmproxyParserServer = null;
 
 /**
  * Downloads all lazy-loaded JavaScript files from the specified URL or file containing URLs.
@@ -60,6 +67,17 @@ const lazyLoad = async (
     if (!fs.existsSync(globals.getRespCacheFile())) {
       fs.writeFileSync(globals.getRespCacheFile(), "{}");
     }
+  }
+
+  // handle mitm things if enabled
+  if (globals.getMitm()) {
+    // first, start the handler server
+    mitmproxyParserServer = await mitmproxy_parser();
+
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    // start the mitmproxy server
+    mitmProcessInstance = await mitmproxy();
   }
 
   let urls;
@@ -173,7 +191,8 @@ const lazyLoad = async (
         jsFilesToDownload.push(...jsFilesFromPageSource);
 
         // analyze the strings now
-        const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
+        const jsFilesFromStringAnalysis =
+          await svelte_stringAnalysisJSFiles(url);
         jsFilesToDownload.push(...jsFilesFromStringAnalysis);
 
         // dedupe the files
@@ -191,6 +210,30 @@ const lazyLoad = async (
         await downloadFiles(js_urls, output);
       }
     }
+  }
+
+  // kill the mitmproxy process
+  // if (mitmProcessInstance !== null) {
+  //   console.log(chalk.yellow("[i] Attempting to kill mitmdump process..."));
+  //   mitmProcessInstance.kill();
+  //   console.log(chalk.green("[✓] mitmdump process kill signal sent."));
+  // } else {
+  //   console.log(
+  //     chalk.red("[!] mitmproxy process instance not found, cannot kill."),
+  //   );
+  // }
+
+  // kill the mitmproxy parser server
+  if (mitmproxyParserServer !== null) {
+    console.log(
+      chalk.yellow("[i] Attempting to kill mitmproxy parser server..."),
+    );
+    mitmproxyParserServer.close();
+    console.log(chalk.green("[✓] mitmproxy parser server kill signal sent."));
+  } else {
+    console.log(
+      chalk.red("[!] mitmproxy parser server instance not found, cannot kill."),
+    );
   }
 };
 

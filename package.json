@@ -20,6 +20,7 @@
     "chalk": "^5.4.1",
     "cheerio": "^1.0.0",
     "commander": "^14.0.0",
+    "express": "^5.1.0",
     "fs": "^0.0.1-security",
     "inquirer": "^12.6.3",
     "md5": "^2.3.0",

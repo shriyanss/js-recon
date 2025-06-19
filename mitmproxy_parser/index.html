@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <title>JS Recon</title>
+  </head>
+  <body>
+    <h1>JS Recon - MITM Proxy Parser</h1>
+    <p>You must keep this page open while running the mitmproxy module.</p>
+    <p>Please allow this page to open popups when requested</p>
+
+    <script>
+        const url = "";
+
+        // onload, try to open random site
+        window.onload = () => {
+            window.open("https://example.com", "_blank");
+        };
+
+        // sleep for 5s
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        // continuously get the requests from the queue
+        setInterval(async () => {
+            // make a request to the server to get the next request
+            const resp = await fetch(url);
+            const nextUrl = await resp.text();
+            if (nextUrl !== "empty") {
+                window.open(nextUrl, "_blank");
+            }
+        }, 50);
+    </script>
+  </body>
+</html>
