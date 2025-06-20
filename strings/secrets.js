@@ -9,7 +9,6 @@ const secret_patterns = {
     "SSH (EC) private key": "-----BEGIN EC PRIVATE KEY-----",
     "PGP private key block": "-----BEGIN PGP PRIVATE KEY BLOCK-----",
     "Amazon AWS Access Key ID": "AKIA[0-9A-Z]{16}",
-    "Amazon AWS Secret Key": "[0-9a-zA-Z/+]{40}",
     "Amazon MWS Auth Token": "amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     "Facebook Access Token": "EAACEdEose0cBA[0-9A-Za-z]+",
     "Facebook OAuth": "[f|F][a|A][c|C][e|E][b|B][o|O][o|O][k|K].*['|\"][0-9a-f]{32}['|\"]",
@@ -42,7 +41,6 @@ const secret_patterns = {
     "Twilio API Key": "SK[0-9a-fA-F]{32}",
     "Twitter Access Token": "[t|T][w|W][i|I][t|T][t|T][e|E][r|R].*[1-9][0-9]+-[0-9a-zA-Z]{40}",
     "Twitter OAuth": "[t|T][w|W][i|I][t|T][t|T][e|E][r|R].*['|\"][0-9a-zA-Z]{35,44}['|\"]",
-    "OAuth 2.0": "[A-Za-z0-9]{125}",
     "OpenAI User API Key": "sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}",
     "OpenAI User Project Key": "sk-proj-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}",
     "OpenAI Service ID": "^[A-Za-z0-9]+(-*[A-Za-z0-9]+)*$",
@@ -50,23 +48,19 @@ const secret_patterns = {
     "Wakatime": "waka_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
     "Artifactory API Token": "(?:\\s|=|:|\"|^)AKC[a-zA-Z0-9]{10,}",
     "Artifactory Password": "(?:\\s|=|:|\"|^)AP[\\dABCDEF][a-zA-Z0-9]{8,}",
-    "Authorization Basic": "basic [a-zA-Z0-9_\\\\-:\\.=]+",
-    "Authorization Bearer": "bearer [a-zA-Z0-9_\\\\-\\.=]+",
+    "Authorization Basic": "basic [a-zA-Z0-9_:\\\.=\-]+",
+    "Authorization Bearer": "bearer [a-zA-Z0-9_\\\.=\-]+",
     "AWS Client ID": "(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}",
     "AWS MWS Key": "amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
-    "AWS Secret Key": "(?i)aws(.{0,20})?(?-i)['\"][0-9a-zA-Z\\/+]{40}['\"]",
-    "Base32": "(?:[A-Z2-7]{8})*(?:[A-Z2-7]{2}={6}|[A-Z2-7]{4}={4}|[A-Z2-7]{5}={3}|[A-Z2-7]{7}=)?",
     "Base64": "(eyJ|YTo|Tzo|PD[89]|aHR0cHM6L|aHR0cDo|rO0)[a-zA-Z0-9+/]+={0,2}",
-    "Basic Auth Credentials": "(?<=:\/\/)[a-zA-Z0-9]+:[a-zA-Z0-9]+@[a-zA-Z0-9]+\\.[a-zA-Z]+",
+    "Basic Auth Credentials": "(?<=:\/\/ )[a-zA-Z0-9]+:[a-zA-Z0-9]+@[a-zA-Z0-9]+\\.[a-zA-Z]+",
     "Cloudinary Basic Auth": "cloudinary:\/\/[0-9]{15}:[0-9A-Za-z]+@[a-z]+",
-    "Facebook Client ID": "(?i)(facebook|fb)(.{0,20})?['\"][0-9]{13,17}",
-    "Facebook Secret Key": "(?i)(facebook|fb)(.{0,20})?(?-i)['\"][0-9a-f]{32}",
+    "Facebook Client ID": "(?:[Ff](?:[Aa][Cc][Ee][Bb][Oo][Oo][Kk])|[Ff][Bb])(?:.{0,20})?['\"][0-9]{13,17}",
+    "Facebook Secret Key": "(?:[Ff](?:[Aa][Cc][Ee][Bb][Oo][Oo][Kk])|[Ff][Bb])(?:.{0,20})?['\"][0-9a-fA-F]{32}",
     "Google Oauth Access Token": "ya29\\.[0-9A-Za-z\\-_]+",
     "Heroku API Key": "[h|H][e|E][r|R][o|O][k|K][u|U].{0,30}[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}",
-    "IPv4": "\\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}\\b",
-    "IPv6": "(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))",
-    "LinkedIn Client ID": "(?i)linkedin(.{0,20})?(?-i)['\"][0-9a-z]{12}['\"]",
-    "LinkedIn Secret Key": "(?i)linkedin(.{0,20})?['\"][0-9a-z]{16}['\"]",
+    "LinkedIn Client ID": "(?:[Ll]inked[Ii]n)(?:.{0,20})?['\"][0-9a-zA-Z]{12}['\"]",
+    "LinkedIn Secret Key": "(?:[Ll]inked[Ii]n)(?:.{0,20})?['\"][0-9a-zA-Z]{16}['\"]",
     "MD5 Hash": "[a-f0-9]{32}"
 };
 
@@ -75,7 +69,10 @@ const secrets = async (source) => {
     for (const [secretName, pattern] of Object.entries(secret_patterns)) {
         const regex = new RegExp(pattern);
         if (source.match(regex)) {
-            foundSecrets.push(secretName);
+            foundSecrets.push({
+                name: secretName,
+                value: source.match(regex)[0]   
+            });
         }
     }
     return foundSecrets;
