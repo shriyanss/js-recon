@@ -21,7 +21,11 @@ const svelte_getFromPageSource = async (url) => {
     if (relAttr === "modulepreload") {
       const hrefAttr = $(linkTag).attr("href");
       if (hrefAttr) {
-        foundUrls.push(await resolvePath(url, hrefAttr));
+        if (hrefAttr.startsWith("http")) {
+          foundUrls.push(hrefAttr);
+        } else {
+          foundUrls.push(await resolvePath(url, hrefAttr));
+        }
       }
     }
   }
@@ -39,11 +43,10 @@ const svelte_getFromPageSource = async (url) => {
 
   // iterate through the foundUrls and resolve the paths
   for (const foundUrl of foundUrls) {
-    const resolvedPath = await resolvePath(url, foundUrl);
-    if (getJsUrls().includes(resolvedPath)) {
+    if (getJsUrls().includes(foundUrl)) {
       continue;
     }
-    pushToJsUrls(resolvedPath);
+    pushToJsUrls(foundUrl);
   }
 
   return foundUrls;
