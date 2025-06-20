@@ -30,6 +30,19 @@ const svelte_getFromPageSource = async (url) => {
     }
   }
 
+  // also, parse the script tags
+  const scriptTags = $("script");
+  for (const scriptTag of scriptTags) {
+    const srcAttr = $(scriptTag).attr("src");
+    if (srcAttr) {
+      if (srcAttr.startsWith("http")) {
+        foundUrls.push(srcAttr);
+      } else {
+        foundUrls.push(await resolvePath(url, srcAttr));
+      }
+    }
+  }
+
   if (foundUrls.length === 0) {
     console.log(chalk.red("[!] No JS files found from the page source"));
     return [];
