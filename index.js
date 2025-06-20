@@ -49,8 +49,9 @@ program
   .option("-o, --output <file>", "JSON file to save the strings", "strings.json")
   .option("-e, --extract-urls", "Extract URLs from strings", false)
   .option("--extracted-url-path <file>", "Output JSON file for extracted URLs and paths", "extracted_urls.json")
+  .option("-s, --scan-secrets", "Scan for secrets", false)
   .action((cmd) => {
-    strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath);
+    strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets);
   });
 
 program

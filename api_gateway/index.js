@@ -259,6 +259,8 @@ const listGateways = async () => {
  * @param {string} accessKey - The access key to use.
  * @param {string} secretKey - The secret key to use.
  * @param {string} configInput - The config file to use.
+ * @param {boolean} feasibilityInput - Whether to check feasibility.
+ * @param {string} feasibilityUrlInput - The URL to check feasibility for.
  * @returns {Promise<void>}
  */
 const apiGateway = async (
