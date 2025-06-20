@@ -165,15 +165,16 @@ const frameworkDetect = async (url) => {
   // get the page source in the browser
   const browser = await puppeteer.launch({
     headless: true,
-    args: [
-      "--disable-gpu",
-      "--disable-dev-shm-usage",
-      "--disable-setuid-sandbox",
-      "--no-sandbox",
-    ],
   });
   const page = await browser.newPage();
-  await page.goto(url);
+  try {
+    await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 10000,
+    });
+  } catch (err) {
+    console.log(chalk.yellow("[!] Page load timed out, but continuing with current state"));
+  }
   await new Promise((resolve) => setTimeout(resolve, 5000));
   const pageSource = await page.content();
   await browser.close();
