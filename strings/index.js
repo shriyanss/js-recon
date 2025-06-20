@@ -4,6 +4,7 @@ import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import prettier from "prettier";
+import secrets from "./secrets.js";
 
 const traverse = _traverse.default;
 
@@ -18,6 +19,7 @@ const strings = async (
   output_file,
   extract_urls,
   extracted_url_path,
+  scan_secrets,
 ) => {
   console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
@@ -85,6 +87,7 @@ const strings = async (
 
   console.log(chalk.green(`[✓] Extracted strings to ${output_file}`));
 
+  // if the -e flag is enabled, extract the URLs also
   if (extract_urls) {
     console.log(chalk.cyan("[i] Extracting URLs and paths from strings"));
 
@@ -139,6 +142,30 @@ const strings = async (
     console.log(
       chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}`),
     );
+  }
+
+  if (scan_secrets) {
+    console.log(chalk.cyan("[i] Scanning for secrets"));
+
+    let total_secrets = 0;
+
+    for (const file of js_files_path) {
+      const fileContent = fs.readFileSync(file, "utf8");
+      const foundSecrets = await secrets(fileContent);
+      if (foundSecrets.length > 0) {
+        for (const foundSecret of foundSecrets) {
+          console.log(chalk.green(`[✓] Found ${foundSecret.name} in ${file}`));
+          console.log(chalk.bgGreen(foundSecret.value));
+          total_secrets++;
+        }
+      }
+    }
+
+    if (total_secrets === 0) {
+      console.log(chalk.yellow(`[!] No secrets found`));
+    } else {
+      console.log(chalk.green(`[✓] Found ${total_secrets} secrets`));
+    }
   }
 };
 
