@@ -265,7 +265,7 @@ const makeRequest = async (url, args) => {
       
       // if cache is enabled, write the response to the cache
       if (!globals.getDisableCache()) {
-        await writeCache(url, get_headers, new Response(content));
+        await writeCache(url, {}, new Response(content));
       }
       return new Response(content);
     }
