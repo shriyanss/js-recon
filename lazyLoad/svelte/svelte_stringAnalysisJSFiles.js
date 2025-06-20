@@ -35,11 +35,12 @@ const parseJSFileContent = async (content) => {
 
     return foundJsFiles;
   } catch (error) {
+    // console.error(error);
     return {};
   }
 };
 
-const nuxt_stringAnalysisJSFiles = async (url) => {
+const svelte_stringAnalysisJSFiles = async (url) => {
   console.log(chalk.cyan("[i] Analyzing strings in the files found"));
 
   while (true) {
@@ -99,4 +100,4 @@ const nuxt_stringAnalysisJSFiles = async (url) => {
   return filesFound;
 };
 
-export default nuxt_stringAnalysisJSFiles;
+export default svelte_stringAnalysisJSFiles;

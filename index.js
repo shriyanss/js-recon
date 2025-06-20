@@ -21,9 +21,15 @@ program
   .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
   .option("--api-gateway", "Generate requests using API Gateway", false)
   .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
+  .option("--cache-file <file>", "File to contain response cache", ".resp_cache.json")
+  .option("--disable-cache", "Disable response caching", false)
+  .option("-y, --yes", "Auto-approve executing JS code from the target", false)
   .action(async (cmd) => {
     globals.setApiGatewayConfigFile(cmd.apiGatewayConfig);
     globals.setUseApiGateway(cmd.apiGateway);
+    globals.setDisableCache(cmd.disableCache);
+    globals.setRespCacheFile(cmd.cacheFile);
+    globals.setYes(cmd.yes);
     await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, cmd.subsequentRequests, cmd.urlsFile);
   });
 

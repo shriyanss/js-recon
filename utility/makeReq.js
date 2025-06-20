@@ -2,6 +2,7 @@ import chalk from "chalk";
 import puppeteer from "puppeteer";
 import * as globals from "./globals.js";
 import { get } from "../api_gateway/genReq.js";
+import fs from "fs";
 
 // random user agents
 const UAs = [
@@ -61,7 +62,89 @@ const UAs = [
   "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
+const readCache = async (url, headers) => {
+  // console.log("reading cache for", url);
+  // open the cache file, build a Response, and return
+  const cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
+  if (cache[url]) {
+    // check if the response contains the specific request headers
+    // iterate through cache[url] and build a Response
+
+    let headersMatch = true;
+
+    // first check if the essential headers match
+    const rscEnabled = headers["RSC"] ? true : false;
+    if (rscEnabled) {
+      if (cache[url].rsc) {
+        return new Response(atob(cache[url].rsc.body_b64), {
+          status: cache[url].rsc.status,
+          headers: cache[url].rsc.resp_headers,
+        });
+      }
+    }
+    if (!rscEnabled && cache[url] && cache[url].normal) {
+      return new Response(atob(cache[url].normal.body_b64), {
+        status: cache[url].normal.status,
+        headers: cache[url].normal.resp_headers,
+      });
+    }
+  }
+  // console.log("cache not found for ", url);
+  return null;
+}
+
+const writeCache = async (url, headers, response) => {
+  // clone the response
+  const clonedResponse = response.clone();
+
+  // if cache exists, return
+  if (await readCache(url, headers) !== null) {
+    // console.log("cache already exists for ", url);
+    return;
+  }
+
+  // open the cache file, and write the response based on the special headers
+  const cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
+  if (!cache[url]) {
+    cache[url] = {};
+  }
+
+  const body = btoa(encodeURIComponent(await clonedResponse.text()).replace(/%([0-9A-F]{2})/g,
+    (match, p1) => String.fromCharCode(`0x${p1}`)));
+  const status = clonedResponse.status;
+  const resp_headers = clonedResponse.headers;
+  if (headers["RSC"]) {
+    cache[url].rsc = {
+      req_headers: headers,
+      status: status,
+      body_b64: body,
+      resp_headers: resp_headers,
+    };
+    // console.log("rsc", url);
+  } else {
+    cache[url].normal = {
+      req_headers: headers,
+      status: status,
+      body_b64: body,
+      resp_headers: resp_headers,
+    };
+    // console.log("normal", url);
+  }
+  fs.writeFileSync(globals.getRespCacheFile(), JSON.stringify(cache));
+  // console.log("wrote cache for ", url);
+}
+
 const makeRequest = async (url, args) => {
+
+  // if cache is enabled, read the cache and return if cache is present. else, continue
+  if (!globals.getDisableCache()) {
+    const cachedResponse = await readCache(url, args?.headers || {});
+    if (cachedResponse !== null) {
+      return cachedResponse;
+    }
+  }
+
+
   if (globals.useApiGateway) {
     let get_headers;
     if (args && args.headers) {
@@ -84,6 +167,11 @@ const makeRequest = async (url, args) => {
 
     // craft a Response, and return that
     const response = new Response(body);
+    
+    // if cache is enabled, write the response to the cache
+    if (!globals.getDisableCache()) {
+      await writeCache(url, get_headers, response);
+    }
     return response;
   } else {
     if (args === undefined) {
@@ -147,6 +235,11 @@ const makeRequest = async (url, args) => {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       const content = await page.content();
       await browser.close();
+      
+      // if cache is enabled, write the response to the cache
+      if (!globals.getDisableCache()) {
+        await writeCache(url, get_headers, new Response(content));
+      }
       return new Response(content);
     } else if (resp_text.includes("<title>Just a moment...</title>")) {
       console.log(
@@ -169,9 +262,19 @@ const makeRequest = async (url, args) => {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       const content = await page.content();
       await browser.close();
+      
+      // if cache is enabled, write the response to the cache
+      if (!globals.getDisableCache()) {
+        await writeCache(url, {}, new Response(content));
+      }
       return new Response(content);
     }
 
+    // if cache is enabled, write the response to the cache
+    if (!globals.getDisableCache()) {
+      const resToCache = preservedRes.clone();
+      await writeCache(url, args?.headers || {}, resToCache);
+    }
     return preservedRes;
   }
 };
