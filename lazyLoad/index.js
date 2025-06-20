@@ -66,7 +66,7 @@ const lazyLoad = async (
 
   // check if the url is file or a URL
   if (fs.existsSync(url)) {
-    urls = fs.readFileSync(url, "utf-8").split("\n");
+    urls = fs.readFileSync(url, "utf8").split("\n");
     // remove the empty lines
     urls = urls.filter((url) => url.trim() !== "");
   } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
