@@ -49,13 +49,13 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls) => {
   console.log(chalk.cyan(`[i] Fetching JS files from subsequent requests`));
 
   // open the urls file, and load the paths (JSON)
-  const endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf-8")).paths;
+  const endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
 
   let js_contents = {};
 
   // make requests to all of them with the special header
   const reqPromises = endpoints.map(async (endpoint) => {
-    const reqUrl = url + endpoint;
+    const reqUrl = new URL(endpoint, url).href;
     try {
       // delay in case over the thread count
       while (queue >= max_queue) {

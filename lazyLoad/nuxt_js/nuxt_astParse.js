@@ -7,6 +7,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import t from "@babel/types";
 import resolvePath from "../../utility/resolvePath.js";
+import * as globals from "../../utility/globals.js";
 
 const nuxt_astParse = async (url) => {
   let filesFound = [];
@@ -73,113 +74,116 @@ const nuxt_astParse = async (url) => {
       );
       console.log(chalk.yellow(func.source));
 
-      // ask for confirmation, then proceed
-      const askCorrectFuncConfirmation = async () => {
-        const { value } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "value",
-            message: "Is this the correct function?",
-            default: true,
-          },
-        ]);
-        return value;
-      };
+      let user_verified;
+      if (!globals.getYes()) {
+        const askCorrectFuncConfirmation = async () => {
+          const { value } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "value",
+              message: "Is this the correct function?",
+              default: true,
+            },
+          ]);
+          return value;
+        };
 
-      const user_verified = await askCorrectFuncConfirmation();
+        user_verified = await askCorrectFuncConfirmation();
+      } else {
+        user_verified = true;
+      }
       if (user_verified === true) {
         console.log(
           chalk.cyan(
             "[i] Proceeding with the selected function to fetch files",
           ),
         );
-
-        // get the value of the unknown vars
-        // first, get the name of the unknown function
-        const unknownVarAst = parser.parse(`(${func.source})`, {
-          sourceType: "script",
-          plugins: ["jsx", "typescript"],
-        });
-        let memberExpressions = [];
-        traverse(unknownVarAst, {
-          MemberExpression(path) {
-            // Only collect identifiers like f.p (not obj["x"])
-            if (
-              t.isIdentifier(path.node.object) &&
-              t.isIdentifier(path.node.property) &&
-              !path.node.computed // ignore obj["x"]
-            ) {
-              const objName = path.node.object.name;
-              const propName = path.node.property.name;
-              memberExpressions.push(`${objName}.${propName}`);
-            }
-          },
-        });
-
-        const unknownVar = memberExpressions[0].split(".");
-
-        // now, resolve the value of this unknown var
-        let unknownVarValue;
-
-        traverse(ast, {
-          AssignmentExpression(path) {
-            const { left, right } = path.node;
-
-            if (
-              t.isMemberExpression(left) &&
-              t.isIdentifier(left.object, { name: unknownVar[0] }) &&
-              t.isIdentifier(left.property, { name: unknownVar[1] }) &&
-              !left.computed
-            ) {
-              if (t.isStringLiteral(right)) {
-                unknownVarValue = right.value;
-              } else {
-                // fallback to source snippet
-                unknownVarValue = func.source.slice(right.start, right.end);
-              }
-            }
-          },
-        });
-
-        // replace the unknown var with the value
-        const funcSource = func.source.replace(
-          new RegExp(`${unknownVar[0]}.${unknownVar[1]}`),
-          `"${unknownVarValue}"`,
-        );
-
-        // continue to executing the function with all possible numbers
-        const urlBuilderFunc = `(() => (${funcSource}))()`;
-        let js_paths = [];
-
-        try {
-          // rather than fuzzing, grep the integers from the func code
-          const integers = funcSource.match(/\d+/g);
-          if (integers) {
-            // Check if integers were found
-            // iterate through all integers, and get the output
-            for (const i of integers) {
-              const output = execFunc(urlBuilderFunc, parseInt(i));
-              if (output.includes("undefined")) {
-                continue;
-              } else {
-                js_paths.push(output);
-              }
-            }
-          }
-        } catch (error) {
-          console.log(chalk.red("[!] Error executing function: ", error));
-        }
-
-        if (js_paths.length > 0) {
-          // iterate through the files, and resolve them
-          for (const js_path of js_paths) {
-            const resolvedPath = await resolvePath(url, js_path);
-            filesFound.push(resolvedPath);
-          }
-        }
       } else {
         console.log(chalk.red("[!] Not executing function."));
         continue;
+      }
+      // get the value of the unknown vars
+      // first, get the name of the unknown function
+      const unknownVarAst = parser.parse(`(${func.source})`, {
+        sourceType: "script",
+        plugins: ["jsx", "typescript"],
+      });
+      let memberExpressions = [];
+      traverse(unknownVarAst, {
+        MemberExpression(path) {
+          // Only collect identifiers like f.p (not obj["x"])
+          if (
+            t.isIdentifier(path.node.object) &&
+            t.isIdentifier(path.node.property) &&
+            !path.node.computed // ignore obj["x"]
+          ) {
+            const objName = path.node.object.name;
+            const propName = path.node.property.name;
+            memberExpressions.push(`${objName}.${propName}`);
+          }
+        },
+      });
+
+      const unknownVar = memberExpressions[0].split(".");
+
+      // now, resolve the value of this unknown var
+      let unknownVarValue;
+
+      traverse(ast, {
+        AssignmentExpression(path) {
+          const { left, right } = path.node;
+
+          if (
+            t.isMemberExpression(left) &&
+            t.isIdentifier(left.object, { name: unknownVar[0] }) &&
+            t.isIdentifier(left.property, { name: unknownVar[1] }) &&
+            !left.computed
+          ) {
+            if (t.isStringLiteral(right)) {
+              unknownVarValue = right.value;
+            } else {
+              // fallback to source snippet
+              unknownVarValue = func.source.slice(right.start, right.end);
+            }
+          }
+        },
+      });
+
+      // replace the unknown var with the value
+      const funcSource = func.source.replace(
+        new RegExp(`${unknownVar[0]}.${unknownVar[1]}`),
+        `"${unknownVarValue}"`,
+      );
+
+      // continue to executing the function with all possible numbers
+      const urlBuilderFunc = `(() => (${funcSource}))()`;
+      let js_paths = [];
+
+      try {
+        // rather than fuzzing, grep the integers from the func code
+        const integers = funcSource.match(/\d+/g);
+        if (integers) {
+          // Check if integers were found
+          // iterate through all integers, and get the output
+          for (const i of integers) {
+            const output = execFunc(urlBuilderFunc, parseInt(i));
+            if (output.includes("undefined")) {
+              continue;
+            } else {
+              js_paths.push(output);
+            }
+          }
+        }
+      } catch (error) {
+        console.log(chalk.red("[!] Error executing function: ", error));
+      }
+
+      if (js_paths.length > 0) {
+        // iterate through the files, and resolve them
+        for (const js_path of js_paths) {
+          const resolvedPath = await resolvePath(url, js_path);
+          filesFound.push(resolvedPath);
+        }
       }
     }
   }
