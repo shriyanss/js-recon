@@ -294,7 +294,7 @@ const apiGateway = async (
   configFile = configInput || "config.json";
 
   if (!aws_access_key || !aws_secret_key) {
-    console.log(chalk.red("[!] AWS Access Key or Secret Key not found"));
+    console.log(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
     return;
   }
 
