@@ -17,7 +17,7 @@ program
   .option("--strict-scope", "Download JS files from only the input URL domain", false)
   .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
   .option("-t, --threads <threads>", "Number of threads to use", 1)
-  .option("--subsequent-requests", "Download JS files from subsequent requests", false)
+  .option("--subsequent-requests", "Download JS files from subsequent requests (Next.JS only)", false)
   .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
   .option("--api-gateway", "Generate requests using API Gateway", false)
   .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")

@@ -49,6 +49,12 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls) => {
   console.log(chalk.cyan(`[i] Fetching JS files from subsequent requests`));
 
   // open the urls file, and load the paths (JSON)
+  if (!fs.existsSync(urlsFile)) {
+    console.log(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
+    console.log(chalk.yellow(`[!] Please run strings module first with -e flag`));
+    console.log(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
+    process.exit(1);
+  }
   const endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
 
   let js_contents = {};
@@ -89,7 +95,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls) => {
           directory,
         );
         if (!fs.existsSync(output_path)) {
-          fs.mkdirSync(output_path);
+          fs.mkdirSync(output_path, {recursive: true});
         }
         fs.writeFileSync(path.join(output_path, "index.js"), text);
 

@@ -1,9 +1,7 @@
 import chalk from "chalk";
 
 const techs = [
-    "Next.JS (next)",
-    "Nuxt.JS (nuxt)",
-    "Svelte (svelte)"
+    "Next.JS (next)"
 ]
 
 const endpoints = async (directory, output, tech, list) => {
@@ -34,8 +32,9 @@ const endpoints = async (directory, output, tech, list) => {
 
     console.log(chalk.cyan("[i] Extracting endpoints"));
 
-    
-
+    if (tech === "next") {
+        console.log(chalk.cyan("[i] Checking for client-side paths for Next.JS"));
+    }
 };
 
 export default endpoints;

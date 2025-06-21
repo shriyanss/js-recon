@@ -72,80 +72,80 @@ const checkVueJS = async ($) => {
 };
 
 
-const checkNuxtJS = async ($)=>{
-    let detected = false;
-    let evidence = "";
+const checkNuxtJS = async ($) => {
+  let detected = false;
+  let evidence = "";
 
-    // go through the page source, and check for "/_nuxt" in the src or href attribute
-    $("*").each((_, el)=>{
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "src" || attrName === "href") {
-                    if (attrValue.includes("/_nuxt")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
+  // go through the page source, and check for "/_nuxt" in the src or href attribute
+  $("*").each((_, el) => {
+    const tag = $(el).get(0).tagName;
+    const attribs = el.attribs;
+    if (attribs) {
+      for (const [attrName, attrValue] of Object.entries(attribs)) {
+        if (attrName === "src" || attrName === "href") {
+          if (attrValue.includes("/_nuxt")) {
+            detected = true;
+            evidence = `${attrName} :: ${attrValue}`;
+          }
         }
-    });
+      }
+    }
+  });
 
-    return { detected, evidence };
+  return { detected, evidence };
 }
 
-const checkSvelte = async ($)=>{
-    let detected = false;
-    let evidence = "";
+const checkSvelte = async ($) => {
+  let detected = false;
+  let evidence = "";
 
-    // go through the page source, and check for all the class names of all HTML tags
-    $("*").each((_, el)=>{
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "class") {
-                    if (attrValue.includes("svelte-")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
+  // go through the page source, and check for all the class names of all HTML tags
+  $("*").each((_, el) => {
+    const tag = $(el).get(0).tagName;
+    const attribs = el.attribs;
+    if (attribs) {
+      for (const [attrName, attrValue] of Object.entries(attribs)) {
+        if (attrName === "class") {
+          if (attrValue.includes("svelte-")) {
+            detected = true;
+            evidence = `${attrName} :: ${attrValue}`;
+          }
         }
-    });
+      }
+    }
+  });
 
-    // now, search for the svelte- id of all elements
-    $("*").each((_, el)=>{
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "id") {
-                    if (attrValue.includes("svelte-")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
+  // now, search for the svelte- id of all elements
+  $("*").each((_, el) => {
+    const tag = $(el).get(0).tagName;
+    const attribs = el.attribs;
+    if (attribs) {
+      for (const [attrName, attrValue] of Object.entries(attribs)) {
+        if (attrName === "id") {
+          if (attrValue.includes("svelte-")) {
+            detected = true;
+            evidence = `${attrName} :: ${attrValue}`;
+          }
         }
-    });
+      }
+    }
+  });
 
-    // now, check for the data-sveltekit-reload attribute
-    $("*").each((_, el)=>{
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "data-sveltekit-reload") {
-                    detected = true;
-                    evidence = `${attrName} :: ${attrValue}`;
-                }
-            }
+  // now, check for the data-sveltekit-reload attribute
+  $("*").each((_, el) => {
+    const tag = $(el).get(0).tagName;
+    const attribs = el.attribs;
+    if (attribs) {
+      for (const [attrName, attrValue] of Object.entries(attribs)) {
+        if (attrName === "data-sveltekit-reload") {
+          detected = true;
+          evidence = `${attrName} :: ${attrValue}`;
         }
-    });
+      }
+    }
+  });
 
-    return { detected, evidence };
+  return { detected, evidence };
 }
 
 /**
@@ -193,18 +193,42 @@ const frameworkDetect = async (url) => {
   const result_checkVueJS = await checkVueJS($);
   const result_checkSvelte = await checkSvelte($);
 
-  if (result_checkNextJS.detected === true) {
-    return { name: "next", evidence: result_checkNextJS.evidence };
-  } else if (result_checkVueJS.detected === true) {
+  // now, also check with the res response
+  const resBody = await res.text();
+  const $res = cheerio.load(resBody);
+  const result_checkNextJS_res = await checkNextJS($res);
+  const result_checkVueJS_res = await checkVueJS($res);
+  const result_checkSvelte_res = await checkSvelte($res);
+
+  if (result_checkNextJS.detected === true || result_checkNextJS_res.detected === true) {
+    const evidence =
+      result_checkNextJS.evidence !== ""
+        ? result_checkNextJS.evidence
+        : result_checkNextJS_res.evidence;
+    return { name: "next", evidence };
+  } else if (result_checkVueJS.detected === true || result_checkVueJS_res.detected === true) {
     console.log(chalk.green("[✓] Vue.js detected"));
     console.log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
     const result_checkNuxtJS = await checkNuxtJS($);
-    if (result_checkNuxtJS.detected === true) {
-      return { name: "nuxt", evidence: result_checkNuxtJS.evidence };
+    const result_checkNuxtJS_res = await checkNuxtJS($res);
+    if (result_checkNuxtJS.detected === true || result_checkNuxtJS_res.detected === true) {
+      const evidence =
+        result_checkNuxtJS.evidence !== ""
+          ? result_checkNuxtJS.evidence
+          : result_checkNuxtJS_res.evidence;
+      return { name: "nuxt", evidence };
     }
-    return { name: "vue", evidence: result_checkVueJS.evidence };
-  } else if (result_checkSvelte.detected === true) {
-    return { name: "svelte", evidence: result_checkSvelte.evidence };
+    const evidence =
+      result_checkVueJS.evidence !== ""
+        ? result_checkVueJS.evidence
+        : result_checkVueJS_res.evidence;
+    return { name: "vue", evidence };
+  } else if (result_checkSvelte.detected === true || result_checkSvelte_res.detected === true) {
+    const evidence =
+      result_checkSvelte.evidence !== ""
+        ? result_checkSvelte.evidence
+        : result_checkSvelte_res.evidence;
+    return { name: "svelte", evidence };
   }
 
   return null;
