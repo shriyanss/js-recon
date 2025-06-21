@@ -36,10 +36,12 @@ program
 program
   .command("endpoints")
   .description("Extract API endpoints")
-  .requiredOption("-u, --url <url>", "Target URL")
-  .option("-o, --output <file>", "Output file")
-  .action((cmd) => {
-    endpoints(cmd.url, cmd.output);
+  .option("-d, --directory <directory>", "Directory containing JS files")
+  .option("-o, --output <file>", "Output OpenAPI File", "openapi.yaml")
+  .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
+  .option("-l, --list", "List available technologies", false)
+  .action(async (cmd) => {
+    await endpoints(cmd.directory, cmd.output, cmd.tech, cmd.list);
   });
 
 program
@@ -50,8 +52,8 @@ program
   .option("-e, --extract-urls", "Extract URLs from strings", false)
   .option("--extracted-url-path <file>", "Output JSON file for extracted URLs and paths", "extracted_urls.json")
   .option("-s, --scan-secrets", "Scan for secrets", false)
-  .action((cmd) => {
-    strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets);
+  .action(async (cmd) => {
+    await strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets);
   });
 
 program
@@ -67,10 +69,10 @@ program
   .option("-l, --list", "List all the API created by this tool", false)
   .option("--feasibility", "Check feasibility of API Gateway", false)
   .option("--feasibility-url <url>", "URL to check feasibility of")
-  .action((cmd) => {
+  .action(async (cmd) => {
     globals.setApiGatewayConfigFile(cmd.config);
     globals.setUseApiGateway(true);
-    apiGateway(cmd.init, cmd.destroy, cmd.destroyAll, cmd.list, cmd.region, cmd.accessKey, cmd.secretKey, cmd.config, cmd.feasibility, cmd.feasibilityUrl);
+    await apiGateway(cmd.init, cmd.destroy, cmd.destroyAll, cmd.list, cmd.region, cmd.accessKey, cmd.secretKey, cmd.config, cmd.feasibility, cmd.feasibilityUrl);
 });
 
 program.parse(process.argv);
