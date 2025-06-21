@@ -100,6 +100,8 @@ let L = [
 
 Possible methodology: The tool can iterate over all the JS chunks, and find the list of objects with keys like `href` (string), `label` (string), `active` (boolean) and `children` (array of objects of the same type). Then, it can organize them in a report.
 
+Additionally, upon inspecting the files in the `__subsequent_requests` subdirectory, it was found that they also had the same URLs. The number of files to parse in that case is significantly less, however, those files aren't JavaScript files. They are `text/x-component` (content-type header) files.
+
 ### Analyis of [1Password](https://1password.com)
 It was found that the client-side paths were stored in mostly stored in a way like:
 ```js
