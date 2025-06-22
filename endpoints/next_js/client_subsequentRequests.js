@@ -41,34 +41,48 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
         // console.log(jsCode);
 
         // parse JS code with ast
-        const ast = parser.parse(jsCode, {
-          sourceType: "unambiguous",
-          plugins: ["jsx", "typescript"],
-        });
+        let ast;
+        try {
+            ast = parser.parse(jsCode, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+          });
+        } catch (err) {
+          continue;
+        }
 
         // traverse the ast, and find the objects with href, and external
         let finds = [];
-        try {
-          traverse(ast, {
-            ObjectExpression(path) {
-              const href = path.node.properties.find(
-                (prop) => prop.key.name === "href"
-              );
-              const external = path.node.properties.find(
-                (prop) => prop.key.name === "external"
-              );
-              if (href && external) {
-                finds.push({
-                  href: href.value.value,
-                  external: external.value.value,
-                });
+        traverse(ast, {
+          ObjectExpression(path) {
+            const properties = path.node.properties;
+            let hasHrefOrUrl = false;
+            let hasExternal = false;
+            let hrefValue = null;
+            let externalValue = null;
+            
+            for (const prop of properties) {
+              const prop_name = jsCode.substring(prop.key.start, prop.key.end);
+              if (prop_name === "\"href\"") {
+                hasHrefOrUrl = true;
+                hrefValue = jsCode.substring(prop.value.start, prop.value.end).replace(/^"|"$/g, "");
               }
-            },
-          });
-        } catch (error) {
-          console.log(error);
+              if (prop_name === "\"external\"") {
+                hasExternal = true;
+                externalValue = jsCode.substring(prop.value.start, prop.value.end).replace(/^"|"$/g, "");
+              }
+            }
+            
+            if (hasHrefOrUrl && hasExternal) {
+              finds.push({ href: hrefValue, external: externalValue });
+            }
+          }
+        });
+
+        // iterate through the finds and resolve the paths
+        for (const find of finds) {
+          console.log(find);
         }
-        console.log(finds);
       } else {
         // console.log("Unknown");
         // console.log(line);
