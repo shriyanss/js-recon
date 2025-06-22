@@ -82,7 +82,11 @@ const endpoints = async (
       return;
     }
 
+    let final_client_side = [];
     const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir);
+    final_client_side.push(...client_subsequentRequestsResult);
+
+    const gen_markdownResult = await gen_markdown(final_client_side);
   }
 };
 
