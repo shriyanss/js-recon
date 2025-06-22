@@ -119,7 +119,7 @@ let n = ["/pricing/xam", "/pricing/password-manager"];
 
 ### Analysis of [OpenAI](https://openai.com)
 Upon inspection of subsequent requests file, multiple patterns were discovered. The response returned by the server on requesting an endpoint with the `RSC: 1` header had a content type of `text/x-component`. This meant that this couldn't be parsed directly with a JS parser. Upon inspecting the contents of those files, it was found that every line of it contained a valid JS code. The following pattern was uncovered:
-- If a line started with `^[0-9][a-z]+:I\[.+` (examples of valid matches: `1d:I[`, `23:I[`, `24:I[`, etc.), then that line contained paths to JS chunks
-- If a line started with `^[0-9][a-z]+:\[.+` (examples of valid matches: `1d:[`, `23:[`, `24:[`, etc.), then that line contained valid JS code between `[` and `]`
+- If a line started with `^[0-9a-z]+:I\[.+` (examples of valid matches: `1d:I[`, `23:I[`, `24:I[`, etc.), then that line contained paths to JS chunks
+- If a line started with `^[0-9a-z]+:\[.+` (examples of valid matches: `1d:[`, `23:[`, `24:[`, etc.), then that line contained valid JS code between `[` and `]`
 
 Moreover, it must be noted that the value of contents of a line could be also null, for example, `1:null`. These lines should be ignored.

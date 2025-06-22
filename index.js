@@ -36,12 +36,15 @@ program
 program
   .command("endpoints")
   .description("Extract API endpoints")
+  .option("-u, --url <url>", "Target Base URL (will be used to resolve relative paths)")
   .option("-d, --directory <directory>", "Directory containing JS files")
-  .option("-o, --output <file>", "Output OpenAPI File", "openapi.yaml")
+  .option("-o, --output <filename>", "Output filename (without file extension)", "output")
+  .option("--output-format <format>", "Output format for the results comma-separated (available: md)", "md")
   .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
   .option("-l, --list", "List available technologies", false)
+  .option("--subsequent-requests-dir <directory>", "Directory containing subsequent requests (for Next.JS)")
   .action(async (cmd) => {
-    await endpoints(cmd.directory, cmd.output, cmd.tech, cmd.list);
+    await endpoints(cmd.url, cmd.directory, cmd.output, cmd.outputFormat.split(","), cmd.tech, cmd.list, cmd.subsequentRequestsDir);
   });
 
 program
