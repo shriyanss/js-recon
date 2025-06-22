@@ -6,6 +6,9 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
 const client_subsequentRequests = async (subsequentRequestsDir) => {
+  let toReturn = [];
+
+  //   let report = `## Subsequent Requests\n`;
   console.log(chalk.cyan("[i] Using subsequent requests file method"));
 
   // get all the files in the directory
@@ -43,7 +46,7 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
         // parse JS code with ast
         let ast;
         try {
-            ast = parser.parse(jsCode, {
+          ast = parser.parse(jsCode, {
             sourceType: "unambiguous",
             plugins: ["jsx", "typescript"],
           });
@@ -60,28 +63,38 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
             let hasExternal = false;
             let hrefValue = null;
             let externalValue = null;
-            
+
             for (const prop of properties) {
               const prop_name = jsCode.substring(prop.key.start, prop.key.end);
-              if (prop_name === "\"href\"") {
+              if (prop_name === '"href"') {
                 hasHrefOrUrl = true;
-                hrefValue = jsCode.substring(prop.value.start, prop.value.end).replace(/^"|"$/g, "");
+                hrefValue = jsCode
+                  .substring(prop.value.start, prop.value.end)
+                  .replace(/^"|"$/g, "");
               }
-              if (prop_name === "\"external\"") {
+              if (prop_name === '"external"') {
                 hasExternal = true;
-                externalValue = jsCode.substring(prop.value.start, prop.value.end).replace(/^"|"$/g, "");
+                externalValue = jsCode
+                  .substring(prop.value.start, prop.value.end)
+                  .replace(/^"|"$/g, "");
               }
             }
-            
+
             if (hasHrefOrUrl && hasExternal) {
               finds.push({ href: hrefValue, external: externalValue });
             }
-          }
+          },
         });
 
-        // iterate through the finds and resolve the paths
+        // // iterate through the finds and resolve the paths
+        // for (const find of finds) {
+        //   console.log(find);
+        //   report += `### ${find.href}\n`;
+        //   report += `${find.external}\n`;
+        // }
+
         for (const find of finds) {
-          console.log(find);
+          toReturn.push(find.href);
         }
       } else {
         // console.log("Unknown");
@@ -89,6 +102,7 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
         continue;
       }
     }
+    return toReturn;
   }
 };
 
