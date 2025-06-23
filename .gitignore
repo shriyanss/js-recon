@@ -138,3 +138,4 @@ extracted_urls.json
 .resp_cache.json
 .vscode
 .vscode/*
+output*
