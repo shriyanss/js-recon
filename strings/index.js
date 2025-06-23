@@ -35,7 +35,10 @@ const strings = async (
   const files = fs.readdirSync(directory, { recursive: true });
 
   // filter out non JS files
-  const jsFiles = files.filter((file) => file.endsWith(".js"));
+  let jsFiles = files.filter((file) => file.endsWith(".js"));
+
+  // filter out subsequent requests files
+  jsFiles = jsFiles.filter((file) => !file.startsWith("___subsequent_requests"));
 
   // read all JS files
   let js_files_path = [];
