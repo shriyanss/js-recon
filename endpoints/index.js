@@ -3,6 +3,7 @@ import fs from "fs";
 
 // Next.JS
 import client_subsequentRequests from "./next_js/client_subsequentRequests.js";
+import client_jsFilesHref from "./next_js/client_jsFilesHref.js";
 
 // Report Generation
 import gen_markdown from "./gen_report/gen_markdown.js";
@@ -87,8 +88,11 @@ const endpoints = async (
     }
 
     let final_client_side = [];
-    const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir);
+    const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
     final_client_side.push(...client_subsequentRequestsResult);
+
+    const client_jsFilesHrefResult = await client_jsFilesHref(directory);
+    final_client_side.push(...client_jsFilesHrefResult);
 
     const gen_markdownResult = await gen_markdown(url, final_client_side, output);
     const gen_jsonResult = await gen_json(url, final_client_side, output);

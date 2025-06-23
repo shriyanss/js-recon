@@ -5,7 +5,7 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
-const client_subsequentRequests = async (subsequentRequestsDir) => {
+const client_subsequentRequests = async (subsequentRequestsDir, url) => {
   let toReturn = [];
 
   //   let report = `## Subsequent Requests\n`;
@@ -30,6 +30,7 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
   for (const file of files) {
     const content = fs.readFileSync(file, "utf-8");
 
+
     // go through each line
     const lines = content.split("\n");
     for (const line of lines) {
@@ -40,8 +41,13 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
         // } else if (line.match(/^[0-9a-z\s\.]+:([A-Za-z0-9\,\.\s\-]+:)?[\[\{].+/)) {
       } else if (line.match(/^[0-9a-z]+:\[.+/)) {
         // extract the JS code. i.e. between [ and ]
-        const jsCode = `[${line.match(/\[(.+)\]/)[1]}]`;
-        // console.log(jsCode);
+        let jsCode;
+        try {
+          jsCode = `[${line.match(/\[(.+)\]/)[1]}]`;
+        } catch (err) {
+          console.log(err);
+          continue;
+        }
 
         // parse JS code with ast
         let ast;
@@ -61,6 +67,7 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
             const properties = path.node.properties;
             let hasHrefOrUrl = false;
             let hasExternal = false;
+            let hasChildren = false;
             let hrefValue = null;
             let externalValue = null;
 
@@ -78,10 +85,36 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
                   .substring(prop.value.start, prop.value.end)
                   .replace(/^"|"$/g, "");
               }
+              if (prop_name === '"children"') {
+                hasChildren = true;
+              }
             }
 
-            if (hasHrefOrUrl && hasExternal) {
-              finds.push({ href: hrefValue, external: externalValue });
+            if (hasHrefOrUrl) {
+              if ((hasExternal || hasChildren) && !hrefValue.startsWith("#")) {
+                // if the path doesn't starts with a `/`, then resolve the path
+                if (
+                  !hrefValue.startsWith("/") &&
+                  !hrefValue.startsWith("http")
+                ) {
+                  let path = file
+                    .replace(
+                      /output\/[a-zA-Z0-9_\.\-]+\/___subsequent_requests\//,
+                      "/"
+                    )
+                    .split("/");
+                  // remove the last one
+                  path.pop();
+                  path = path.join("/");
+                  const fileUrl = url + path;
+
+                  // now, resolve the path
+                  const resolvedPath = new URL(hrefValue, fileUrl).href;
+                  finds.push({ href: resolvedPath, external: externalValue });
+                } else {
+                  finds.push({ href: hrefValue, external: externalValue });
+                }
+              }
             }
           },
         });
@@ -102,8 +135,8 @@ const client_subsequentRequests = async (subsequentRequestsDir) => {
         continue;
       }
     }
-    return toReturn;
   }
+  return toReturn;
 };
 
 export default client_subsequentRequests;
