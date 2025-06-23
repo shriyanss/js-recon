@@ -102,6 +102,43 @@ Possible methodology: The tool can iterate over all the JS chunks, and find the 
 
 Additionally, upon inspecting the files in the `__subsequent_requests` subdirectory, it was found that they also had the same URLs. The number of files to parse in that case is significantly less, however, those files aren't JavaScript files. They are `text/x-component` (content-type header) files.
 
+### Analysis of [X.ai Docs](https://docs.x.ai)
+Upon analysis of X.ai Docs, it was found that it had the initial client-side paths in the subsequent requests folder.
+
+Upon dynamic analysis of the app in the browser and matching it against the downloaded files, it was found that the application used `.concat()` method in the `href` key of objects to make paths.
+
+For example, upon reversing the source of `https://docs.x.ai/docs/key-information/usage-explorer`, the string `usage-explorer` was only found in the file `https://docs.x.ai/_next/static/chunks/5724-9c9e32df528a1a45.js`, and not any requests which included the `RSC: 1` header:
+```js
+let i = "/docs/key-information",
+// --snip--
+{
+  title: "Key Information",
+  href: "".concat(i),
+  segment: "key-information",
+  items: [
+    { title: "Billing", href: "".concat(i, "/billing") },
+    {
+      title: "Consumption and Rate Limits",
+      href: "".concat(i, "/consumption-and-rate-limits"),
+    },
+    {
+      title: "Usage Explorer",
+      href: "".concat(i, "/usage-explorer"),
+    },
+    {
+      title: "Using Management API",
+      href: "".concat(i, "/using-management-api"),
+      tag: "new",
+    },
+    {
+      title: "Migrating to New Models",
+      href: "".concat(i, "/migrating-to-new-models"),
+    },
+    { title: "Debugging Errors", href: "".concat(i, "/debugging") },
+  ],
+},
+```
+
 ### Analyis of [1Password](https://1password.com)
 It was found that the client-side paths were stored in mostly stored in a way like:
 ```js
