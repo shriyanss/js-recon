@@ -50,10 +50,11 @@ const gen_json = async (url, hrefs, output) => {
         }
     }
 
-    fs.writeFileSync(`${output}.json`, JSON.stringify(result, null, 2));
+    const finalJSON = JSON.stringify(result, null, 2);
+    fs.writeFileSync(`${output}.json`, finalJSON);
 
     console.log(chalk.green(`[✓] Generated JSON report at ${output}.json`));
-    return result;
+    return finalJSON;
 };
 
 export default gen_json;
