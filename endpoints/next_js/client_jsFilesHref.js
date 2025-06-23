@@ -6,6 +6,7 @@ import chalk from "chalk";
 const traverse = _traverse.default;
 
 const client_jsFilesHref = async (directory) => {
+  console.log(chalk.cyan("[i] Searching for `href` in the JS chunks"));
   let discoveredPaths = [];
   // index all the files in the directory
   let files;
@@ -18,8 +19,6 @@ const client_jsFilesHref = async (directory) => {
 
   // filter out the subsequent requests files
   files = files.filter((file) => !file.startsWith("___subsequent_requests"));
-
-  console.log(chalk.cyan(`[i] Iterating over ${files.length} files`));
 
   for (const file of files) {
     const code = fs.readFileSync(path.join(directory, file), "utf8");

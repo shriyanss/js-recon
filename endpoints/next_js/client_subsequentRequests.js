@@ -24,7 +24,6 @@ const client_subsequentRequests = async (subsequentRequestsDir, url) => {
     return files;
   };
   const files = walkSync(subsequentRequestsDir);
-  console.log(chalk.green(`[✓] Found ${files.length} files`));
 
   // open each file and read the contents
   for (const file of files) {
