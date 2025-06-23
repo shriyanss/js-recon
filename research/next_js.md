@@ -122,4 +122,4 @@ Upon inspection of subsequent requests file, multiple patterns were discovered. 
 - If a line started with `^[0-9a-z]+:I\[.+` (examples of valid matches: `1d:I[`, `23:I[`, `24:I[`, etc.), then that line contained paths to JS chunks
 - If a line started with `^[0-9a-z]+:\[.+` (examples of valid matches: `1d:[`, `23:[`, `24:[`, etc.), then that line contained valid JS code between `[` and `]`
 
-Moreover, it must be noted that the value of contents of a line could be also null, for example, `1:null`. These lines should be ignored.
+Moreover, it must be noted that the value of contents of a line could be also null, undefined, or something else, for example, `1:null`. These lines should be ignored.
