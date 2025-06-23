@@ -44,7 +44,6 @@ const client_subsequentRequests = async (subsequentRequestsDir, url) => {
         try {
           jsCode = `[${line.match(/\[(.+)\]/)[1]}]`;
         } catch (err) {
-          console.log(err);
           continue;
         }
 
