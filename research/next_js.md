@@ -160,3 +160,11 @@ Upon inspection of subsequent requests file, multiple patterns were discovered. 
 - If a line started with `^[0-9a-z]+:\[.+` (examples of valid matches: `1d:[`, `23:[`, `24:[`, etc.), then that line contained valid JS code between `[` and `]`
 
 Moreover, it must be noted that the value of contents of a line could be also null, undefined, or something else, for example, `1:null`. These lines should be ignored.
+
+Apart from requests with the `RSC` header, it was also found that some paths were present in the a variable, which was assigned as `JSON.parse(<string>)`. The string contained mappings for paths to an object of languages. i.e.
+```js
+i = JSON.parse(
+  '{"/":{"ja-JP":true,"es-ES":true,"es-419":true,"de-DE":true},"/about/":{"ja-JP":true,"es-ES":true}'//--snip--
+)
+```
+However, this behavior was not found in [X.ai](https://x.ai) or [X.ai Docs](https://docs.x.ai), and is suspected to be unique to [OpenAI](https://openai.com).

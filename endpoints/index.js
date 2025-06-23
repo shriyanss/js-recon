@@ -92,7 +92,7 @@ const endpoints = async (
     final_client_side.push(...client_subsequentRequestsResult);
 
     const client_jsFilesHrefResult = await client_jsFilesHref(directory);
-    final_client_side.push(...client_jsFilesHrefResult);
+    // final_client_side.push(...client_jsFilesHrefResult);
 
     const gen_markdownResult = await gen_markdown(url, final_client_side, output);
     const gen_jsonResult = await gen_json(url, final_client_side, output);
