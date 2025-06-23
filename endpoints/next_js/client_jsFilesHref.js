@@ -31,13 +31,10 @@ const client_jsFilesHref = async (directory) => {
         plugins: ["jsx", "typescript"],
       });
 
-      let finds = [];
-
       traverse(ast, {
         ObjectExpression(path) {
           const properties = path.node.properties;
-          let hasHrefOrUrl = false;
-          let hasActive = false;
+          let hasHref = false;
           let hrefValue = null;
 
           for (const prop of properties) {
@@ -45,14 +42,14 @@ const client_jsFilesHref = async (directory) => {
             let prop_val = code.substring(prop.value.start, prop.value.end);
 
             if (prop_name === "href") {
-              hasHrefOrUrl = true;
-              hrefValue = prop_val.replace(/^"|"$/g, "");
+              hasHref = true;
+              hrefValue = prop_val;
             }
-            if (hasHrefOrUrl && prop_name.includes("label")) {
-              hasActive = true;
-            }
-             if (hasHrefOrUrl && hasActive) {
-              finds.push({ href: hrefValue });
+          }
+          if (hasHref) {
+            // check if it has a concat method
+            if (hrefValue.includes("concat")) {
+              discoveredPaths.push(hrefValue);
             }
           }
         },
