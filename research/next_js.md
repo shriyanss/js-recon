@@ -188,4 +188,37 @@ i = JSON.parse(
   '{"/":{"ja-JP":true,"es-ES":true,"es-419":true,"de-DE":true},"/about/":{"ja-JP":true,"es-ES":true}'//--snip--
 )
 ```
-However, this behavior was not found in [X.ai](https://x.ai) or [X.ai Docs](https://docs.x.ai), and is suspected to be unique to [OpenAI](https://openai.com).
+
+Apart from this, OpenAI also had the paths stored in subsequent requests file. The parts were present in the `slug` key of objects, which could be then dynamically combined to form the full path. For example, upon sending request to `https://openai.com/careers/search` along with the `RSC: 1` header, the server returned a `200 OK` response with a content type of `text/x-component`. Upon inspecting the contents of the file, it was found that it contained `slug` key, which could be appended to the URL to form the full path. e.g. following is the snippet of the same:
+```js
+{
+  id: "00854e4b-27a9-4901-93b3-c58060843c08",
+  title: "Account Director, EDU ",
+--snip
+  shouldDisplayCompensationOnJobBoard: false,
+  updatedAt: "2025-05-06T19:14:21.279Z",
+  slug: "account-director-edu",
+--snip--
+},
+```
+In this case, `https://openai.com/careers/account-director-edu` would be a valid client-side path. Also, it is to be noted that not all `slug` would return a valid path. E.g.
+```js
+jobs: [
+  {
+    id: "a28262ce-8bfa-471c-b04c-66b426a846c6",
+    --snip--
+    slug: "account-director-digital-native",
+  },
+],
+departments: [
+  {
+    id: "d91c12c9-cd98-42bc-a4c1-fc532bc0bcb9",
+    name: "Production",
+    isArchived: false,
+    parentId: "61139c25-a9b7-4d88-8e23-319e36a0682c",
+    slug: "production",
+  }
+]
+```
+
+Here, `https://openai.com/careers/user-operations-lead-dublin` would be a valid client-side path, however, `https://openai.com/careers/production` would not be a valid client-side path. To verify this, a request could be sent to the server to the path. If the status is `200 OK`, then it is a valid client-side path, else, that whole block should be skipped.
