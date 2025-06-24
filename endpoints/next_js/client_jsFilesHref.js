@@ -49,16 +49,42 @@ const client_jsFilesHref = async (directory) => {
               } else if (prop_val.startsWith('"http')) {
                 hasHref = true;
                 hrefValue = prop_val.replace(/^"|"$/g, "");
-              } else if (prop_val.startsWith(`"".concat`)) {
-                // check if it something like "".concat(i, "/something")
-                // hasHref = true;
-                // prop_val = prop_val.replaceAll("\n", "").replace(/\s+/g, " "); // remove all line terminators and normalize spaces
-                // find all the variables in the prop_val expression
-                // Extract the variable names from concat expressions like "".concat(i, "/something")
+              } else if (prop_val.includes(`"".concat`)) {
+                // handle concat expressions such as "".concat(n, "/function-calling")
+                // or those with a fallback e.g. "".concat((s = I.guides[0].url) || "/docs/guides")
+                prop_val = prop_val.replaceAll("\n", "").replace(/\s+/g, " "); // normalize whitespace
+
+                // CASE 1: Expression contains a fallback string literal via `|| "..."`
+                const fallbackMatch = prop_val.match(/\|\|\s*"([^"]+)"/);
+                if (fallbackMatch) {
+                  hasHref = true;
+                  hrefValue = fallbackMatch[1];
+                } else {
+                  // CASE 2: Simple concat with a variable and a static suffix
+                  // Example: "".concat(n, "/function-calling")
+                  const concatParts = prop_val.match(
+                    /\.concat\(([^,]+),\s*"([^"]+)"\)/
+                  );
+                  if (concatParts) {
+                    const varName = concatParts[1].trim().replace(/[()]/g, "");
+                    const suffix = concatParts[2];
+
+                    // Attempt to resolve `varName` in current file as a string literal
+                    const varDeclRegex = new RegExp(
+                      `(?:const|let|var)\\s+${varName}\\s*=\\s*"([^"]+)"`
+                    );
+                    const varMatch = code.match(varDeclRegex);
+
+                    if (varMatch) {
+                      hasHref = true;
+                      hrefValue = varMatch[1] + suffix;
+                    }
+                  }
+                }
               }
             }
           }
-          if (hasHref) {
+          if (hrefValue) {
             discoveredPaths.push(hrefValue);
           }
         },

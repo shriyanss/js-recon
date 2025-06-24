@@ -158,6 +158,8 @@ let i = "/docs/key-information",
 
 Upon requesting the random path from the server, it returns a `404 Not Found` response. When sending a valid client-side path, it returned the rendered page source, with a few JS chunks to be loaded
 
+Apart from `href`, the client-side paths are also present in `url` key of objects.
+
 ### Analyis of [1Password](https://1password.com)
 It was found that the client-side paths were stored in mostly stored in a way like:
 ```js
