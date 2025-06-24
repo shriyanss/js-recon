@@ -46,9 +46,15 @@ const client_jsFilesHref = async (directory) => {
               if (prop_val.match(/^"\/[\w\-]+.*"$/)) {
                 hasHref = true;
                 hrefValue = prop_val.replace(/^"|"$/g, "");
-              } else if (prop_val.startsWith("\"http")) {
+              } else if (prop_val.startsWith('"http')) {
                 hasHref = true;
                 hrefValue = prop_val.replace(/^"|"$/g, "");
+              } else if (prop_val.startsWith(`"".concat`)) {
+                // check if it something like "".concat(i, "/something")
+                // hasHref = true;
+                // prop_val = prop_val.replaceAll("\n", "").replace(/\s+/g, " "); // remove all line terminators and normalize spaces
+                // find all the variables in the prop_val expression
+                // Extract the variable names from concat expressions like "".concat(i, "/something")
               }
             }
           }
