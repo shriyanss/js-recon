@@ -4,6 +4,7 @@ import fs from "fs";
 // Next.JS
 import client_subsequentRequests from "./next_js/client_subsequentRequests.js";
 import client_jsFilesHref from "./next_js/client_jsFilesHref.js";
+import client_jsonParse from "./next_js/client_jsonParse.js";
 import getWebpacks from "./next_js/getWebpacks.js";
 
 // Report Generation
@@ -97,6 +98,9 @@ const endpoints = async (
 
     const client_jsFilesHrefResult = await client_jsFilesHref(directory);
     final_client_side.push(...client_jsFilesHrefResult);
+
+    const client_jsonParseResult = await client_jsonParse(directory);
+    final_client_side.push(...client_jsonParseResult);
 
     const gen_markdownResult = await gen_markdown(url, final_client_side, output);
     const gen_jsonResult = await gen_json(url, final_client_side, output);
