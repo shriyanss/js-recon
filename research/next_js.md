@@ -6,6 +6,23 @@ To detect Next.js, following technique(s) can be used:
 ## Embedded JS files
 A lot of JS files were identified from the page source by inspecting the value of `src` attribute of `script` tags. These included files like `main.js`, `polyfills.js`, `webpack.js` etc.
 
+## Webpack Files
+When a Next.JS site is built, it divides the functions into multiple webpack files. The function to retrieve these files are usually present in the `webpack-<hash>.js` file.
+
+Upon inspecting the files then found, it was observed that they are distributed into multiple functions, each assigned a unique numeric ID. All of those functions were passed 3 arguments. The following code snippet is a simplified demonstration of how the functions are distributed:
+```js
+121212: function(a, b, c) {
+  b.name = "John Doe";
+}
+12345: function (a, b, c) {
+  let d = c(121212);
+  console.log(d.name);
+  b.success = true;
+}
+```
+
+Here, the first argument is the `module`, the second argument is the `exports`, and the third argument is the `require` function.
+
 ## Lazy Loaded Files
 ### Analysis of [Vercel Docs](https://vercel.com/docs)
 Upon analysis of page source and HTTP requests, it was found that the webpack filename had a pattern of `webpack-<hash>.js`. So, webpack JS files were identified and fetched.

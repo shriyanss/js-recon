@@ -4,6 +4,7 @@ import fs from "fs";
 // Next.JS
 import client_subsequentRequests from "./next_js/client_subsequentRequests.js";
 import client_jsFilesHref from "./next_js/client_jsFilesHref.js";
+import getWebpacks from "./next_js/getWebpacks.js";
 
 // Report Generation
 import gen_markdown from "./gen_report/gen_markdown.js";
@@ -90,6 +91,9 @@ const endpoints = async (
     let final_client_side = [];
     const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
     final_client_side.push(...client_subsequentRequestsResult);
+
+    // first, get all the webpacks
+    // const webpacksFound = await getWebpacks(directory);
 
     const client_jsFilesHrefResult = await client_jsFilesHref(directory);
     // final_client_side.push(...client_jsFilesHrefResult);
