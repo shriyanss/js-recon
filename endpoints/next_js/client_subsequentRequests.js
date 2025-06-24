@@ -5,30 +5,12 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
-const client_subsequentRequests = async (subsequentRequestsDir, url) => {
-  let toReturn = [];
+let toReturn = [];
 
-  //   let report = `## Subsequent Requests\n`;
-  console.log(chalk.cyan("[i] Using subsequent requests file method"));
-
-  // get all the files in the directory
-  const walkSync = (dir, files = []) => {
-    fs.readdirSync(dir).forEach((file) => {
-      let dirFile = path.join(dir, file);
-      if (fs.statSync(dirFile).isDirectory()) {
-        walkSync(dirFile, files);
-      } else {
-        files.push(dirFile);
-      }
-    });
-    return files;
-  };
-  const files = walkSync(subsequentRequestsDir);
-
+const checkHref = async (files, url) => {
   // open each file and read the contents
   for (const file of files) {
     const content = fs.readFileSync(file, "utf-8");
-
 
     // go through each line
     const lines = content.split("\n");
@@ -134,6 +116,87 @@ const client_subsequentRequests = async (subsequentRequestsDir, url) => {
       }
     }
   }
+};
+
+const checkSlug = async (files, url) => {
+  // open each file and read the contents
+  for (const file of files) {
+    const content = fs.readFileSync(file, "utf-8");
+
+    // go through each line
+    const lines = content.split("\n");
+    for (const line of lines) {
+      // check what is the type of line's content by matching it against regex
+      if (line.match(/^[0-9a-z]+:I\[.+/)) {
+        // console.log("JS Chunks");
+        continue;
+        // } else if (line.match(/^[0-9a-z\s\.]+:([A-Za-z0-9\,\.\s\-]+:)?\[\{.+/)) {
+      } else if (line.match(/^[0-9a-z]+:\{.+/)) {
+        // extract the JS code. i.e. between { and }
+        let jsCode;
+        try {
+          jsCode = `{${line.match(/\{(.+)\}/)[1]}}`;
+        } catch (err) {
+          continue;
+        }
+
+        // parse JS code with ast
+        let ast;
+        try {
+          ast = parser.parse(jsCode, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+          });
+        } catch (err) {
+          continue;
+        }
+
+        // traverse the ast, and find the objects with href, and external
+        let finds = [];
+        traverse(ast, {
+          
+        });
+
+        // // iterate through the finds and resolve the paths
+        // for (const find of finds) {
+        //   console.log(find);
+        //   report += `### ${find.href}\n`;
+        //   report += `${find.external}\n`;
+        // }
+
+        for (const find of finds) {
+          toReturn.push(find.href);
+        }
+      } else {
+        // console.log("Unknown");
+        // console.log(line);
+        continue;
+      }
+    }
+  }
+};
+
+const client_subsequentRequests = async (subsequentRequestsDir, url) => {
+  //   let report = `## Subsequent Requests\n`;
+  console.log(chalk.cyan("[i] Using subsequent requests file method"));
+
+  // get all the files in the directory
+  const walkSync = (dir, files = []) => {
+    fs.readdirSync(dir).forEach((file) => {
+      let dirFile = path.join(dir, file);
+      if (fs.statSync(dirFile).isDirectory()) {
+        walkSync(dirFile, files);
+      } else {
+        files.push(dirFile);
+      }
+    });
+    return files;
+  };
+  const files = walkSync(subsequentRequestsDir);
+
+  await checkHref(files, url);
+  await checkSlug(files, url);
+
   return toReturn;
 };
 
