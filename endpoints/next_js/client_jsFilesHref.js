@@ -42,15 +42,18 @@ const client_jsFilesHref = async (directory) => {
             let prop_val = code.substring(prop.value.start, prop.value.end);
 
             if (prop_name === "href") {
-              hasHref = true;
-              hrefValue = prop_val;
+              // also, check if the href value matches the regex for path
+              if (prop_val.match(/^"\/[\w\-]+.*"$/)) {
+                hasHref = true;
+                hrefValue = prop_val.replace(/^"|"$/g, "");
+              } else if (prop_val.startsWith("\"http")) {
+                hasHref = true;
+                hrefValue = prop_val.replace(/^"|"$/g, "");
+              }
             }
           }
           if (hasHref) {
-            // check if it has a concat method
-            if (hrefValue.includes("concat")) {
-              discoveredPaths.push(hrefValue);
-            }
+            discoveredPaths.push(hrefValue);
           }
         },
       });
