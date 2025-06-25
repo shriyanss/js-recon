@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import makeRequest from "../../utility/makeReq.js";
 const traverse = _traverse.default;
 
 let toReturn = [];
@@ -126,50 +127,45 @@ const checkSlug = async (files, url) => {
     // go through each line
     const lines = content.split("\n");
     for (const line of lines) {
-      // check what is the type of line's content by matching it against regex
       if (line.match(/^[0-9a-z]+:I\[.+/)) {
-        // console.log("JS Chunks");
         continue;
-        // } else if (line.match(/^[0-9a-z\s\.]+:([A-Za-z0-9\,\.\s\-]+:)?\[\{.+/)) {
-      } else if (line.match(/^[0-9a-z]+:\{.+/)) {
-        // extract the JS code. i.e. between { and }
+      } else if (line.match(/^[0-9a-z]+:\[.+/)) {
         let jsCode;
         try {
-          jsCode = `{${line.match(/\{(.+)\}/)[1]}}`;
+          jsCode = `[${line.match(/\[(.+)\]/)[1]}]`;
         } catch (err) {
           continue;
         }
 
-        // parse JS code with ast
-        let ast;
+        let jsonObject;
         try {
-          ast = parser.parse(jsCode, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-          });
-        } catch (err) {
+          jsonObject = JSON.parse(jsCode);
+        } catch (error) {
           continue;
         }
 
-        // traverse the ast, and find the objects with href, and external
-        let finds = [];
-        traverse(ast, {
-          
-        });
+        const slugUrls = [];
+        const traverse = (obj) => {
+          if (obj && typeof obj === 'object') {
+            if (obj.slug) {
+              const slugUrl = new URL(obj.slug, file.replace(/output\/[a-zA-Z0-9_\.\-]+\/___subsequent_requests\//, url + "/")).href;
+              slugUrls.push(slugUrl);
+            }
 
-        // // iterate through the finds and resolve the paths
-        // for (const find of finds) {
-        //   console.log(find);
-        //   report += `### ${find.href}\n`;
-        //   report += `${find.external}\n`;
-        // }
+            Object.values(obj).forEach(value => traverse(value));
+          }
+        };
 
-        for (const find of finds) {
-          toReturn.push(find.href);
+        traverse(jsonObject);
+
+        for (const path of slugUrls) {
+          const res = await makeRequest(path);
+          const statusCode = res.status;
+          if (statusCode !== 404) {
+            toReturn.push(path);
+          }
         }
       } else {
-        // console.log("Unknown");
-        // console.log(line);
         continue;
       }
     }
@@ -195,7 +191,7 @@ const client_subsequentRequests = async (subsequentRequestsDir, url) => {
   const files = walkSync(subsequentRequestsDir);
 
   await checkHref(files, url);
-  await checkSlug(files, url);
+  // await checkSlug(files, url);
 
   return toReturn;
 };
