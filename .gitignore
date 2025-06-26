@@ -139,3 +139,4 @@ extracted_urls.json
 .vscode
 .vscode/*
 output*
+mapped.json
