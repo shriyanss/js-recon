@@ -99,7 +99,16 @@ const getWebpackConnections = async (directory, output, formats) => {
                       /^\s*[\w\d]+:\s+function\s+/,
                       `function webpack_${keyValue} `
                     );
-                  chunks[keyValue] = { code: function_code, connections: [] };
+                  chunks[keyValue] = {
+                    id: keyValue,
+                    description: `Description for ${keyValue}`,
+                    loadedOn: [],
+                    containsFetch: false,
+                    exports: "string",
+                    callStack: [],
+                    code: function_code,
+                    connections: [],
+                  };
                 }
               }
             }
