@@ -108,6 +108,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     callStack: [],
                     code: function_code,
                     connections: [],
+                    file: file,
                   };
                 }
               }
@@ -159,13 +160,15 @@ const getWebpackConnections = async (directory, output, formats) => {
     });
   }
 
-  console.log(chalk.green("[✓] Completed searching webpack connections"));
+  console.log(chalk.green(`[✓] Found ${Object.keys(chunks).length} webpack functions`));
 
   if (formats.includes("json")) {
     const chunks_json = JSON.stringify(chunks, null, 2);
     fs.writeFileSync(`${output}.json`, chunks_json);
     console.log(chalk.green(`[✓] Saved webpack connections to ${output}.json`));
   }
+
+  return chunks;
 };
 
 export default getWebpackConnections;
