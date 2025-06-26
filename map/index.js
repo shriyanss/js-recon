@@ -2,6 +2,7 @@ import chalk from "chalk";
 
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
+import getFetchInstances from "./next_js/getFetchInstances.js";
 
 const availableTech = {
   next: "Next.JS",
@@ -47,7 +48,10 @@ const map = async (directory, output, formats, tech, list) => {
   }
 
   if (tech === "next") {
-    await getWebpackConnections(directory, output, formats);
+    let chunks = await getWebpackConnections(directory, output, formats);
+
+    // now, iterate through them, and check fetch instances
+    chunks = await getFetchInstances(chunks);
   }
 };
 
