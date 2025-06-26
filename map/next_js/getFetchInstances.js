@@ -58,6 +58,16 @@ const getFetchInstances = async (chunks) => {
           }
         }
       },
+      CallExpression(path) {
+        if (isFetchIdentifier(path.node.callee)) {
+          const { line, column } = path.node.callee.loc.start;
+          console.log(
+            chalk.magenta(
+              `[fetch] Webpack ID ${chunk.id}: fetch() called at ${line}:${column}`
+            )
+          );
+        }
+      },
     });
 
     // -------- Pass 2:  report the call-sites --------
