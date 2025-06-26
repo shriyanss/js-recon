@@ -151,7 +151,11 @@ const getWebpackConnections = async (directory, output, formats) => {
           // the id of the function
           const id = path.get("arguments.0");
           if (id) {
-            if (id.node.value !== undefined) {
+            if (
+              id.node.value !== undefined &&
+              String(id.node.value).match(/^\d+$/) &&
+              id.node.value !== ""
+            ) {
               chunks[key].connections.push(String(id.node.value));
             }
           }
@@ -160,7 +164,9 @@ const getWebpackConnections = async (directory, output, formats) => {
     });
   }
 
-  console.log(chalk.green(`[✓] Found ${Object.keys(chunks).length} webpack functions`));
+  console.log(
+    chalk.green(`[✓] Found ${Object.keys(chunks).length} webpack functions`)
+  );
 
   if (formats.includes("json")) {
     const chunks_json = JSON.stringify(chunks, null, 2);
