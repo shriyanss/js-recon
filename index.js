@@ -5,6 +5,7 @@ import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
 import apiGateway from "./api_gateway/index.js";
+import map from "./map/index.js";
 import * as globals from "./utility/globals.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
@@ -77,5 +78,17 @@ program
     globals.setUseApiGateway(true);
     await apiGateway(cmd.init, cmd.destroy, cmd.destroyAll, cmd.list, cmd.region, cmd.accessKey, cmd.secretKey, cmd.config, cmd.feasibility, cmd.feasibilityUrl);
 });
+
+program
+  .command("map")
+  .description("Map all the functions")
+  .option("-d, --directory <directory>", "Directory containing JS files")
+  .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
+  .option("-l, --list", "List available technologies", false)
+  .option("-o, --output <file>", "Output file name (without extension)", "mapped")
+  .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
+  .action(async (cmd) => {
+    await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list);
+  });
 
 program.parse(process.argv);
