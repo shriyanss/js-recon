@@ -141,7 +141,7 @@ const getWebpackConnections = async (directory, output, formats) => {
           // the id of the function
           const id = path.get("arguments.0");
           if (id) {
-            chunks[key].connections.push(id.node.value);
+            chunks[key].connections.push(String(id.node.value));
           }
         }
       },
