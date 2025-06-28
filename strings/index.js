@@ -2,11 +2,50 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import parser from "@babel/parser";
-import _traverse from "@babel/traverse";
 import prettier from "prettier";
 import secrets from "./secrets.js";
 
-const traverse = _traverse.default;
+/**
+ * Recursively extracts strings from a babel AST node.
+ * This is a deeper search than just StringLiterals.
+ * @param {object} node - The AST node to traverse.
+ * @returns {string[]} - An array of extracted strings.
+ */
+function extractStrings(node) {
+  const strings = new Set();
+  const seen = new WeakSet();
+
+  function recurse(currentNode) {
+    if (!currentNode || typeof currentNode !== 'object' || seen.has(currentNode)) {
+      return;
+    }
+    seen.add(currentNode);
+
+    if (Array.isArray(currentNode)) {
+      currentNode.forEach(item => recurse(item));
+      return;
+    }
+
+    if (currentNode.type === 'StringLiteral') {
+      strings.add(currentNode.value);
+    } else if (currentNode.type === 'TemplateLiteral') {
+      currentNode.quasis.forEach(q => {
+        if (q.value.cooked) {
+          strings.add(q.value.cooked);
+        }
+      });
+    }
+
+    Object.keys(currentNode).forEach(key => {
+      // Avoid traversing location properties and other non-node properties
+      if (['loc', 'start', 'end', 'extra', 'raw', 'comments', 'leadingComments', 'trailingComments', 'innerComments'].includes(key)) return;
+      recurse(currentNode[key]);
+    });
+  }
+
+  recurse(node);
+  return Array.from(strings);
+}
 
 /**
  * Extracts all string literals from all .js files in a given directory and its
@@ -57,6 +96,7 @@ const strings = async (
     if (file.includes("___subsequent_requests")) {
       // iterate through the file line by line
       const lines = fs.readFileSync(file, "utf-8").split("\n");
+      let strings = [];
       for (const line of lines) {
         // if the line matches with a particular regex, then extract the JS snippet
         if (line.match(/^[0-9a-z]+:\[.+/)) {
@@ -79,17 +119,11 @@ const strings = async (
             continue;
           }
 
-          let strings = [];
-
-          traverse(ast, {
-            StringLiteral(path) {
-              strings.push(path.node.value);
-            },
-          });
-
-          all_strings[file] = strings;
+          const extracted = extractStrings(ast);
+          strings.push(...extracted);
         }
       }
+      all_strings[file] = strings;
     } else {
       const fileContent = fs.readFileSync(file, "utf-8");
 
@@ -99,15 +133,7 @@ const strings = async (
         plugins: ["jsx", "typescript"],
       });
 
-      let strings = [];
-
-      traverse(ast, {
-        StringLiteral(path) {
-          strings.push(path.node.value);
-        },
-      });
-
-      all_strings[file] = strings;
+      all_strings[file] = extractStrings(ast);
     }
   }
 
