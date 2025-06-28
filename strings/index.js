@@ -19,7 +19,7 @@ const strings = async (
   output_file,
   extract_urls,
   extracted_url_path,
-  scan_secrets,
+  scan_secrets
 ) => {
   console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
@@ -38,7 +38,7 @@ const strings = async (
   let jsFiles = files.filter((file) => file.endsWith(".js"));
 
   // filter out subsequent requests files
-  jsFiles = jsFiles.filter((file) => !file.startsWith("___subsequent_requests"));
+  // jsFiles = jsFiles.filter((file) => !file.startsWith("___subsequent_requests"));
 
   // read all JS files
   let js_files_path = [];
@@ -54,23 +54,61 @@ const strings = async (
   // read all JS files
   let all_strings = {};
   for (const file of js_files_path) {
-    const fileContent = fs.readFileSync(file, "utf-8");
+    if (file.includes("___subsequent_requests")) {
+      // iterate through the file line by line
+      const lines = fs.readFileSync(file, "utf-8").split("\n");
+      for (const line of lines) {
+        // if the line matches with a particular regex, then extract the JS snippet
+        if (line.match(/^[0-9a-z]+:\[.+/)) {
+          // get the JS snippet
+          let jsCode;
+          try {
+            jsCode = `[${line.match(/\[(.+)\]/)[1]}]`;
+          } catch (err) {
+            continue;
+          }
 
-    // parse the file contents with babel
-    const ast = parser.parse(fileContent, {
-      sourceType: "unambiguous",
-      plugins: ["jsx", "typescript"],
-    });
+          // parse the JS snippet with babel
+          let ast;
+          try {
+            ast = parser.parse(jsCode, {
+              sourceType: "unambiguous",
+              plugins: ["jsx", "typescript"],
+            });
+          } catch (err) {
+            continue;
+          }
 
-    let strings = [];
+          let strings = [];
 
-    traverse(ast, {
-      StringLiteral(path) {
-        strings.push(path.node.value);
-      },
-    });
+          traverse(ast, {
+            StringLiteral(path) {
+              strings.push(path.node.value);
+            },
+          });
 
-    all_strings[file] = strings;
+          all_strings[file] = strings;
+        }
+      }
+    } else {
+      const fileContent = fs.readFileSync(file, "utf-8");
+
+      // parse the file contents with babel
+      const ast = parser.parse(fileContent, {
+        sourceType: "unambiguous",
+        plugins: ["jsx", "typescript"],
+      });
+
+      let strings = [];
+
+      traverse(ast, {
+        StringLiteral(path) {
+          strings.push(path.node.value);
+        },
+      });
+
+      all_strings[file] = strings;
+    }
   }
 
   let strings_count = 0;
@@ -128,7 +166,7 @@ const strings = async (
     paths = [...new Set(paths)];
 
     console.log(
-      chalk.cyan(`[i] Found ${urls.length} URLs and ${paths.length} paths`),
+      chalk.cyan(`[i] Found ${urls.length} URLs and ${paths.length} paths`)
     );
 
     // write to a JSON file
@@ -138,12 +176,12 @@ const strings = async (
         parser: "json",
         printWidth: 80,
         singleQuote: true,
-      },
+      }
     );
     fs.writeFileSync(extracted_url_path, formatted_urls);
 
     console.log(
-      chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}`),
+      chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}`)
     );
   }
 
