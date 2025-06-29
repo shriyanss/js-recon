@@ -98,6 +98,9 @@ const getWebpackConnections = async (directory, output, formats) => {
                     .replace(
                       /^\s*[\w\d]+:\s+function\s+/,
                       `function webpack_${keyValue} `
+                    ).replace(
+                      /^s*[\w\d]+:\s\(/,
+                      `func_${keyValue} = (`
                     );
                   chunks[keyValue] = {
                     id: keyValue,
@@ -121,10 +124,15 @@ const getWebpackConnections = async (directory, output, formats) => {
 
   // now, iterate through every chunk, and find the connections
   for (const [key, value] of Object.entries(chunks)) {
-    const ast = parser.parse(value.code, {
-      sourceType: "unambiguous",
-      plugins: ["jsx", "typescript"],
-    });
+    let ast;
+    try {
+      ast = parser.parse(value.code, {
+        sourceType: "unambiguous",
+        plugins: ["jsx", "typescript"],
+      });
+    } catch (err) {
+      continue;
+    }
 
     // if the function has three arguments, get the name of the third argument
     let thirdArgName;
