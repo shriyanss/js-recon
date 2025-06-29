@@ -3,6 +3,7 @@ import chalk from "chalk";
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
+import resolveFetch from "./next_js/resolveFetch.js";
 
 const availableTech = {
   next: "Next.JS",
@@ -52,6 +53,9 @@ const map = async (directory, output, formats, tech, list) => {
 
     // now, iterate through them, and check fetch instances
     chunks = await getFetchInstances(chunks, output, formats);
+
+    // resolve fetch once you've got all
+    await resolveFetch(chunks, output, formats);
   }
 };
 
