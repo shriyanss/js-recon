@@ -80,6 +80,15 @@ const resolveNodeValue = (node, scope) => {
       }
       return `[unresolved new expression]`;
     }
+    case "LogicalExpression": {
+        const left = resolveNodeValue(node.left, scope);
+        // If the left side resolves to a concrete value, use it.
+        if (left && !left.startsWith("[")) {
+          return left;
+        }
+        // Otherwise, fall back to the right side.
+        return resolveNodeValue(node.right, scope);
+      }
     default:
       return `[unsupported node type: ${node.type}]`;
   }
