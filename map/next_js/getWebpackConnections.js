@@ -104,7 +104,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     );
                   chunks[keyValue] = {
                     id: keyValue,
-                    description: `Description for ${keyValue}`,
+                    description: "none",
                     loadedOn: [],
                     containsFetch: false,
                     exports: "string",
