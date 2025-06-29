@@ -55,7 +55,7 @@ const map = async (directory, output, formats, tech, list) => {
     chunks = await getFetchInstances(chunks, output, formats);
 
     // resolve fetch once you've got all
-    await resolveFetch(chunks, output, formats);
+    await resolveFetch(chunks, directory, formats);
   }
 };
 
