@@ -1,6 +1,8 @@
 import chalk from "chalk";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import fs from "fs";
+import path from "path";
 const traverse = _traverse.default;
 
 const resolveNodeValue = (node, scope) => {
@@ -83,26 +85,42 @@ const resolveNodeValue = (node, scope) => {
   }
 };
 
-const resolveFetch = async (chunks, output, formats) => {
+const resolveFetch = async (chunks, directory, formats) => {
   console.log(chalk.cyan("[i] Resolving fetch instances"));
 
   for (const chunk of Object.values(chunks)) {
-    if (!chunk.containsFetch) continue;
+    if (!chunk.containsFetch || !chunk.file) {
+      continue;
+    }
 
-    let ast;
+    const filePath = path.join(directory, chunk.file);
+    let fileContent;
+
     try {
-      ast = parser.parse(chunk.code, {
+      fileContent = fs.readFileSync(filePath, "utf-8");
+    } catch (error) {
+      console.log(chalk.red(`[!] Could not read file: ${filePath}`));
+      continue;
+    }
+
+    let fileAst;
+    try {
+      fileAst = parser.parse(fileContent, {
         sourceType: "module",
         plugins: ["jsx", "typescript"],
+        errorRecovery: true,
       });
     } catch (err) {
+      console.log(
+        chalk.red(`[!] Failed to parse file: ${filePath}. Error: ${err.message}`)
+      );
       continue;
     }
 
     const fetchAliases = new Set();
 
-    // Pass 1: Find fetch aliases
-    traverse(ast, {
+    // Pass 1: Find fetch aliases on the full file AST
+    traverse(fileAst, {
       VariableDeclarator(path) {
         if (path.node.id.type === "Identifier" && path.node.init) {
           if (
@@ -116,8 +134,8 @@ const resolveFetch = async (chunks, output, formats) => {
       },
     });
 
-    // Pass 2: Find and resolve fetch calls
-    traverse(ast, {
+    // Pass 2: Find and resolve fetch calls on the full file AST
+    traverse(fileAst, {
       CallExpression(path) {
         let isFetchCall = false;
         const calleeName = path.node.callee.name;
@@ -125,7 +143,6 @@ const resolveFetch = async (chunks, output, formats) => {
         if (calleeName === "fetch") {
           isFetchCall = true;
         } else {
-          // Check if the callee is an alias
           const binding = path.scope.getBinding(calleeName);
           if (binding && fetchAliases.has(binding)) {
             isFetchCall = true;
@@ -135,7 +152,9 @@ const resolveFetch = async (chunks, output, formats) => {
         if (isFetchCall) {
           console.log(
             chalk.blue(
-              `[+] Found fetch call in chunk ${chunk.id} at ${path.node.loc.start.line}:${path.node.loc.start.column}`
+              `[+] Found fetch call in chunk ${chunk.id} (${chunk.file}) at L${
+                path.node.loc.start.line
+              }`
             )
           );
           const args = path.node.arguments;
@@ -146,7 +165,9 @@ const resolveFetch = async (chunks, output, formats) => {
             if (args.length > 1) {
               const options = resolveNodeValue(args[1], path.scope);
               if (typeof options === "object" && options !== null) {
-                console.log(chalk.green(`    Method: ${options.method || "GET"}`));
+                console.log(
+                  chalk.green(`    Method: ${options.method || "GET"}`)
+                );
                 if (options.headers)
                   console.log(
                     chalk.green(`    Headers: ${JSON.stringify(options.headers)}`)
