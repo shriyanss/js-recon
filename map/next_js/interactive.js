@@ -25,11 +25,8 @@ const interactive = async (chunks) => {
 
   // Create a screen
   screen = blessed.screen({
-    smartCSR: true,
+    smartCSR: false,
     fullUnicode: true,
-    cursor: {
-      hide: true,
-    },
   });
 
   // Create a box for output
