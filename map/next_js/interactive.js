@@ -102,8 +102,9 @@ const interactive = async (chunks) => {
       for (const [key, value] of Object.entries(helpMenu)) {
         outputBox.log(chalk.cyan(`- '${key}': ${value}`));
       }
+      lastCommandStatus = true;
     } else {
-      outputBox.log(chalk.red("Command not found"));
+      outputBox.log(chalk.red(text), "is not a valid command");
       lastCommandStatus = false;
     }
     inputBox.clearValue();
