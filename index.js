@@ -54,10 +54,11 @@ program
   .requiredOption("-d, --directory <directory>", "Directory containing JS files")
   .option("-o, --output <file>", "JSON file to save the strings", "strings.json")
   .option("-e, --extract-urls", "Extract URLs from strings", false)
-  .option("--extracted-url-path <file>", "Output JSON file for extracted URLs and paths", "extracted_urls.json")
+  .option("--extracted-url-path <file>", "Output file for extracted URLs and paths (without extension)", "extracted_urls")
+  .option("-p, --permutate", "Permutate URLs and paths found", false)
   .option("-s, --scan-secrets", "Scan for secrets", false)
   .action(async (cmd) => {
-    await strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets);
+    await strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets, cmd.permutate);
   });
 
 program

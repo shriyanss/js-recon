@@ -133,7 +133,7 @@ dist
 output
 output/*
 strings.json
-extracted_urls.json
+extracted_urls.*
 .api_gateway_config.json
 .resp_cache.json
 .vscode
