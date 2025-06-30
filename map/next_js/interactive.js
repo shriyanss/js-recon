@@ -177,7 +177,7 @@ const interactive = async (chunks) => {
           lastCommandStatus = true;
           functionNavHistory.push(funcId);
           functionNavHistoryIndex++;
-        } else if (funcName == "back") {
+        } else if (funcName === "back") {
           // check if the user has navigated to any function
           if (functionNavHistory.length > 0) {
             // check if this is the last checked function
@@ -197,7 +197,7 @@ const interactive = async (chunks) => {
             outputBox.log(chalk.red("No previous function found"));
             lastCommandStatus = false;
           }
-        } else if (funcName == "ahead") {
+        } else if (funcName === "ahead") {
           // check if the user has navigated to any function
           if (functionNavHistory.length > 0) {
             // check if this is the last checked function
