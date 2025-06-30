@@ -1,10 +1,11 @@
 import chalk from "chalk";
+import inquirer from "inquirer";
 
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
-import interactiveMode from "./next_js/interactive.js";
+import interactive from "./next_js/interactive.js";
 
 const availableTech = {
   next: "Next.JS",
@@ -66,7 +67,20 @@ const map = async (
     await resolveFetch(chunks, directory, formats);
 
     if (interactive_mode) {
-      await interactive(chunks);
+      // ask user for confirmation before entering interactive mode
+      const confirmation = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirmed",
+          message: "Confirm entering interactive mode?",
+          default: true,
+        },
+      ]);
+      if (confirmation.confirmed) {
+        await interactive(chunks);
+      } else {
+        console.log(chalk.red("[!] Interactive mode cancelled"));
+      }
     }
   }
 };
