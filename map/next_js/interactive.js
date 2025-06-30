@@ -4,6 +4,31 @@ import chalk from "chalk";
 const helpMenu = {
   help: "Show this help menu",
   exit: "Exit the interactive mode (or press escape twice)",
+  fetch: "Show list of chunks that contain fetch instances",
+  func: "Show function code",
+};
+
+const fetchMenu = (chunks) => {
+  let returnText = "";
+  for (const chunk of Object.values(chunks)) {
+    if (chunk.containsFetch) {
+      returnText += chalk.cyan(`- ${chunk.id}: ${chunk.file}\n`);
+    }
+  }
+  return returnText;
+};
+
+const getFunctionCode = (chunks, funcName) => {
+  let funcCode;
+  for (const chunk of Object.values(chunks)) {
+    if (chunk.id == funcName) {
+      funcCode = chunk.code;
+    }
+  }
+  if (!funcCode) {
+    return chalk.red(`Function ${funcName} not found`);
+  }
+  return funcCode;
 };
 
 const interactive = async (chunks) => {
@@ -103,6 +128,19 @@ const interactive = async (chunks) => {
         outputBox.log(chalk.cyan(`- '${key}': ${value}`));
       }
       lastCommandStatus = true;
+    } else if (text === "fetch") {
+      outputBox.log(fetchMenu(chunks));
+      lastCommandStatus = true;
+    } else if (text.startsWith("func")) {
+      if (text.split(" ").length !== 2) {
+        outputBox.log(chalk.magenta("Usage: func <function_name>"));
+        lastCommandStatus = false;
+      } else {
+        const funcName = text.split(" ")[1];
+        const funcCode = getFunctionCode(chunks, funcName);
+        outputBox.log(funcCode);
+        lastCommandStatus = true;
+      }
     } else {
       outputBox.log(chalk.red(text), "is not a valid command");
       lastCommandStatus = false;
