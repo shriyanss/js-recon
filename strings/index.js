@@ -5,6 +5,7 @@ import parser from "@babel/parser";
 import prettier from "prettier";
 import secrets from "./secrets.js";
 import permutate from "./permutate.js";
+import openapi from "./openapi.js";
 
 /**
  * Recursively extracts strings from a babel AST node.
@@ -17,29 +18,46 @@ function extractStrings(node) {
   const seen = new WeakSet();
 
   function recurse(currentNode) {
-    if (!currentNode || typeof currentNode !== 'object' || seen.has(currentNode)) {
+    if (
+      !currentNode ||
+      typeof currentNode !== "object" ||
+      seen.has(currentNode)
+    ) {
       return;
     }
     seen.add(currentNode);
 
     if (Array.isArray(currentNode)) {
-      currentNode.forEach(item => recurse(item));
+      currentNode.forEach((item) => recurse(item));
       return;
     }
 
-    if (currentNode.type === 'StringLiteral') {
+    if (currentNode.type === "StringLiteral") {
       strings.add(currentNode.value);
-    } else if (currentNode.type === 'TemplateLiteral') {
-      currentNode.quasis.forEach(q => {
+    } else if (currentNode.type === "TemplateLiteral") {
+      currentNode.quasis.forEach((q) => {
         if (q.value.cooked) {
           strings.add(q.value.cooked);
         }
       });
     }
 
-    Object.keys(currentNode).forEach(key => {
+    Object.keys(currentNode).forEach((key) => {
       // Avoid traversing location properties and other non-node properties
-      if (['loc', 'start', 'end', 'extra', 'raw', 'comments', 'leadingComments', 'trailingComments', 'innerComments'].includes(key)) return;
+      if (
+        [
+          "loc",
+          "start",
+          "end",
+          "extra",
+          "raw",
+          "comments",
+          "leadingComments",
+          "trailingComments",
+          "innerComments",
+        ].includes(key)
+      )
+        return;
       recurse(currentNode[key]);
     });
   }
@@ -60,7 +78,8 @@ const strings = async (
   extract_urls,
   extracted_url_path,
   scan_secrets,
-  permutate_option
+  permutate_option,
+  openapi_option
 ) => {
   console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
@@ -156,9 +175,14 @@ const strings = async (
 
   console.log(chalk.green(`[✓] Extracted strings to ${output_file}`));
 
-  // if -p is enabled, but not -e
-  if (permutate_option && !extract_urls) {
-    console.log(chalk.red("[!] Please enable -e flag to permutate URLs"));
+  // if -p is enabled, but not -e, or the same case with the --openapi flag
+  if (
+    (permutate_option && !extract_urls) ||
+    (openapi_option && !extract_urls)
+  ) {
+    console.log(
+      chalk.red("[!] Please enable -e flag for -p or --openapi flag")
+    );
     return;
   }
 
@@ -220,6 +244,10 @@ const strings = async (
 
     if (permutate_option) {
       await permutate(urls, paths, extracted_url_path);
+    }
+
+    if (openapi_option) {
+      await openapi(paths, extracted_url_path);
     }
   }
 

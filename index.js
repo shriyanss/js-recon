@@ -56,9 +56,10 @@ program
   .option("-e, --extract-urls", "Extract URLs from strings", false)
   .option("--extracted-url-path <file>", "Output file for extracted URLs and paths (without extension)", "extracted_urls")
   .option("-p, --permutate", "Permutate URLs and paths found", false)
+  .option("--openapi", "Generate OpenAPI specification from the paths found", false)
   .option("-s, --scan-secrets", "Scan for secrets", false)
   .action(async (cmd) => {
-    await strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets, cmd.permutate);
+    await strings(cmd.directory, cmd.output, cmd.extractUrls, cmd.extractedUrlPath, cmd.scanSecrets, cmd.permutate, cmd.openapi);
   });
 
 program
