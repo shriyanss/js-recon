@@ -1,110 +1,125 @@
+import blessed from "blessed";
 import chalk from "chalk";
-import blessed from 'blessed';
 
-const interactive = async () => {
+const helpMenu = {
+  help: "Show this help menu",
+  exit: "Exit the interactive mode (or press escape twice)",
+};
+
+const interactive = async (chunks) => {
+  // store whether the last command was successful or not
+  let lastCommandStatus = true;
+
   // Create a screen object.
   const screen = blessed.screen({
     smartCSR: true,
-    title: 'js-recon interactive mode',
+    title: "JS Recon Interactive Mode",
     fullUnicode: true,
   });
 
+  // Title Box
   const titleBox = blessed.box({
     parent: screen,
     top: 0,
-    left: 'center',
-    width: '80%',
+    left: "center",
+    width: "98%",
     height: 3,
-    content: 'JS Recon Interactive Mode',
+    content: "JS Recon Interactive Mode",
     border: {
-      type: 'line',
+      type: "line",
     },
     style: {
-      fg: 'white',
+      fg: "white",
       border: {
-        fg: 'gray',
+        fg: "gray",
       },
     },
   });
 
-  const inputBox = blessed.textbox({
+  // Output Box
+  const outputBox = blessed.log({
     parent: screen,
-    bottom: 1,
-    left: 'center',
-    width: '80%',
-    height: 3,
+    top: 3,
+    left: "center",
+    width: "98%",
+    bottom: 3,
     border: {
-      type: 'line',
+      type: "line",
     },
     style: {
-      fg: 'white',
-      bg: 'black',
+      fg: "white",
       border: {
-        fg: 'gray',
+        fg: "gray",
+      },
+    },
+    scrollable: true,
+    alwaysScroll: true,
+    scrollbar: {
+      ch: " ",
+      inverse: true,
+    },
+    keys: true,
+    vi: true,
+    mouse: true,
+  });
+
+  // Input Box
+  const inputBox = blessed.textbox({
+    parent: screen,
+    bottom: 0,
+    left: "center",
+    width: "98%",
+    height: 3,
+    border: {
+      type: "line",
+    },
+    style: {
+      fg: "white",
+      bg: "black",
+      border: {
+        fg: "gray",
       },
       focus: {
         border: {
-          fg: 'blue',
+          fg: "blue",
         },
       },
     },
     inputOnFocus: true,
   });
 
-  const helpBox = blessed.box({
-      parent: screen,
-      bottom: 4,
-      left: 'center',
-      width: '80%',
-      height: 4,
-      content: ' /history Open command history\n /help Show list of commands\n /exit Exit interactive mode',
-      style: {
-          fg: 'white',
-          bg: '#4A4A4A'
-      },
-      hidden: true,
-  });
+  // Handle input submission
+  inputBox.on("submit", (text) => {
+    if (lastCommandStatus) {
+      outputBox.log(`${chalk.bgGreenBright("%")} ${text}`);
+    } else {
+      outputBox.log(`${chalk.bgRed("%")} ${text}`);
+    }
 
-  const footer = blessed.box({
-    parent: screen,
-    bottom: 0,
-    left: 'center',
-    width: '80%',
-    height: 1,
-    content: 'ctrl+c to exit | "/" to see commands | enter to send - 100% context left',
-    style: {
-      fg: 'gray',
-    },
-  });
-
-  inputBox.on('keypress', (ch, key) => {
-      const text = inputBox.getValue();
-      if (text.startsWith('/')) {
-          helpBox.show();
-      } else {
-          helpBox.hide();
+    if (text === "exit") {
+      return process.exit(0);
+    } else if (text === "help") {
+      for (const [key, value] of Object.entries(helpMenu)) {
+        outputBox.log(chalk.cyan(`- '${key}': ${value}`));
       }
-      if (key.name === 'backspace' && text.length <= 1) {
-          helpBox.hide();
-      }
-      screen.render();
-  });
-
-  inputBox.focus();
-
-  inputBox.on('submit', (text) => {
-    if (text === 'exit' || text === '/exit') {
-      return;
+    } else {
+      outputBox.log(chalk.red("Command not found"));
+      lastCommandStatus = false;
     }
     inputBox.clearValue();
     inputBox.focus();
     screen.render();
   });
 
-  screen.key(['escape', 'q', 'C-c'], (ch, key) => {
-    return;
+  // Focus the input box
+  inputBox.focus();
+
+  // Quit on Escape
+  screen.key(["escape"], () => {
+    return process.exit(0);
   });
 
+  // Initial render
   screen.render();
 };
 

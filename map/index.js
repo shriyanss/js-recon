@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import inquirer from "inquirer";
 
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
@@ -58,16 +57,16 @@ const map = async (
   }
 
   if (tech === "next") {
+    let chunks = await getWebpackConnections(directory, output, formats);
+
+    // now, iterate through them, and check fetch instances
+    chunks = await getFetchInstances(chunks, output, formats);
+
+    // resolve fetch once you've got all
+    await resolveFetch(chunks, directory, formats);
+
     if (interactive_mode) {
-      await interactive();
-    } else {
-      let chunks = await getWebpackConnections(directory, output, formats);
-
-      // now, iterate through them, and check fetch instances
-      chunks = await getFetchInstances(chunks, output, formats);
-
-      // resolve fetch once you've got all
-      await resolveFetch(chunks, directory, formats);
+      await interactive(chunks);
     }
   }
 };
