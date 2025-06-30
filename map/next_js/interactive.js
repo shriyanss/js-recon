@@ -9,10 +9,10 @@ const helpMenu = {
 };
 
 const fetchMenu = (chunks) => {
-  let returnText = "";
+  let returnText = chalk.cyan("List of chunks that contain fetch instances\n");
   for (const chunk of Object.values(chunks)) {
     if (chunk.containsFetch) {
-      returnText += chalk.cyan(`- ${chunk.id}: ${chunk.file}\n`);
+      returnText += chalk.green(`- ${chunk.id}: ${chunk.file}\n`);
     }
   }
   return returnText;
@@ -86,6 +86,7 @@ const interactive = async (chunks) => {
     keys: true,
     vi: true,
     mouse: true,
+    scrollSpeed: 0.5,
   });
 
   // Input Box
@@ -141,6 +142,9 @@ const interactive = async (chunks) => {
         outputBox.log(funcCode);
         lastCommandStatus = true;
       }
+    } else if (text === "clear") {
+      outputBox.setText("");
+      lastCommandStatus = true;
     } else {
       outputBox.log(chalk.red(text), "is not a valid command");
       lastCommandStatus = false;
