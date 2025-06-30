@@ -1,83 +1,108 @@
 import chalk from "chalk";
-import blessed from "blessed";
+import blessed from 'blessed';
 
-let screen;
-let output;
-let input;
-
-const log = {
-  command: (text) => {
-    output.pushLine(`${chalk.gray("> ")}${chalk.cyanBright(text)}`);
-    screen.render();
-  },
-  info: (text) => {
-    output.pushLine(`${chalk.gray("i ")}${chalk.blue(text)}`);
-    screen.render();
-  },
-  error: (text) => {
-    output.pushLine(`${chalk.red("! ")}${chalk.red(text)}`);
-    screen.render();
-  },
-};
-
-const interactive = async (chunks) => {
-  console.log(chalk.cyan("[i] Entering 'interactive' module"));
-
-  // Create a screen
-  screen = blessed.screen({
-    smartCSR: false,
+const interactive = async () => {
+  // Create a screen object.
+  const screen = blessed.screen({
+    smartCSR: true,
+    title: 'js-recon interactive mode',
     fullUnicode: true,
   });
 
-  // Create a box for output
-  output = blessed.box({
+  const titleBox = blessed.box({
+    parent: screen,
     top: 0,
-    left: "center",
-    width: "100%",
-    height: "90%",
-    tags: true,
-    scrollable: true,
-    alwaysScroll: true,
-    border: { type: "line" },
-  });
-
-  // Create input
-  input = blessed.textbox({
-    bottom: 0,
+    left: 'center',
+    width: '80%',
     height: 3,
-    width: "100%",
-    inputOnFocus: true,
-    border: { type: "line" },
+    content: 'JS Recon Interactive Mode',
+    border: {
+      type: 'line',
+    },
     style: {
-      fg: "white",
-      bg: "black",
-      focus: { bg: "blue" },
+      fg: 'white',
+      border: {
+        fg: 'gray',
+      },
     },
   });
 
-  screen.append(output);
-  screen.append(input);
-  input.focus();
+  const inputBox = blessed.textbox({
+    parent: screen,
+    bottom: 1,
+    left: 'center',
+    width: '80%',
+    height: 3,
+    border: {
+      type: 'line',
+    },
+    style: {
+      fg: 'white',
+      bg: 'black',
+      border: {
+        fg: 'gray',
+      },
+      focus: {
+        border: {
+          fg: 'blue',
+        },
+      },
+    },
+    inputOnFocus: true,
+  });
 
-  input.on("submit", (value) => {
-    log.command(value);
-    if (value === "clear") {
-      output.setContent("");
-    } else if (value === "analyze") {
-      log.info("Running analysis...");
-      // hook your tool here
-    } else if (value === "exit") {
-      return screen.destroy();
-    } else {
-      log.error("Invalid command");
+  const helpBox = blessed.box({
+      parent: screen,
+      bottom: 4,
+      left: 'center',
+      width: '80%',
+      height: 4,
+      content: ' /history Open command history\n /help Show list of commands\n /exit Exit interactive mode',
+      style: {
+          fg: 'white',
+          bg: '#4A4A4A'
+      },
+      hidden: true,
+  });
+
+  const footer = blessed.box({
+    parent: screen,
+    bottom: 0,
+    left: 'center',
+    width: '80%',
+    height: 1,
+    content: 'ctrl+c to exit | "/" to see commands | enter to send - 100% context left',
+    style: {
+      fg: 'gray',
+    },
+  });
+
+  inputBox.on('keypress', (ch, key) => {
+      const text = inputBox.getValue();
+      if (text.startsWith('/')) {
+          helpBox.show();
+      } else {
+          helpBox.hide();
+      }
+      if (key.name === 'backspace' && text.length <= 1) {
+          helpBox.hide();
+      }
+      screen.render();
+  });
+
+  inputBox.focus();
+
+  inputBox.on('submit', (text) => {
+    if (text === 'exit' || text === '/exit') {
+      return;
     }
-    input.clearValue();
-    input.focus();
+    inputBox.clearValue();
+    inputBox.focus();
     screen.render();
   });
 
-  screen.key(["escape"], (ch, key) => {
-    return screen.destroy();
+  screen.key(['escape', 'q', 'C-c'], (ch, key) => {
+    return;
   });
 
   screen.render();
