@@ -4,6 +4,7 @@ import path from "path";
 import parser from "@babel/parser";
 import prettier from "prettier";
 import secrets from "./secrets.js";
+import permutate from "./permutate.js";
 
 /**
  * Recursively extracts strings from a babel AST node.
@@ -58,7 +59,8 @@ const strings = async (
   output_file,
   extract_urls,
   extracted_url_path,
-  scan_secrets
+  scan_secrets,
+  permutate_option
 ) => {
   console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
@@ -154,6 +156,12 @@ const strings = async (
 
   console.log(chalk.green(`[✓] Extracted strings to ${output_file}`));
 
+  // if -p is enabled, but not -e
+  if (permutate_option && !extract_urls) {
+    console.log(chalk.red("[!] Please enable -e flag to permutate URLs"));
+    return;
+  }
+
   // if the -e flag is enabled, extract the URLs also
   if (extract_urls) {
     console.log(chalk.cyan("[i] Extracting URLs and paths from strings"));
@@ -204,11 +212,15 @@ const strings = async (
         singleQuote: true,
       }
     );
-    fs.writeFileSync(extracted_url_path, formatted_urls);
+    fs.writeFileSync(`${extracted_url_path}.json`, formatted_urls);
 
     console.log(
-      chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}`)
+      chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}.json`)
     );
+
+    if (permutate_option) {
+      await permutate(urls, paths, extracted_url_path);
+    }
   }
 
   if (scan_secrets) {
