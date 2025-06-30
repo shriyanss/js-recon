@@ -89,8 +89,9 @@ program
   .option("-l, --list", "List available technologies", false)
   .option("-o, --output <file>", "Output file name (without extension)", "mapped")
   .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
+  .option("-i, --interactive", "Interactive mode", false)
   .action(async (cmd) => {
-    await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list);
+    await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
   });
 
 program.parse(process.argv);

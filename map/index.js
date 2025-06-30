@@ -4,6 +4,7 @@ import chalk from "chalk";
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
+import interactiveMode from "./next_js/interactive.js";
 
 const availableTech = {
   next: "Next.JS",
@@ -13,7 +14,14 @@ const availableFormats = {
   json: "JSON",
 };
 
-const map = async (directory, output, formats, tech, list) => {
+const map = async (
+  directory,
+  output,
+  formats,
+  tech,
+  list,
+  interactive_mode
+) => {
   console.log(chalk.cyan("[i] Running 'map' module"));
 
   if (list) {
@@ -56,6 +64,10 @@ const map = async (directory, output, formats, tech, list) => {
 
     // resolve fetch once you've got all
     await resolveFetch(chunks, directory, formats);
+
+    if (interactive_mode) {
+      await interactive(chunks);
+    }
   }
 };
 
