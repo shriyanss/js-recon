@@ -81,14 +81,36 @@ const resolveNodeValue = (node, scope) => {
       return `[unresolved new expression]`;
     }
     case "LogicalExpression": {
-        const left = resolveNodeValue(node.left, scope);
-        // If the left side resolves to a concrete value, use it.
-        if (left && !left.startsWith("[")) {
-          return left;
-        }
-        // Otherwise, fall back to the right side.
-        return resolveNodeValue(node.right, scope);
+      const left = resolveNodeValue(node.left, scope);
+      if (left && !String(left).startsWith("[")) {
+        return left;
       }
+      return resolveNodeValue(node.right, scope);
+    }
+    case "ConditionalExpression": {
+      const consequent = resolveNodeValue(node.consequent, scope);
+      if (consequent && !String(consequent).startsWith("[")) {
+        return consequent;
+      }
+      return resolveNodeValue(node.alternate, scope);
+    }
+    case "BinaryExpression": {
+      const left = resolveNodeValue(node.left, scope);
+      const right = resolveNodeValue(node.right, scope);
+      if (
+        left !== null &&
+        right !== null &&
+        !String(left).startsWith("[") &&
+        !String(right).startsWith("[")
+      ) {
+        // eslint-disable-next-line default-case
+        switch (node.operator) {
+          case "+":
+            return left + right;
+        }
+      }
+      return `[unresolved binary expression: ${node.operator}]`;
+    }
     default:
       return `[unsupported node type: ${node.type}]`;
   }
