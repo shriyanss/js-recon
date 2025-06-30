@@ -25,6 +25,15 @@ const permutate = async (urls, paths, output) => {
     }
   }
 
+  // append all the urls also
+  permutedUrls.push(...urls);
+
+  // get the origin aka baseurl, and push those also
+  permutedUrls.push(...urls.map((url) => new URL(url).origin));
+
+  // deduplicate
+  permutedUrls = [...new Set(permutedUrls)];
+
   // write to a .txt file
   const results = permutedUrls.join("\n");
   fs.writeFileSync(`${output}.txt`, results);
