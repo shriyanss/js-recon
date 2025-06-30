@@ -58,29 +58,16 @@ const map = async (
   }
 
   if (tech === "next") {
-    let chunks = await getWebpackConnections(directory, output, formats);
-
-    // now, iterate through them, and check fetch instances
-    chunks = await getFetchInstances(chunks, output, formats);
-
-    // resolve fetch once you've got all
-    await resolveFetch(chunks, directory, formats);
-
     if (interactive_mode) {
-      // ask user for confirmation before entering interactive mode
-      const confirmation = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "confirmed",
-          message: "Confirm entering interactive mode?",
-          default: true,
-        },
-      ]);
-      if (confirmation.confirmed) {
-        await interactive(chunks);
-      } else {
-        console.log(chalk.red("[!] Interactive mode cancelled"));
-      }
+      await interactive();
+    } else {
+      let chunks = await getWebpackConnections(directory, output, formats);
+
+      // now, iterate through them, and check fetch instances
+      chunks = await getFetchInstances(chunks, output, formats);
+
+      // resolve fetch once you've got all
+      await resolveFetch(chunks, directory, formats);
     }
   }
 };
