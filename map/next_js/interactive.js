@@ -202,7 +202,7 @@ const interactive = async (chunks) => {
         }
       }
     } else if (text.startsWith("go")) {
-      const usage = "Usage: go <options>\ngo to <functionID>";
+      const usage = "Usage: go <options>\ngo to <functionID>\ngo back: Go back to the previous function\ngo ahead: Go to the next function";
       if (text.split(" ").length < 2) {
         outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
@@ -311,9 +311,12 @@ const interactive = async (chunks) => {
     screen.render();
   });
 
-  // Quit on ctl-c
+  // Clear input box on ctl-c
   inputBox.key(["C-c"], () => {
-    return process.exit(0);
+    outputBox.log(chalk.yellow("^C (Use Esc then C-c to exit)"));
+    inputBox.focus();
+    lastCommandStatus = false;
+    screen.render();
   });
 
   // on pressing 's' on screen, focus on output box, and thicken the border
