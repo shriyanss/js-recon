@@ -7,9 +7,11 @@ import { highlight } from "cli-highlight";
 const helpMenu = {
   help: "Show this help menu",
   exit: "Exit the interactive mode (or press escape twice)",
-  list: "Show list of chunks",
-  go: "Go to a specific function",
-  set: "Set options",
+  clear: "Clear the output box",
+  list: "Usage: list <option>\n  fetch: List functions that contain fetch instances\n  all:   List all functions\n  nav:   List navigation history",
+  go: "Usage: go <option>\n  to <functionID>: Go to a specific function\n  back:          Go back to the previous function\n  ahead:         Go to the next function",
+  set: "Usage: set <option> <value>\n  funcwritefile <filename>: Set file to write function code to",
+  trace: "Usage: trace <functionName>\n  Traces imports for a function",
 };
 
 const commandHelpers = {
@@ -203,13 +205,15 @@ const interactive = async (chunks) => {
     } else if (text === "exit") {
       return process.exit(0);
     } else if (text === "help") {
+      let helpText = chalk.cyan("Available commands:\n");
       for (const [key, value] of Object.entries(helpMenu)) {
-        outputBox.log(chalk.cyan(`- '${key}': ${value}`));
+        helpText += chalk.green(`\n${key}:\n`);
+        helpText += `  ${value.replace(/\n/g, "\n  ")}\n`;
       }
+      outputBox.log(helpText);
       lastCommandStatus = true;
     } else if (text.startsWith("list")) {
-      const usage =
-        "Usage: list <options>\nlist fetch: List functions that contain fetch instances\nlist all: List all functions";
+      const usage = helpMenu.list;
       if (text.split(" ").length < 2) {
         outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
@@ -234,8 +238,7 @@ const interactive = async (chunks) => {
         }
       }
     } else if (text.startsWith("go")) {
-      const usage =
-        "Usage: go <options>\ngo to <functionID>\ngo back: Go back to the previous function\ngo ahead: Go to the next function";
+      const usage = helpMenu.go;
       if (text.split(" ").length < 2) {
         outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
@@ -301,9 +304,7 @@ const interactive = async (chunks) => {
       lastCommandStatus = true;
     } else if (text.startsWith("set")) {
       if (text.split(" ").length < 3) {
-        outputBox.log(
-          chalk.magenta("Usage: set <options>\nset funcwritefile <filename>")
-        );
+        outputBox.log(chalk.magenta(helpMenu.set));
         lastCommandStatus = false;
       } else {
         const option = text.split(" ")[1];
@@ -320,7 +321,7 @@ const interactive = async (chunks) => {
         }
       }
     } else if (text.startsWith("trace")) {
-      const usage = "Usage: trace <options>\ntrace <functionName>";
+      const usage = helpMenu.trace;
       if (text.split(" ").length < 2) {
         outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
