@@ -330,14 +330,27 @@ const interactive = async (chunks) => {
       if (commandHistoryIndex > 0) {
         commandHistoryIndex--;
         inputBox.setValue(commandHistory[commandHistoryIndex]);
+      } else {
+        // blink the border with red once
+        inputBox.style.border.fg = "red";
+        setTimeout(() => {
+          inputBox.style.border.fg = "blue";
+          screen.render();
+        }, 100);
       }
     } else if (key.name === "down") {
       if (commandHistoryIndex < commandHistory.length - 1) {
         commandHistoryIndex++;
         inputBox.setValue(commandHistory[commandHistoryIndex]);
       } else {
+        // blink the border with red once
+        inputBox.style.border.fg = "red";
         commandHistoryIndex = commandHistory.length;
         inputBox.setValue("");
+        setTimeout(() => {
+          inputBox.style.border.fg = "blue";
+          screen.render();
+        }, 100);
       }
     }
     screen.render();
