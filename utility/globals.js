@@ -16,3 +16,14 @@ export const getRespCacheFile = () => { return respCacheFile; };
 export let yes = false;
 export const setYes = (value) => { yes = value; };
 export const getYes = () => { return yes; };
+
+// map
+export let ai = undefined;
+export let openaiApiKey = undefined;
+export let aiModel = "gpt-4o-mini";
+export const setAi = (value) => { ai = value; };
+export const setOpenaiApiKey = (value) => { openaiApiKey = value; };
+export const getAi = () => { return ai; };
+export const getOpenaiApiKey = () => { return openaiApiKey; };
+export const getAiModel = () => { return aiModel; };
+export const setAiModel = (value) => { aiModel = value; };
