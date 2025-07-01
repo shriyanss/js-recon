@@ -2,7 +2,7 @@ import chalk from "chalk";
 
 function setupKeybindings(screen, inputBox, outputBox, state) {
   // Quit on ctl-c
-  screen.key(["C-c"], () => {
+  screen.key(["C-c", "q"], () => {
     return process.exit(0);
   });
 
