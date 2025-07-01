@@ -70,6 +70,7 @@ const commandHelpers = {
       if (chunk.imports.length === 0) {
         returnText += chalk.yellow("- No imports");
       } else {
+        returnText += chalk.greenBright("Imports:\n");
         for (const importName of chunk.imports) {
           const funcDesc = chunks[importName].description;
           returnText += chalk.green(`- ${importName}: ${funcDesc}\n`);
