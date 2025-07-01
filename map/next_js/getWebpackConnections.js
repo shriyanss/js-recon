@@ -12,6 +12,8 @@ const getWebpackConnections = async (directory, output, formats) => {
   // if openai is enabled, then create a client
   let openaiClient;
   if (globals.getAi() != []) {
+    // print a warning message about costs that might incur
+    console.log(chalk.yellow("[!] OpenAI integration is enabled. This may incur costs. By using this feature, you agree to the OpenAI terms of service, and accept the risk of incurring unexpected costs due to huge codebase."));
     const apiKey =
       globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY || undefined;
     if (!apiKey) {
