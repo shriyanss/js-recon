@@ -141,6 +141,7 @@ const getWebpackConnections = async (directory, output, formats) => {
   }
 
   // now, iterate through every chunk, and find the connections
+  console.log(chalk.cyan("[i] Finding connections for chunks"));
   for (const [key, value] of Object.entries(chunks)) {
     let ast;
     try {
@@ -192,8 +193,10 @@ const getWebpackConnections = async (directory, output, formats) => {
 
   // if description is enabled, add them
   if (globals.getAi() && globals.getAi().includes("description")) {
-    for (const [key, value] of Object.entries(chunks)) {
-      const desc = await openaiClient.responses.create({
+    console.log(chalk.cyan("[i] Generating descriptions for chunks"));
+    const chunkEntries = Object.entries(chunks);
+    const descriptionPromises = chunkEntries.map(([_, value]) =>
+      openaiClient.responses.create({
         model: globals.getAiModel(),
         input: [
           {
@@ -208,10 +211,18 @@ const getWebpackConnections = async (directory, output, formats) => {
         ],
         temperature: 0.1,
         max_output_tokens: 1000,
-      });
+      })
+    );
+
+    const descriptions = await Promise.all(descriptionPromises);
+
+    descriptions.forEach((desc, index) => {
+      const [key] = chunkEntries[index];
       chunks[key].description = desc.output[0].content[0].text;
-      console.log(chalk.green(`[✓] Generated description for ${key}: ${chunks[key].description}`));
-    }
+      console.log(
+        chalk.green(`[✓] Generated description for ${key}: ${chunks[key].description}`)
+      );
+    });
   }
 
   console.log(
