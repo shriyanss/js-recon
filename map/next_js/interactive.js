@@ -54,6 +54,8 @@ const interactive = async (chunks) => {
   let functionNavHistory = [];
   let functionNavHistoryIndex = -1;
   let funcWriteFile = undefined;
+  let commandHistory = [];
+  let commandHistoryIndex = -1;
 
   // Create a screen object.
   const screen = blessed.screen({
@@ -145,6 +147,7 @@ const interactive = async (chunks) => {
   // Handle input submission
   inputBox.on("submit", (text) => {
     commandHistory.push(text);
+    commandHistoryIndex = commandHistory.length - 1;
     if (lastCommandStatus) {
       outputBox.log(`${chalk.bgGreenBright("%")} ${text}`);
     } else {
@@ -311,6 +314,22 @@ const interactive = async (chunks) => {
   // on pressing arrow keys on output box, scroll the output
   outputBox.key(["up", "down"], (ch, key) => {
     outputBox.scroll(key.name === "up" ? -1 : 1);
+    screen.render();
+  });
+
+  // on pressing arrow keys on input box, navigate through command history
+  inputBox.key(["up", "down"], (ch, key) => {
+    if (key.name === "up") {
+      if (commandHistoryIndex >= 0) {
+        commandHistoryIndex--;
+        inputBox.setValue(commandHistory[commandHistoryIndex]);
+      }
+    } else if (key.name === "down") {
+      if (commandHistoryIndex <= commandHistory.length - 1) {
+        commandHistoryIndex++;
+        inputBox.setValue(commandHistory[commandHistoryIndex]);
+      }
+    }
     screen.render();
   });
 
