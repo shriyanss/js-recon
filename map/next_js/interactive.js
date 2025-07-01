@@ -160,16 +160,17 @@ const interactive = async (chunks) => {
       }
       lastCommandStatus = true;
     } else if (text.startsWith("list")) {
+      const usage = "Usage: list <options>\nlist fetch: List functions that contain fetch instances\nlist all: List all functions";
       if (text.split(" ").length < 2) {
-        outputBox.log(
-          chalk.magenta(
-            "Usage: list <options>\nlist fetch: List functions that contain fetch instances\nlist all: List all functions"
-          )
-        );
+        outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
       } else {
         const option = text.split(" ")[1];
-        if (option === "fetch") {
+
+        if (option === "") {
+          outputBox.log(chalk.magenta(usage));
+          lastCommandStatus = false;
+        } else if (option === "fetch") {
           outputBox.log(commandHelpers.fetchMenu(chunks));
           lastCommandStatus = true;
         } else if (option === "all") {
@@ -181,12 +182,16 @@ const interactive = async (chunks) => {
         }
       }
     } else if (text.startsWith("go")) {
+      const usage = "Usage: go <options>\ngo to <functionID>";
       if (text.split(" ").length < 2) {
-        outputBox.log(chalk.magenta("Usage: go <options>\ngo to <functionID>"));
+        outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
       } else {
         const funcName = text.split(" ")[1];
-        if (funcName === "to") {
+        if (funcName === "") {
+          outputBox.log(chalk.magenta(usage));
+          lastCommandStatus = false;
+        } else if (funcName === "to") {
           const funcId = text.split(" ")[2];
           const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
           printFunction(funcCode, chunks[funcId].description);
