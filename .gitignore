@@ -141,3 +141,4 @@ extracted_urls*
 output*
 mapped.json
 endpoints.*
+test.js
