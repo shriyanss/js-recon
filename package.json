@@ -20,6 +20,7 @@
     "blessed": "^0.1.81",
     "chalk": "^5.4.1",
     "cheerio": "^1.0.0",
+    "cli-highlight": "^2.1.11",
     "commander": "^14.0.0",
     "fs": "^0.0.1-security",
     "inquirer": "^12.6.3",

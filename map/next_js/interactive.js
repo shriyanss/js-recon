@@ -2,6 +2,7 @@ import blessed from "blessed";
 import chalk from "chalk";
 import fs from "fs";
 import path from "path";
+import { highlight } from "cli-highlight";
 
 const helpMenu = {
   help: "Show this help menu",
@@ -137,10 +138,17 @@ const interactive = async (chunks) => {
   });
 
   const printFunction = (funcCode, funcDesc) => {
-    const printText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
-    outputBox.setText(printText);
+    const rawText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
+    const highlighted = highlight(rawText, {
+      language: "javascript",
+      ignoreIllegals: true,
+      theme: undefined, // This makes cli-highlight use ANSI colors
+    });
+
+    outputBox.setContent(highlighted); // << use setContent instead of setText
+
     if (funcWriteFile) {
-      fs.writeFileSync(funcWriteFile, printText);
+      fs.writeFileSync(funcWriteFile, rawText); // Save raw (non-colored) version to file
     }
   };
 
@@ -290,7 +298,7 @@ const interactive = async (chunks) => {
   inputBox.focus();
 
   // Quit on Escape
-  screen.key(["escape"], () => {
+  screen.key(["escape", "C-c"], () => {
     return process.exit(0);
   });
 
@@ -300,6 +308,10 @@ const interactive = async (chunks) => {
     outputBox.style.border.fg = "blue";
     inputBox.style.border.fg = "gray";
     screen.render();
+  });
+
+  inputBox.key(["C-c"], () => {
+    return process.exit(0);
   });
 
   // on pressing 's' on screen, focus on output box, and thicken the border
