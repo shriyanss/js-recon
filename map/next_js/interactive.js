@@ -137,6 +137,7 @@ const interactive = async (chunks) => {
     inputOnFocus: true,
   });
 
+  // Function to print function code with syntax highlighting
   const printFunction = (funcCode, funcDesc) => {
     const rawText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
     const highlighted = highlight(rawText, {
@@ -297,8 +298,8 @@ const interactive = async (chunks) => {
   // Focus the input box
   inputBox.focus();
 
-  // Quit on Escape
-  screen.key(["escape", "C-c"], () => {
+  // Quit on ctl-c
+  screen.key(["C-c"], () => {
     return process.exit(0);
   });
 
@@ -310,6 +311,7 @@ const interactive = async (chunks) => {
     screen.render();
   });
 
+  // Quit on ctl-c
   inputBox.key(["C-c"], () => {
     return process.exit(0);
   });
