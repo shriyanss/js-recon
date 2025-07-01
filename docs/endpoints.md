@@ -14,8 +14,8 @@ js-recon endpoints [options]
 | --- | --- | --- | --- | --- |
 | `--url <url>` | `-u` | Target Base URL (will be used to resolve relative paths). | | Yes |
 | `--directory <directory>` | `-d` | Directory containing JS files. | | Yes |
-| `--output <filename>` | `-o` | Output filename (without file extension). | `endpoints` | Yes |
-| `--output-format <format>` | | Output format for the results (comma-separated; available: `md`, `json`). | `md` | No |
+| `--output <filename>` | `-o` | Output filename (without file extension). | `endpoints` | No |
+| `--output-format <format>` | | Output format for the results (comma-separated; available: `md`). | `md` | No |
 | `--tech <tech>` | `-t` | Technology used in the JS files (run with `-l`/`--list` to see available options). | | Yes |
 | `--list` | `-l` | List available technologies. | `false` | No |
 | `--subsequent-requests-dir <directory>` | | Directory containing subsequent requests. **Required for Next.JS (`--tech next`)**. | | No |
