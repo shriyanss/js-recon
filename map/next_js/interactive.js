@@ -47,6 +47,35 @@ const commandHelpers = {
     }
     return returnText;
   },
+  navHistory: (chunks, navList) => {
+    let returnText = chalk.cyan("Navigation history\n");
+    if (navList.length === 0) {
+      returnText += chalk.yellow("- No navigation history");
+    } else {
+      for (const id of navList) {
+        returnText += chalk.green(`- ${id}: ${chunks[id].description}\n`);
+      }
+    }
+    return returnText;
+  },
+  traceFunction: (chunks, funcName) => {
+    let returnText = chalk.cyan(`Tracing function ${funcName}\n`);
+    const chunk = chunks[funcName];
+    if (!chunk) {
+      returnText += chalk.red(`Function ${funcName} not found`);
+    } else {
+      // get imports
+      if (chunk.imports.length === 0) {
+        returnText += chalk.yellow("- No imports");
+      } else {
+        for (const importName of chunk.imports) {
+          const funcDesc = chunks[importName].description;
+          returnText += chalk.green(`- ${importName}: ${funcDesc}\n`);
+        }
+      }
+    }
+    return returnText;
+  },
 };
 
 const interactive = async (chunks) => {
@@ -196,13 +225,17 @@ const interactive = async (chunks) => {
         } else if (option === "all") {
           outputBox.log(commandHelpers.listAllFunctions(chunks));
           lastCommandStatus = true;
+        } else if (option === "nav") {
+          outputBox.log(commandHelpers.navHistory(chunks, functionNavHistory));
+          lastCommandStatus = true;
         } else {
           outputBox.log(chalk.red(option), "is not a valid option");
           lastCommandStatus = false;
         }
       }
     } else if (text.startsWith("go")) {
-      const usage = "Usage: go <options>\ngo to <functionID>\ngo back: Go back to the previous function\ngo ahead: Go to the next function";
+      const usage =
+        "Usage: go <options>\ngo to <functionID>\ngo back: Go back to the previous function\ngo ahead: Go to the next function";
       if (text.split(" ").length < 2) {
         outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
@@ -284,6 +317,22 @@ const interactive = async (chunks) => {
         } else {
           outputBox.log(chalk.red(option), "is not a valid option");
           lastCommandStatus = false;
+        }
+      }
+    } else if (text.startsWith("trace")) {
+      const usage = "Usage: trace <options>\ntrace <functionName>";
+      if (text.split(" ").length < 2) {
+        outputBox.log(chalk.magenta(usage));
+        lastCommandStatus = false;
+      } else {
+        const option = text.split(" ")[1];
+        if (option === "") {
+          outputBox.log(chalk.magenta(usage));
+          lastCommandStatus = false;
+        } else {
+          const funcName = text.split(" ")[1];
+          outputBox.log(commandHelpers.traceFunction(chunks, funcName));
+          lastCommandStatus = true;
         }
       }
     } else {
