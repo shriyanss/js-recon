@@ -134,10 +134,11 @@ const interactive = async (chunks) => {
     inputOnFocus: true,
   });
 
-  const printFunction = (funcCode) => {
-    outputBox.setText(funcCode);
+  const printFunction = (funcCode, funcDesc) => {
+    const printText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
+    outputBox.setText(printText);
     if (funcWriteFile) {
-      fs.writeFileSync(funcWriteFile, funcCode);
+      fs.writeFileSync(funcWriteFile, printText);
     }
   };
 
@@ -188,7 +189,7 @@ const interactive = async (chunks) => {
         if (funcName === "to") {
           const funcId = text.split(" ")[2];
           const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-          printFunction(funcCode);
+          printFunction(funcCode, chunks[funcId].description);
           lastCommandStatus = true;
           functionNavHistory.push(funcId);
           functionNavHistoryIndex++;
@@ -200,7 +201,7 @@ const interactive = async (chunks) => {
               functionNavHistoryIndex--;
               const funcId = functionNavHistory[functionNavHistoryIndex];
               const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-              printFunction(funcCode);
+              printFunction(funcCode, chunks[funcId].description);
               lastCommandStatus = true;
             } else {
               // user is already at the first function
@@ -220,7 +221,7 @@ const interactive = async (chunks) => {
               functionNavHistoryIndex++;
               const funcId = functionNavHistory[functionNavHistoryIndex];
               const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-              printFunction(funcCode);
+              printFunction(funcCode, chunks[funcId].description);
               lastCommandStatus = true;
             } else {
               // user is already at the last function
