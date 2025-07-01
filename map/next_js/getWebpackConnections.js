@@ -135,7 +135,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     exports: "string",
                     callStack: [],
                     code: function_code,
-                    connections: [],
+                    imports: [],
                     file: file,
                   };
                 }
@@ -147,8 +147,8 @@ const getWebpackConnections = async (directory, output, formats) => {
     });
   }
 
-  // now, iterate through every chunk, and find the connections
-  console.log(chalk.cyan("[i] Finding connections for chunks"));
+  // now, iterate through every chunk, and find the imports in the function
+  console.log(chalk.cyan("[i] Finding imports for chunks"));
   for (const [key, value] of Object.entries(chunks)) {
     let ast;
     try {
@@ -190,7 +190,7 @@ const getWebpackConnections = async (directory, output, formats) => {
               String(id.node.value).match(/^\d+$/) &&
               id.node.value !== ""
             ) {
-              chunks[key].connections.push(String(id.node.value));
+              chunks[key].imports.push(String(id.node.value));
             }
           }
         }
