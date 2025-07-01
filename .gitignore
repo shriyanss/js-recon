@@ -140,5 +140,6 @@ extracted_urls*
 .vscode/*
 output*
 mapped.json
-endpoints.*
+endpoints.json
+endpoints.txt
 test.js
