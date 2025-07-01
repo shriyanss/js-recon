@@ -26,6 +26,13 @@ const getWebpackConnections = async (directory, output, formats) => {
     console.log(chalk.cyan("[i] OpenAI Client created"));
   }
 
+  // if the output file already exists, and AI mode is enabled, skip coz it burns $$$
+  if (fs.existsSync(`${output}.json`) && globals.getAi()) {
+    console.log(chalk.yellow(`[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`));
+    const chunks = JSON.parse(fs.readFileSync(`${output}.json`, "utf8"));
+    return chunks;
+  }
+
   console.log(chalk.cyan("[i] Getting webpack connections"));
   // list all the files in the directory
   let files = fs.readdirSync(directory, { recursive: true });
@@ -210,7 +217,7 @@ const getWebpackConnections = async (directory, output, formats) => {
           },
         ],
         temperature: 0.1,
-        max_output_tokens: 1000,
+        max_output_tokens: 100,
       })
     );
 
