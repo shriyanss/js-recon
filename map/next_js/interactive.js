@@ -146,8 +146,10 @@ const interactive = async (chunks) => {
 
   // Handle input submission
   inputBox.on("submit", (text) => {
-    commandHistory.push(text);
-    commandHistoryIndex = commandHistory.length - 1;
+    if (text !== "") {
+      commandHistory.push(text);
+      commandHistoryIndex = commandHistory.length - 1;
+    }
     if (lastCommandStatus) {
       outputBox.log(`${chalk.bgGreenBright("%")} ${text}`);
     } else {
@@ -164,7 +166,8 @@ const interactive = async (chunks) => {
       }
       lastCommandStatus = true;
     } else if (text.startsWith("list")) {
-      const usage = "Usage: list <options>\nlist fetch: List functions that contain fetch instances\nlist all: List all functions";
+      const usage =
+        "Usage: list <options>\nlist fetch: List functions that contain fetch instances\nlist all: List all functions";
       if (text.split(" ").length < 2) {
         outputBox.log(chalk.magenta(usage));
         lastCommandStatus = false;
@@ -320,14 +323,17 @@ const interactive = async (chunks) => {
   // on pressing arrow keys on input box, navigate through command history
   inputBox.key(["up", "down"], (ch, key) => {
     if (key.name === "up") {
-      if (commandHistoryIndex >= 0) {
+      if (commandHistoryIndex > 0) {
         commandHistoryIndex--;
         inputBox.setValue(commandHistory[commandHistoryIndex]);
       }
     } else if (key.name === "down") {
-      if (commandHistoryIndex <= commandHistory.length - 1) {
+      if (commandHistoryIndex < commandHistory.length - 1) {
         commandHistoryIndex++;
         inputBox.setValue(commandHistory[commandHistoryIndex]);
+      } else {
+        commandHistoryIndex = commandHistory.length;
+        inputBox.setValue("");
       }
     }
     screen.render();
