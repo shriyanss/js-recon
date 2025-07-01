@@ -144,6 +144,7 @@ const interactive = async (chunks) => {
 
   // Handle input submission
   inputBox.on("submit", (text) => {
+    commandHistory.push(text);
     if (lastCommandStatus) {
       outputBox.log(`${chalk.bgGreenBright("%")} ${text}`);
     } else {
@@ -279,8 +280,38 @@ const interactive = async (chunks) => {
   inputBox.focus();
 
   // Quit on Escape
-  inputBox.key(["escape"], () => {
+  screen.key(["escape"], () => {
     return process.exit(0);
+  });
+
+  // on pressing esc on input, focus on output
+  inputBox.key(["escape"], () => {
+    outputBox.focus();
+    outputBox.style.border.fg = "blue";
+    inputBox.style.border.fg = "gray";
+    screen.render();
+  });
+
+  // on pressing 's' on screen, focus on output box, and thicken the border
+  screen.key(["o"], () => {
+    outputBox.focus();
+    outputBox.style.border.fg = "blue";
+    inputBox.style.border.fg = "gray";
+    screen.render();
+  });
+
+  // on pressing 'i' on screen, focus on input box
+  screen.key(["i"], () => {
+    inputBox.focus();
+    inputBox.style.border.fg = "blue";
+    outputBox.style.border.fg = "gray";
+    screen.render();
+  });
+
+  // on pressing arrow keys on output box, scroll the output
+  outputBox.key(["up", "down"], (ch, key) => {
+    outputBox.scroll(key.name === "up" ? -1 : 1);
+    screen.render();
   });
 
   // Initial render
