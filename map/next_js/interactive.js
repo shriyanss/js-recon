@@ -1,11 +1,14 @@
 import blessed from "blessed";
 import chalk from "chalk";
+import fs from "fs";
+import path from "path";
 
 const helpMenu = {
   help: "Show this help menu",
   exit: "Exit the interactive mode (or press escape twice)",
   list: "Show list of chunks",
   go: "Go to a specific function",
+  set: "Set options",
 };
 
 const commandHelpers = {
@@ -15,7 +18,9 @@ const commandHelpers = {
     );
     for (const chunk of Object.values(chunks)) {
       if (chunk.containsFetch) {
-        returnText += chalk.green(`- ${chunk.id}: ${chunk.file} (${chunk.description})\n`);
+        returnText += chalk.green(
+          `- ${chunk.id}: ${chunk.file} (${chunk.description})\n`
+        );
       }
     }
     return returnText;
@@ -35,7 +40,9 @@ const commandHelpers = {
   listAllFunctions: (chunks) => {
     let returnText = chalk.cyan("List of all functions\n");
     for (const chunk of Object.values(chunks)) {
-      returnText += chalk.green(`- ${chunk.id}: ${chunk.description} (${chunk.file})\n`);
+      returnText += chalk.green(
+        `- ${chunk.id}: ${chunk.description} (${chunk.file})\n`
+      );
     }
     return returnText;
   },
@@ -46,6 +53,7 @@ const interactive = async (chunks) => {
   let lastCommandStatus = true;
   let functionNavHistory = [];
   let functionNavHistoryIndex = -1;
+  let funcWriteFile = undefined;
 
   // Create a screen object.
   const screen = blessed.screen({
@@ -126,6 +134,13 @@ const interactive = async (chunks) => {
     inputOnFocus: true,
   });
 
+  const printFunction = (funcCode) => {
+    outputBox.setText(funcCode);
+    if (funcWriteFile) {
+      fs.writeFileSync(funcWriteFile, funcCode);
+    }
+  };
+
   // Handle input submission
   inputBox.on("submit", (text) => {
     if (lastCommandStatus) {
@@ -173,7 +188,7 @@ const interactive = async (chunks) => {
         if (funcName === "to") {
           const funcId = text.split(" ")[2];
           const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-          outputBox.setText(funcCode);
+          printFunction(funcCode);
           lastCommandStatus = true;
           functionNavHistory.push(funcId);
           functionNavHistoryIndex++;
@@ -185,7 +200,7 @@ const interactive = async (chunks) => {
               functionNavHistoryIndex--;
               const funcId = functionNavHistory[functionNavHistoryIndex];
               const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-              outputBox.setText(funcCode);
+              printFunction(funcCode);
               lastCommandStatus = true;
             } else {
               // user is already at the first function
@@ -205,7 +220,7 @@ const interactive = async (chunks) => {
               functionNavHistoryIndex++;
               const funcId = functionNavHistory[functionNavHistoryIndex];
               const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-              outputBox.setText(funcCode);
+              printFunction(funcCode);
               lastCommandStatus = true;
             } else {
               // user is already at the last function
@@ -225,6 +240,26 @@ const interactive = async (chunks) => {
     } else if (text === "clear") {
       outputBox.setText("");
       lastCommandStatus = true;
+    } else if (text.startsWith("set")) {
+      if (text.split(" ").length < 3) {
+        outputBox.log(
+          chalk.magenta("Usage: set <options>\nset funcwritefile <filename>")
+        );
+        lastCommandStatus = false;
+      } else {
+        const option = text.split(" ")[1];
+        if (option === "funcwritefile") {
+          const fileName = text.split(" ")[2];
+          funcWriteFile = path.join(`${fileName}`);
+          outputBox.log(
+            chalk.green(`Function write file set to ${funcWriteFile}`)
+          );
+          lastCommandStatus = true;
+        } else {
+          outputBox.log(chalk.red(option), "is not a valid option");
+          lastCommandStatus = false;
+        }
+      }
     } else {
       outputBox.log(chalk.red(text), "is not a valid command");
       lastCommandStatus = false;
