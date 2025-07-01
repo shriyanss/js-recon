@@ -90,7 +90,13 @@ program
   .option("-o, --output <file>", "Output file name (without extension)", "mapped")
   .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
   .option("-i, --interactive", "Interactive mode", false)
+  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
+  .option("--openai-api-key <key>", "OpenAI API key")
+  .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
+    globals.setAi(cmd.ai.split(",") || undefined);
+    globals.setOpenaiApiKey(cmd.openaiApiKey);
+    globals.setAiModel(cmd.model);
     await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
   });
 

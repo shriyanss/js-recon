@@ -24,6 +24,7 @@
     "fs": "^0.0.1-security",
     "inquirer": "^12.6.3",
     "md5": "^2.3.0",
+    "openai": "^5.8.2",
     "path": "^0.12.7",
     "prettier": "^3.5.3",
     "puppeteer": "^24.9.0",

@@ -5,7 +5,25 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import chalk from "chalk";
 
+import * as globals from "../../utility/globals.js";
+import OpenAI from "openai";
+
 const getWebpackConnections = async (directory, output, formats) => {
+  // if openai is enabled, then create a client
+  let openaiClient;
+  if (globals.getAi() != []) {
+    const apiKey =
+      globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY || undefined;
+    if (!apiKey) {
+      console.log(chalk.red("[!] OpenAI API key not found"));
+      process.exit(1);
+    }
+    openaiClient = new OpenAI({
+      apiKey: apiKey,
+    });
+    console.log(chalk.cyan("[i] OpenAI Client created"));
+  }
+
   console.log(chalk.cyan("[i] Getting webpack connections"));
   // list all the files in the directory
   let files = fs.readdirSync(directory, { recursive: true });
@@ -98,10 +116,8 @@ const getWebpackConnections = async (directory, output, formats) => {
                     .replace(
                       /^\s*[\w\d]+:\s+function\s+/,
                       `function webpack_${keyValue} `
-                    ).replace(
-                      /^s*[\w\d]+:\s\(/,
-                      `func_${keyValue} = (`
-                    );
+                    )
+                    .replace(/^s*[\w\d]+:\s\(/, `func_${keyValue} = (`);
                   chunks[keyValue] = {
                     id: keyValue,
                     description: "none",
@@ -170,6 +186,30 @@ const getWebpackConnections = async (directory, output, formats) => {
         }
       },
     });
+  }
+
+  // if description is enabled, add them
+  if (globals.getAi() && globals.getAi().includes("description")) {
+    for (const [key, value] of Object.entries(chunks)) {
+      const desc = await openaiClient.responses.create({
+        model: globals.getAiModel(),
+        input: [
+          {
+            role: "system",
+            content:
+              "You are a code analyzer. You will be given a function from the webpack of a compiled Next.JS file. You have to generate a one-liner description of what the function does.",
+          },
+          {
+            role: "user",
+            content: value.code,
+          },
+        ],
+        temperature: 0.1,
+        max_output_tokens: 1000,
+      });
+      chunks[key].description = desc.output[0].content[0].text;
+      console.log(chalk.green(`[✓] Generated description for ${key}: ${chunks[key].description}`));
+    }
   }
 
   console.log(
