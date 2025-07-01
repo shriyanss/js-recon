@@ -15,7 +15,7 @@ const commandHelpers = {
     );
     for (const chunk of Object.values(chunks)) {
       if (chunk.containsFetch) {
-        returnText += chalk.green(`- ${chunk.id}: ${chunk.file}\n`);
+        returnText += chalk.green(`- ${chunk.id}: ${chunk.file} (${chunk.description})\n`);
       }
     }
     return returnText;
@@ -35,7 +35,7 @@ const commandHelpers = {
   listAllFunctions: (chunks) => {
     let returnText = chalk.cyan("List of all functions\n");
     for (const chunk of Object.values(chunks)) {
-      returnText += chalk.green(`- ${chunk.id}: ${chunk.description}\n`);
+      returnText += chalk.green(`- ${chunk.id}: ${chunk.description} (${chunk.file})\n`);
     }
     return returnText;
   },
