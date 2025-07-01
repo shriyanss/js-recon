@@ -146,9 +146,13 @@ const interactive = async (chunks) => {
 
   // Handle input submission
   inputBox.on("submit", (text) => {
-    if (text !== "") {
+    if (
+      text !== "" &&
+      !text.match(/^\s+$/) &&
+      text !== commandHistory[commandHistory.length - 1]
+    ) {
       commandHistory.push(text);
-      commandHistoryIndex = commandHistory.length - 1;
+      commandHistoryIndex = commandHistory.length;
     }
     if (lastCommandStatus) {
       outputBox.log(`${chalk.bgGreenBright("%")} ${text}`);
