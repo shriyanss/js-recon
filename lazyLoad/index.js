@@ -89,6 +89,7 @@ const lazyLoad = async (
     lazyLoadGlobals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
 
     const tech = await frameworkDetect(url);
+    globals.setTech(tech ? tech.name : undefined);
 
     if (tech) {
       if (tech.name === "next") {

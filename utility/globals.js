@@ -27,3 +27,8 @@ export const getAi = () => { return ai; };
 export const getOpenaiApiKey = () => { return openaiApiKey; };
 export const getAiModel = () => { return aiModel; };
 export const setAiModel = (value) => { aiModel = value; };
+
+// tech
+export let tech = undefined;
+export const setTech = (value) => { tech = value; };
+export const getTech = () => { return tech; };
