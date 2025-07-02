@@ -42,7 +42,7 @@ program
   .option("-u, --url <url>", "Target Base URL (will be used to resolve relative paths)")
   .option("-d, --directory <directory>", "Directory containing JS files")
   .option("-o, --output <filename>", "Output filename (without file extension)", "endpoints")
-  .option("--output-format <format>", "Output format for the results comma-separated (available: md)", "md")
+  .option("--output-format <format>", "Output format for the results comma-separated (available: json, md)", "json")
   .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
   .option("-l, --list", "List available technologies", false)
   .option("--subsequent-requests-dir <directory>", "Directory containing subsequent requests (for Next.JS)")
@@ -92,11 +92,11 @@ program
   .option("-o, --output <file>", "Output file name (without extension)", "mapped")
   .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
   .option("-i, --interactive", "Interactive mode", false)
-  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
+  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)", "")
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
-    globals.setAi(cmd.ai?.split(",") || undefined);
+    globals.setAi(cmd.ai?.split(",") || []);
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
     await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
@@ -110,14 +110,19 @@ program
   .option("--strict-scope", "Download JS files from only the input URL domain", false)
   .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
   .option("-t, --threads <threads>", "Number of threads to use", 1)
-  .option("--subsequent-requests", "Download JS files from subsequent requests (Next.JS only)", false)
-  .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
   .option("--api-gateway", "Generate requests using API Gateway", false)
   .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
   .option("--cache-file <file>", "File to contain response cache", ".resp_cache.json")
   .option("--disable-cache", "Disable response caching", false)
   .option("-y, --yes", "Auto-approve executing JS code from the target", false)
+  .option("--secrets", "Scan for secrets", false)
+  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)", "")
+  .option("--openai-api-key <key>", "OpenAI API key")
+  .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
+    globals.setAi(cmd.ai?.split(",") || []);
+    globals.setOpenaiApiKey(cmd.openaiApiKey);
+    globals.setAiModel(cmd.model);
     await run(cmd);
   });
 
