@@ -32,3 +32,8 @@ export const setAiModel = (value) => { aiModel = value; };
 export let tech = undefined;
 export const setTech = (value) => { tech = value; };
 export const getTech = () => { return tech; };
+
+// ai threads
+export let aiThreads = 5;
+export const setAiThreads = (value) => { aiThreads = value; };
+export const getAiThreads = () => { return aiThreads; };

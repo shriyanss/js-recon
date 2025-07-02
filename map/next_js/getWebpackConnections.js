@@ -9,6 +9,7 @@ import * as globals from "../../utility/globals.js";
 import OpenAI from "openai";
 
 const getWebpackConnections = async (directory, output, formats) => {
+  const maxAiThreads = globals.getAiThreads();
   // if openai is enabled, then create a client
   let openaiClient;
   if (globals.getAi() != []) {
@@ -210,30 +211,46 @@ const getWebpackConnections = async (directory, output, formats) => {
   if (globals.getAi() && globals.getAi().includes("description")) {
     console.log(chalk.cyan("[i] Generating descriptions for chunks"));
     const chunkEntries = Object.entries(chunks);
-    const descriptionPromises = chunkEntries.map(async ([_, value]) => {
-      try {
-        const resp = await openaiClient.responses.create({
-          model: globals.getAiModel(),
-          input: [
-            {
-              role: "system",
-              content:
-                "You are a code analyzer. You will be given a function from the webpack of a compiled Next.JS file. You have to generate a one-liner description of what the function does.",
-            },
-            {
-              role: "user",
-              content: value.code,
-            },
-          ],
-          temperature: 0.1,
-          max_output_tokens: 100,
-        });
-        return resp;
-      } catch (err) {
-        console.log(chalk.red(`[!] Error generating description: ${err.message}`));
-        return null;
+    const descriptionPromises = [];
+    let activeThreads = 0;
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    for (const [_, value] of chunkEntries) {
+      while (activeThreads >= maxAiThreads) {
+        await sleep(Math.floor(Math.random() * 451) + 50); // Sleep for 50-500ms
       }
-    });
+
+      activeThreads++;
+      const promise = (async () => {
+        try {
+          const resp = await openaiClient.responses.create({
+            model: globals.getAiModel(),
+            input: [
+              {
+                role: "system",
+                content:
+                  "You are a code analyzer. You will be given a function from the webpack of a compiled Next.JS file. You have to generate a one-liner description of what the function does.",
+              },
+              {
+                role: "user",
+                content: value.code,
+              },
+            ],
+            temperature: 0.1,
+            max_output_tokens: 100,
+          });
+          return resp;
+        } catch (err) {
+          console.log(
+            chalk.red(`[!] Error generating description: ${err.message}`)
+          );
+          return null;
+        } finally {
+          activeThreads--;
+        }
+      })();
+      descriptionPromises.push(promise);
+    }
 
     const descriptions = await Promise.all(descriptionPromises);
 

@@ -95,6 +95,7 @@ program
   .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
   .option("-i, --interactive", "Interactive mode", false)
   .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
+  .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
@@ -111,6 +112,7 @@ program
         }
       }
     }
+    globals.setAiThreads(cmd.aiThreads);
     await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
   });
 
@@ -129,6 +131,7 @@ program
   .option("-y, --yes", "Auto-approve executing JS code from the target", false)
   .option("--secrets", "Scan for secrets", false)
   .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
+  .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
@@ -145,6 +148,7 @@ program
         }
       }
     }
+    globals.setAiThreads(cmd.aiThreads);
     await run(cmd);
   });
 
