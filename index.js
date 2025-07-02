@@ -9,8 +9,10 @@ import map from "./map/index.js";
 import * as globals from "./utility/globals.js";
 import path from "path";
 import run from "./run/index.js";
+import chalk from "chalk";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
+const validAiOptions = ["description"];
 
 program
   .command("lazyload")
@@ -92,13 +94,23 @@ program
   .option("-o, --output <file>", "Output file name (without extension)", "mapped")
   .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
   .option("-i, --interactive", "Interactive mode", false)
-  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)", "")
+  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
     globals.setAi(cmd.ai?.split(",") || []);
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
+
+    // validate AI options
+    if (globals.getAi() != []) {
+      for (const aiType of globals.getAi()) {
+        if (aiType !== "" && !validAiOptions.includes(aiType)) {
+          console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
+          return;
+        }
+      }
+    }
     await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
   });
 
@@ -116,13 +128,23 @@ program
   .option("--disable-cache", "Disable response caching", false)
   .option("-y, --yes", "Auto-approve executing JS code from the target", false)
   .option("--secrets", "Scan for secrets", false)
-  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)", "")
+  .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
     globals.setAi(cmd.ai?.split(",") || []);
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
+
+    // validate AI options
+    if (globals.getAi() != []) {
+      for (const aiType of globals.getAi()) {
+        if (aiType !== "" && !validAiOptions.includes(aiType)) {
+          console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
+          return;
+        }
+      }
+    }
     await run(cmd);
   });
 
