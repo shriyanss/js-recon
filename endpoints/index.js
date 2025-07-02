@@ -102,8 +102,12 @@ const endpoints = async (
     const client_jsonParseResult = await client_jsonParse(directory);
     final_client_side.push(...client_jsonParseResult);
 
-    const gen_markdownResult = await gen_markdown(url, final_client_side, output);
-    const gen_jsonResult = await gen_json(url, final_client_side, output);
+    if (outputFormat.includes("md")) {
+      const gen_markdownResult = await gen_markdown(url, final_client_side, output);
+    }
+    if (outputFormat.includes("json")) {
+      const gen_jsonResult = await gen_json(url, final_client_side, output);
+    }
   }
 };
 
