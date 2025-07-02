@@ -35,7 +35,7 @@ js-recon map -d /path/to/js-files -t next
 
 ### Interactive Mode
 
-Map functions and explore them in an interactive session. This also requires the technology to be specified.
+Map functions and explore them in an interactive session. For a detailed guide, see the [Interactive Mode documentation](./interactive-mode.md).
 
 ```bash
 js-recon map -d /path/to/js-files -t next -i
