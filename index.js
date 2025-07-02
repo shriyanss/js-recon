@@ -7,7 +7,6 @@ import strings from "./strings/index.js";
 import apiGateway from "./api_gateway/index.js";
 import map from "./map/index.js";
 import * as globals from "./utility/globals.js";
-import path from "path";
 import run from "./run/index.js";
 import chalk from "chalk";
 
@@ -96,10 +95,12 @@ program
   .option("-i, --interactive", "Interactive mode", false)
   .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
   .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
+  .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
     globals.setAi(cmd.ai?.split(",") || []);
+    globals.setAiServiceProvider(cmd.aiProvider);
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
 
@@ -132,12 +133,15 @@ program
   .option("--secrets", "Scan for secrets", false)
   .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
   .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
+  .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
     globals.setAi(cmd.ai?.split(",") || []);
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
+    globals.setAiServiceProvider(cmd.aiProvider);
+    globals.setAiThreads(cmd.aiThreads);
 
     // validate AI options
     if (globals.getAi() != []) {

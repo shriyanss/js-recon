@@ -6,29 +6,26 @@ const traverse = _traverse.default;
 import chalk from "chalk";
 
 import * as globals from "../../utility/globals.js";
-import OpenAI from "openai";
+import { getCompletion } from "../../utility/ai.js";
 
 const getWebpackConnections = async (directory, output, formats) => {
   const maxAiThreads = globals.getAiThreads();
-  // if openai is enabled, then create a client
-  let openaiClient;
-  if (globals.getAi() != []) {
+  if (globals.getAi().length > 0) {
     // print a warning message about costs that might incur
     console.log(
       chalk.yellow(
-        "[!] OpenAI integration is enabled. This may incur costs. By using this feature, you agree to the OpenAI terms of service, and accept the risk of incurring unexpected costs due to huge codebase."
+        "[!] AI integration is enabled. This may incur costs. By using this feature, you agree to the AI provider's terms of service, and accept the risk of incurring unexpected costs due to huge codebase."
       )
     );
-    const apiKey =
-      globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY || undefined;
-    if (!apiKey) {
-      console.log(chalk.red("[!] OpenAI API key not found"));
-      process.exit(1);
+    const provider = globals.getAiServiceProvider();
+    if (provider === 'openai') {
+        const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
+        if (!apiKey) {
+            console.log(chalk.red("[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."));
+            process.exit(1);
+        }
     }
-    openaiClient = new OpenAI({
-      apiKey: apiKey,
-    });
-    console.log(chalk.cyan("[i] OpenAI Client created"));
+    console.log(chalk.cyan(`[i] AI provider "${provider}" initialized.`));
   }
 
   // if the output file already exists, and AI mode is enabled, skip coz it burns $$$
@@ -207,15 +204,16 @@ const getWebpackConnections = async (directory, output, formats) => {
     });
   }
 
-  // if description is enabled, add them
+  // if AI description is enabled, add them
   if (globals.getAi() && globals.getAi().includes("description")) {
     console.log(chalk.cyan("[i] Generating descriptions for chunks"));
     const chunkEntries = Object.entries(chunks);
     const descriptionPromises = [];
     let activeThreads = 0;
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const systemPrompt = "You are a code analyzer. You will be given a function from the webpack of a compiled Next.JS file. You have to generate a one-liner description of what the function does.";
 
-    for (const [_, value] of chunkEntries) {
+    for (const [key, value] of chunkEntries) {
       while (activeThreads >= maxAiThreads) {
         await sleep(Math.floor(Math.random() * 451) + 50); // Sleep for 50-500ms
       }
@@ -223,28 +221,13 @@ const getWebpackConnections = async (directory, output, formats) => {
       activeThreads++;
       const promise = (async () => {
         try {
-          const resp = await openaiClient.responses.create({
-            model: globals.getAiModel(),
-            input: [
-              {
-                role: "system",
-                content:
-                  "You are a code analyzer. You will be given a function from the webpack of a compiled Next.JS file. You have to generate a one-liner description of what the function does.",
-              },
-              {
-                role: "user",
-                content: value.code,
-              },
-            ],
-            temperature: 0.1,
-            max_output_tokens: 100,
-          });
-          return resp;
+          const description = await getCompletion(value.code, systemPrompt);
+          return { key, description };
         } catch (err) {
           console.log(
-            chalk.red(`[!] Error generating description: ${err.message}`)
+            chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`)
           );
-          return null;
+          return { key, description: "none" };
         } finally {
           activeThreads--;
         }
@@ -252,16 +235,17 @@ const getWebpackConnections = async (directory, output, formats) => {
       descriptionPromises.push(promise);
     }
 
-    const descriptions = await Promise.all(descriptionPromises);
+    const results = await Promise.all(descriptionPromises);
 
-    descriptions.forEach((desc, index) => {
-      const [key] = chunkEntries[index];
-      chunks[key].description = desc?.output?.[0]?.content?.[0]?.text || "none";
-      console.log(
-        chalk.green(
-          `[✓] Generated description for ${key}: ${chunks[key].description}`
-        )
-      );
+    results.forEach(({ key, description }) => {
+      if (chunks[key]) {
+        chunks[key].description = description || "none";
+        console.log(
+          chalk.green(
+            `[✓] Generated description for ${key}: ${chunks[key].description}`
+          )
+        );
+      }
     });
   }
 
