@@ -30,6 +30,7 @@ js-recon <command> --help
 | `strings` | Extracts strings, URLs, and potential secrets from JS files. | [Read Docs](./docs/strings.md) |
 | `map` | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](./docs/map.md) |
 | `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits. | [Read Docs](./docs/api-gateway.md) |
+| `analyze` | Runs all analysis modules automatically on a target. | [Read Docs](./docs/analyze.md) |
 
 ## Key Features
 

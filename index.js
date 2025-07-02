@@ -7,6 +7,8 @@ import strings from "./strings/index.js";
 import apiGateway from "./api_gateway/index.js";
 import map from "./map/index.js";
 import * as globals from "./utility/globals.js";
+import path from "path";
+import run from "./run/index.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 
@@ -98,6 +100,25 @@ program
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
     await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
+  });
+
+program
+  .command("run")
+  .description("Run all modules")
+  .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+  .option("-o, --output <directory>", "Output directory", "output")
+  .option("--strict-scope", "Download JS files from only the input URL domain", false)
+  .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
+  .option("-t, --threads <threads>", "Number of threads to use", 1)
+  .option("--subsequent-requests", "Download JS files from subsequent requests (Next.JS only)", false)
+  .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
+  .option("--api-gateway", "Generate requests using API Gateway", false)
+  .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
+  .option("--cache-file <file>", "File to contain response cache", ".resp_cache.json")
+  .option("--disable-cache", "Disable response caching", false)
+  .option("-y, --yes", "Auto-approve executing JS code from the target", false)
+  .action(async (cmd) => {
+    await run(cmd);
   });
 
 program.parse(process.argv);

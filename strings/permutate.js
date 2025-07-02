@@ -29,7 +29,11 @@ const permutate = async (urls, paths, output) => {
   permutedUrls.push(...urls);
 
   // get the origin aka baseurl, and push those also
-  permutedUrls.push(...urls.map((url) => new URL(url).origin));
+  for (const url of urls) {
+    try {
+      permutedUrls.push(new URL(url).origin);
+    } catch {}
+  }
 
   // deduplicate
   permutedUrls = [...new Set(permutedUrls)];
