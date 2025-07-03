@@ -16,19 +16,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           # Make sure the action checks out the repository to the pull request branch
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.ref_name }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Prettier
+        run: npm install -g prettier
+
       - name: Run Prettier
-        run: npx prettier --write .
+        run: prettier --write . --tab-width 4 --trailing-comma es5 --no-color
 
       - name: Commit and push changes
         run: |
