@@ -5,6 +5,7 @@ A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, do
 ## Installation
 
 To install the tool globally, run:
+
 ```bash
 npm i -g @shriyanss/js-recon
 ```
@@ -23,14 +24,14 @@ js-recon <command> --help
 
 `js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to our full documentation.
 
-| Command | Description | Documentation |
-| --- | --- | --- |
-| `lazyload` | Downloads dynamically loaded JavaScript files from a target. | [Read Docs](./docs/lazyload.md) |
-| `endpoints` | Extracts API endpoints and client-side paths from JS files. | [Read Docs](./docs/endpoints.md) |
-| `strings` | Extracts strings, URLs, and potential secrets from JS files. | [Read Docs](./docs/strings.md) |
-| `map` | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](./docs/map.md) |
-| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits. | [Read Docs](./docs/api-gateway.md) |
-| `run` | Runs all analysis modules automatically on a target. | [Read Docs](./docs/run.md) |
+| Command       | Description                                                                   | Documentation                      |
+| ------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
+| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](./docs/lazyload.md)    |
+| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](./docs/endpoints.md)   |
+| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](./docs/strings.md)     |
+| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](./docs/map.md)         |
+| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](./docs/api-gateway.md) |
+| `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](./docs/run.md)         |
 
 ## Key Features
 

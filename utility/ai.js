@@ -1,10 +1,13 @@
 import OpenAI from "openai";
-import { Ollama } from 'ollama';
+import { Ollama } from "ollama";
 import * as globals from "./globals.js";
 
-const openai_client = new OpenAI({ baseURL: globals.getAiEndpoint() || "https://api.openai.com/v1", apiKey: globals.getOpenaiApiKey()});
+const openai_client = new OpenAI({
+    baseURL: globals.getAiEndpoint() || "https://api.openai.com/v1",
+    apiKey: globals.getOpenaiApiKey(),
+});
 const ollama_client = new Ollama({
-  host: globals.getAiEndpoint() || 'http://127.0.0.1:11434',
+    host: globals.getAiEndpoint() || "http://127.0.0.1:11434",
 });
 
 const ai = async () => {
@@ -20,17 +23,25 @@ const ai = async () => {
     return returnVal;
 };
 
-async function getCompletion(prompt, systemPrompt = "You are a helpful assistant.") {
+async function getCompletion(
+    prompt,
+    systemPrompt = "You are a helpful assistant."
+) {
     const { client, model } = await ai();
     const provider = globals.getAiServiceProvider();
 
     if (!client) {
-        throw new Error(`AI service provider "${provider}" is not supported or configured.`);
+        throw new Error(
+            `AI service provider "${provider}" is not supported or configured.`
+        );
     }
 
     if (provider === "openai") {
         const completion = await client.chat.completions.create({
-            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }],
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: prompt },
+            ],
             model: model || "gpt-3.5-turbo",
         });
         return completion.choices[0].message.content;
@@ -38,11 +49,11 @@ async function getCompletion(prompt, systemPrompt = "You are a helpful assistant
 
     if (provider === "ollama") {
         const response = await client.chat({
-            model: model || 'llama2',
+            model: model || "llama2",
             messages: [
-                { role: 'system', content: systemPrompt },
+                { role: "system", content: systemPrompt },
                 {
-                    role: 'user',
+                    role: "user",
                     content: prompt,
                 },
             ],

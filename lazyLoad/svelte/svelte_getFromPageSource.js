@@ -5,63 +5,63 @@ import chalk from "chalk";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 
 const svelte_getFromPageSource = async (url) => {
-  console.log(chalk.cyan("[i] Analyzing page source"));
-  let foundUrls = [];
-  const pageSource = await makeRequest(url);
-  const body = await pageSource.text();
+    console.log(chalk.cyan("[i] Analyzing page source"));
+    let foundUrls = [];
+    const pageSource = await makeRequest(url);
+    const body = await pageSource.text();
 
-  // cheerio to parse the page source
-  const $ = cheerio.load(body);
+    // cheerio to parse the page source
+    const $ = cheerio.load(body);
 
-  // find all link tags
-  const linkTags = $("link");
+    // find all link tags
+    const linkTags = $("link");
 
-  for (const linkTag of linkTags) {
-    const relAttr = $(linkTag).attr("rel");
-    if (relAttr === "modulepreload") {
-      const hrefAttr = $(linkTag).attr("href");
-      if (hrefAttr) {
-        if (hrefAttr.startsWith("http")) {
-          foundUrls.push(hrefAttr);
-        } else {
-          foundUrls.push(await resolvePath(url, hrefAttr));
+    for (const linkTag of linkTags) {
+        const relAttr = $(linkTag).attr("rel");
+        if (relAttr === "modulepreload") {
+            const hrefAttr = $(linkTag).attr("href");
+            if (hrefAttr) {
+                if (hrefAttr.startsWith("http")) {
+                    foundUrls.push(hrefAttr);
+                } else {
+                    foundUrls.push(await resolvePath(url, hrefAttr));
+                }
+            }
         }
-      }
     }
-  }
 
-  // also, parse the script tags
-  const scriptTags = $("script");
-  for (const scriptTag of scriptTags) {
-    const srcAttr = $(scriptTag).attr("src");
-    if (srcAttr) {
-      if (srcAttr.startsWith("http")) {
-        foundUrls.push(srcAttr);
-      } else {
-        foundUrls.push(await resolvePath(url, srcAttr));
-      }
+    // also, parse the script tags
+    const scriptTags = $("script");
+    for (const scriptTag of scriptTags) {
+        const srcAttr = $(scriptTag).attr("src");
+        if (srcAttr) {
+            if (srcAttr.startsWith("http")) {
+                foundUrls.push(srcAttr);
+            } else {
+                foundUrls.push(await resolvePath(url, srcAttr));
+            }
+        }
     }
-  }
 
-  if (foundUrls.length === 0) {
-    console.log(chalk.red("[!] No JS files found from the page source"));
-    return [];
-  } else {
-    console.log(
-      chalk.green(
-        `[✓] Found ${foundUrls.length} JS files from the page source`,
-      ),
-    );
-  }
-
-  // iterate through the foundUrls and resolve the paths
-  for (const foundUrl of foundUrls) {
-    if (getJsUrls().includes(foundUrl)) {
-      continue;
+    if (foundUrls.length === 0) {
+        console.log(chalk.red("[!] No JS files found from the page source"));
+        return [];
+    } else {
+        console.log(
+            chalk.green(
+                `[✓] Found ${foundUrls.length} JS files from the page source`
+            )
+        );
     }
-    pushToJsUrls(foundUrl);
-  }
 
-  return foundUrls;
+    // iterate through the foundUrls and resolve the paths
+    for (const foundUrl of foundUrls) {
+        if (getJsUrls().includes(foundUrl)) {
+            continue;
+        }
+        pushToJsUrls(foundUrl);
+    }
+
+    return foundUrls;
 };
 export default svelte_getFromPageSource;

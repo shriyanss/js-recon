@@ -3,14 +3,14 @@ import chalk from "chalk";
 import iterate_n_store from "./utility/iterate_n_store.js";
 
 const gen_json = async (url, hrefs, output) => {
-  // iterate over hrefs
-  const result = await iterate_n_store(url, hrefs);
+    // iterate over hrefs
+    const result = await iterate_n_store(url, hrefs);
 
-  const finalJSON = JSON.stringify(result, null, 2);
-  fs.writeFileSync(`${output}.json`, finalJSON);
+    const finalJSON = JSON.stringify(result, null, 2);
+    fs.writeFileSync(`${output}.json`, finalJSON);
 
-  console.log(chalk.green(`[✓] Generated JSON report at ${output}.json`));
-  return finalJSON;
+    console.log(chalk.green(`[✓] Generated JSON report at ${output}.json`));
+    return finalJSON;
 };
 
 export default gen_json;
