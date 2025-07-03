@@ -29,7 +29,7 @@
         "openai": "^5.8.2",
         "path": "^0.12.7",
         "prettier": "^3.5.3",
-        "puppeteer": "^24.9.0",
+        "puppeteer": "^24.10.0",
         "ses": "^1.13.0"
     },
     "type": "module",
