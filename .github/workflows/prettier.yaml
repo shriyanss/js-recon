@@ -32,6 +32,12 @@ jobs:
 
       - name: Run Prettier
         run: prettier --write . --tab-width 4 --trailing-comma es5 --no-color
+      
+      - name: Remove package-lock.json
+        run: rm package-lock.json
+      
+      - name: Remove node_modules
+        run: rm -rf node_modules
 
       - name: Commit and push changes
         run: |
