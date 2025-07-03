@@ -1,6 +1,6 @@
 import chalk from "chalk";
 
-// file deepcode ignore HardcodedNonCryptoSecret: False positive 
+// file deepcode ignore HardcodedNonCryptoSecret: False positive
 const secret_patterns = {
     Cloudinary: "cloudinary://.*",
     "Firebase URL": ".*firebaseio\\.com",
