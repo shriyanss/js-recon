@@ -52,6 +52,7 @@ const get = async (url, headers) => {
 
     // before creating a resource, check if the resource already exists
     const resourceExists = getResourceResponse.items.find(
+        // file deepcode ignore InsecureHash: False positive
         (item) => item.pathPart === md5(url)
     );
 
