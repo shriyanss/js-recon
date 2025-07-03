@@ -1,15 +1,24 @@
-
 let scope = [];
 let js_urls = [];
 let max_req_queue;
 
 export const getScope = () => scope;
-export const setScope = (newScope) => { scope = newScope; };
-export const pushToScope = (item) => { scope.push(item); };
+export const setScope = (newScope) => {
+    scope = newScope;
+};
+export const pushToScope = (item) => {
+    scope.push(item);
+};
 
 export const getJsUrls = () => js_urls;
-export const clearJsUrls = () => { js_urls = []; };
-export const pushToJsUrls = (url) => { js_urls.push(url); };
+export const clearJsUrls = () => {
+    js_urls = [];
+};
+export const pushToJsUrls = (url) => {
+    js_urls.push(url);
+};
 
 export const getMaxReqQueue = () => max_req_queue;
-export const setMaxReqQueue = (newMax) => { max_req_queue = newMax; };
+export const setMaxReqQueue = (newMax) => {
+    max_req_queue = newMax;
+};

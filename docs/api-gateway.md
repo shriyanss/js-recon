@@ -10,18 +10,18 @@ js-recon api-gateway [options]
 
 ## Options
 
-| Option | Alias | Description | Default | Required |
-| --- | --- | --- | --- | --- |
-| `--init` | `-i` | Initialize the config file and create a new API Gateway. | `false` | No |
-| `--destroy <id>` | `-d` | Destroy the API with the given ID. | | No |
-| `--destroy-all` | | Destroy all APIs created by this tool in all regions. | `false` | No |
-| `--region <region>` | `-r` | AWS region to create the API in. | random region | No |
-| `--access-key <access-key>` | `-a` | AWS access key. Uses `AWS_ACCESS_KEY_ID` env var if not provided. | | No |
-| `--secret-key <secret-key>` | `-s` | AWS secret key. Uses `AWS_SECRET_ACCESS_KEY` env var if not provided. | | No |
-| `--config <config>` | `-c` | Name of the config file. | `.api_gateway_config.json` | No |
-| `--list` | `-l` | List all APIs created by this tool. | `false` | No |
-| `--feasibility` | | Check the feasibility of using API Gateway for a target. | `false` | No |
-| `--feasibility-url <url>` | | URL to check the feasibility of. | | No |
+| Option                      | Alias | Description                                                           | Default                    | Required |
+| --------------------------- | ----- | --------------------------------------------------------------------- | -------------------------- | -------- |
+| `--init`                    | `-i`  | Initialize the config file and create a new API Gateway.              | `false`                    | No       |
+| `--destroy <id>`            | `-d`  | Destroy the API with the given ID.                                    |                            | No       |
+| `--destroy-all`             |       | Destroy all APIs created by this tool in all regions.                 | `false`                    | No       |
+| `--region <region>`         | `-r`  | AWS region to create the API in.                                      | random region              | No       |
+| `--access-key <access-key>` | `-a`  | AWS access key. Uses `AWS_ACCESS_KEY_ID` env var if not provided.     |                            | No       |
+| `--secret-key <secret-key>` | `-s`  | AWS secret key. Uses `AWS_SECRET_ACCESS_KEY` env var if not provided. |                            | No       |
+| `--config <config>`         | `-c`  | Name of the config file.                                              | `.api_gateway_config.json` | No       |
+| `--list`                    | `-l`  | List all APIs created by this tool.                                   | `false`                    | No       |
+| `--feasibility`             |       | Check the feasibility of using API Gateway for a target.              | `false`                    | No       |
+| `--feasibility-url <url>`   |       | URL to check the feasibility of.                                      |                            | No       |
 
 ## Examples
 

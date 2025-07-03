@@ -1,4 +1,4 @@
-import 'ses';
+import "ses";
 
 // Lock down the global environment for security
 lockdown();
@@ -10,16 +10,16 @@ lockdown();
  * @returns {any} The result of the function execution.
  */
 const execFunc = (code, param) => {
-  const c = new Compartment({
-    console,
-  });
-  const wrappedCode = `
+    const c = new Compartment({
+        console,
+    });
+    const wrappedCode = `
     (${code})
   `;
-  const func = c.evaluate(wrappedCode);
-  const output = func(param);
+    const func = c.evaluate(wrappedCode);
+    const output = func(param);
 
-  return output;
+    return output;
 };
 
 export default execFunc;

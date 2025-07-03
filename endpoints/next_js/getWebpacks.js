@@ -48,6 +48,6 @@ const getWebpacks = (directory) => {
         }
     }
     return webpacks;
-}
+};
 
 export default getWebpacks;

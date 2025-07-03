@@ -45,154 +45,163 @@ import * as globals from "../utility/globals.js";
  * @returns {Promise<void>}
  */
 const lazyLoad = async (
-  url,
-  output,
-  strictScope,
-  inputScope,
-  threads,
-  subsequentRequestsFlag,
-  urlsFile,
+    url,
+    output,
+    strictScope,
+    inputScope,
+    threads,
+    subsequentRequestsFlag,
+    urlsFile
 ) => {
-  console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
+    console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
-  // if cache enabled, check if the cache file exists or not. If no, then create a new one
-  if (!globals.getDisableCache()) {
-    if (!fs.existsSync(globals.getRespCacheFile())) {
-      fs.writeFileSync(globals.getRespCacheFile(), "{}");
+    // if cache enabled, check if the cache file exists or not. If no, then create a new one
+    if (!globals.getDisableCache()) {
+        if (!fs.existsSync(globals.getRespCacheFile())) {
+            fs.writeFileSync(globals.getRespCacheFile(), "{}");
+        }
     }
-  }
 
-  let urls;
+    let urls;
 
-  // check if the url is file or a URL
-  if (fs.existsSync(url)) {
-    urls = fs.readFileSync(url, "utf8").split("\n");
-    // remove the empty lines
-    urls = urls.filter((url) => url.trim() !== "");
-  } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
-    urls = [url];
-  } else {
-    console.log(chalk.red("[!] Invalid URL or file path"));
-    return;
-  }
-
-  for (const url of urls) {
-    console.log(chalk.cyan(`[i] Processing ${url}`));
-
-    if (strictScope) {
-      lazyLoadGlobals.pushToScope(new URL(url).host);
+    // check if the url is file or a URL
+    if (fs.existsSync(url)) {
+        urls = fs.readFileSync(url, "utf8").split("\n");
+        // remove the empty lines
+        urls = urls.filter((url) => url.trim() !== "");
+    } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
+        urls = [url];
     } else {
-      lazyLoadGlobals.setScope(inputScope);
+        console.log(chalk.red("[!] Invalid URL or file path"));
+        return;
     }
 
-    lazyLoadGlobals.setMaxReqQueue(threads);
-    lazyLoadGlobals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
+    for (const url of urls) {
+        console.log(chalk.cyan(`[i] Processing ${url}`));
 
-    const tech = await frameworkDetect(url);
-    globals.setTech(tech ? tech.name : undefined);
-
-    if (tech) {
-      if (tech.name === "next") {
-        console.log(chalk.green("[✓] Next.js detected"));
-        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-        // find the JS files from script of the webpage
-        const jsFilesFromScriptTag = await next_getJSScript(url);
-
-        // get lazy resources
-        const lazyResourcesFromWebpack = await next_getLazyResources(url);
-        let lazyResourcesFromSubsequentRequests;
-
-        if (subsequentRequestsFlag) {
-          // get JS files from subsequent requests
-          lazyResourcesFromSubsequentRequests = await subsequentRequests(
-            url,
-            urlsFile,
-            threads,
-            output,
-            lazyLoadGlobals.getJsUrls(), // Pass the global js_urls
-          );
+        if (strictScope) {
+            lazyLoadGlobals.pushToScope(new URL(url).host);
+        } else {
+            lazyLoadGlobals.setScope(inputScope);
         }
 
-        // download the resources
-        // but combine them first
-        let jsFilesToDownload = [
-          ...(jsFilesFromScriptTag || []),
-          ...(lazyResourcesFromWebpack || []),
-          ...(lazyResourcesFromSubsequentRequests || []),
-        ];
-        // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
-        // This is because those functions now push to the global js_urls via setters.
-        // The return values of next_getJSScript and next_getLazyResources might be the same array instance
-        // or a new one depending on their implementation, so explicitly get the global one here.
-        jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
+        lazyLoadGlobals.setMaxReqQueue(threads);
+        lazyLoadGlobals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
 
-        // dedupe the files
-        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+        const tech = await frameworkDetect(url);
+        globals.setTech(tech ? tech.name : undefined);
 
-        await downloadFiles(jsFilesToDownload, output);
-      } else if (tech.name === "vue") {
-        console.log(chalk.green("[✓] Vue.js detected"));
-        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-      } else if (tech.name === "nuxt") {
-        console.log(chalk.green("[✓] Nuxt.js detected"));
-        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+        if (tech) {
+            if (tech.name === "next") {
+                console.log(chalk.green("[✓] Next.js detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-        let jsFilesToDownload = [];
+                // find the JS files from script of the webpage
+                const jsFilesFromScriptTag = await next_getJSScript(url);
 
-        // find the files from the page source
-        const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
-        const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
+                // get lazy resources
+                const lazyResourcesFromWebpack =
+                    await next_getLazyResources(url);
+                let lazyResourcesFromSubsequentRequests;
 
-        jsFilesToDownload.push(...jsFilesFromPageSource);
-        jsFilesToDownload.push(...jsFilesFromStringAnalysis);
-        // dedupe the files
-        jsFilesToDownload = [...new Set(jsFilesToDownload)];
+                if (subsequentRequestsFlag) {
+                    // get JS files from subsequent requests
+                    lazyResourcesFromSubsequentRequests =
+                        await subsequentRequests(
+                            url,
+                            urlsFile,
+                            threads,
+                            output,
+                            lazyLoadGlobals.getJsUrls() // Pass the global js_urls
+                        );
+                }
 
-        let jsFilesFromAST = [];
-        console.log(chalk.cyan("[i] Analyzing functions in the files found"));
-        for (const jsFile of jsFilesToDownload) {
-          jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+                // download the resources
+                // but combine them first
+                let jsFilesToDownload = [
+                    ...(jsFilesFromScriptTag || []),
+                    ...(lazyResourcesFromWebpack || []),
+                    ...(lazyResourcesFromSubsequentRequests || []),
+                ];
+                // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
+                // This is because those functions now push to the global js_urls via setters.
+                // The return values of next_getJSScript and next_getLazyResources might be the same array instance
+                // or a new one depending on their implementation, so explicitly get the global one here.
+                jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
+            } else if (tech.name === "vue") {
+                console.log(chalk.green("[✓] Vue.js detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+            } else if (tech.name === "nuxt") {
+                console.log(chalk.green("[✓] Nuxt.js detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload = [];
+
+                // find the files from the page source
+                const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
+                const jsFilesFromStringAnalysis =
+                    await nuxt_stringAnalysisJSFiles(url);
+
+                jsFilesToDownload.push(...jsFilesFromPageSource);
+                jsFilesToDownload.push(...jsFilesFromStringAnalysis);
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                let jsFilesFromAST = [];
+                console.log(
+                    chalk.cyan("[i] Analyzing functions in the files found")
+                );
+                for (const jsFile of jsFilesToDownload) {
+                    jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+                }
+
+                jsFilesToDownload.push(...jsFilesFromAST);
+
+                jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
+            } else if (tech.name === "svelte") {
+                console.log(chalk.green("[✓] Svelte detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload = [];
+
+                // find the files from the page source
+                const jsFilesFromPageSource =
+                    await svelte_getFromPageSource(url);
+                jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // analyze the strings now
+                const jsFilesFromStringAnalysis =
+                    await svelte_stringAnalysisJSFiles(url);
+                jsFilesToDownload.push(...jsFilesFromStringAnalysis);
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
+            }
+        } else {
+            console.log(chalk.red("[!] Framework not detected :("));
+            console.log(chalk.magenta(CONFIG.notFoundMessage));
+            console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+            const js_urls = await downloadLoadedJs(url);
+            if (js_urls && js_urls.length > 0) {
+                console.log(
+                    chalk.green(`[✓] Found ${js_urls.length} JS chunks`)
+                );
+                await downloadFiles(js_urls, output);
+            }
         }
-
-        jsFilesToDownload.push(...jsFilesFromAST);
-
-        jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
-
-        // dedupe the files
-        jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-        await downloadFiles(jsFilesToDownload, output);
-      } else if (tech.name === "svelte") {
-        console.log(chalk.green("[✓] Svelte detected"));
-        console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-        let jsFilesToDownload = [];
-
-        // find the files from the page source
-        const jsFilesFromPageSource = await svelte_getFromPageSource(url);
-        jsFilesToDownload.push(...jsFilesFromPageSource);
-
-        // analyze the strings now
-        const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
-        jsFilesToDownload.push(...jsFilesFromStringAnalysis);
-
-        // dedupe the files
-        jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-        await downloadFiles(jsFilesToDownload, output);
-      }
-    } else {
-      console.log(chalk.red("[!] Framework not detected :("));
-      console.log(chalk.magenta(CONFIG.notFoundMessage));
-      console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-      const js_urls = await downloadLoadedJs(url);
-      if (js_urls && js_urls.length > 0) {
-        console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-        await downloadFiles(js_urls, output);
-      }
     }
-  }
 };
 
 export default lazyLoad;

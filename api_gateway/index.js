@@ -1,8 +1,8 @@
 import chalk from "chalk";
 import {
-  APIGatewayClient,
-  CreateRestApiCommand,
-  DeleteRestApiCommand,
+    APIGatewayClient,
+    CreateRestApiCommand,
+    DeleteRestApiCommand,
 } from "@aws-sdk/client-api-gateway";
 import fs from "fs";
 import checkFeasibility from "./checkFeasibility.js";
@@ -11,44 +11,44 @@ import checkFeasibility from "./checkFeasibility.js";
 // for the rate limits, refer to https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html
 
 const randomRegion = () => {
-  const apiGatewayRegions = [
-    "us-east-2", // US East (Ohio)
-    "us-east-1", // US East (N. Virginia)
-    "us-west-1", // US West (N. California)
-    "us-west-2", // US West (Oregon)
-    "af-south-1", // Africa (Cape Town)
-    "ap-east-1", // Asia Pacific (Hong Kong)
-    "ap-south-2", // Asia Pacific (Hyderabad)
-    "ap-southeast-3", // Asia Pacific (Jakarta)
-    "ap-southeast-5", // Asia Pacific (Malaysia)
-    "ap-southeast-4", // Asia Pacific (Melbourne)
-    "ap-south-1", // Asia Pacific (Mumbai)
-    "ap-northeast-3", // Asia Pacific (Osaka)
-    "ap-northeast-2", // Asia Pacific (Seoul)
-    "ap-southeast-1", // Asia Pacific (Singapore)
-    "ap-southeast-2", // Asia Pacific (Sydney)
-    "ap-east-2", // Asia Pacific (Taipei)
-    "ap-southeast-7", // Asia Pacific (Thailand)
-    "ap-northeast-1", // Asia Pacific (Tokyo)
-    "ca-central-1", // Canada (Central)
-    "ca-west-1", // Canada West (Calgary)
-    "eu-central-1", // Europe (Frankfurt)
-    "eu-west-1", // Europe (Ireland)
-    "eu-west-2", // Europe (London)
-    "eu-south-1", // Europe (Milan)
-    "eu-west-3", // Europe (Paris)
-    "eu-south-2", // Europe (Spain)
-    "eu-north-1", // Europe (Stockholm)
-    "eu-central-2", // Europe (Zurich)
-    "il-central-1", // Israel (Tel Aviv)
-    "mx-central-1", // Mexico (Central)
-    "me-south-1", // Middle East (Bahrain)
-    "me-central-1", // Middle East (UAE)
-    "sa-east-1", // South America (São Paulo)
-  ];
-  return apiGatewayRegions[
-    Math.floor(Math.random() * apiGatewayRegions.length)
-  ];
+    const apiGatewayRegions = [
+        "us-east-2", // US East (Ohio)
+        "us-east-1", // US East (N. Virginia)
+        "us-west-1", // US West (N. California)
+        "us-west-2", // US West (Oregon)
+        "af-south-1", // Africa (Cape Town)
+        "ap-east-1", // Asia Pacific (Hong Kong)
+        "ap-south-2", // Asia Pacific (Hyderabad)
+        "ap-southeast-3", // Asia Pacific (Jakarta)
+        "ap-southeast-5", // Asia Pacific (Malaysia)
+        "ap-southeast-4", // Asia Pacific (Melbourne)
+        "ap-south-1", // Asia Pacific (Mumbai)
+        "ap-northeast-3", // Asia Pacific (Osaka)
+        "ap-northeast-2", // Asia Pacific (Seoul)
+        "ap-southeast-1", // Asia Pacific (Singapore)
+        "ap-southeast-2", // Asia Pacific (Sydney)
+        "ap-east-2", // Asia Pacific (Taipei)
+        "ap-southeast-7", // Asia Pacific (Thailand)
+        "ap-northeast-1", // Asia Pacific (Tokyo)
+        "ca-central-1", // Canada (Central)
+        "ca-west-1", // Canada West (Calgary)
+        "eu-central-1", // Europe (Frankfurt)
+        "eu-west-1", // Europe (Ireland)
+        "eu-west-2", // Europe (London)
+        "eu-south-1", // Europe (Milan)
+        "eu-west-3", // Europe (Paris)
+        "eu-south-2", // Europe (Spain)
+        "eu-north-1", // Europe (Stockholm)
+        "eu-central-2", // Europe (Zurich)
+        "il-central-1", // Israel (Tel Aviv)
+        "mx-central-1", // Mexico (Central)
+        "me-south-1", // Middle East (Bahrain)
+        "me-central-1", // Middle East (UAE)
+        "sa-east-1", // South America (São Paulo)
+    ];
+    return apiGatewayRegions[
+        Math.floor(Math.random() * apiGatewayRegions.length)
+    ];
 };
 
 let aws_access_key;
@@ -58,70 +58,70 @@ let configFile;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  /**
-   * Create a new API Gateway.
-   *
-   * @async
-   * @returns {Promise<void>}
-   */
+/**
+ * Create a new API Gateway.
+ *
+ * @async
+ * @returns {Promise<void>}
+ */
 const createGateway = async () => {
-  console.log(chalk.cyan("[i] Creating API Gateway"));
-  const client = new APIGatewayClient({
-    region,
-    credentials: {
-      accessKeyId: aws_access_key,
-      secretAccessKey: aws_secret_key,
-    },
-  });
+    console.log(chalk.cyan("[i] Creating API Gateway"));
+    const client = new APIGatewayClient({
+        region,
+        credentials: {
+            accessKeyId: aws_access_key,
+            secretAccessKey: aws_secret_key,
+        },
+    });
 
-  const apigw_created_at = Date.now();
-  const apigw_name = `js_recon-${apigw_created_at}-${Math.floor(Math.random() * 1000)}`;
-  const command = new CreateRestApiCommand({
-    name: apigw_name,
-    description: `API Gateway for JS Recon created at ${new Intl.DateTimeFormat(
-      "en-US",
-      {
-        year: "numeric",
-        month: "long",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZoneName: "short",
-      },
-    ).format(apigw_created_at)}`,
-    endpointConfiguration: {
-      ipAddressType: "dualstack",
-      types: ["REGIONAL"],
-    },
-  });
-  const response = await client.send(command);
-  await sleep(3000);
-  console.log(chalk.green(`[✓] Created API Gateway`));
-  console.log(chalk.bgGreen("ID:"), chalk.green(response.id));
-  console.log(chalk.bgGreen("Name:"), chalk.green(apigw_name));
-  console.log(chalk.bgGreen("Region:"), chalk.green(region));
+    const apigw_created_at = Date.now();
+    const apigw_name = `js_recon-${apigw_created_at}-${Math.floor(Math.random() * 1000)}`;
+    const command = new CreateRestApiCommand({
+        name: apigw_name,
+        description: `API Gateway for JS Recon created at ${new Intl.DateTimeFormat(
+            "en-US",
+            {
+                year: "numeric",
+                month: "long",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                timeZoneName: "short",
+            }
+        ).format(apigw_created_at)}`,
+        endpointConfiguration: {
+            ipAddressType: "dualstack",
+            types: ["REGIONAL"],
+        },
+    });
+    const response = await client.send(command);
+    await sleep(3000);
+    console.log(chalk.green(`[✓] Created API Gateway`));
+    console.log(chalk.bgGreen("ID:"), chalk.green(response.id));
+    console.log(chalk.bgGreen("Name:"), chalk.green(apigw_name));
+    console.log(chalk.bgGreen("Region:"), chalk.green(region));
 
-  // load the config file if any. Else, create a new one
-  let config = {};
-  try {
-    config = JSON.parse(fs.readFileSync(configFile));
-  } catch (e) {
-    config = {};
-  }
+    // load the config file if any. Else, create a new one
+    let config = {};
+    try {
+        config = JSON.parse(fs.readFileSync(configFile));
+    } catch (e) {
+        config = {};
+    }
 
-  config[apigw_name] = {
-    id: response.id,
-    name: apigw_name,
-    description: response.description,
-    created_at: apigw_created_at,
-    region: region,
-    access_key: aws_access_key,
-    secret_key: aws_secret_key,
-  };
+    config[apigw_name] = {
+        id: response.id,
+        name: apigw_name,
+        description: response.description,
+        created_at: apigw_created_at,
+        region: region,
+        access_key: aws_access_key,
+        secret_key: aws_secret_key,
+    };
 
-  fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
-  console.log(chalk.green(`[✓] Config saved to ${configFile}`));
+    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    console.log(chalk.green(`[✓] Config saved to ${configFile}`));
 };
 
 /**
@@ -132,41 +132,41 @@ const createGateway = async () => {
  * @returns {Promise<void>}
  */
 const destroyGateway = async (id) => {
-  console.log(chalk.cyan("[i] Destroying API Gateway"));
-  if (!id) {
-    console.log(chalk.red("[!] Please provide an API Gateway ID"));
-    return;
-  }
-  //   read the config file
-  let config = JSON.parse(fs.readFileSync(configFile));
-  //   get the name of the api gateway
-  let name = Object.keys(config).find((key) => config[key].id === id);
+    console.log(chalk.cyan("[i] Destroying API Gateway"));
+    if (!id) {
+        console.log(chalk.red("[!] Please provide an API Gateway ID"));
+        return;
+    }
+    //   read the config file
+    let config = JSON.parse(fs.readFileSync(configFile));
+    //   get the name of the api gateway
+    let name = Object.keys(config).find((key) => config[key].id === id);
 
-  console.log(chalk.bgGreen("Name:"), chalk.green(name));
-  console.log(chalk.bgGreen("ID:"), chalk.green(id));
-  console.log(chalk.bgGreen("Region:"), chalk.green(config[name].region));
-  region = config[name].region;
+    console.log(chalk.bgGreen("Name:"), chalk.green(name));
+    console.log(chalk.bgGreen("ID:"), chalk.green(id));
+    console.log(chalk.bgGreen("Region:"), chalk.green(config[name].region));
+    region = config[name].region;
 
-  const client = new APIGatewayClient({
-    region,
-    credentials: {
-      accessKeyId: aws_access_key,
-      secretAccessKey: aws_secret_key,
-    },
-  });
+    const client = new APIGatewayClient({
+        region,
+        credentials: {
+            accessKeyId: aws_access_key,
+            secretAccessKey: aws_secret_key,
+        },
+    });
 
-  const command = new DeleteRestApiCommand({
-    restApiId: id,
-  });
-  await client.send(command);
+    const command = new DeleteRestApiCommand({
+        restApiId: id,
+    });
+    await client.send(command);
 
-  // remove from the config file
-  delete config[name];
-  fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    // remove from the config file
+    delete config[name];
+    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
 
-  await sleep(30000);
+    await sleep(30000);
 
-  console.log(chalk.green(`[✓] Destroyed API Gateway: ${id}`));
+    console.log(chalk.green(`[✓] Destroyed API Gateway: ${id}`));
 };
 
 /**
@@ -176,40 +176,40 @@ const destroyGateway = async (id) => {
  * @returns {Promise<void>}
  */
 const destroyAllGateways = async () => {
-  console.log(chalk.cyan("[i] Destroying all API Gateways"));
-  //   read the config file
-  let config = JSON.parse(fs.readFileSync(configFile));
+    console.log(chalk.cyan("[i] Destroying all API Gateways"));
+    //   read the config file
+    let config = JSON.parse(fs.readFileSync(configFile));
 
-  //   destroy all the gateways
-  for (const [key, value] of Object.entries(config)) {
-    const client = new APIGatewayClient({
-      region: value.region,
-      credentials: {
-        accessKeyId: aws_access_key,
-        secretAccessKey: aws_secret_key,
-      },
-    });
-    console.log(
-      chalk.cyan(
-        `[i] Destroying API Gateway: ${key} : ${value.id} : ${value.region}`,
-      ),
-    );
+    //   destroy all the gateways
+    for (const [key, value] of Object.entries(config)) {
+        const client = new APIGatewayClient({
+            region: value.region,
+            credentials: {
+                accessKeyId: aws_access_key,
+                secretAccessKey: aws_secret_key,
+            },
+        });
+        console.log(
+            chalk.cyan(
+                `[i] Destroying API Gateway: ${key} : ${value.id} : ${value.region}`
+            )
+        );
 
-    const command = new DeleteRestApiCommand({
-      restApiId: value.id,
-    });
-    await sleep(30000);
-    await client.send(command);
-    console.log(
-      chalk.green(
-        `[✓] Destroyed API Gateway: ${key} : ${value.id} : ${value.region}`,
-      ),
-    );
-  }
+        const command = new DeleteRestApiCommand({
+            restApiId: value.id,
+        });
+        await sleep(30000);
+        await client.send(command);
+        console.log(
+            chalk.green(
+                `[✓] Destroyed API Gateway: ${key} : ${value.id} : ${value.region}`
+            )
+        );
+    }
 
-  // nullify the config file
-  fs.writeFileSync(configFile, JSON.stringify({}, null, 2));
-  console.log(chalk.green("[✓] Destroyed all API Gateways"));
+    // nullify the config file
+    fs.writeFileSync(configFile, JSON.stringify({}, null, 2));
+    console.log(chalk.green("[✓] Destroyed all API Gateways"));
 };
 
 /**
@@ -219,32 +219,32 @@ const destroyAllGateways = async () => {
  * @returns {Promise<void>}
  */
 const listGateways = async () => {
-  console.log(chalk.cyan("[i] Listing all API Gateways"));
+    console.log(chalk.cyan("[i] Listing all API Gateways"));
 
-  // read the config file, and list these
+    // read the config file, and list these
 
-  // check if the config file exists
-  if (!fs.existsSync(configFile)) {
-    console.log(chalk.red("[!] Config file does not exist"));
-    return;
-  }
+    // check if the config file exists
+    if (!fs.existsSync(configFile)) {
+        console.log(chalk.red("[!] Config file does not exist"));
+        return;
+    }
 
-  const config = JSON.parse(fs.readFileSync(configFile));
+    const config = JSON.parse(fs.readFileSync(configFile));
 
-  //   if list is empty
-  if (Object.keys(config).length === 0) {
-    console.log(chalk.red("[!] No API Gateways found"));
-    return;
-  }
+    //   if list is empty
+    if (Object.keys(config).length === 0) {
+        console.log(chalk.red("[!] No API Gateways found"));
+        return;
+    }
 
-  console.log(chalk.green("[✓] List of API Gateways"));
+    console.log(chalk.green("[✓] List of API Gateways"));
 
-  for (const [key, value] of Object.entries(config)) {
-    console.log(chalk.bgGreen("Name:"), chalk.green(key));
-    console.log(chalk.bgGreen("ID:"), chalk.green(value.id));
-    console.log(chalk.bgGreen("Region:"), chalk.green(value.region));
-    console.log("\n");
-  }
+    for (const [key, value] of Object.entries(config)) {
+        console.log(chalk.bgGreen("Name:"), chalk.green(key));
+        console.log(chalk.bgGreen("ID:"), chalk.green(value.id));
+        console.log(chalk.bgGreen("Region:"), chalk.green(value.region));
+        console.log("\n");
+    }
 };
 
 /**
@@ -264,64 +264,71 @@ const listGateways = async () => {
  * @returns {Promise<void>}
  */
 const apiGateway = async (
-  initInput,
-  destroyInput,
-  destroyAllInput,
-  listInput,
-  regionInput,
-  accessKey,
-  secretKey,
-  configInput,
-  feasibilityInput,
-  feasibilityUrlInput,
+    initInput,
+    destroyInput,
+    destroyAllInput,
+    listInput,
+    regionInput,
+    accessKey,
+    secretKey,
+    configInput,
+    feasibilityInput,
+    feasibilityUrlInput
 ) => {
-  console.log(chalk.cyan("[i] Loading 'API Gateway' module"));
+    console.log(chalk.cyan("[i] Loading 'API Gateway' module"));
 
-  // if feasibility is true, check feasibility
-  if (feasibilityInput) {
-    if (!feasibilityUrlInput) {
-      console.log(chalk.red("[!] Please provide a URL to check feasibility of"));
-      return;
+    // if feasibility is true, check feasibility
+    if (feasibilityInput) {
+        if (!feasibilityUrlInput) {
+            console.log(
+                chalk.red("[!] Please provide a URL to check feasibility of")
+            );
+            return;
+        }
+        await checkFeasibility(feasibilityUrlInput);
+        return;
     }
-    await checkFeasibility(feasibilityUrlInput);
-    return;
-  }
 
-  // configure the access and secret key
-  aws_access_key = accessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
-  aws_secret_key = secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
-  region = regionInput || randomRegion();
-  configFile = configInput || "config.json";
+    // configure the access and secret key
+    aws_access_key = accessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
+    aws_secret_key =
+        secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
+    region = regionInput || randomRegion();
+    configFile = configInput || "config.json";
 
-  if (!aws_access_key || !aws_secret_key) {
-    console.log(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
-    return;
-  }
+    if (!aws_access_key || !aws_secret_key) {
+        console.log(
+            chalk.red(
+                "[!] AWS Access Key or Secret Key not found. Run with -h to see help"
+            )
+        );
+        return;
+    }
 
-  console.log(chalk.cyan(`[i] Using region: ${region}`));
+    console.log(chalk.cyan(`[i] Using region: ${region}`));
 
-  const keyMask = (key) => {
-    if (key.length < 6) return key;
-    return key.slice(0, 4) + "..." + key.slice(-4);
-  };
-  console.log(chalk.cyan(`[i] Using access key: ${keyMask(aws_access_key)}`));
+    const keyMask = (key) => {
+        if (key.length < 6) return key;
+        return key.slice(0, 4) + "..." + key.slice(-4);
+    };
+    console.log(chalk.cyan(`[i] Using access key: ${keyMask(aws_access_key)}`));
 
-  // create a new API gateway
-  if (initInput) {
-    await createGateway();
-  } else if (destroyInput) {
-    await destroyGateway(destroyInput);
-  } else if (destroyAllInput) {
-    await destroyAllGateways();
-  } else if (listInput) {
-    await listGateways();
-  } else {
-    console.log(
-      chalk.red(
-        "[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)",
-      ),
-    );
-  }
+    // create a new API gateway
+    if (initInput) {
+        await createGateway();
+    } else if (destroyInput) {
+        await destroyGateway(destroyInput);
+    } else if (destroyAllInput) {
+        await destroyAllGateways();
+    } else if (listInput) {
+        await listGateways();
+    } else {
+        console.log(
+            chalk.red(
+                "[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)"
+            )
+        );
+    }
 };
 
 export default apiGateway;

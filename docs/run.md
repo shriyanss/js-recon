@@ -21,24 +21,24 @@ js-recon run -u <url/file> [options]
 
 ### Required Arguments
 
--   `-u, --url <url/file>`: The target URL or a file containing a list of URLs (one per line).
+- `-u, --url <url/file>`: The target URL or a file containing a list of URLs (one per line).
 
 ### Options
 
--   `-o, --output <directory>`: Output directory for the results. (Default: `output`)
--   `--strict-scope`: Download JavaScript files from only the input URL domain. (Default: `false`)
--   `-s, --scope <scope>`: Download JavaScript files from specific domains (comma-separated). (Default: `*`)
--   `-t, --threads <threads>`: Number of threads to use for downloading. (Default: `1`)
--   `--api-gateway`: Use AWS API Gateway to rotate IP addresses for requests.
--   `--api-gateway-config <file>`: API Gateway configuration file. (Default: `.api_gateway_config.json`)
--   `--cache-file <file>`: File to contain response cache. (Default: `.resp_cache.json`)
--   `--disable-cache`: Disable response caching.
--   `-y, --yes`: Auto-approve executing JavaScript code from the target. (Default: `false`)
--   `--secrets`: Scan for secrets in the JavaScript files.
--   `--ai <options>`: Use AI to analyze the code (comma-separated; available: `description`).
--   `--ai-threads <threads>`: Number of threads to use for AI analysis. (Default: `5`)
--   `--openai-api-key <key>`: OpenAI API key for AI-powered analysis.
--   `--model <model>`: AI model to use. (Default: `gpt-4o-mini`)
+- `-o, --output <directory>`: Output directory for the results. (Default: `output`)
+- `--strict-scope`: Download JavaScript files from only the input URL domain. (Default: `false`)
+- `-s, --scope <scope>`: Download JavaScript files from specific domains (comma-separated). (Default: `*`)
+- `-t, --threads <threads>`: Number of threads to use for downloading. (Default: `1`)
+- `--api-gateway`: Use AWS API Gateway to rotate IP addresses for requests.
+- `--api-gateway-config <file>`: API Gateway configuration file. (Default: `.api_gateway_config.json`)
+- `--cache-file <file>`: File to contain response cache. (Default: `.resp_cache.json`)
+- `--disable-cache`: Disable response caching.
+- `-y, --yes`: Auto-approve executing JavaScript code from the target. (Default: `false`)
+- `--secrets`: Scan for secrets in the JavaScript files.
+- `--ai <options>`: Use AI to analyze the code (comma-separated; available: `description`).
+- `--ai-threads <threads>`: Number of threads to use for AI analysis. (Default: `5`)
+- `--openai-api-key <key>`: OpenAI API key for AI-powered analysis.
+- `--model <model>`: AI model to use. (Default: `gpt-4o-mini`)
 
 ## Example
 
