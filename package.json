@@ -22,7 +22,7 @@
         "cheerio": "^1.0.0",
         "cli-highlight": "^2.1.11",
         "commander": "^14.0.0",
-        "fs": "^0.0.1-security",
+        "fs": "^0.0.2",
         "inquirer": "^12.6.3",
         "md5": "^2.3.0",
         "ollama": "^0.5.16",
