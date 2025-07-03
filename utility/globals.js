@@ -23,6 +23,7 @@ export let openaiApiKey = undefined;
 export let aiModel = "gpt-4o-mini";
 export let aiServiceProvider = "openai";
 export let aiThreads = 5;
+export let aiEndpoint = undefined;
 export const setAi = (value) => { ai = value; };
 export const setOpenaiApiKey = (value) => { openaiApiKey = value; };
 export const getAi = () => { return ai; };
@@ -33,6 +34,8 @@ export const setAiThreads = (value) => { aiThreads = value; };
 export const getAiThreads = () => { return aiThreads; };
 export const setAiServiceProvider = (value) => { aiServiceProvider = value; };
 export const getAiServiceProvider = () => { return aiServiceProvider; };
+export const setAiEndpoint = (value) => { aiEndpoint = value; };
+export const getAiEndpoint = () => { return aiEndpoint; };
 
 // tech
 export let tech = undefined;

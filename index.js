@@ -96,6 +96,7 @@ program
   .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
   .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
   .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
+  .option("--ai-endpoint <endpoint>", "Endpoint to use for AI service (for Ollama, etc)")
   .option("--openai-api-key <key>", "OpenAI API key")
   .option("--model <model>", "AI model to use", "gpt-4o-mini")
   .action(async (cmd) => {
@@ -103,6 +104,8 @@ program
     globals.setAiServiceProvider(cmd.aiProvider);
     globals.setOpenaiApiKey(cmd.openaiApiKey);
     globals.setAiModel(cmd.model);
+    if (cmd.aiEndpoint) globals.setAiEndpoint(cmd.aiEndpoint);
+    globals.setAiThreads(cmd.aiThreads);
 
     // validate AI options
     if (globals.getAi() != []) {
@@ -113,7 +116,6 @@ program
         }
       }
     }
-    globals.setAiThreads(cmd.aiThreads);
     await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
   });
 
@@ -142,6 +144,7 @@ program
     globals.setAiModel(cmd.model);
     globals.setAiServiceProvider(cmd.aiProvider);
     globals.setAiThreads(cmd.aiThreads);
+    if (cmd.aiEndpoint) globals.setAiEndpoint(cmd.aiEndpoint);
 
     // validate AI options
     if (globals.getAi() != []) {
@@ -152,7 +155,6 @@ program
         }
       }
     }
-    globals.setAiThreads(cmd.aiThreads);
     await run(cmd);
   });
 

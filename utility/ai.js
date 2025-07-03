@@ -2,9 +2,9 @@ import OpenAI from "openai";
 import { Ollama } from 'ollama';
 import * as globals from "./globals.js";
 
-const openai_client = new OpenAI({ apiKey: globals.getOpenaiApiKey() });
+const openai_client = new OpenAI({ baseURL: globals.getAiEndpoint() || "https://api.openai.com/v1", apiKey: globals.getOpenaiApiKey()});
 const ollama_client = new Ollama({
-  host: 'http://127.0.0.1:11434',
+  host: globals.getAiEndpoint() || 'http://127.0.0.1:11434',
 });
 
 const ai = async () => {
