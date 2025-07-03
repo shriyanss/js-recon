@@ -43,7 +43,7 @@ async function getCompletion(
                 { role: "user", content: prompt },
             ],
             model: model || "gpt-4o-mini",
-            temperature: 0.1
+            temperature: 0.1,
         });
         return completion?.output?.[0]?.content?.[0]?.text || "none";
     }
@@ -60,7 +60,7 @@ async function getCompletion(
             ],
             options: {
                 temperature: 0.1,
-            }
+            },
         });
         return response.message.content || "none";
     }
