@@ -306,6 +306,10 @@ program
         "Service provider to use for AI (available: openai, ollama)",
         "openai"
     )
+    .option(
+        "--ai-endpoint <endpoint>",
+        "Endpoint to use for AI service (for Ollama, etc)"
+    )
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .action(async (cmd) => {

@@ -37,19 +37,20 @@ async function getCompletion(
     }
 
     if (provider === "openai") {
-        const completion = await client.chat.completions.create({
-            messages: [
+        const completion = await client.responses.create({
+            input: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: prompt },
             ],
-            model: model || "gpt-3.5-turbo",
+            model: model || "gpt-4o-mini",
+            temperature: 0.1
         });
-        return completion.choices[0].message.content;
+        return completion?.output?.[0]?.content?.[0]?.text || "none";
     }
 
     if (provider === "ollama") {
-        const response = await client.chat({
-            model: model || "llama2",
+        const response = await ollama_client.chat({
+            model: model || "llama3.1",
             messages: [
                 { role: "system", content: systemPrompt },
                 {
@@ -57,8 +58,11 @@ async function getCompletion(
                     content: prompt,
                 },
             ],
+            options: {
+                temperature: 0.1,
+            }
         });
-        return response.message.content;
+        return response.message.content || "none";
     }
 }
 
