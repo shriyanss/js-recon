@@ -40,10 +40,10 @@ export let aiModel = "gpt-4o-mini";
 export let aiServiceProvider = "openai";
 export let aiThreads = 5;
 export let aiEndpoint = undefined;
-export const setAi = (value:[]) => {
+export const setAi = (value: []) => {
     ai = value;
 };
-export const setOpenaiApiKey = (value:string) => {
+export const setOpenaiApiKey = (value: string) => {
     openaiApiKey = value;
 };
 export const getAi = () => {
@@ -55,22 +55,22 @@ export const getOpenaiApiKey = () => {
 export const getAiModel = () => {
     return aiModel;
 };
-export const setAiModel = (value:string) => {
+export const setAiModel = (value: string) => {
     aiModel = value;
 };
-export const setAiThreads = (value:number) => {
+export const setAiThreads = (value: number) => {
     aiThreads = value;
 };
 export const getAiThreads = () => {
     return aiThreads;
 };
-export const setAiServiceProvider = (value:string) => {
+export const setAiServiceProvider = (value: string) => {
     aiServiceProvider = value;
 };
 export const getAiServiceProvider = () => {
     return aiServiceProvider;
 };
-export const setAiEndpoint = (value:string) => {
+export const setAiEndpoint = (value: string) => {
     aiEndpoint = value;
 };
 export const getAiEndpoint = () => {
@@ -79,7 +79,7 @@ export const getAiEndpoint = () => {
 
 // tech
 export let tech = "";
-export const setTech = (value:string) => {
+export const setTech = (value: string) => {
     tech = value;
 };
 export const getTech = () => {

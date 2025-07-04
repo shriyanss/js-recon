@@ -112,7 +112,14 @@ export default async (cmd) => {
 
     // now, run map
     console.log(chalk.bgCyan("[6/6] Running map to find functions..."));
-    await map(cmd.output, "mapped", ["json"], globalsUtil.getTech(), false, false);
+    await map(
+        cmd.output,
+        "mapped",
+        ["json"],
+        globalsUtil.getTech(),
+        false,
+        false
+    );
     console.log(chalk.bgGreen("[+] Map complete."));
 
     console.log(chalk.bgGreenBright("[+] Analysis complete."));
