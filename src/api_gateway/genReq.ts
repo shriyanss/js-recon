@@ -25,7 +25,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @param {object} [headers] The headers to include in the request.
  * @returns {Promise<string>} The response of the URL.
  */
-const get = async (url, headers) => {
+const get = async (url:string, headers:{}={}):Promise<string> => {
     // read the config file
     let config = JSON.parse(fs.readFileSync(globals.apiGatewayConfigFile));
     // select a random api gateway
