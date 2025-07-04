@@ -9,9 +9,9 @@ import t from "@babel/types";
 import resolvePath from "../../utility/resolvePath.js";
 import * as globals from "../../utility/globals.js";
 
-const nuxt_astParse = async (url) => {
+const nuxt_astParse = async (url:string) => {
     let filesFound = [];
-    const resp = await makeRequest(url);
+    const resp = await makeRequest(url, {});
     const body = await resp.text();
 
     let ast;
