@@ -144,3 +144,4 @@ endpoints.json
 endpoints.txt
 test.js
 strings.md
+.DS_Store
