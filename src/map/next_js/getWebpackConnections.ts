@@ -5,6 +5,8 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import chalk from "chalk";
 
+import { Chunk, Chunks } from "../../utility/interfaces.js";
+
 import * as globals from "../../utility/globals.js";
 import { getCompletion } from "../../utility/ai.js";
 
@@ -148,8 +150,8 @@ const getWebpackConnections = async (directory, output, formats) => {
                                             /^s*[\w\d]+:\s\(/,
                                             `func_${keyValue} = (`
                                         );
-                                    chunks[keyValue] = {
-                                        id: keyValue,
+                                    chunks[String(keyValue)] = {
+                                        id: String(keyValue),
                                         description: "none",
                                         loadedOn: [],
                                         containsFetch: false,
