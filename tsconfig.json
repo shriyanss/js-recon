@@ -4,7 +4,8 @@
         "allowJs": true,
         "target": "es6",
         "sourceMap": true,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "skipLibCheck": true
     },
     "include": ["./src/**/*"]
 }
