@@ -8,8 +8,9 @@
         "js-recon": "./index.js"
     },
     "scripts": {
-        "build": "rm -rf built/ && tsc",
-        "start": "node built/index.js"
+        "build": "rm -rf build/ && tsc",
+        "start": "node build/index.js",
+        "dev": "tsc-watch \"node --enable-source-maps\""
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
