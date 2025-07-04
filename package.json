@@ -30,10 +30,8 @@
         "path": "^0.12.7",
         "prettier": "^3.5.3",
         "puppeteer": "^24.10.0",
-        "ses": "^1.13.0",
-        "typescript": "^5.8.3"
+        "ses": "^1.13.0"
     },
-    "type": "module",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/shriyanss/js-recon.git"

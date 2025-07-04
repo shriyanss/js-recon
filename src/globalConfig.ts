@@ -9,4 +9,4 @@ global.CONFIG = {
     toolDesc: toolDesc,
 };
 
-export default CONFIG;
+export default global.CONFIG;
