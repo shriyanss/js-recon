@@ -1,17 +1,17 @@
 import endpoints from "../endpoints/index.js";
 import strings from "../strings/index.js";
 import map from "../map/index.js";
-import * as globals from "../utility/globals.js";
-import fs from "fs";
+import * as globalsUtil from "../utility/globals.js";
+import * as fs from "fs";
 import lazyLoad from "../lazyLoad/index.js";
 import chalk from "chalk";
 
 export default async (cmd) => {
-    globals.setApiGatewayConfigFile(cmd.apiGatewayConfig);
-    globals.setUseApiGateway(cmd.apiGateway);
-    globals.setDisableCache(cmd.disableCache);
-    globals.setRespCacheFile(cmd.cacheFile);
-    globals.setYes(cmd.yes);
+    globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
+    globalsUtil.setUseApiGateway(cmd.apiGateway);
+    globalsUtil.setDisableCache(cmd.disableCache);
+    globalsUtil.setRespCacheFile(cmd.cacheFile);
+    globalsUtil.setYes(cmd.yes);
 
     const targetHost = new URL(cmd.url).host;
 
@@ -34,7 +34,7 @@ export default async (cmd) => {
     // globals.setTech("next");
 
     // if tech is undefined, i.e. it can't be detected, quit. Nothing to be done :(
-    if (!globals.getTech()) {
+    if (globalsUtil.getTech() === "") {
         console.log(chalk.bgRed("[!] Technology not detected. Quitting."));
         return;
     }
@@ -97,7 +97,7 @@ export default async (cmd) => {
             cmd.output,
             "strings",
             ["json"],
-            globals.getTech(),
+            globalsUtil.getTech(),
             false,
             `output/${targetHost}/___subsequent_requests`
         );
@@ -112,7 +112,7 @@ export default async (cmd) => {
 
     // now, run map
     console.log(chalk.bgCyan("[6/6] Running map to find functions..."));
-    await map(cmd.output, "mapped", ["json"], globals.getTech(), false, false);
+    await map(cmd.output, "mapped", ["json"], globalsUtil.getTech(), false, false);
     console.log(chalk.bgGreen("[+] Map complete."));
 
     console.log(chalk.bgGreenBright("[+] Analysis complete."));

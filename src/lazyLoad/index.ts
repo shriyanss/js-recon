@@ -45,13 +45,13 @@ import * as globals from "../utility/globals.js";
  * @returns {Promise<void>}
  */
 const lazyLoad = async (
-    url,
-    output,
-    strictScope,
-    inputScope,
-    threads,
-    subsequentRequestsFlag,
-    urlsFile
+    url:string,
+    output:string,
+    strictScope:boolean,
+    inputScope:[],
+    threads:number,
+    subsequentRequestsFlag:boolean,
+    urlsFile:string
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 

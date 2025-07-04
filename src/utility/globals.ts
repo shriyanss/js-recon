@@ -34,16 +34,16 @@ export const getYes = () => {
 };
 
 // AI
-export let ai = undefined;
-export let openaiApiKey = undefined;
+export let ai = [];
+export let openaiApiKey = "";
 export let aiModel = "gpt-4o-mini";
 export let aiServiceProvider = "openai";
 export let aiThreads = 5;
 export let aiEndpoint = undefined;
-export const setAi = (value) => {
+export const setAi = (value:[]) => {
     ai = value;
 };
-export const setOpenaiApiKey = (value) => {
+export const setOpenaiApiKey = (value:string) => {
     openaiApiKey = value;
 };
 export const getAi = () => {
@@ -55,22 +55,22 @@ export const getOpenaiApiKey = () => {
 export const getAiModel = () => {
     return aiModel;
 };
-export const setAiModel = (value) => {
+export const setAiModel = (value:string) => {
     aiModel = value;
 };
-export const setAiThreads = (value) => {
+export const setAiThreads = (value:number) => {
     aiThreads = value;
 };
 export const getAiThreads = () => {
     return aiThreads;
 };
-export const setAiServiceProvider = (value) => {
+export const setAiServiceProvider = (value:string) => {
     aiServiceProvider = value;
 };
 export const getAiServiceProvider = () => {
     return aiServiceProvider;
 };
-export const setAiEndpoint = (value) => {
+export const setAiEndpoint = (value:string) => {
     aiEndpoint = value;
 };
 export const getAiEndpoint = () => {
@@ -78,8 +78,8 @@ export const getAiEndpoint = () => {
 };
 
 // tech
-export let tech = undefined;
-export const setTech = (value) => {
+export let tech = "";
+export const setTech = (value:string) => {
     tech = value;
 };
 export const getTech = () => {

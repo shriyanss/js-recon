@@ -6,7 +6,7 @@ import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
 import apiGateway from "./api_gateway/index.js";
 import map from "./map/index.js";
-import * as globals from "./utility/globals.js";
+import * as globalsUtil from "./utility/globals.js";
 import run from "./run/index.js";
 import chalk from "chalk";
 
@@ -31,7 +31,7 @@ program
         "Download JS files from specific domains (comma-separated)",
         "*"
     )
-    .option("-t, --threads <threads>", "Number of threads to use", 1)
+    .option("-t, --threads <threads>", "Number of threads to use", "1")
     .option(
         "--subsequent-requests",
         "Download JS files from subsequent requests (Next.JS only)",
@@ -60,17 +60,17 @@ program
         false
     )
     .action(async (cmd) => {
-        globals.setApiGatewayConfigFile(cmd.apiGatewayConfig);
-        globals.setUseApiGateway(cmd.apiGateway);
-        globals.setDisableCache(cmd.disableCache);
-        globals.setRespCacheFile(cmd.cacheFile);
-        globals.setYes(cmd.yes);
+        globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
+        globalsUtil.setUseApiGateway(cmd.apiGateway);
+        globalsUtil.setDisableCache(cmd.disableCache);
+        globalsUtil.setRespCacheFile(cmd.cacheFile);
+        globalsUtil.setYes(cmd.yes);
         await lazyLoad(
             cmd.url,
             cmd.output,
             cmd.strictScope,
             cmd.scope.split(","),
-            cmd.threads,
+            Number(cmd.threads),
             cmd.subsequentRequests,
             cmd.urlsFile
         );
@@ -180,8 +180,8 @@ program
     .option("--feasibility", "Check feasibility of API Gateway", false)
     .option("--feasibility-url <url>", "URL to check feasibility of")
     .action(async (cmd) => {
-        globals.setApiGatewayConfigFile(cmd.config);
-        globals.setUseApiGateway(true);
+        globalsUtil.setApiGatewayConfigFile(cmd.config);
+        globalsUtil.setUseApiGateway(true);
         await apiGateway(
             cmd.init,
             cmd.destroy,
@@ -220,7 +220,7 @@ program
         "--ai <options>",
         "Use AI to analyze the code (comma-separated; available: description)"
     )
-    .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
+    .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option(
         "--ai-provider <provider>",
         "Service provider to use for AI (available: openai, ollama)",
@@ -233,16 +233,16 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .action(async (cmd) => {
-        globals.setAi(cmd.ai?.split(",") || []);
-        globals.setAiServiceProvider(cmd.aiProvider);
-        globals.setOpenaiApiKey(cmd.openaiApiKey);
-        globals.setAiModel(cmd.model);
-        if (cmd.aiEndpoint) globals.setAiEndpoint(cmd.aiEndpoint);
-        globals.setAiThreads(cmd.aiThreads);
+        globalsUtil.setAi(cmd.ai?.split(",") || []);
+        globalsUtil.setAiServiceProvider(cmd.aiProvider);
+        globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
+        globalsUtil.setAiModel(cmd.model);
+        if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
+        globalsUtil.setAiThreads(cmd.aiThreads);
 
         // validate AI options
-        if (globals.getAi() != []) {
-            for (const aiType of globals.getAi()) {
+        if (globalsUtil.getAi().length !== 0) {
+            for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
                     console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
                     return;
@@ -277,7 +277,7 @@ program
         "Download JS files from specific domains (comma-separated)",
         "*"
     )
-    .option("-t, --threads <threads>", "Number of threads to use", 1)
+    .option("-t, --threads <threads>", "Number of threads to use", "1")
     .option("--api-gateway", "Generate requests using API Gateway", false)
     .option(
         "--api-gateway-config <file>",
@@ -300,7 +300,7 @@ program
         "--ai <options>",
         "Use AI to analyze the code (comma-separated; available: description)"
     )
-    .option("--ai-threads <threads>", "Number of threads to use for AI", 5)
+    .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option(
         "--ai-provider <provider>",
         "Service provider to use for AI (available: openai, ollama)",
@@ -313,16 +313,16 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .action(async (cmd) => {
-        globals.setAi(cmd.ai?.split(",") || []);
-        globals.setOpenaiApiKey(cmd.openaiApiKey);
-        globals.setAiModel(cmd.model);
-        globals.setAiServiceProvider(cmd.aiProvider);
-        globals.setAiThreads(cmd.aiThreads);
-        if (cmd.aiEndpoint) globals.setAiEndpoint(cmd.aiEndpoint);
+        globalsUtil.setAi(cmd.ai?.split(",") || []);
+        globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
+        globalsUtil.setAiModel(cmd.model);
+        globalsUtil.setAiServiceProvider(cmd.aiProvider);
+        globalsUtil.setAiThreads(cmd.aiThreads);
+        if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
 
         // validate AI options
-        if (globals.getAi() != []) {
-            for (const aiType of globals.getAi()) {
+        if (globalsUtil.getAi().length !== 0) {
+            for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
                     console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
                     return;
