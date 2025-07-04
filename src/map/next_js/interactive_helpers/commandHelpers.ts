@@ -88,7 +88,7 @@ const commandHelpers = {
             } else {
                 returnText += chalk.greenBright("Exports:\n");
                 for (const exportName of exported_to_chunks) {
-                    returnText += chalk.green(`- ${exportName}: ${chunks[exportName].description}`);
+                    returnText += chalk.green(`- ${exportName}: ${chunks[exportName].description}\n`);
                 }   
             }
         }
