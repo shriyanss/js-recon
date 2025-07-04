@@ -142,7 +142,7 @@ const writeCache = async (url, headers, response) => {
     // console.log("wrote cache for ", url);
 };
 
-const makeRequest = async (url, args) => {
+const makeRequest = async (url: string, args:{}) => {
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
         const cachedResponse = await readCache(url, args?.headers || {});

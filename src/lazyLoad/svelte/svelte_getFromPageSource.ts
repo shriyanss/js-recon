@@ -7,7 +7,7 @@ import { getJsUrls, pushToJsUrls } from "../globals.js";
 const svelte_getFromPageSource = async (url) => {
     console.log(chalk.cyan("[i] Analyzing page source"));
     let foundUrls = [];
-    const pageSource = await makeRequest(url);
+    const pageSource = await makeRequest(url, {});
     const body = await pageSource.text();
 
     // cheerio to parse the page source

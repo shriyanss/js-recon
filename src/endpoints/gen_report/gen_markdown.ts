@@ -1,7 +1,7 @@
 import fs from "fs";
 import chalk from "chalk";
 
-const gen_markdown = async (url, hrefs, output) => {
+const gen_markdown = async (url:string, hrefs:[string], output:string) => {
     const hosts = {};
     const baseUrlObj = new URL(url);
 

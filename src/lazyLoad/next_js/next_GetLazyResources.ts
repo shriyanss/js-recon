@@ -67,7 +67,7 @@ const next_getLazyResources = async (url) => {
     }
 
     // parse the webpack JS file
-    const res = await makeRequest(webpack_js);
+    const res = await makeRequest(webpack_js, {});
     const webpack_js_source = await res.text();
 
     // parse it with @babel/*

@@ -17,7 +17,7 @@
  * @returns {Promise<string>} - A promise that resolves to the fully resolved URL as a string.
  * @throws Will throw an error if the resolution fails.
  */
-const resolvePath = (url, path) => {
+const resolvePath = (url:string, path:string) => {
     try {
         // The URL constructor handles various cases of path resolution.
         // If 'url' (the base URL) does not end with a '/', its last path segment
