@@ -1,7 +1,8 @@
 import chalk from "chalk";
+import { Chunk, Chunks } from "../../../utility/interfaces.js";
 
 const commandHelpers = {
-    fetchMenu: (chunks) => {
+    fetchMenu: (chunks:Chunks) => {
         let returnText = chalk.cyan(
             "List of chunks that contain fetch instances\n"
         );
@@ -14,7 +15,7 @@ const commandHelpers = {
         }
         return returnText;
     },
-    getFunctionCode: (chunks, funcName) => {
+    getFunctionCode: (chunks:Chunks, funcName:string) => {
         let funcCode;
         for (const chunk of Object.values(chunks)) {
             if (chunk.id == funcName) {
@@ -26,7 +27,7 @@ const commandHelpers = {
         }
         return funcCode;
     },
-    listAllFunctions: (chunks) => {
+    listAllFunctions: (chunks:Chunks) => {
         let returnText = chalk.cyan("List of all functions\n");
         for (const chunk of Object.values(chunks)) {
             returnText += chalk.green(
@@ -35,7 +36,7 @@ const commandHelpers = {
         }
         return returnText;
     },
-    navHistory: (chunks, navList) => {
+    navHistory: (chunks:Chunks, navList) => {
         let returnText = chalk.cyan("Navigation history\n");
         if (navList.length === 0) {
             returnText += chalk.yellow("- No navigation history");
@@ -48,7 +49,7 @@ const commandHelpers = {
         }
         return returnText;
     },
-    traceFunction: (chunks, funcName) => {
+    traceFunction: (chunks:Chunks, funcName) => {
         let returnText = chalk.cyan(`Tracing function ${funcName}\n`);
         const thisChunk = chunks[funcName];
         if (!thisChunk) {
