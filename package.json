@@ -3,11 +3,13 @@
     "version": "1.0.0",
     "description": "JS Recon Tool",
     "main": "index.js",
+    "type": "module",
     "bin": {
         "js-recon": "./index.js"
     },
     "scripts": {
-        "start": "node index.js"
+        "build": "rm -rf built/ && tsc",
+        "start": "node built/index.js"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
@@ -17,6 +19,7 @@
         "@babel/parser": "^7.27.4",
         "@babel/traverse": "^7.27.4",
         "@babel/types": "^7.27.6",
+        "@types/chalk": "^0.4.31",
         "blessed": "^0.1.81",
         "chalk": "^5.4.1",
         "cheerio": "^1.0.0",
@@ -32,7 +35,6 @@
         "puppeteer": "^24.10.0",
         "ses": "^1.13.0"
     },
-    "type": "module",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/shriyanss/js-recon.git"
@@ -40,5 +42,9 @@
     "bugs": {
         "url": "https://github.com/shriyanss/js-recon/issues"
     },
-    "homepage": "https://github.com/shriyanss/js-recon#readme"
+    "homepage": "https://github.com/shriyanss/js-recon#readme",
+    "devDependencies": {
+        "ts-node": "^10.9.2",
+        "tsconfig-paths": "^4.2.0"
+    }
 }
