@@ -48,6 +48,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Typescript build output
+built/*
+
 # Optional npm cache directory
 .npm
 
@@ -144,3 +147,4 @@ endpoints.json
 endpoints.txt
 test.js
 strings.md
+.DS_Store
