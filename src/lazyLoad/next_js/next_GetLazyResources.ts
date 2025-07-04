@@ -7,7 +7,7 @@ import inquirer from "inquirer";
 import CONFIG from "../../globalConfig.js";
 import makeRequest from "../../utility/makeReq.js";
 import execFunc from "../../utility/runSandboxed.js";
-import { getJsUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
+import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 import * as globals from "../../utility/globals.js";
 
 /**
@@ -19,7 +19,7 @@ import * as globals from "../../utility/globals.js";
  * absolute URLs pointing to JavaScript files found in require.ensure()
  * functions, or undefined if no webpack JS is found.
  */
-const next_getLazyResources = async (url) => {
+const next_getLazyResources = async (url:string) => {
     const browser = await puppeteer.launch({
         headless: true,
     });
@@ -42,14 +42,27 @@ const next_getLazyResources = async (url) => {
             }
         }
 
+        // check if the request is a JSON file with a get request
+        if (
+            request.method() === "GET" &&
+            req_url.match(/https?:\/\/[\d\w\.\-]+\/.+\.json\??.*$/)
+        ) {
+            if (!getJsonUrls().includes(req_url)) {
+                pushToJsonUrls(req_url);
+            }
+        }
         await request.continue();
     });
 
-    await page.goto(url);
+    try {
+    await page.goto(url, {waitUntil: 'networkidle0'});
+    } catch (err) {
+        console.log(chalk.yellow("[!] Timeout reached for page load. Continuing with the current state"));
+    }
 
     await browser.close();
 
-    let webpack_js;
+    let webpack_js = "";
 
     // iterate through JS files
     for (const js_url of getJsUrls()) {
