@@ -50,19 +50,46 @@ const commandHelpers = {
     },
     traceFunction: (chunks, funcName) => {
         let returnText = chalk.cyan(`Tracing function ${funcName}\n`);
-        const chunk = chunks[funcName];
-        if (!chunk) {
+        const thisChunk = chunks[funcName];
+        if (!thisChunk) {
             returnText += chalk.red(`Function ${funcName} not found`);
         } else {
             // get imports
-            if (chunk.imports.length === 0) {
+            if (thisChunk.imports.length === 0) {
                 returnText += chalk.yellow("- No imports");
             } else {
                 returnText += chalk.greenBright("Imports:\n");
-                for (const importName of chunk.imports) {
+                for (const importName of thisChunk.imports) {
                     const funcDesc = chunks[importName].description;
                     returnText += chalk.green(`- ${importName}: ${funcDesc}\n`);
                 }
+            }
+
+            returnText += "\n";
+            // get functions which import this particular function
+            // iterate over the function
+            let exported_to_chunks = [];
+            for (const chunk of Object.values(chunks)) {
+                // get the imports
+                const chunk_imports = chunk.imports;
+
+                // see if the import includes this particular ID
+                for (const chunk_import of chunk_imports) {
+                    // if so, then push to the var
+                    if (chunk_import == funcName) {
+                        exported_to_chunks.push(chunk.id);
+                    }
+                }
+            }
+
+            // append to return text
+            if (exported_to_chunks.length === 0) {
+                returnText += chalk.yellow("- No exports");
+            } else {
+                returnText += chalk.greenBright("Exports:\n");
+                for (const exportName of exported_to_chunks) {
+                    returnText += chalk.green(`- ${exportName}: ${chunks[exportName].description}`);
+                }   
             }
         }
         return returnText;
