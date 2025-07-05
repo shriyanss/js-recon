@@ -168,7 +168,7 @@ const frameworkDetect = async (url) => {
     const page = await browser.newPage();
     try {
         await page.goto(url, {
-            waitUntil: "networkidle0"
+            waitUntil: "networkidle0",
         });
     } catch (err) {
         console.log(
