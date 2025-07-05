@@ -129,6 +129,9 @@ const lazyLoad = async (
                 // or a new one depending on their implementation, so explicitly get the global one here.
                 jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
 
+                // also, download the JSON files, so push those as well into this list
+                jsFilesToDownload.push(...lazyLoadGlobals.getJsonUrls());
+
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 

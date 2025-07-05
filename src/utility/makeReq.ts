@@ -62,7 +62,7 @@ const UAs = [
     "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
-const readCache = async (url, headers) => {
+const readCache = async (url:string, headers:{}) => {
     // console.log("reading cache for", url);
     // open the cache file, build a Response, and return
     const cache = JSON.parse(
@@ -95,7 +95,7 @@ const readCache = async (url, headers) => {
     return null;
 };
 
-const writeCache = async (url, headers, response) => {
+const writeCache = async (url:string, headers:{}, response:Response) => {
     // clone the response
     const clonedResponse = response.clone();
 
@@ -193,7 +193,7 @@ const makeRequest = async (url: string, args:{}) => {
                 },
             };
         }
-        let res;
+        let res:Response;
         let counter = 0;
         while (true) {
             try {
@@ -204,7 +204,7 @@ const makeRequest = async (url: string, args:{}) => {
             } catch (err) {
                 counter++;
                 if (counter > 10) {
-                    console.log(chalk.red(`[!] Failed to fetch ${url}`));
+                    console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
                     return null;
                 }
                 // sleep 0.5 s before retrying
