@@ -7,7 +7,7 @@ const nuxt_getFromPageSource = async (url) => {
     console.log(chalk.cyan("[i] Analyzing page source"));
 
     // get the page source
-    const res = await makeRequest(url);
+    const res = await makeRequest(url, {});
     const pageSource = await res.text();
 
     // cheerio to parse the page source
