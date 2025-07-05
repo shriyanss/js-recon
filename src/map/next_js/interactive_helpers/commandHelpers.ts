@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { Chunk, Chunks } from "../../../utility/interfaces.js";
 
 const commandHelpers = {
-    fetchMenu: (chunks:Chunks) => {
+    fetchMenu: (chunks: Chunks) => {
         let returnText = chalk.cyan(
             "List of chunks that contain fetch instances\n"
         );
@@ -15,7 +15,7 @@ const commandHelpers = {
         }
         return returnText;
     },
-    getFunctionCode: (chunks:Chunks, funcName:string) => {
+    getFunctionCode: (chunks: Chunks, funcName: string) => {
         let funcCode;
         for (const chunk of Object.values(chunks)) {
             if (chunk.id == funcName) {
@@ -27,7 +27,7 @@ const commandHelpers = {
         }
         return funcCode;
     },
-    listAllFunctions: (chunks:Chunks) => {
+    listAllFunctions: (chunks: Chunks) => {
         let returnText = chalk.cyan("List of all functions\n");
         for (const chunk of Object.values(chunks)) {
             returnText += chalk.green(
@@ -36,7 +36,7 @@ const commandHelpers = {
         }
         return returnText;
     },
-    navHistory: (chunks:Chunks, navList) => {
+    navHistory: (chunks: Chunks, navList) => {
         let returnText = chalk.cyan("Navigation history\n");
         if (navList.length === 0) {
             returnText += chalk.yellow("- No navigation history");
@@ -49,7 +49,7 @@ const commandHelpers = {
         }
         return returnText;
     },
-    traceFunction: (chunks:Chunks, funcName) => {
+    traceFunction: (chunks: Chunks, funcName) => {
         let returnText = chalk.cyan(`Tracing function ${funcName}\n`);
         const thisChunk = chunks[funcName];
         if (!thisChunk) {
@@ -89,8 +89,10 @@ const commandHelpers = {
             } else {
                 returnText += chalk.greenBright("Exports:\n");
                 for (const exportName of exported_to_chunks) {
-                    returnText += chalk.green(`- ${exportName}: ${chunks[exportName].description}\n`);
-                }   
+                    returnText += chalk.green(
+                        `- ${exportName}: ${chunks[exportName].description}\n`
+                    );
+                }
             }
         }
         return returnText;
