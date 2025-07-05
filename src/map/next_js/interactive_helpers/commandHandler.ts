@@ -53,7 +53,7 @@ function handleCommand(text, state, ui) {
                 state.lastCommandStatus = true;
             } else if (option === "nav") {
                 outputBox.log(
-                    commandHelpers.navHistory(chunks, state.functionNavHistory)
+                    commandHelpers.navHistory(chunks, state.functionNavHistory),
                 );
                 state.lastCommandStatus = true;
             } else {
@@ -73,14 +73,23 @@ function handleCommand(text, state, ui) {
                 state.lastCommandStatus = false;
             } else if (funcName === "to") {
                 const funcId = text.split(" ")[2];
-                const funcCode = commandHelpers.getFunctionCode(chunks, funcId);
-                printFunction(
-                    outputBox,
-                    funcCode,
-                    chunks[funcId].description,
-                    state.funcWriteFile
-                );
-                state.lastCommandStatus = true;
+                // check if the function exists
+                if (chunks[funcId]) {
+                    const funcCode = commandHelpers.getFunctionCode(
+                        chunks,
+                        funcId,
+                    );
+                    printFunction(
+                        outputBox,
+                        funcCode,
+                        chunks[funcId]?.description,
+                        state.funcWriteFile,
+                    );
+                    state.lastCommandStatus = true;
+                } else {
+                    outputBox.log(chalk.red(`No function with ID ${funcId} found`));
+                    state.lastCommandStatus = false;
+                }
                 state.functionNavHistory.push(funcId);
                 state.functionNavHistoryIndex++;
             } else if (funcName === "back") {
@@ -93,13 +102,13 @@ function handleCommand(text, state, ui) {
                             ];
                         const funcCode = commandHelpers.getFunctionCode(
                             chunks,
-                            funcId
+                            funcId,
                         );
                         printFunction(
                             outputBox,
                             funcCode,
                             chunks[funcId].description,
-                            state.funcWriteFile
+                            state.funcWriteFile,
                         );
                         state.lastCommandStatus = true;
                     } else {
@@ -123,13 +132,13 @@ function handleCommand(text, state, ui) {
                             ];
                         const funcCode = commandHelpers.getFunctionCode(
                             chunks,
-                            funcId
+                            funcId,
                         );
                         printFunction(
                             outputBox,
                             funcCode,
                             chunks[funcId].description,
-                            state.funcWriteFile
+                            state.funcWriteFile,
                         );
                         state.lastCommandStatus = true;
                     } else {
@@ -159,8 +168,8 @@ function handleCommand(text, state, ui) {
                 state.funcWriteFile = path.join(`${fileName}`);
                 outputBox.log(
                     chalk.green(
-                        `Function write file set to ${state.funcWriteFile}`
-                    )
+                        `Function write file set to ${state.funcWriteFile}`,
+                    ),
                 );
                 state.lastCommandStatus = true;
             } else {
