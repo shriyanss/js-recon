@@ -9,8 +9,7 @@
     },
     "scripts": {
         "build": "rm -rf build/ && tsc",
-        "start": "node build/index.js",
-        "dev": "tsc-watch \"node --enable-source-maps\""
+        "start": "node build/index.js"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
