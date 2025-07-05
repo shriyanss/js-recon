@@ -15,9 +15,9 @@ import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const downloadFiles = async (urls, output) => {
+const downloadFiles = async (urls:[string], output:string) => {
     console.log(
-        chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`)
+        chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`),
     );
     fs.mkdirSync(output, { recursive: true });
 
@@ -31,9 +31,9 @@ const downloadFiles = async (urls, output) => {
     const downloadPromises = urls.map(async (url) => {
         try {
             await new Promise((resolve) =>
-                setTimeout(resolve, Math.random() * 4950 + 50)
+                setTimeout(resolve, Math.random() * 4950 + 50),
             );
-            if (url.match(/\.js/)) {
+            if (url.match(/(\.js|\.json)/)) {
                 // get the directory of the url
                 const { host, directory } = getURLDirectory(url);
 
@@ -57,31 +57,37 @@ const downloadFiles = async (urls, output) => {
                     // Wait until there is an available slot in the request queue
                     while (queue >= getMaxReqQueue()) {
                         await new Promise((resolve) =>
-                            setTimeout(resolve, Math.random() * 250 + 50)
+                            setTimeout(resolve, Math.random() * 250 + 50),
                         );
                     }
                     queue++; // acquire a slot in the queue
 
-                    res = await makeRequest(url);
+                    res = await makeRequest(url, {});
                 } catch (err) {
                     console.error(chalk.red(`[!] Failed to download: ${url}`));
                 } finally {
                     queue--;
                 }
 
-                const file = `// JS Source: ${url}\n${await res.text()}`;
+                // only push it if the file is a JS file
+                let file;
+                if (!url.match(/\.json/)) {
+                    file = `// JS Source: ${url}\n${await res.text()}`;
+                } else {
+                    file = await res.text();
+                }
                 let filename;
                 try {
                     filename = url
                         .split("/")
                         .pop()
-                        .match(/[a-zA-Z0-9\.\-_]+\.js/)[0];
+                        .match(/[a-zA-Z0-9\.\-_]+\.js(on)?/)[0];
                 } catch (err) {
                     // split the URL into multiple chunks. then iterate
-                    // through it, and find whatever matches with JS ext
+                    // through it, and find whatever matches with JS or JSON ext
                     const chunks = url.split("/");
                     for (const chunk of chunks) {
-                        if (chunk.match(/\.js$/)) {
+                        if (chunk.match(/\.js(on)?$/)) {
                             filename = chunk;
                             break;
                         }
@@ -92,27 +98,35 @@ const downloadFiles = async (urls, output) => {
                     // Handle cases where filename might not be found
                     console.warn(
                         chalk.yellow(
-                            `[!] Could not determine filename for URL: ${url}. Skipping.`
-                        )
+                            `[!] Could not determine filename for URL: ${url}. Skipping.`,
+                        ),
                     );
                     return;
                 }
 
                 const filePath = path.join(childDir, filename);
                 try {
-                    fs.writeFileSync(
-                        filePath,
-                        await prettier.format(file, { parser: "babel" })
-                    );
+                    // if it's json, then use different parser
+                    if (url.match(/\.json/)) {
+                        fs.writeFileSync(
+                            filePath,
+                            await prettier.format(file, { parser: "json" }),
+                        );
+                    } else {
+                        fs.writeFileSync(
+                            filePath,
+                            await prettier.format(file, { parser: "babel" }),
+                        );
+                    }
                 } catch (err) {
                     console.error(
-                        chalk.red(`[!] Failed to write file: ${filePath}`)
+                        chalk.red(`[!] Failed to write file: ${filePath}`),
                     );
                 }
                 download_count++;
             }
         } catch (err) {
-            console.error(chalk.red(`[!] Failed to download: ${url}`));
+            console.error(chalk.red(`[!] Failed to download: ${url} : ${err}`));
         }
     });
 
@@ -121,16 +135,16 @@ const downloadFiles = async (urls, output) => {
     if (ignoredJSFiles.length > 0) {
         console.log(
             chalk.yellow(
-                `[i] Ignored ${ignoredJSFiles.length} JS files across ${ignoredJSDomains.length} domain(s) - ${ignoredJSDomains.join(", ")}`
-            )
+                `[i] Ignored ${ignoredJSFiles.length} JS files across ${ignoredJSDomains.length} domain(s) - ${ignoredJSDomains.join(", ")}`,
+            ),
         );
     }
 
     if (download_count > 0) {
         console.log(
             chalk.green(
-                `[✓] Downloaded ${download_count} JS chunks to ${output} directory`
-            )
+                `[✓] Downloaded ${download_count} JS chunks to ${output} directory`,
+            ),
         );
     }
 };

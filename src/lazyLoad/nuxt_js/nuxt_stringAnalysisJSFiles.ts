@@ -35,12 +35,11 @@ const parseJSFileContent = async (content) => {
 
         return foundJsFiles;
     } catch (error) {
-        // console.error(error);
         return {};
     }
 };
 
-const svelte_stringAnalysisJSFiles = async (url) => {
+const nuxt_stringAnalysisJSFiles = async (url) => {
     console.log(chalk.cyan("[i] Analyzing strings in the files found"));
 
     while (true) {
@@ -72,7 +71,7 @@ const svelte_stringAnalysisJSFiles = async (url) => {
                 continue;
             }
 
-            const response = await makeRequest(js_url);
+            const response = await makeRequest(js_url, {});
             const respText = await response.text();
             const foundJsFiles = await parseJSFileContent(respText);
 
@@ -102,4 +101,4 @@ const svelte_stringAnalysisJSFiles = async (url) => {
     return filesFound;
 };
 
-export default svelte_stringAnalysisJSFiles;
+export default nuxt_stringAnalysisJSFiles;

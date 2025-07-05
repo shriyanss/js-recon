@@ -2,7 +2,7 @@ import fs from "fs";
 import chalk from "chalk";
 import iterate_n_store from "./utility/iterate_n_store.js";
 
-const gen_json = async (url, hrefs, output) => {
+const gen_json = async (url:string, hrefs:[string], output:string) => {
     // iterate over hrefs
     const result = await iterate_n_store(url, hrefs);
 

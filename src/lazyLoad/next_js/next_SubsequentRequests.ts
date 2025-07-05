@@ -5,7 +5,7 @@ import { getURLDirectory } from "../../utility/urlUtils.js";
 // custom request module
 import makeRequest from "../../utility/makeReq.js";
 
-let queue = [];
+let queue = 0;
 let max_queue;
 
 /**

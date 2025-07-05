@@ -1,6 +1,6 @@
 import resolvePath from "../../../utility/resolvePath.js";
 
-const iterate_n_store = async (baseUrl, urls) => {
+const iterate_n_store = async (baseUrl:string, urls:[string]) => {
     let result = {};
     for (let url of urls) {
         if (url.startsWith("mailto:") || url.startsWith("tel:")) {
@@ -8,7 +8,7 @@ const iterate_n_store = async (baseUrl, urls) => {
         }
 
         if (url.startsWith("/")) {
-            url = await resolvePath(baseUrl, url);
+            url = resolvePath(baseUrl, url);
         }
 
         // Parse the URL once and extract the bits we need
