@@ -2,14 +2,16 @@
     "name": "@shriyanss/js-recon",
     "version": "1.0.0",
     "description": "JS Recon Tool",
-    "main": "index.js",
+    "main": "build/index.js",
     "type": "module",
     "bin": {
-        "js-recon": "./index.js"
+        "js-recon": "build/index.js"
     },
+    "types": "build/index.d.ts",
     "scripts": {
         "build": "rm -rf build/ && tsc",
-        "start": "node build/index.js"
+        "start": "node build/index.js",
+        "test": "node build/index.js -h"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
