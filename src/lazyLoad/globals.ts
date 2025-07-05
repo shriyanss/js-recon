@@ -20,7 +20,7 @@ export const pushToJsUrls = (url) => {
 };
 
 export const getJsonUrls = () => json_urls;
-export const pushToJsonUrls = (url:string) => (json_urls.push(url));
+export const pushToJsonUrls = (url: string) => json_urls.push(url);
 
 export const getMaxReqQueue = () => max_req_queue;
 export const setMaxReqQueue = (newMax) => {
