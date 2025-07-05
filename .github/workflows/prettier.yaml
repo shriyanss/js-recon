@@ -3,7 +3,6 @@ name: Prettify Code
 on:
   push:
     branches:
-      - main
       - dev
 
 jobs:
