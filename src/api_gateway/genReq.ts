@@ -188,7 +188,11 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
     try {
         await client.send(deleteResourceCommand);
     } catch (err) {
-        console.error(chalk.red(`[!] Error when sending delete resource command to AWS: ${err}`))
+        console.error(
+            chalk.red(
+                `[!] Error when sending delete resource command to AWS: ${err}`
+            )
+        );
     }
 
     if (isFireWallBlocking) {
