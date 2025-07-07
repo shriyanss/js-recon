@@ -3,6 +3,7 @@
 A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application running supported frameworks
 
 ## Installation
+
 This tool requires Node.JS and `npm` to be installed. The [official download page](https://nodejs.org/en/download) can be referred. Please install **22.17.0 (LTS)** or later. Downloading older versions might break the tool.
 
 To install the tool globally, run:
@@ -22,6 +23,7 @@ js-recon <command> --help
 ```
 
 To launch a quick assesment against a target, the `run` module can be used to automate other modules
+
 ```bash
 js-recon run -u https://app.example.com
 ```
@@ -30,7 +32,7 @@ js-recon run -u https://app.example.com
 
 `js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to its full documentation.
 
-***The `lazyload` module will work on Next.JS, Nuxt.JS, and Svelte apps. All other modules are only expected to work on Next.JS apps.***
+**_The `lazyload` module will work on Next.JS, Nuxt.JS, and Svelte apps. All other modules are only expected to work on Next.JS apps._**
 
 | Command       | Description                                                                   | Documentation                      |
 | ------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
@@ -50,6 +52,7 @@ js-recon run -u https://app.example.com
 - Map feature analyzes the JS files, and outputs it to a JSON file. An interactive mode can be then used to analyze it
 
 ## Example Scenario
+
 Refer to [this page](./docs/example-scenario.md) where an example scenario of running this tool against a target is demonstrated.
 
 ## Documentation
