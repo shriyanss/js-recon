@@ -74,7 +74,7 @@ const svelte_stringAnalysisJSFiles = async (url) => {
 
             const response = await makeRequest(js_url, {});
             const respText = await response.text();
-            const foundJsFiles = await parseJSFileContent(respText);
+            const foundJsFiles: = await parseJSFileContent(respText);
 
             // iterate through the foundJsFiles and resolve the paths
             for (const [key, value] of Object.entries(foundJsFiles)) {
