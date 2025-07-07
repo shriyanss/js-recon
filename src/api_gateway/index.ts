@@ -12,14 +12,14 @@ import checkFeasibility from "./checkFeasibility.js";
 
 interface ApiGatewayConfig {
     (key: string): {
-        id: string,
-        name: string,
-        description: string,
-        created_at: number,
-        region: string,
-        access_key: string,
-        secret_key: string
-    }
+        id: string;
+        name: string;
+        description: string;
+        created_at: number;
+        region: string;
+        access_key: string;
+        secret_key: string;
+    };
 }
 
 const randomRegion = () => {
@@ -190,7 +190,9 @@ const destroyGateway = async (id) => {
 const destroyAllGateways = async () => {
     console.log(chalk.cyan("[i] Destroying all API Gateways"));
     //   read the config file
-    let config:ApiGatewayConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    let config: ApiGatewayConfig = JSON.parse(
+        fs.readFileSync(configFile, "utf8")
+    );
 
     //   destroy all the gateways
     for (const [key, value] of Object.entries(config)) {
@@ -241,7 +243,9 @@ const listGateways = async () => {
         return;
     }
 
-    const config:ApiGatewayConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    const config: ApiGatewayConfig = JSON.parse(
+        fs.readFileSync(configFile, "utf8")
+    );
 
     //   if list is empty
     if (Object.keys(config).length === 0) {
