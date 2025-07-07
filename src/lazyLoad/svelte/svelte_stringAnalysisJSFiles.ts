@@ -6,6 +6,7 @@ import resolvePath from "../../utility/resolvePath.js";
 // for parsing
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import { FoundJsFiles } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
 
 let analyzedFiles = [];
@@ -74,7 +75,7 @@ const svelte_stringAnalysisJSFiles = async (url) => {
 
             const response = await makeRequest(js_url, {});
             const respText = await response.text();
-            const foundJsFiles: = await parseJSFileContent(respText);
+            const foundJsFiles:FoundJsFiles = await parseJSFileContent(respText);
 
             // iterate through the foundJsFiles and resolve the paths
             for (const [key, value] of Object.entries(foundJsFiles)) {

@@ -3,6 +3,7 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import fs from "fs";
 import path from "path";
+import { Chunks } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
 
 const resolveNodeValue = (node, scope) => {
@@ -114,7 +115,7 @@ const resolveNodeValue = (node, scope) => {
     }
 };
 
-const resolveFetch = async (chunks, directory, formats) => {
+const resolveFetch = async (chunks:Chunks, directory:string, formats) => {
     console.log(chalk.cyan("[i] Resolving fetch instances"));
 
     for (const chunk of Object.values(chunks)) {
