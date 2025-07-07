@@ -69,7 +69,9 @@ const client_jsonParse = async (directory) => {
                 },
             });
         } catch (err) {
-            continue;
+         } catch (err) {
+             // Ignore parse errors and continue with next file
+         }
         }
     }
 
