@@ -6,12 +6,12 @@ export interface Chunk {
     exports: string;
     callStack: [];
     code: string;
-    imports: [];
+    imports: string[];
     file: string;
 }
 
 export interface Chunks {
-    "": Chunk;
+    [key:string]: Chunk;
 }
 
 export interface FoundJsFiles {

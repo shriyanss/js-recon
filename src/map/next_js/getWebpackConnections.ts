@@ -63,7 +63,7 @@ const getWebpackConnections = async (directory, output, formats) => {
         return !fs.lstatSync(path.join(directory, file)).isDirectory();
     });
 
-    let chunks: Chunks;
+    let chunks: Chunks = {};
 
     // read all the files, and get the chunks
     for (const file of files) {
