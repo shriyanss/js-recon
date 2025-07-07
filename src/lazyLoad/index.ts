@@ -86,7 +86,6 @@ const lazyLoad = async (
         }
 
         lazyLoadGlobals.setMaxReqQueue(threads);
-        lazyLoadGlobals.clearJsUrls(); // Initialize js_urls for each URL processing in the loop
 
         const tech = await frameworkDetect(url);
         globals.setTech(tech ? tech.name : undefined);
@@ -118,7 +117,7 @@ const lazyLoad = async (
 
                 // download the resources
                 // but combine them first
-                let jsFilesToDownload = [
+                let jsFilesToDownload: string[] | any = [
                     ...(jsFilesFromScriptTag || []),
                     ...(lazyResourcesFromWebpack || []),
                     ...(lazyResourcesFromSubsequentRequests || []),
@@ -143,7 +142,7 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload = [];
+                let jsFilesToDownload: string[] = [];
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await nuxt_getFromPageSource(url);

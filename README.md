@@ -1,4 +1,5 @@
 # JS Recon
+
 ![NPM Licence](https://img.shields.io/npm/l/%40shriyanss%2Fjs-recon) ![GitHub repo size](https://img.shields.io/github/repo-size/shriyanss/js-recon) ![NPM Downloads](https://img.shields.io/npm/dm/%40shriyanss%2Fjs-recon) ![GitHub commit activity (dev)](https://img.shields.io/github/commit-activity/w/shriyanss/js-recon/dev) ![NPM Last Update](https://img.shields.io/npm/last-update/%40shriyanss%2Fjs-recon) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/shriyanss/js-recon)
 
 A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application running supported frameworks

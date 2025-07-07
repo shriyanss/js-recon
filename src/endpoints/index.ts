@@ -93,7 +93,7 @@ const endpoints = async (
             return;
         }
 
-        let final_client_side = [];
+        let final_client_side: string[] = [];
         const client_subsequentRequestsResult = await client_subsequentRequests(
             subsequentRequestsDir,
             url

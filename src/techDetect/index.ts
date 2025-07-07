@@ -71,17 +71,20 @@ const checkVueJS = async ($) => {
     return { detected, evidence };
 };
 
-const checkNuxtJS = async ($) => {
+const checkNuxtJS = async ($: cheerio.CheerioAPI) => {
     let detected = false;
     let evidence = "";
 
     // go through the page source, and check for "/_nuxt" in the src or href attribute
     $("*").each((_, el) => {
+        // @ts-ignore
         const tag = $(el).get(0).tagName;
+        // @ts-ignore
         const attribs = el.attribs;
         if (attribs) {
             for (const [attrName, attrValue] of Object.entries(attribs)) {
                 if (attrName === "src" || attrName === "href") {
+                    // @ts-ignore
                     if (attrValue.includes("/_nuxt")) {
                         detected = true;
                         evidence = `${attrName} :: ${attrValue}`;
@@ -105,6 +108,7 @@ const checkSvelte = async ($) => {
         if (attribs) {
             for (const [attrName, attrValue] of Object.entries(attribs)) {
                 if (attrName === "class") {
+                    // @ts-ignore
                     if (attrValue.includes("svelte-")) {
                         detected = true;
                         evidence = `${attrName} :: ${attrValue}`;
@@ -121,6 +125,7 @@ const checkSvelte = async ($) => {
         if (attribs) {
             for (const [attrName, attrValue] of Object.entries(attribs)) {
                 if (attrName === "id") {
+                    // @ts-ignore
                     if (attrValue.includes("svelte-")) {
                         detected = true;
                         evidence = `${attrName} :: ${attrValue}`;
@@ -159,7 +164,7 @@ const frameworkDetect = async (url) => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source
-    const res = await makeRequest(url);
+    const res = await makeRequest(url, {});
 
     // get the page source in the browser
     const browser = await puppeteer.launch({

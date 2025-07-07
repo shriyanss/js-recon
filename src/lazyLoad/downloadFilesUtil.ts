@@ -15,7 +15,7 @@ import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max
  * @param {string} output - The directory where the downloaded files will be saved.
  * @returns {Promise<void>}
  */
-const downloadFiles = async (urls: [string], output: string) => {
+const downloadFiles = async (urls: string[], output: string) => {
     console.log(
         chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`)
     );

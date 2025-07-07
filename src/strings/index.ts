@@ -92,7 +92,10 @@ const strings = async (
     console.log(chalk.cyan(`[i] Scanning ${directory} directory`));
 
     // get all files in the directory and sub-directories
-    const files = fs.readdirSync(directory, { recursive: true });
+    const files = fs.readdirSync(directory, {
+        recursive: true,
+        encoding: "utf8",
+    });
 
     // filter out non JS files
     let jsFiles = files.filter((file) => file.endsWith(".js"));
