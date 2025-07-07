@@ -11,7 +11,7 @@ export interface Chunk {
 }
 
 export interface Chunks {
-    [key:string]: Chunk;
+    [key: string]: Chunk;
 }
 
 export interface FoundJsFiles {
