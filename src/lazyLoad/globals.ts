@@ -1,5 +1,5 @@
 let scope = [];
-let js_urls = [];
+let js_urls:[string];
 let json_urls = [];
 let max_req_queue;
 
@@ -12,9 +12,6 @@ export const pushToScope = (item) => {
 };
 
 export const getJsUrls = () => js_urls;
-export const clearJsUrls = () => {
-    js_urls = [];
-};
 export const pushToJsUrls = (url) => {
     js_urls.push(url);
 };
