@@ -16,4 +16,5 @@ Welcome to the official documentation for `js-recon`, a powerful tool for JavaSc
 Select a command from the list above to view its detailed documentation, including all available options and practical examples.
 
 ## Example Scenario
+
 An example scenario is demonstrated on [this](./example-scenario.md) page. The example assumes the app is using Next.JS.
