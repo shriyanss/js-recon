@@ -1,40 +1,52 @@
 {
-  "name": "@shriyanss/js-recon",
-  "version": "1.0.0",
-  "description": "JS Recon Tool",
-  "main": "index.js",
-  "bin": {
-    "js-recon": "./index.js"
-  },
-  "scripts": {
-    "start": "node index.js"
-  },
-  "keywords": [],
-  "author": "Shriyans Sudhi",
-  "license": "MIT",
-  "dependencies": {
-    "@aws-sdk/client-api-gateway": "^3.829.0",
-    "@babel/parser": "^7.27.4",
-    "@babel/traverse": "^7.27.4",
-    "@babel/types": "^7.27.6",
-    "chalk": "^5.4.1",
-    "cheerio": "^1.0.0",
-    "commander": "^14.0.0",
-    "fs": "^0.0.1-security",
-    "inquirer": "^12.6.3",
-    "md5": "^2.3.0",
-    "path": "^0.12.7",
-    "prettier": "^3.5.3",
-    "puppeteer": "^24.9.0",
-    "ses": "^1.13.0"
-  },
-  "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/shriyanss/js-recon.git"
-  },
-  "bugs": {
-    "url": "https://github.com/shriyanss/js-recon/issues"
-  },
-  "homepage": "https://github.com/shriyanss/js-recon#readme"
+    "name": "@shriyanss/js-recon",
+    "version": "1.1.0-beta.1",
+    "description": "JS Recon Tool",
+    "main": "build/index.js",
+    "type": "module",
+    "bin": {
+        "js-recon": "build/index.js"
+    },
+    "types": "build/index.d.ts",
+    "scripts": {
+        "build": "rm -rf build/ && tsc",
+        "start": "node build/index.js",
+        "test": "node build/index.js -h"
+    },
+    "keywords": [],
+    "author": "Shriyans Sudhi",
+    "license": "MIT",
+    "dependencies": {
+        "@aws-sdk/client-api-gateway": "^3.829.0",
+        "@babel/parser": "^7.27.4",
+        "@babel/traverse": "^7.27.4",
+        "@babel/types": "^7.27.6",
+        "@types/chalk": "^0.4.31",
+        "blessed": "^0.1.81",
+        "chalk": "^5.4.1",
+        "cheerio": "^1.0.0",
+        "cli-highlight": "^2.1.11",
+        "commander": "^14.0.0",
+        "fs": "^0.0.2",
+        "inquirer": "^12.6.3",
+        "md5": "^2.3.0",
+        "ollama": "^0.5.16",
+        "openai": "^5.8.2",
+        "path": "^0.12.7",
+        "prettier": "^3.5.3",
+        "puppeteer": "^24.11.2",
+        "ses": "^1.13.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/shriyanss/js-recon.git"
+    },
+    "bugs": {
+        "url": "https://github.com/shriyanss/js-recon/issues"
+    },
+    "homepage": "https://github.com/shriyanss/js-recon#readme",
+    "devDependencies": {
+        "ts-node": "^10.9.2",
+        "tsconfig-paths": "^4.2.0"
+    }
 }

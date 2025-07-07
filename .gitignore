@@ -48,6 +48,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Typescript build output
+build/*
+
 # Optional npm cache directory
 .npm
 
@@ -133,5 +136,15 @@ dist
 output
 output/*
 strings.json
-extracted_urls.json
+extracted_urls*
 .api_gateway_config.json
+.resp_cache.json
+.vscode
+.vscode/*
+output*
+mapped.json
+endpoints.json
+endpoints.txt
+test.js
+strings.md
+.DS_Store
