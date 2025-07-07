@@ -1,6 +1,6 @@
 # Endpoints Command
 
-The `endpoints` command is used to extract API endpoints from a directory of JavaScript files. It identifies potential client-side and/or API paths and organizes them for further analysis.
+The `endpoints` command is used to extract client-side endpoints from a directory of JavaScript files. It identifies potential client-side paths and organizes them for further analysis.
 
 ## Usage
 
@@ -40,7 +40,7 @@ js-recon endpoints -d /path/to/js-files -t <technology> -u https://example.com -
 
 ### Next.JS Usage
 
-When analyzing a Next.JS application, you must specify the technology as `next` and provide the directory containing subsequent requests. These requests are typically captured during the `lazyload` process.
+When analyzing a Next.JS application, you must specify the technology as `next` and provide the directory containing subsequent requests. These requests are typically captured during the `lazyload` process. Refer to the [example scenario](./example-scenario.md#subseqent-requests) to know detailed guide on this.
 
 ```bash
 js-recon endpoints -d /path/to/js-files -t next -u https://example.com --subsequent-requests-dir /path/to/js-files/___subsequent_requests
