@@ -5,7 +5,7 @@ const traverse = _traverse.default;
 import fs from "fs";
 import path from "path";
 
-const client_jsonParse = async (directory) => {
+const client_jsonParse = async (directory: string): Promise<string[]> => {
     let foundUrls = [];
     console.log(
         chalk.cyan("[i] Searching for client-side paths in JSON.parse()")
