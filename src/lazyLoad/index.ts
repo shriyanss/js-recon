@@ -142,7 +142,7 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload: string[];
+                let jsFilesToDownload: string[] = [];
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
