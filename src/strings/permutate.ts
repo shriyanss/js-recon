@@ -1,7 +1,11 @@
 import chalk from "chalk";
 import fs from "fs";
 
-const permutate = async (urls: string[], paths: string[], output: string): Promise<void> => {
+const permutate = async (
+    urls: string[],
+    paths: string[],
+    output: string
+): Promise<void> => {
     console.log(chalk.cyan("[i] Permutating URLs and paths"));
 
     let permutedUrls = [];
@@ -44,7 +48,9 @@ const permutate = async (urls: string[], paths: string[], output: string): Promi
         fs.writeFileSync(`${output}.txt`, results);
         console.log(chalk.green(`[✓] Written permuted URLs to ${output}.txt`));
     } catch (error) {
-        console.error(chalk.red(`[✗] Failed to write to ${output}.txt: ${error.message}`));
+        console.error(
+            chalk.red(`[✗] Failed to write to ${output}.txt: ${error.message}`)
+        );
         throw error;
     }
 };
