@@ -1,8 +1,9 @@
 import chalk from "chalk";
 import fs from "fs";
-import _traverse from "@babel/traverse";
+import { _traverse } from "@babel/traverse";
 const traverse = _traverse.default;
 import parser from "@babel/parser";
+import { Chunks } from "../../utility/interfaces.js";
 
 const isFetchIdentifier = (node) => {
     return node.type === "Identifier" && node.name === "fetch";
@@ -19,9 +20,9 @@ const isFetchFallback = (node) => {
     );
 };
 
-const getFetchInstances = async (chunks, output, formats) => {
+const getFetchInstances = async (chunks:Chunks, output, formats) => {
     console.log(chalk.cyan("[i] Running 'getFetchInstances' module"));
-    let chunk_copy = { ...chunks };
+    let chunk_copy:Chunks = { ...chunks };
 
     //   iterate through the chunks, and check fetch instances
     for (let chunk of Object.values(chunks)) {
@@ -74,6 +75,7 @@ const getFetchInstances = async (chunks, output, formats) => {
 
         // -------- Pass 2:  report the call-sites (aliases) --------
         for (const binding of fetchAliases) {
+            // @ts-ignore
             binding.referencePaths.forEach((ref) => {
                 const parent = ref.parent;
                 if (
@@ -94,6 +96,7 @@ const getFetchInstances = async (chunks, output, formats) => {
         for (const call of fetchCalls) {
             console.log(
                 chalk.magenta(
+                    // @ts-ignore
                     `[fetch] Webpack ID ${chunk.id}: fetch() called at ${call.line}:${call.column}`
                 )
             );
