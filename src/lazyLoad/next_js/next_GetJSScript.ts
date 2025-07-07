@@ -13,7 +13,7 @@ import { getJsUrls, pushToJsUrls } from "../globals.js";
  * @returns {Promise<string[]>} - A promise that resolves to an array of
  * absolute URLs pointing to JavaScript files found in script tags.
  */
-const next_getJSScript = async (url:string):Promise<string[]> => {
+const next_getJSScript = async (url: string): Promise<string[]> => {
     // get the page source
     const res = await makeRequest(url, {});
     const pageSource = await res.text();

@@ -115,7 +115,7 @@ const resolveNodeValue = (node, scope) => {
     }
 };
 
-const resolveFetch = async (chunks:Chunks, directory:string, formats) => {
+const resolveFetch = async (chunks: Chunks, directory: string, formats) => {
     console.log(chalk.cyan("[i] Resolving fetch instances"));
 
     for (const chunk of Object.values(chunks)) {
