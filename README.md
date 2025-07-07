@@ -1,8 +1,9 @@
 # js-recon
 
-A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application.
+A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application running supported frameworks
 
 ## Installation
+This tool requires Node.JS and `npm` to be installed. The [official download page](https://nodejs.org/en/download) can be referred. Please install **22.17.0 (LTS)** or later. Downloading older versions might break the tool.
 
 To install the tool globally, run:
 
@@ -20,9 +21,16 @@ js-recon --help
 js-recon <command> --help
 ```
 
+To launch a quick assesment against a target, the `run` module can be used to automate other modules
+```bash
+js-recon run -u https://app.example.com
+```
+
 ## Commands
 
-`js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to our full documentation.
+`js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to its full documentation.
+
+***The `lazyload` module will work on Next.JS, Nuxt.JS, and Svelte apps. All other modules are only expected to work on Next.JS apps.***
 
 | Command       | Description                                                                   | Documentation                      |
 | ------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
@@ -35,10 +43,14 @@ js-recon <command> --help
 
 ## Key Features
 
-- **Discover Lazy-Loaded Files**: Uncover JavaScript files that are loaded dynamically, which are often missed by traditional crawlers.
-- **Extract Endpoints and Secrets**: Automatically parse JavaScript to find API endpoints, paths, and potential hardcoded secrets.
-- **Analyze Modern Frameworks**: Specialized support for frameworks like Next.JS to extract framework-specific information.
-- **Bypass Rate-Limiting**: Integrates with AWS API Gateway to rotate your IP address on every request, helping to avoid blocks and rate limits.
+- Downloads all dynamically loaded JS files (refered as `lazyload`) from website with supported frameworks
+- Use API gateway to rotate IP addresses to bypass firewall
+- Extract strings from the discovered JS files, and extract potential secrets, endpoints, etc. from them
+- Endpoints modules extracts client-side paths from the app
+- Map feature analyzes the JS files, and outputs it to a JSON file. An interactive mode can be then used to analyze it
+
+## Example Scenario
+Refer to [this page](./docs/example-scenario.md) where an example scenario of running this tool against a target is demonstrated.
 
 ## Documentation
 

@@ -10,15 +10,15 @@ js-recon strings -d <directory> [options]
 
 ## Options
 
-| Option | Alias | Description | Default | Required |
-| --- | --- | --- | --- | --- |
-| `--directory <directory>` | `-d` | Directory containing JS files. | | Yes |
-| `--output <file>` | `-o` | JSON file to save the extracted strings. | `strings.json` | No |
-| `--extract-urls` | `-e` | Extract URLs from the strings. | `false` | No |
-| `--extracted-url-path <file>` | | Output file for extracted URLs and paths (without extension). | `extracted_urls` | No |
-| `--permutate` | `-p` | Permutate the URLs and paths found. | `false` | No |
-| `--openapi` | | Generate an OpenAPI specification from the paths found. | `false` | No |
-| `--scan-secrets` | `-s` | Scan for secrets within the strings. | `false` | No |
+| Option                        | Alias | Description                                                   | Default          | Required |
+| ----------------------------- | ----- | ------------------------------------------------------------- | ---------------- | -------- |
+| `--directory <directory>`     | `-d`  | Directory containing JS files.                                |                  | Yes      |
+| `--output <file>`             | `-o`  | JSON file to save the extracted strings.                      | `strings.json`   | No       |
+| `--extract-urls`              | `-e`  | Extract URLs from the strings.                                | `false`          | No       |
+| `--extracted-url-path <file>` |       | Output file for extracted URLs and paths (without extension). | `extracted_urls` | No       |
+| `--permutate`                 | `-p`  | Permutate the URLs and paths found.                           | `false`          | No       |
+| `--openapi`                   |       | Generate an OpenAPI specification from the paths found.       | `false`          | No       |
+| `--scan-secrets`              | `-s`  | Scan for secrets within the strings.                          | `false`          | No       |
 
 ## Examples
 
@@ -38,6 +38,8 @@ Extract strings and also identify and save any URLs found within them:
 js-recon strings -d /path/to/js-files -e
 ```
 
+This will write a new file called `extracted_urls.json` along with the default `strings.json`
+
 ### Scan for Secrets
 
 Extract strings and scan for any potential secrets or sensitive information:
@@ -46,6 +48,10 @@ Extract strings and scan for any potential secrets or sensitive information:
 js-recon strings -d /path/to/js-files -s
 ```
 
+This will print all the potential finds on the terminal window.
+
+*Please note that this process could be memory and compute intensive, and can take longer to run.*
+
 ### Generate OpenAPI Specification
 
 Extract URLs and paths, and then generate an OpenAPI specification:
@@ -53,6 +59,8 @@ Extract URLs and paths, and then generate an OpenAPI specification:
 ```bash
 js-recon strings -d /path/to/js-files -e --openapi
 ```
+
+This will generate the default `strings.json`, the `extracted_urls.json` file with URLs and paths in simple JSON format, and the `extracted_urls-openapi.json` file. The `extracted_urls-openapi.json` can be imported into API clients like [Postman](https://www.postman.com), [Bruno](https://www.usebruno.com), etc.
 
 ### Permutate URLs and Paths
 
@@ -64,4 +72,4 @@ For example, if the tool finds the URL `https://api.example.com/v1/users` and th
 js-recon strings -d /path/to/js-files -e -p
 ```
 
-The permuted URLs will be saved to a `.txt` file (e.g., `extracted_urls.txt`).
+The permuted URLs will be saved to `extracted_urls.txt` along with `strings.json` and `extracted_urls.json`
