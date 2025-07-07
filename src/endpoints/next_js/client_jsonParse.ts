@@ -69,9 +69,7 @@ const client_jsonParse = async (directory) => {
                 },
             });
         } catch (err) {
-         } catch (err) {
-             // Ignore parse errors and continue with next file
-         }
+            console.error(chalk.red(`[!] Error when parsing JSON: ${err}`));
         }
     }
 

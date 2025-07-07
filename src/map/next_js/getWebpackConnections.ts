@@ -36,7 +36,7 @@ const getWebpackConnections = async (directory, output, formats) => {
     }
 
     // if the output file already exists, and AI mode is enabled, skip coz it burns $$$
-    if (fs.existsSync(`${output}.json`) && globals.getAi()) {
+    if (fs.existsSync(`${output}.json`) && globals.getAi().length > 0) {
         console.log(
             chalk.yellow(
                 `[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`
