@@ -31,7 +31,7 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
     let config;
     try {
         config = JSON.parse(
-            fs.readFileSync(globals.apiGatewayConfigFile, 'utf8')
+            fs.readFileSync(globals.apiGatewayConfigFile, "utf8")
         );
     } catch (error) {
         throw new Error(
