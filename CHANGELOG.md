@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.0-beta.2 - 2025.07.07
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix build errors (type errors)
+
 ## 1.1.0-beta.1 - 2025.07.07
 
 ### Added
