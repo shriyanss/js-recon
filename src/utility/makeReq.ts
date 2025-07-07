@@ -116,7 +116,7 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     const body = btoa(
         encodeURIComponent(await clonedResponse.text()).replace(
             /%([0-9A-F]{2})/g,
-            (match, p1) => String.fromCharCode(`0x${p1}`)
+            (match, p1) => String.fromCharCode(parseInt(p1, 16))
         )
     );
     const status = clonedResponse.status;
@@ -142,7 +142,7 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     // console.log("wrote cache for ", url);
 };
 
-const makeRequest = async (url: string, args: {}) => {
+const makeRequest = async (url: string, args: RequestInit) => {
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
         const cachedResponse = await readCache(url, args?.headers || {});
@@ -244,7 +244,7 @@ const makeRequest = async (url: string, args: {}) => {
 
             // if cache is enabled, write the response to the cache
             if (!globals.getDisableCache()) {
-                await writeCache(url, get_headers, new Response(content));
+                await writeCache(url, {}, new Response(content));
             }
             return new Response(content);
         } else if (resp_text.includes("<title>Just a moment...</title>")) {
