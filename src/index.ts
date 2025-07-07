@@ -50,7 +50,7 @@ program
     )
     .option(
         "--cache-file <file>",
-        "File to contain response cache",
+        "File to store response cache",
         ".resp_cache.json"
     )
     .option("--disable-cache", "Disable response caching", false)
@@ -286,7 +286,7 @@ program
     )
     .option(
         "--cache-file <file>",
-        "File to contain response cache",
+        "File to store response cache",
         ".resp_cache.json"
     )
     .option("--disable-cache", "Disable response caching", false)
