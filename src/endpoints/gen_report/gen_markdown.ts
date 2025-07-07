@@ -1,8 +1,12 @@
 import fs from "fs";
 import chalk from "chalk";
 
+interface Hosts {
+    [key: string]: Set<string>
+}
+
 const gen_markdown = async (url: string, hrefs: [string], output: string) => {
-    const hosts = {};
+    const hosts:Hosts = {};
     const baseUrlObj = new URL(url);
 
     // Ensure the base host is in the list
