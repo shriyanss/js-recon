@@ -1,6 +1,6 @@
 import chalk from "chalk";
 
-const checkFireWallBlocking = async (body) => {
+const checkFireWallBlocking = async (body: string): Promise<boolean> => {
     // check common signs of CF first
     if (body.includes("<title>Just a moment...</title>")) {
         console.log(chalk.red("[!] Cloudflare detected"));
