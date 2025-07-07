@@ -117,7 +117,7 @@ const lazyLoad = async (
 
                 // download the resources
                 // but combine them first
-                let jsFilesToDownload: [string] | any = [
+                let jsFilesToDownload: string[] | any = [
                     ...(jsFilesFromScriptTag || []),
                     ...(lazyResourcesFromWebpack || []),
                     ...(lazyResourcesFromSubsequentRequests || []),
