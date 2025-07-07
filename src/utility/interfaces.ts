@@ -13,3 +13,7 @@ export interface Chunk {
 export interface Chunks {
     "": Chunk;
 }
+
+export interface FoundJsFiles {
+    [key: string]: string
+}
