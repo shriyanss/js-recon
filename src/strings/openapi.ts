@@ -43,12 +43,12 @@ const openapi = async (paths, output_file) => {
 
     try {
         await writeFile(
-            `${output_file}-swagger.json`,
+            `${output_file}-openapi.json`,
             JSON.stringify(openapiData, null, 2)
         );
         console.log(
             chalk.green(
-                `[✓] OpenAPI v3 file saved to: ${output_file}-swagger.json`
+                `[✓] OpenAPI v3 file saved to: ${output_file}-openapi.json`
             )
         );
     } catch (error) {
