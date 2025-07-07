@@ -48,7 +48,7 @@ const getWebpackConnections = async (directory, output, formats) => {
 
     console.log(chalk.cyan("[i] Getting webpack connections"));
     // list all the files in the directory
-    let files = fs.readdirSync(directory, { recursive: true });
+    let files = fs.readdirSync(directory, { recursive: true, encoding:"utf8" });
 
     // remove all subsequent requests file from the list
     files = files.filter((file) => {
@@ -60,13 +60,13 @@ const getWebpackConnections = async (directory, output, formats) => {
         return !fs.lstatSync(path.join(directory, file)).isDirectory();
     });
 
-    let chunks: Chunks = {};
+    let chunks: Chunks;
 
     // read all the files, and get the chunks
     for (const file of files) {
         // if the first three lines of the file doesn't contain `self.webpackChunk_N_E`, continue
         const firstThreeLines = fs
-            .readFileSync(path.join(directory, file), "utf8")
+            .readFileSync(path.join(directory, file.toString()), "utf8")
             .split("\n")
             .slice(0, 3);
         if (
@@ -78,7 +78,7 @@ const getWebpackConnections = async (directory, output, formats) => {
         }
 
         // read the file
-        const code = fs.readFileSync(path.join(directory, file), "utf8");
+        const code = fs.readFileSync(path.join(directory, file.toString()), "utf8");
 
         // parse the code with ast
         let ast;
