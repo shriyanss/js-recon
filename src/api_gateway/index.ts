@@ -10,6 +10,18 @@ import checkFeasibility from "./checkFeasibility.js";
 // read the docs for all the methods for api gateway at https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/api-gateway/
 // for the rate limits, refer to https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html
 
+interface ApiGatewayConfig {
+    (key: string): {
+        id: string;
+        name: string;
+        description: string;
+        created_at: number;
+        region: string;
+        access_key: string;
+        secret_key: string;
+    };
+}
+
 const randomRegion = () => {
     const apiGatewayRegions = [
         "us-east-2", // US East (Ohio)
@@ -54,7 +66,7 @@ const randomRegion = () => {
 let aws_access_key;
 let aws_secret_key;
 let region;
-let configFile;
+let configFile = "";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -105,7 +117,7 @@ const createGateway = async () => {
     // load the config file if any. Else, create a new one
     let config = {};
     try {
-        config = JSON.parse(fs.readFileSync(configFile));
+        config = JSON.parse(fs.readFileSync(configFile, "utf8"));
     } catch (e) {
         config = {};
     }
@@ -138,7 +150,7 @@ const destroyGateway = async (id) => {
         return;
     }
     //   read the config file
-    let config = JSON.parse(fs.readFileSync(configFile));
+    let config = JSON.parse(fs.readFileSync(configFile, "utf8"));
     //   get the name of the api gateway
     let name = Object.keys(config).find((key) => config[key].id === id);
 
@@ -178,7 +190,9 @@ const destroyGateway = async (id) => {
 const destroyAllGateways = async () => {
     console.log(chalk.cyan("[i] Destroying all API Gateways"));
     //   read the config file
-    let config = JSON.parse(fs.readFileSync(configFile));
+    let config: ApiGatewayConfig = JSON.parse(
+        fs.readFileSync(configFile, "utf8")
+    );
 
     //   destroy all the gateways
     for (const [key, value] of Object.entries(config)) {
@@ -229,7 +243,9 @@ const listGateways = async () => {
         return;
     }
 
-    const config = JSON.parse(fs.readFileSync(configFile));
+    const config: ApiGatewayConfig = JSON.parse(
+        fs.readFileSync(configFile, "utf8")
+    );
 
     //   if list is empty
     if (Object.keys(config).length === 0) {

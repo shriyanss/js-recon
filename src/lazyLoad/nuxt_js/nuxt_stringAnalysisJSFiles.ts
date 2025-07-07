@@ -2,6 +2,7 @@ import chalk from "chalk";
 import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 import resolvePath from "../../utility/resolvePath.js";
+import { FoundJsFiles } from "../../utility/interfaces.js";
 
 // for parsing
 import parser from "@babel/parser";
@@ -73,7 +74,8 @@ const nuxt_stringAnalysisJSFiles = async (url) => {
 
             const response = await makeRequest(js_url, {});
             const respText = await response.text();
-            const foundJsFiles = await parseJSFileContent(respText);
+            const foundJsFiles: FoundJsFiles =
+                await parseJSFileContent(respText);
 
             // iterate through the foundJsFiles and resolve the paths
             for (const [key, value] of Object.entries(foundJsFiles)) {

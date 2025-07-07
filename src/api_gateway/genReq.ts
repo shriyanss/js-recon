@@ -115,9 +115,6 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
                 "method.request.header.Sec-Fetch-Mode": false,
                 "method.request.header.Sec-Fetch-Dest": false,
             },
-            integrationHttpMethod: "GET",
-            type: "HTTP",
-            timeoutInMillis: 29000,
         });
         const newMethodResponse = await client.send(newMethodCommand);
         await sleep(100);

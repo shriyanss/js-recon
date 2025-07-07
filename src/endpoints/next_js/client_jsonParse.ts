@@ -12,7 +12,10 @@ const client_jsonParse = async (directory: string): Promise<string[]> => {
     );
 
     // filter out the directories
-    let files = fs.readdirSync(directory, { recursive: true });
+    let files = fs.readdirSync(directory, {
+        recursive: true,
+        encoding: "utf8",
+    });
     files = files.filter(
         (file) => !fs.statSync(path.join(directory, file)).isDirectory()
     );
