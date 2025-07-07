@@ -98,7 +98,7 @@ interface SecretMatch {
 const secrets = async (source: string): Promise<SecretMatch[]> => {
     const foundSecrets: SecretMatch[] = [];
     for (const [secretName, pattern] of Object.entries(secret_patterns)) {
-        const regex = new RegExp(pattern, 'g');
+        const regex = new RegExp(pattern, "g");
         const matches = source.matchAll(regex);
         for (const match of matches) {
             foundSecrets.push({
