@@ -186,11 +186,8 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
         resourceId: newResourceResponse.id,
     });
     try {
-    try {
         await client.send(deleteResourceCommand);
-    } catch (error) {
-        console.warn(chalk.yellow(`[!] Failed to delete resource: ${error.message}`));
-    }
+    } catch {}
 
     if (isFireWallBlocking) {
         console.log(chalk.magenta("[!] Please try again without API Gateway"));
