@@ -5,7 +5,7 @@ interface Hosts {
     [key: string]: Set<string>;
 }
 
-const gen_markdown = async (url: string, hrefs: [string], output: string) => {
+const gen_markdown = async (url: string, hrefs: string[], output: string) => {
     const hosts: Hosts = {};
     const baseUrlObj = new URL(url);
 

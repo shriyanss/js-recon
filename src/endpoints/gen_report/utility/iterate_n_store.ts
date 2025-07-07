@@ -1,6 +1,6 @@
 import resolvePath from "../../../utility/resolvePath.js";
 
-const iterate_n_store = async (baseUrl: string, urls: [string]) => {
+const iterate_n_store = async (baseUrl: string, urls: string[]) => {
     let result = {};
     for (let url of urls) {
         if (url.startsWith("mailto:") || url.startsWith("tel:")) {

@@ -48,7 +48,7 @@ const subsequentRequests = async (
     threads,
     output,
     js_urls
-): Promise<[string] | any> => {
+): Promise<string[] | any> => {
     max_queue = threads;
     let staticJSURLs = [];
 
