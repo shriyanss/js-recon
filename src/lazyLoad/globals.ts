@@ -1,5 +1,5 @@
 let scope = [];
-let js_urls: string[];
+let js_urls: string[] = [];
 let json_urls = [];
 let max_req_queue;
 

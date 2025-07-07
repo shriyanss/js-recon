@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import fs from "fs";
-import { _traverse } from "@babel/traverse";
+import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import parser from "@babel/parser";
 import { Chunks } from "../../utility/interfaces.js";
