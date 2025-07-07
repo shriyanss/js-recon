@@ -27,7 +27,17 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 const get = async (url: string, headers: {} = {}): Promise<string> => {
     // read the config file
-    let config = JSON.parse(fs.readFileSync(globals.apiGatewayConfigFile));
+    // Load and parse API Gateway config with error handling
+    let config;
+    try {
+        config = JSON.parse(
+            fs.readFileSync(globals.apiGatewayConfigFile, 'utf8')
+        );
+    } catch (error) {
+        throw new Error(
+            `Failed to read or parse API Gateway config file: ${error.message}`
+        );
+    }
     // select a random api gateway
     let apiGateway =
         Object.keys(config)[
