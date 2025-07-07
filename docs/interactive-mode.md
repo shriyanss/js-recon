@@ -7,7 +7,7 @@ The interactive mode for Next.js maps provides a terminal-based interface to exp
 To launch the interactive mode, run the following command:
 
 ```bash
-node index.js map <other options> -i
+js-recon map <other options> -i
 ```
 
 ## User Interface
