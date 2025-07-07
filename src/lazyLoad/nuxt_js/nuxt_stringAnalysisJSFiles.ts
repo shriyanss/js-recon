@@ -11,6 +11,10 @@ const traverse = _traverse.default;
 let analyzedFiles = [];
 let filesFound = [];
 
+interface FoundJsFiles {
+    [key: string]: string
+}
+
 const parseJSFileContent = async (content) => {
     try {
         const ast = parser.parse(content, {
@@ -18,7 +22,7 @@ const parseJSFileContent = async (content) => {
             plugins: ["jsx", "typescript"],
         });
 
-        let foundJsFiles = {};
+        let foundJsFiles:FoundJsFiles = {};
 
         traverse(ast, {
             StringLiteral(path) {
