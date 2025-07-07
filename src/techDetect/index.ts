@@ -71,7 +71,7 @@ const checkVueJS = async ($) => {
     return { detected, evidence };
 };
 
-const checkNuxtJS = async ($:cheerio.CheerioAPI) => {
+const checkNuxtJS = async ($: cheerio.CheerioAPI) => {
     let detected = false;
     let evidence = "";
 

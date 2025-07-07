@@ -20,9 +20,9 @@ const isFetchFallback = (node) => {
     );
 };
 
-const getFetchInstances = async (chunks:Chunks, output, formats) => {
+const getFetchInstances = async (chunks: Chunks, output, formats) => {
     console.log(chalk.cyan("[i] Running 'getFetchInstances' module"));
-    let chunk_copy:Chunks = { ...chunks };
+    let chunk_copy: Chunks = { ...chunks };
 
     //   iterate through the chunks, and check fetch instances
     for (let chunk of Object.values(chunks)) {

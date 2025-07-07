@@ -48,7 +48,10 @@ const getWebpackConnections = async (directory, output, formats) => {
 
     console.log(chalk.cyan("[i] Getting webpack connections"));
     // list all the files in the directory
-    let files = fs.readdirSync(directory, { recursive: true, encoding:"utf8" });
+    let files = fs.readdirSync(directory, {
+        recursive: true,
+        encoding: "utf8",
+    });
 
     // remove all subsequent requests file from the list
     files = files.filter((file) => {
@@ -78,7 +81,10 @@ const getWebpackConnections = async (directory, output, formats) => {
         }
 
         // read the file
-        const code = fs.readFileSync(path.join(directory, file.toString()), "utf8");
+        const code = fs.readFileSync(
+            path.join(directory, file.toString()),
+            "utf8"
+        );
 
         // parse the code with ast
         let ast;

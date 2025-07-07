@@ -42,7 +42,13 @@ const getURLDirectoryServer = (urlString) => {
     return `${url.origin}${newPath}`; // 'http://something.com/business'
 };
 
-const subsequentRequests = async (url, urlsFile, threads, output, js_urls):Promise<[string]|any> => {
+const subsequentRequests = async (
+    url,
+    urlsFile,
+    threads,
+    output,
+    js_urls
+): Promise<[string] | any> => {
     max_queue = threads;
     let staticJSURLs = [];
 

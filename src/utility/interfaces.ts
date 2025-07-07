@@ -15,5 +15,5 @@ export interface Chunks {
 }
 
 export interface FoundJsFiles {
-    [key: string]: string
+    [key: string]: string;
 }
