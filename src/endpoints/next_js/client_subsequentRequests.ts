@@ -36,7 +36,7 @@ const checkHref = async (files, url) => {
                     ast = parser.parse(jsCode, {
                         sourceType: "unambiguous",
                         plugins: ["jsx", "typescript"],
-                        errorRecovery: true
+                        errorRecovery: true,
                     });
                 } catch (err) {
                     continue;
