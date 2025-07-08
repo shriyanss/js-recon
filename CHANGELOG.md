@@ -1,6 +1,6 @@
 # Change Log
 
-## (Unreleased)
+## 1.1.0-beta.3 - 2025.07.08
 
 ### Added
 
