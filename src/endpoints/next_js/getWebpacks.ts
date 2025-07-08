@@ -29,6 +29,7 @@ const getWebpacks = (directory) => {
             ast = parser.parse(code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
+                errorRecovery: true,
             });
 
             // find all the function definition like 219038: function() {}

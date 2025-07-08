@@ -19,6 +19,7 @@ const nuxt_astParse = async (url: string) => {
         ast = parser.parse(body, {
             sourceType: "module",
             plugins: ["jsx", "typescript"],
+            errorRecovery: true,
         });
     } catch (error) {
         console.log(chalk.red("[!] Error parsing JS file: ", url));

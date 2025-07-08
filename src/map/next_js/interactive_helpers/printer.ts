@@ -1,8 +1,14 @@
+import { Widgets } from "blessed";
 import { highlight } from "cli-highlight";
 import fs from "fs";
 
 // Function to print function code with syntax highlighting
-const printFunction = (outputBox, funcCode, funcDesc, funcWriteFile) => {
+const printFunction = (
+    outputBox: Widgets.Log,
+    funcCode: string,
+    funcDesc: string,
+    funcWriteFile: fs.PathOrFileDescriptor
+) => {
     const rawText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
     const highlighted = highlight(rawText, {
         language: "javascript",
@@ -12,7 +18,7 @@ const printFunction = (outputBox, funcCode, funcDesc, funcWriteFile) => {
 
     outputBox.setContent(highlighted); // << use setContent instead of setText
 
-    if (funcWriteFile) {
+    if (funcWriteFile !== undefined && funcWriteFile !== null) {
         fs.writeFileSync(funcWriteFile, rawText); // Save raw (non-colored) version to file
     }
 };
