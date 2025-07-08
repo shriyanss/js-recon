@@ -5,6 +5,7 @@
 ### Added
 
 - Added command `set writeimports` in interactive mode for next.js
+- Detect ArrowFunctionExpression when getting webpack connections (Next.JS)
 
 ### Changed
 
