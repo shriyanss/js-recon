@@ -1,8 +1,6 @@
 import { Widgets } from "blessed";
 import { highlight } from "cli-highlight";
-import fs, { stat } from "fs";
-import { Chunks } from "../../../utility/interfaces.js";
-import { State } from "../interactive.js";
+import fs from "fs";
 
 // Function to print function code with syntax highlighting
 const printFunction = (
