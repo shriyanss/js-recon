@@ -1,8 +1,11 @@
+import { Widgets } from "blessed";
 import { highlight } from "cli-highlight";
-import fs from "fs";
+import fs, { stat } from "fs";
+import { Chunks } from "../../../utility/interfaces.js";
+import { State } from "../interactive.js";
 
 // Function to print function code with syntax highlighting
-const printFunction = (outputBox, funcCode, funcDesc, funcWriteFile) => {
+const printFunction = (outputBox: Widgets.Log, funcCode: string, funcDesc: string, funcWriteFile: fs.PathOrFileDescriptor) => {
     const rawText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
     const highlighted = highlight(rawText, {
         language: "javascript",

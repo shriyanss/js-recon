@@ -46,6 +46,7 @@
     },
     "homepage": "https://github.com/shriyanss/js-recon#readme",
     "devDependencies": {
+        "@types/blessed": "^0.1.25",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0"
     }
