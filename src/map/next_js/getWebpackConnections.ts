@@ -206,7 +206,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                 if (args.length === 3) {
                     thirdArgName = args[2].node.name;
                 }
-            }
+            },
         });
 
         // if the function doesn't have three arguments, continue
