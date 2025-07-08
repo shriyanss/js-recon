@@ -1,5 +1,14 @@
 # Change Log
 
+## (Unreleased)
+### Added
+
+### Changed
+
+### Fixed
+
+- Implement proper error handling in `list nav` in interactive mode
+
 ## 1.1.0-beta.2 - 2025.07.07
 
 ### Added
