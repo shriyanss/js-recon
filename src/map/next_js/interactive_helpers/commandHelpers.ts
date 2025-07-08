@@ -4,12 +4,12 @@ import { Chunk, Chunks } from "../../../utility/interfaces.js";
 const commandHelpers = {
     fetchMenu: (chunks: Chunks) => {
         let returnText = chalk.cyan(
-            "List of chunks that contain fetch instances\n"
+            "List of chunks that contain fetch instances\n",
         );
         for (const chunk of Object.values(chunks)) {
             if (chunk.containsFetch) {
                 returnText += chalk.green(
-                    `- ${chunk.id}: ${chunk.file} (${chunk.description})\n`
+                    `- ${chunk.id}: ${chunk.file} (${chunk.description})\n`,
                 );
             }
         }
@@ -31,25 +31,31 @@ const commandHelpers = {
         let returnText = chalk.cyan("List of all functions\n");
         for (const chunk of Object.values(chunks)) {
             returnText += chalk.green(
-                `- ${chunk.id}: ${chunk.description} (${chunk.file})\n`
+                `- ${chunk.id}: ${chunk.description} (${chunk.file})\n`,
             );
         }
         return returnText;
     },
-    navHistory: (chunks: Chunks, navList) => {
+    navHistory: (chunks: Chunks, navList: string[]): string => {
         let returnText = chalk.cyan("Navigation history\n");
         if (navList.length === 0) {
             returnText += chalk.yellow("- No navigation history");
         } else {
             for (const id of navList) {
-                returnText += chalk.green(
-                    `- ${id}: ${chunks[id].description}\n`
-                );
+                if (Object.keys(chunks).includes(id)) {
+                    returnText += chalk.green(
+                        `- ${id}: ${chunks[id].description}\n`,
+                    );
+                } else {
+                    returnText += chalk.yellow(
+                        `- ${id}: <function not found>\n`
+                    )
+                }
             }
         }
         return returnText;
     },
-    traceFunction: (chunks: Chunks, funcName) => {
+    traceFunction: (chunks: Chunks, funcName:string) => {
         let returnText = chalk.cyan(`Tracing function ${funcName}\n`);
         const thisChunk = chunks[funcName];
         if (!thisChunk) {
@@ -90,7 +96,7 @@ const commandHelpers = {
                 returnText += chalk.greenBright("Exports:\n");
                 for (const exportName of exported_to_chunks) {
                     returnText += chalk.green(
-                        `- ${exportName}: ${chunks[exportName].description}\n`
+                        `- ${exportName}: ${chunks[exportName].description}\n`,
                     );
                 }
             }
