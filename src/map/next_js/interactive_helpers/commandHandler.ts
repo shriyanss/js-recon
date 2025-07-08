@@ -3,8 +3,17 @@ import path from "path";
 import commandHelpers from "./commandHelpers.js";
 import { helpMenu } from "./helpMenu.js";
 import { printFunction } from "./printer.js";
+import { State } from "../interactive.js";
+import { Widgets } from "blessed";
 
-function handleCommand(text, state, ui) {
+interface Screen {
+    screen: any;
+    titleBox?: Widgets.BoxElement;
+    outputBox: Widgets.Log;
+    inputBox: Widgets.TextboxElement;
+}
+
+async function handleCommand(text: string, state: State, ui: Screen) {
     const { chunks } = state;
     const { outputBox, inputBox, screen } = ui;
 
@@ -53,11 +62,11 @@ function handleCommand(text, state, ui) {
                 state.lastCommandStatus = true;
             } else if (option === "nav") {
                 outputBox.log(
-                    commandHelpers.navHistory(chunks, state.functionNavHistory)
+                    commandHelpers.navHistory(chunks, state.functionNavHistory),
                 );
                 state.lastCommandStatus = true;
             } else {
-                outputBox.log(chalk.red(option), "is not a valid option");
+                outputBox.log((chalk.red(option), "is not a valid option"));
                 state.lastCommandStatus = false;
             }
         }
@@ -75,20 +84,21 @@ function handleCommand(text, state, ui) {
                 const funcId = text.split(" ")[2];
                 // check if the function exists
                 if (chunks[funcId]) {
-                    const funcCode = commandHelpers.getFunctionCode(
+                    const funcCode = await commandHelpers.getFunctionCode(
                         chunks,
-                        funcId
+                        funcId,
+                        state
                     );
                     printFunction(
                         outputBox,
                         funcCode,
                         chunks[funcId]?.description,
-                        state.funcWriteFile
+                        state.funcWriteFile,
                     );
                     state.lastCommandStatus = true;
                 } else {
                     outputBox.log(
-                        chalk.red(`No function with ID ${funcId} found`)
+                        chalk.red(`No function with ID ${funcId} found`),
                     );
                     state.lastCommandStatus = false;
                 }
@@ -102,15 +112,16 @@ function handleCommand(text, state, ui) {
                             state.functionNavHistory[
                                 state.functionNavHistoryIndex
                             ];
-                        const funcCode = commandHelpers.getFunctionCode(
+                        const funcCode = await commandHelpers.getFunctionCode(
                             chunks,
-                            funcId
+                            funcId,
+                            state
                         );
                         printFunction(
                             outputBox,
                             funcCode,
                             chunks[funcId].description,
-                            state.funcWriteFile
+                            state.funcWriteFile,
                         );
                         state.lastCommandStatus = true;
                     } else {
@@ -132,15 +143,16 @@ function handleCommand(text, state, ui) {
                             state.functionNavHistory[
                                 state.functionNavHistoryIndex
                             ];
-                        const funcCode = commandHelpers.getFunctionCode(
+                        const funcCode = await commandHelpers.getFunctionCode(
                             chunks,
-                            funcId
+                            funcId,
+                            state
                         );
                         printFunction(
                             outputBox,
                             funcCode,
                             chunks[funcId].description,
-                            state.funcWriteFile
+                            state.funcWriteFile,
                         );
                         state.lastCommandStatus = true;
                     } else {
@@ -152,7 +164,7 @@ function handleCommand(text, state, ui) {
                     state.lastCommandStatus = false;
                 }
             } else {
-                outputBox.log(chalk.red(funcName), "is not a valid option");
+                outputBox.log((chalk.red(funcName), "is not a valid option"));
                 state.lastCommandStatus = false;
             }
         }
@@ -170,12 +182,24 @@ function handleCommand(text, state, ui) {
                 state.funcWriteFile = path.join(`${fileName}`);
                 outputBox.log(
                     chalk.green(
-                        `Function write file set to ${state.funcWriteFile}`
-                    )
+                        `Function write file set to ${state.funcWriteFile}`,
+                    ),
                 );
                 state.lastCommandStatus = true;
+            } else if (option === "writeimports") {
+                // modify the var in state
+                const modifyVal = text.split(" ")[2];
+                if (modifyVal === "true") {
+                    state.writeimports = true;
+                    outputBox.log(("writeimports: " + chalk.green("true")))
+                } else if (modifyVal === "false") {
+                    state.writeimports = false;
+                    outputBox.log(("writeimports: " + chalk.yellow("false")))
+                } else {
+                    outputBox.log(chalk.magenta(helpMenu.set));
+                }
             } else {
-                outputBox.log(chalk.red(option), "is not a valid option");
+                outputBox.log((chalk.red(option), "is not a valid option"));
                 state.lastCommandStatus = false;
             }
         }
@@ -196,7 +220,7 @@ function handleCommand(text, state, ui) {
             }
         }
     } else {
-        outputBox.log(chalk.red(text), "is not a valid command");
+        outputBox.log((chalk.red(text), "is not a valid command"));
         state.lastCommandStatus = false;
     }
     inputBox.clearValue();

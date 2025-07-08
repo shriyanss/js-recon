@@ -1,27 +1,46 @@
 import chalk from "chalk";
-import { Chunk, Chunks } from "../../../utility/interfaces.js";
+import { Chunks } from "../../../utility/interfaces.js";
+import { State } from "../interactive.js";
+import prettier from "prettier";
 
 const commandHelpers = {
     fetchMenu: (chunks: Chunks) => {
         let returnText = chalk.cyan(
-            "List of chunks that contain fetch instances\n"
+            "List of chunks that contain fetch instances\n",
         );
         for (const chunk of Object.values(chunks)) {
             if (chunk.containsFetch) {
                 returnText += chalk.green(
-                    `- ${chunk.id}: ${chunk.file} (${chunk.description})\n`
+                    `- ${chunk.id}: ${chunk.file} (${chunk.description})\n`,
                 );
             }
         }
         return returnText;
     },
-    getFunctionCode: (chunks: Chunks, funcName: string) => {
-        let funcCode;
+    getFunctionCode: async (chunks: Chunks, funcName: string, state: State) => {
+        let funcCode: string;
         for (const chunk of Object.values(chunks)) {
             if (chunk.id == funcName) {
                 funcCode = chunk.code;
             }
         }
+
+        if (state.writeimports === true) {
+            // get the imports one by one, and append it to funcCode
+
+            if (chunks[funcName].imports.length > 0) {
+                funcCode += "\n\n// Imports:\n\n";
+                for (const importName of chunks[funcName].imports) {
+                    // append the description as docstring
+                    // and the code for the function
+                    funcCode += `/**\n* ${chunks[importName].description}\n*/\n${chunks[importName].code}`;
+                }
+            }
+        }
+
+        // beautify the code
+        funcCode = await prettier.format(funcCode, {parser: "babel"});
+
         if (!funcCode) {
             return chalk.red(`Function ${funcName} not found`);
         }
@@ -31,7 +50,7 @@ const commandHelpers = {
         let returnText = chalk.cyan("List of all functions\n");
         for (const chunk of Object.values(chunks)) {
             returnText += chalk.green(
-                `- ${chunk.id}: ${chunk.description} (${chunk.file})\n`
+                `- ${chunk.id}: ${chunk.description} (${chunk.file})\n`,
             );
         }
         return returnText;
@@ -44,11 +63,11 @@ const commandHelpers = {
             for (const id of navList) {
                 if (Object.keys(chunks).includes(id)) {
                     returnText += chalk.green(
-                        `- ${id}: ${chunks[id].description}\n`
+                        `- ${id}: ${chunks[id].description}\n`,
                     );
                 } else {
                     returnText += chalk.yellow(
-                        `- ${id}: <function not found>\n`
+                        `- ${id}: <function not found>\n`,
                     );
                 }
             }
@@ -96,7 +115,7 @@ const commandHelpers = {
                 returnText += chalk.greenBright("Exports:\n");
                 for (const exportName of exported_to_chunks) {
                     returnText += chalk.green(
-                        `- ${exportName}: ${chunks[exportName].description}\n`
+                        `- ${exportName}: ${chunks[exportName].description}\n`,
                     );
                 }
             }

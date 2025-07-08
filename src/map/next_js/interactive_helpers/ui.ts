@@ -47,7 +47,6 @@ function createUI() {
         alwaysScroll: true,
         scrollbar: {
             ch: " ",
-            inverse: true,
         },
         keys: true,
         vi: true,
