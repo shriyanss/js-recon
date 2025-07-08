@@ -18,7 +18,7 @@ export default async (cmd) => {
     console.log(chalk.bgGreenBright("[+] Starting analysis..."));
 
     console.log(
-        chalk.bgCyan("[1/6] Running lazyload to download JavaScript files..."),
+        chalk.bgCyan("[1/6] Running lazyload to download JavaScript files...")
     );
     await lazyLoad(
         cmd.url,
@@ -27,7 +27,7 @@ export default async (cmd) => {
         cmd.scope.split(","),
         cmd.threads,
         false,
-        "",
+        ""
     );
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
@@ -41,7 +41,11 @@ export default async (cmd) => {
 
     // since the app only supports next.js now, move ahead only if the tech is next
     if (globalsUtil.getTech() !== "next") {
-        console.log(chalk.bgYellow(`[!] The tool only supports Next.JS ('next') fully. For ${globalsUtil.getTech()}, only downloading JS files is supported`));
+        console.log(
+            chalk.bgYellow(
+                `[!] The tool only supports Next.JS ('next') fully. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+            )
+        );
         return;
     }
 
@@ -54,15 +58,15 @@ export default async (cmd) => {
         "extracted_urls",
         false,
         false,
-        false,
+        false
     );
     console.log(chalk.bgGreen("[+] Strings complete."));
 
     // run lazyload with subsequent requests
     console.log(
         chalk.bgCyan(
-            "[3/6] Running lazyload with subsequent requests to download JavaScript files...",
-        ),
+            "[3/6] Running lazyload with subsequent requests to download JavaScript files..."
+        )
     );
     await lazyLoad(
         cmd.url,
@@ -71,15 +75,15 @@ export default async (cmd) => {
         cmd.scope.split(","),
         cmd.threads,
         true,
-        "extracted_urls.json",
+        "extracted_urls.json"
     );
     console.log(
-        chalk.bgGreen("[+] Lazyload with subsequent requests complete."),
+        chalk.bgGreen("[+] Lazyload with subsequent requests complete.")
     );
 
     // run strings again to extract endpoints from the files that are downloaded in the previous step
     console.log(
-        chalk.bgCyan("[4/6] Running strings again to extract endpoints..."),
+        chalk.bgCyan("[4/6] Running strings again to extract endpoints...")
     );
     await strings(
         cmd.output,
@@ -88,13 +92,13 @@ export default async (cmd) => {
         "extracted_urls",
         cmd.secrets,
         true,
-        true,
+        true
     );
     console.log(chalk.bgGreen("[+] Strings complete."));
 
     // now, run endpoints
     console.log(
-        chalk.bgCyan("[5/6] Running endpoints to extract endpoints..."),
+        chalk.bgCyan("[5/6] Running endpoints to extract endpoints...")
     );
     // check if the subsequent requests directory exists
     if (fs.existsSync(`output/${targetHost}/___subsequent_requests`)) {
@@ -105,14 +109,14 @@ export default async (cmd) => {
             ["json"],
             globalsUtil.getTech(),
             false,
-            `output/${targetHost}/___subsequent_requests`,
+            `output/${targetHost}/___subsequent_requests`
         );
         console.log(chalk.bgGreen("[+] Endpoints complete."));
     } else {
         console.log(
             chalk.bgYellow(
-                "[!] Subsequent requests directory does not exist. Skipping endpoints.",
-            ),
+                "[!] Subsequent requests directory does not exist. Skipping endpoints."
+            )
         );
     }
 
@@ -124,7 +128,7 @@ export default async (cmd) => {
         ["json"],
         globalsUtil.getTech(),
         false,
-        false,
+        false
     );
     console.log(chalk.bgGreen("[+] Map complete."));
 
