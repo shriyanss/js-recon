@@ -66,7 +66,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 );
                 state.lastCommandStatus = true;
             } else {
-                outputBox.log((chalk.red(option), "is not a valid option"));
+                outputBox.log((chalk.red(option) + " is not a valid option"));
                 state.lastCommandStatus = false;
             }
         }
@@ -181,7 +181,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                     state.lastCommandStatus = false;
                 }
             } else {
-                outputBox.log((chalk.red(funcName), "is not a valid option"));
+                outputBox.log((chalk.red(funcName) + " is not a valid option"));
                 state.lastCommandStatus = false;
             }
         }
@@ -219,7 +219,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                     state.lastCommandStatus = false;
                 }
             } else {
-                outputBox.log((chalk.red(option), "is not a valid option"));
+                outputBox.log((chalk.red(option) + " is not a valid option"));
                 state.lastCommandStatus = false;
             }
         }
