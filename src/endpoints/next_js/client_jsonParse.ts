@@ -33,7 +33,7 @@ const client_jsonParse = async (directory: string): Promise<string[]> => {
             ast = parser.parse(code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
-                errorRecovery: true
+                errorRecovery: true,
             });
 
             // traverse the ast, and find all the instances where JSON.parse() is used with a string as its
