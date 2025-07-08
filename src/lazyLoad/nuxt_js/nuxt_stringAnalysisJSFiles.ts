@@ -17,6 +17,7 @@ const parseJSFileContent = async (content) => {
         const ast = parser.parse(content, {
             sourceType: "module",
             plugins: ["jsx", "typescript"],
+            errorRecovery: true
         });
 
         let foundJsFiles = {};
