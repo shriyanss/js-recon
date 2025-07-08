@@ -29,7 +29,7 @@ const client_jsFilesHref = async (directory) => {
             ast = parser.parse(code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
-                errorRecovery: true
+                errorRecovery: true,
             });
 
             traverse(ast, {

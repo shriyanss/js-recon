@@ -138,7 +138,7 @@ const strings = async (
                         ast = parser.parse(jsCode, {
                             sourceType: "unambiguous",
                             plugins: ["jsx", "typescript"],
-                            errorRecovery: true
+                            errorRecovery: true,
                         });
                     } catch (err) {
                         continue;
@@ -156,7 +156,7 @@ const strings = async (
             const ast = parser.parse(fileContent, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
-                errorRecovery: true
+                errorRecovery: true,
             });
 
             all_strings[file] = extractStrings(ast);

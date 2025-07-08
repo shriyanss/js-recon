@@ -92,7 +92,7 @@ const getWebpackConnections = async (directory, output, formats) => {
             ast = parser.parse(code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
-                errorRecovery: true
+                errorRecovery: true,
             });
         } catch (err) {
             continue;
@@ -185,7 +185,7 @@ const getWebpackConnections = async (directory, output, formats) => {
             ast = parser.parse(value.code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
-                errorRecovery: true
+                errorRecovery: true,
             });
         } catch (err) {
             continue;
