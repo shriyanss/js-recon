@@ -28,8 +28,8 @@ const interactive = async (chunks: Chunks) => {
 
     const ui = createUI();
 
-    ui.inputBox.on("submit", (text: string) => {
-        handleCommand(text, state, ui);
+    ui.inputBox.on("submit", async (text: string) => {
+        await handleCommand(text, state, ui);
     });
 
     setupKeybindings(ui.screen, ui.inputBox, ui.outputBox, state);
