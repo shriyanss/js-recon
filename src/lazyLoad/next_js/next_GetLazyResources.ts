@@ -96,6 +96,7 @@ const next_getLazyResources = async (url: string): Promise<string[] | any> => {
     const ast = parser.parse(webpack_js_source, {
         sourceType: "unambiguous",
         plugins: ["jsx", "typescript"],
+        errorRecovery: true
     });
 
     let functions = [];

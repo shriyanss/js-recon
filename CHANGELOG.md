@@ -11,6 +11,8 @@
 ### Fixed
 
 - Implement proper error handling in `list nav` in interactive mode
+- Implement error handling when going to non-existent function by `back` and `ahead` in interactive mode
+- Add errorRecovery in all parser.parse to enable parsing the file even if invalid due to any reason
 
 ## 1.1.0-beta.2 - 2025.07.07
 
