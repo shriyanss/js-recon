@@ -5,7 +5,12 @@ import { Chunks } from "../../../utility/interfaces.js";
 import { State } from "../interactive.js";
 
 // Function to print function code with syntax highlighting
-const printFunction = (outputBox: Widgets.Log, funcCode: string, funcDesc: string, funcWriteFile: fs.PathOrFileDescriptor) => {
+const printFunction = (
+    outputBox: Widgets.Log,
+    funcCode: string,
+    funcDesc: string,
+    funcWriteFile: fs.PathOrFileDescriptor
+) => {
     const rawText = `/**\n* ${funcDesc}\n*/\n${funcCode}`;
     const highlighted = highlight(rawText, {
         language: "javascript",

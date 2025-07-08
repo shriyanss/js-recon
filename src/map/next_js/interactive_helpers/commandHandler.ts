@@ -62,7 +62,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 state.lastCommandStatus = true;
             } else if (option === "nav") {
                 outputBox.log(
-                    commandHelpers.navHistory(chunks, state.functionNavHistory),
+                    commandHelpers.navHistory(chunks, state.functionNavHistory)
                 );
                 state.lastCommandStatus = true;
             } else {
@@ -93,12 +93,12 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                         outputBox,
                         funcCode,
                         chunks[funcId]?.description,
-                        state.funcWriteFile,
+                        state.funcWriteFile
                     );
                     state.lastCommandStatus = true;
                 } else {
                     outputBox.log(
-                        chalk.red(`No function with ID ${funcId} found`),
+                        chalk.red(`No function with ID ${funcId} found`)
                     );
                     state.lastCommandStatus = false;
                 }
@@ -121,7 +121,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                             outputBox,
                             funcCode,
                             chunks[funcId].description,
-                            state.funcWriteFile,
+                            state.funcWriteFile
                         );
                         state.lastCommandStatus = true;
                     } else {
@@ -152,7 +152,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                             outputBox,
                             funcCode,
                             chunks[funcId].description,
-                            state.funcWriteFile,
+                            state.funcWriteFile
                         );
                         state.lastCommandStatus = true;
                     } else {
@@ -182,8 +182,8 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 state.funcWriteFile = path.join(`${fileName}`);
                 outputBox.log(
                     chalk.green(
-                        `Function write file set to ${state.funcWriteFile}`,
-                    ),
+                        `Function write file set to ${state.funcWriteFile}`
+                    )
                 );
                 state.lastCommandStatus = true;
             } else if (option === "writeimports") {
@@ -191,10 +191,10 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 const modifyVal = text.split(" ")[2];
                 if (modifyVal === "true") {
                     state.writeimports = true;
-                    outputBox.log(("writeimports: " + chalk.green("true")))
+                    outputBox.log("writeimports: " + chalk.green("true"));
                 } else if (modifyVal === "false") {
                     state.writeimports = false;
-                    outputBox.log(("writeimports: " + chalk.yellow("false")))
+                    outputBox.log("writeimports: " + chalk.yellow("false"));
                 } else {
                     outputBox.log(chalk.magenta(helpMenu.set));
                 }

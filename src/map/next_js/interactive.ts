@@ -8,13 +8,13 @@ export interface State {
     lastCommandStatus: boolean;
     functionNavHistory: string[];
     functionNavHistoryIndex: number;
-    funcWriteFile: string|undefined;
+    funcWriteFile: string | undefined;
     commandHistory: string[];
     commandHistoryIndex: number;
     writeimports: boolean;
 }
 
-const interactive = async (chunks:Chunks) => {
+const interactive = async (chunks: Chunks) => {
     const state = {
         chunks,
         lastCommandStatus: true,
@@ -28,7 +28,7 @@ const interactive = async (chunks:Chunks) => {
 
     const ui = createUI();
 
-    ui.inputBox.on("submit", (text:string) => {
+    ui.inputBox.on("submit", (text: string) => {
         handleCommand(text, state, ui);
     });
 
