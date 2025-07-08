@@ -20,7 +20,7 @@ const printFunction = (
 
     outputBox.setContent(highlighted); // << use setContent instead of setText
 
-    if (funcWriteFile) {
+    if (funcWriteFile !== undefined && funcWriteFile !== null) {
         fs.writeFileSync(funcWriteFile, rawText); // Save raw (non-colored) version to file
     }
 };
