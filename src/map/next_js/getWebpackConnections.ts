@@ -9,6 +9,7 @@ import { Chunk, Chunks } from "../../utility/interfaces.js";
 
 import * as globals from "../../utility/globals.js";
 import { getCompletion } from "../../utility/ai.js";
+import { File } from "@babel/types";
 
 const getWebpackConnections = async (directory, output, formats) => {
     const maxAiThreads = globals.getAiThreads();
@@ -92,6 +93,7 @@ const getWebpackConnections = async (directory, output, formats) => {
             ast = parser.parse(code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
+                errorRecovery: true,
             });
         } catch (err) {
             continue;
@@ -179,11 +181,12 @@ const getWebpackConnections = async (directory, output, formats) => {
     // now, iterate through every chunk, and find the imports in the function
     console.log(chalk.cyan("[i] Finding imports for chunks"));
     for (const [key, value] of Object.entries(chunks)) {
-        let ast;
+        let ast: parser.ParseResult<File>;
         try {
             ast = parser.parse(value.code, {
                 sourceType: "unambiguous",
                 plugins: ["jsx", "typescript"],
+                errorRecovery: true,
             });
         } catch (err) {
             continue;
@@ -193,6 +196,12 @@ const getWebpackConnections = async (directory, output, formats) => {
         let thirdArgName;
         traverse(ast, {
             FunctionDeclaration(path) {
+                const args = path.get("params");
+                if (args.length === 3) {
+                    thirdArgName = args[2].node.name;
+                }
+            },
+            ArrowFunctionExpression(path) {
                 const args = path.get("params");
                 if (args.length === 3) {
                     thirdArgName = args[2].node.name;

@@ -29,6 +29,7 @@ const getFetchInstances = async (chunks: Chunks, output, formats) => {
         const chunkAst = parser.parse(chunk.code, {
             sourceType: "module",
             plugins: ["jsx", "typescript"],
+            errorRecovery: true,
         });
         const fetchAliases = new Set();
         const fetchCalls = new Set();

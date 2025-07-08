@@ -1,5 +1,21 @@
 # Change Log
 
+## 1.1.0-beta.3 - 2025.07.08
+
+### Added
+
+- Added command `set writeimports` in interactive mode for next.js
+- Detect ArrowFunctionExpression when getting webpack connections (Next.JS)
+
+### Changed
+
+### Fixed
+
+- Implement proper error handling in `list nav` in interactive mode
+- Implement error handling when going to non-existent function by `back` and `ahead` in interactive mode
+- Add errorRecovery in all parser.parse to enable parsing the file even if invalid due to any reason
+- Implement coderabbit suggestion: 'Truthiness check can skip fd 0'
+
 ## 1.1.0-beta.2 - 2025.07.07
 
 ### Added

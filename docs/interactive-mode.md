@@ -70,6 +70,7 @@ Navigates between functions. Usage: `go <option>`
 Sets configuration options. Usage: `set <option> <value>`
 
 - `set funcwritefile <filename>`: Sets the file where function code will be written when you use the `go to` command.
+- `set writeimports [true/false]`: When using `go *` command, also write all the imports to the file
 
 ### `trace`
 

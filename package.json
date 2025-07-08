@@ -1,6 +1,6 @@
 {
     "name": "@shriyanss/js-recon",
-    "version": "1.1.0-beta.2",
+    "version": "1.1.0-beta.3",
     "description": "JS Recon Tool",
     "main": "build/index.js",
     "type": "module",
@@ -46,6 +46,7 @@
     },
     "homepage": "https://github.com/shriyanss/js-recon#readme",
     "devDependencies": {
+        "@types/blessed": "^0.1.25",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0"
     }

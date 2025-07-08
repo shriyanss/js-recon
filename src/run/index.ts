@@ -39,6 +39,16 @@ export default async (cmd) => {
         return;
     }
 
+    // since the app only supports next.js now, move ahead only if the tech is next
+    if (globalsUtil.getTech() !== "next") {
+        console.log(
+            chalk.bgYellow(
+                `[!] The tool only supports Next.JS ('next') fully. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+            )
+        );
+        return;
+    }
+
     // run strings
     console.log(chalk.bgCyan("[2/6] Running strings to extract endpoints..."));
     await strings(
