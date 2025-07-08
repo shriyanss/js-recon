@@ -3,6 +3,7 @@
 ## (Unreleased)
 
 ### Added
+
 - Added command `set writeimports` in interactive mode for next.js
 
 ### Changed
