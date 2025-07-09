@@ -102,8 +102,13 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                     );
                     state.lastCommandStatus = false;
                 }
-                state.functionNavHistory.push(funcId);
-                state.functionNavHistoryIndex++;
+
+                // before pushing to the function nav history, 
+                // make sure this is not the same as the last one
+                if (state.functionNavHistory[state.functionNavHistoryIndex] !== funcId && Object.keys(chunks).includes(funcId)){
+                    state.functionNavHistory.push(funcId);
+                    state.functionNavHistoryIndex++;
+                }
             } else if (funcName === "back") {
                 if (state.functionNavHistory.length > 0) {
                     if (state.functionNavHistoryIndex > 0) {
