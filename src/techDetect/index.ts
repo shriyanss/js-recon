@@ -160,7 +160,7 @@ const checkSvelte = async ($) => {
  *   - name: A string indicating the detected framework, or null if no framework was detected.
  *   - evidence: A string with the evidence of the detection, or an empty string if no framework was detected.
  */
-const frameworkDetect = async (url) => {
+const frameworkDetect = async (url: string) => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source
@@ -201,11 +201,20 @@ const frameworkDetect = async (url) => {
     const result_checkSvelte = await checkSvelte($);
 
     // now, also check with the res response
-    const resBody = await res.text();
-    const $res = cheerio.load(resBody);
-    const result_checkNextJS_res = await checkNextJS($res);
-    const result_checkVueJS_res = await checkVueJS($res);
-    const result_checkSvelte_res = await checkSvelte($res);
+    let result_checkNextJS_res = { detected: false, evidence: "" };
+    let result_checkVueJS_res = { detected: false, evidence: "" };
+    let result_checkSvelte_res = { detected: false, evidence: "" };
+    let $res;
+    // if network error was caused, then return
+    if (res === null) {
+        console.log(chalk.red("[!] Fetch request failed after retries"));
+    } else {
+        const resBody = await res.text();
+        $res = cheerio.load(resBody);
+        result_checkNextJS_res = await checkNextJS($res);
+        result_checkVueJS_res = await checkVueJS($res);
+        result_checkSvelte_res = await checkSvelte($res);
+    }
 
     if (
         result_checkNextJS.detected === true ||

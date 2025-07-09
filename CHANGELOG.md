@@ -1,5 +1,23 @@
 # Change Log
 
+## 1.1.0-beta.4 - 2025.07.09
+
+### Added
+
+- Added `set funcdesc <functionId> <description>` command to interactive mode
+
+### Changed
+
+- Pressing C-c in input box (interactive mode) will now also print the command like OS terminal
+- Set the default value of `set writeimports` as `false`
+- Do not store dupe and non-existent entries in `state.functionNavHistory` (interactive mode)
+
+### Fixed
+
+- Fix error of body has been read when running the tool for first time
+- Print an error when the user passes a URL list (file) to the run command
+- Add error recovery in Nuxt ast parse
+
 ## 1.1.0-beta.3 - 2025.07.08
 
 ### Added

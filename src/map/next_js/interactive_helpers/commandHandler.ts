@@ -5,6 +5,7 @@ import { helpMenu } from "./helpMenu.js";
 import { printFunction } from "./printer.js";
 import { State } from "../interactive.js";
 import { Widgets } from "blessed";
+import fs from "fs";
 
 interface Screen {
     screen: any;
@@ -14,7 +15,6 @@ interface Screen {
 }
 
 async function handleCommand(text: string, state: State, ui: Screen) {
-    const { chunks } = state;
     const { outputBox, inputBox, screen } = ui;
 
     if (
@@ -55,14 +55,17 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 outputBox.log(chalk.magenta(usage));
                 state.lastCommandStatus = false;
             } else if (option === "fetch") {
-                outputBox.log(commandHelpers.fetchMenu(chunks));
+                outputBox.log(commandHelpers.fetchMenu(state.chunks));
                 state.lastCommandStatus = true;
             } else if (option === "all") {
-                outputBox.log(commandHelpers.listAllFunctions(chunks));
+                outputBox.log(commandHelpers.listAllFunctions(state.chunks));
                 state.lastCommandStatus = true;
             } else if (option === "nav") {
                 outputBox.log(
-                    commandHelpers.navHistory(chunks, state.functionNavHistory)
+                    commandHelpers.navHistory(
+                        state.chunks,
+                        state.functionNavHistory
+                    )
                 );
                 state.lastCommandStatus = true;
             } else {
@@ -83,16 +86,16 @@ async function handleCommand(text: string, state: State, ui: Screen) {
             } else if (funcName === "to") {
                 const funcId = text.split(" ")[2];
                 // check if the function exists
-                if (chunks[funcId]) {
+                if (state.chunks[funcId]) {
                     const funcCode = await commandHelpers.getFunctionCode(
-                        chunks,
+                        state.chunks,
                         funcId,
                         state
                     );
                     printFunction(
                         outputBox,
                         funcCode,
-                        chunks[funcId]?.description,
+                        state.chunks[funcId]?.description,
                         state.funcWriteFile
                     );
                     state.lastCommandStatus = true;
@@ -102,8 +105,17 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                     );
                     state.lastCommandStatus = false;
                 }
-                state.functionNavHistory.push(funcId);
-                state.functionNavHistoryIndex++;
+
+                // before pushing to the function nav history,
+                // make sure this is not the same as the last one
+                if (
+                    state.functionNavHistory[state.functionNavHistoryIndex] !==
+                        funcId &&
+                    Object.keys(state.chunks).includes(funcId)
+                ) {
+                    state.functionNavHistory.push(funcId);
+                    state.functionNavHistoryIndex++;
+                }
             } else if (funcName === "back") {
                 if (state.functionNavHistory.length > 0) {
                     if (state.functionNavHistoryIndex > 0) {
@@ -113,17 +125,17 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                                 state.functionNavHistoryIndex
                             ];
 
-                        if (Object.keys(chunks).includes(funcId)) {
+                        if (Object.keys(state.chunks).includes(funcId)) {
                             const funcCode =
                                 await commandHelpers.getFunctionCode(
-                                    chunks,
+                                    state.chunks,
                                     funcId,
                                     state
                                 );
                             printFunction(
                                 outputBox,
                                 funcCode,
-                                chunks[funcId].description,
+                                state.chunks[funcId].description,
                                 state.funcWriteFile
                             );
                             state.lastCommandStatus = true;
@@ -152,17 +164,17 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                             state.functionNavHistory[
                                 state.functionNavHistoryIndex
                             ];
-                        if (Object.keys(chunks).includes(funcId)) {
+                        if (Object.keys(state.chunks).includes(funcId)) {
                             const funcCode =
                                 await commandHelpers.getFunctionCode(
-                                    chunks,
+                                    state.chunks,
                                     funcId,
                                     state
                                 );
                             printFunction(
                                 outputBox,
                                 funcCode,
-                                chunks[funcId].description,
+                                state.chunks[funcId].description,
                                 state.funcWriteFile
                             );
                             state.lastCommandStatus = true;
@@ -218,6 +230,40 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                     outputBox.log(chalk.magenta(helpMenu.set));
                     state.lastCommandStatus = false;
                 }
+            } else if (option === "funcdesc") {
+                // update the function description
+                const chunkId = text.split(" ")[2];
+
+                if (chunkId === "") {
+                    outputBox.log(chalk.magenta(helpMenu.set));
+                    state.lastCommandStatus = false;
+                } else {
+                    // check if the function id exists or not
+                    if (!Object.keys(state.chunks).includes(chunkId)) {
+                        outputBox.log(
+                            chalk.red(`Chunk ID ${chunkId} not found`)
+                        );
+                        state.lastCommandStatus = false;
+                    } else {
+                        // proceed with modifying chunk name
+                        const newChunkDesc = text.split(" ").slice(3).join(" ");
+                        state.chunks[chunkId].description = newChunkDesc;
+
+                        // write to file also
+                        fs.writeFileSync(
+                            state.mapFile,
+                            JSON.stringify(state.chunks, null, 2)
+                        );
+
+                        outputBox.log(
+                            chalk.green(
+                                `Description for ${chunkId} modified: ${newChunkDesc}`
+                            )
+                        );
+
+                        state.lastCommandStatus = true;
+                    }
+                }
             } else {
                 outputBox.log(chalk.red(option) + " is not a valid option");
                 state.lastCommandStatus = false;
@@ -235,7 +281,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 state.lastCommandStatus = false;
             } else {
                 const funcName = text.split(" ")[1];
-                outputBox.log(commandHelpers.traceFunction(chunks, funcName));
+                outputBox.log(
+                    commandHelpers.traceFunction(state.chunks, funcName)
+                );
                 state.lastCommandStatus = true;
             }
         }
