@@ -7,6 +7,7 @@
 ### Changed
 
 ### Fixed
+
 - Fix error of body has been read when running the tool for first time
 
 ## 1.1.0-beta.3 - 2025.07.08
