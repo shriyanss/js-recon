@@ -205,7 +205,6 @@ const frameworkDetect = async (url: string) => {
     let result_checkVueJS_res = { detected: false, evidence: "" };
     let result_checkSvelte_res = { detected: false, evidence: "" };
     let $res;
-    console.log("res", res, res == null);
     // if network error was caused, then return
     if (res === null) {
         console.log(chalk.red("[!] Fetch request failed after retries"));
