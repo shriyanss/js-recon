@@ -23,7 +23,7 @@ const interactive = async (chunks: Chunks) => {
         funcWriteFile: undefined,
         commandHistory: [],
         commandHistoryIndex: -1,
-        writeimports: true,
+        writeimports: false,
     };
 
     const ui = createUI();
