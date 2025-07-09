@@ -62,7 +62,12 @@ const UAs = [
     "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
-const readCache = async (url: string, headers: {}) => {
+const readCache = async (url: string, headers: {}):Promise<Response|null> => {
+    // first, check if the file exists or not
+    if (!fs.existsSync(globals.getRespCacheFile())) {
+        return null;
+    }
+
     // console.log("reading cache for", url);
     // open the cache file, build a Response, and return
     const cache = JSON.parse(
@@ -179,7 +184,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
         }
         return response;
     } else {
-        if (args === undefined) {
+        if (args === undefined || Object.keys(args).length === 0) {
             args = {
                 headers: {
                     "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
@@ -216,6 +221,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
         }
 
         const preservedRes = res.clone();
+        const preservedRes2 = res.clone();
 
         // check if this is a firewall
         // CF first
@@ -281,7 +287,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             const resToCache = preservedRes.clone();
             await writeCache(url, args?.headers || {}, resToCache);
         }
-        return preservedRes;
+        return preservedRes2;
     }
 };
 
