@@ -178,8 +178,8 @@ const frameworkDetect = async (url: string) => {
     } catch (err) {
         console.log(
             chalk.yellow(
-                "[!] Page load timed out, but continuing with current state",
-            ),
+                "[!] Page load timed out, but continuing with current state"
+            )
         );
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -201,9 +201,9 @@ const frameworkDetect = async (url: string) => {
     const result_checkSvelte = await checkSvelte($);
 
     // now, also check with the res response
-    let result_checkNextJS_res = {detected: false, evidence: ""};
-    let result_checkVueJS_res = {detected: false, evidence: ""};
-    let result_checkSvelte_res = {detected: false, evidence: ""};
+    let result_checkNextJS_res = { detected: false, evidence: "" };
+    let result_checkVueJS_res = { detected: false, evidence: "" };
+    let result_checkSvelte_res = { detected: false, evidence: "" };
     let $res;
     console.log("res", res, res == null);
     // if network error was caused, then return
@@ -233,7 +233,7 @@ const frameworkDetect = async (url: string) => {
         console.log(chalk.green("[✓] Vue.js detected"));
         console.log(
             chalk.cyan(`[i] Checking Nuxt.JS`),
-            chalk.dim("(Nuxt.JS is built on Vue.js)"),
+            chalk.dim("(Nuxt.JS is built on Vue.js)")
         );
         const result_checkNuxtJS = await checkNuxtJS($);
         const result_checkNuxtJS_res = await checkNuxtJS($res);
