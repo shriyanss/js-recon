@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added `set funcdesc <functionId> <description>` command to interactive mode
+
 ### Changed
 
 - Pressing C-c in input box (interactive mode) will now also print the command like OS terminal
