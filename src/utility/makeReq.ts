@@ -62,7 +62,10 @@ const UAs = [
     "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
-const readCache = async (url: string, headers: {}):Promise<Response|null> => {
+const readCache = async (
+    url: string,
+    headers: {}
+): Promise<Response | null> => {
     // first, check if the file exists or not
     if (!fs.existsSync(globals.getRespCacheFile())) {
         return null;

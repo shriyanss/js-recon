@@ -160,7 +160,7 @@ const checkSvelte = async ($) => {
  *   - name: A string indicating the detected framework, or null if no framework was detected.
  *   - evidence: A string with the evidence of the detection, or an empty string if no framework was detected.
  */
-const frameworkDetect = async (url:string) => {
+const frameworkDetect = async (url: string) => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source
