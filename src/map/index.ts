@@ -15,12 +15,12 @@ const availableFormats = {
 };
 
 const map = async (
-    directory,
-    output,
-    formats,
-    tech,
-    list,
-    interactive_mode
+    directory: string,
+    output: string,
+    formats: string[],
+    tech: string,
+    list: boolean,
+    interactive_mode: boolean
 ) => {
     console.log(chalk.cyan("[i] Running 'map' module"));
 
