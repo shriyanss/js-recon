@@ -1,6 +1,6 @@
 # Change Log
 
-## (unreleased)
+## 1.1.0-beta.4 - (unreleased)
 
 ### Added
 
