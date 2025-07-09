@@ -15,8 +15,16 @@ export default async (cmd) => {
 
     // check if the given URL is a file
     if (fs.existsSync(cmd.url)) {
-        console.log(chalk.red(`[!] Please provide a single URL. Parsing a list of URLs isn't available`));
-        console.log(chalk.yellow(`To run the tool against, a list of targets, pass the file in '-u' flag of 'lazyload' module, and it will download the JS files`));
+        console.log(
+            chalk.red(
+                `[!] Please provide a single URL. Parsing a list of URLs isn't available`
+            )
+        );
+        console.log(
+            chalk.yellow(
+                `To run the tool against, a list of targets, pass the file in '-u' flag of 'lazyload' module, and it will download the JS files`
+            )
+        );
         return;
     }
 

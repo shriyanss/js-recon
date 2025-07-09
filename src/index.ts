@@ -262,10 +262,7 @@ program
 program
     .command("run")
     .description("Run all modules")
-    .requiredOption(
-        "-u, --url <url>",
-        "Target URL"
-    )
+    .requiredOption("-u, --url <url>", "Target URL")
     .option("-o, --output <directory>", "Output directory", "output")
     .option(
         "--strict-scope",
