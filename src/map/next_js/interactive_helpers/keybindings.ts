@@ -2,7 +2,12 @@ import { Widgets } from "blessed";
 import chalk from "chalk";
 import { State } from "../interactive.js";
 
-function setupKeybindings(screen: Widgets.Screen, inputBox: Widgets.TextboxElement, outputBox: Widgets.Log, state: State) {
+function setupKeybindings(
+    screen: Widgets.Screen,
+    inputBox: Widgets.TextboxElement,
+    outputBox: Widgets.Log,
+    state: State
+) {
     // Quit on ctl-c
     screen.key(["C-c", "q"], () => {
         return process.exit(0);
@@ -19,7 +24,9 @@ function setupKeybindings(screen: Widgets.Screen, inputBox: Widgets.TextboxEleme
     // Clear input box on ctl-c
     inputBox.key(["C-c"], () => {
         const inputBoxValue = inputBox.value;
-        outputBox.log(`${state.lastCommandStatus ? chalk.bgGreen("%") : chalk.bgRed("%")} ${inputBoxValue}`);
+        outputBox.log(
+            `${state.lastCommandStatus ? chalk.bgGreen("%") : chalk.bgRed("%")} ${inputBoxValue}`
+        );
         outputBox.log(chalk.yellow("^C (Use Esc then C-c to exit)"));
         inputBox.clearValue();
         inputBox.focus();
@@ -44,13 +51,13 @@ function setupKeybindings(screen: Widgets.Screen, inputBox: Widgets.TextboxEleme
     });
 
     // on pressing arrow keys on output box, scroll the output
-    outputBox.key(["up", "down"], (ch: any, key: { name: string; }) => {
+    outputBox.key(["up", "down"], (ch: any, key: { name: string }) => {
         outputBox.scroll(key.name === "up" ? -1 : 1);
         screen.render();
     });
 
     // on pressing arrow keys on input box, navigate through command history
-    inputBox.key(["up", "down"], (ch: any, key: { name: string; }) => {
+    inputBox.key(["up", "down"], (ch: any, key: { name: string }) => {
         if (key.name === "up") {
             if (state.commandHistoryIndex > 0) {
                 state.commandHistoryIndex--;
