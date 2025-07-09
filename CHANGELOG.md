@@ -8,6 +8,7 @@
 
 - Pressing C-c in input box (interactive mode) will now also print the command like OS terminal
 - Set the default value of `set writeimports` as `false`
+- Do not store dupe and non-existent entries in `state.functionNavHistory` (interactive mode)
 
 ### Fixed
 
