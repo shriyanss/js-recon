@@ -69,8 +69,12 @@ Navigates between functions. Usage: `go <option>`
 
 Sets configuration options. Usage: `set <option> <value>`
 
-- `set funcwritefile <filename>`: Sets the file where function code will be written when you use the `go to` command.
-- `set writeimports [true/false]`: When using `go *` command, also write all the imports to the file
+- `set funcwritefile <filename>`: Update the file location where function code will be written when using the `go to` command.
+- `set writeimports [true/false]`: When using `go *` command, also write all the imports of the function to the file
+- `set funcdesc <functionId>`: Set the description of the provided function ID with provided value
+    - Example: `set funcdesc 1234 This function does something fishy`
+    - This will set the description to `This function does something fishy`
+    - Note that you don't need to provide the quotes for this. The tool detects the description based on spaces(` `)
 
 ### `trace`
 

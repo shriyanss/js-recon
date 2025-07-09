@@ -12,9 +12,10 @@ export interface State {
     commandHistory: string[];
     commandHistoryIndex: number;
     writeimports: boolean;
+    mapFile: string
 }
 
-const interactive = async (chunks: Chunks) => {
+const interactive = async (chunks: Chunks, map_file:string) => {
     const state = {
         chunks,
         lastCommandStatus: true,
@@ -24,6 +25,7 @@ const interactive = async (chunks: Chunks) => {
         commandHistory: [],
         commandHistoryIndex: -1,
         writeimports: false,
+        mapFile: map_file
     };
 
     const ui = createUI();
