@@ -10,6 +10,7 @@
 
 - Fix error of body has been read when running the tool for first time
 - Print an error when the user passes a URL list (file) to the run command
+- Add error recovery in Nuxt ast parse
 
 ## 1.1.0-beta.3 - 2025.07.08
 
