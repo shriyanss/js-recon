@@ -1,6 +1,6 @@
 {
     "name": "@shriyanss/js-recon",
-    "version": "1.1.0-beta.3",
+    "version": "1.1.0-beta.4",
     "description": "JS Recon Tool",
     "main": "build/index.js",
     "type": "module",
