@@ -6,6 +6,8 @@
 
 ### Changed
 
+- Pressing C-c in input box (interactive mode) will now also print the command like OS terminal
+
 ### Fixed
 
 - Fix error of body has been read when running the tool for first time
