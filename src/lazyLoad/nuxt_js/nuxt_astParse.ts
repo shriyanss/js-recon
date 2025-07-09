@@ -108,6 +108,7 @@ const nuxt_astParse = async (url: string) => {
             const unknownVarAst = parser.parse(`(${func.source})`, {
                 sourceType: "script",
                 plugins: ["jsx", "typescript"],
+                errorRecovery: true
             });
             let memberExpressions = [];
             traverse(unknownVarAst, {
