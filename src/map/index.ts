@@ -22,7 +22,7 @@ const map = async (
     formats: string[],
     tech: string,
     list: boolean,
-    interactive_mode: boolean,
+    interactive_mode: boolean
 ) => {
     console.log(chalk.cyan("[i] Running 'map' module"));
 
@@ -45,15 +45,15 @@ const map = async (
     if (!tech) {
         console.log(
             chalk.red(
-                "[!] Please specify a technology with -t/--tech. Run with -l/--list to see available technologies",
-            ),
+                "[!] Please specify a technology with -t/--tech. Run with -l/--list to see available technologies"
+            )
         );
         return;
     }
 
     if (!directory) {
         console.log(
-            chalk.red("[!] Please specify a directory with -d/--directory"),
+            chalk.red("[!] Please specify a directory with -d/--directory")
         );
         return;
     }
@@ -76,7 +76,9 @@ const map = async (
             chunks = await getFetchInstances(chunks, output, formats);
         } else {
             // read the JSON file, and load the value
-            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
+            chunks = JSON.parse(
+                readFileSync(`${output}.json`, { encoding: "utf8" })
+            );
         }
 
         // resolve fetch once you've got all

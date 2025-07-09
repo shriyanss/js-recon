@@ -62,7 +62,10 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 state.lastCommandStatus = true;
             } else if (option === "nav") {
                 outputBox.log(
-                    commandHelpers.navHistory(state.chunks, state.functionNavHistory)
+                    commandHelpers.navHistory(
+                        state.chunks,
+                        state.functionNavHistory
+                    )
                 );
                 state.lastCommandStatus = true;
             } else {
@@ -237,7 +240,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 } else {
                     // check if the function id exists or not
                     if (!Object.keys(state.chunks).includes(chunkId)) {
-                        outputBox.log(chalk.red(`Chunk ID ${chunkId} not found`))
+                        outputBox.log(
+                            chalk.red(`Chunk ID ${chunkId} not found`)
+                        );
                         state.lastCommandStatus = false;
                     } else {
                         // proceed with modifying chunk name
@@ -245,9 +250,16 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                         state.chunks[chunkId].description = newChunkDesc;
 
                         // write to file also
-                        fs.writeFileSync(state.mapFile, JSON.stringify(state.chunks, null, 2));
+                        fs.writeFileSync(
+                            state.mapFile,
+                            JSON.stringify(state.chunks, null, 2)
+                        );
 
-                        outputBox.log(chalk.green(`Description for ${chunkId} modified: ${newChunkDesc}`));
+                        outputBox.log(
+                            chalk.green(
+                                `Description for ${chunkId} modified: ${newChunkDesc}`
+                            )
+                        );
 
                         state.lastCommandStatus = true;
                     }
@@ -269,7 +281,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 state.lastCommandStatus = false;
             } else {
                 const funcName = text.split(" ")[1];
-                outputBox.log(commandHelpers.traceFunction(state.chunks, funcName));
+                outputBox.log(
+                    commandHelpers.traceFunction(state.chunks, funcName)
+                );
                 state.lastCommandStatus = true;
             }
         }
