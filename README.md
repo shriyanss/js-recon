@@ -2,6 +2,12 @@
 
 ![NPM Licence](https://img.shields.io/npm/l/%40shriyanss%2Fjs-recon) ![GitHub repo size](https://img.shields.io/github/repo-size/shriyanss/js-recon) ![NPM Downloads](https://img.shields.io/npm/dm/%40shriyanss%2Fjs-recon) ![GitHub commit activity (dev)](https://img.shields.io/github/commit-activity/w/shriyanss/js-recon/dev) ![NPM Last Update](https://img.shields.io/npm/last-update/%40shriyanss%2Fjs-recon) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/shriyanss/js-recon)
 
+<p align="center">
+  <a href="https://js-recon.io">
+    <img src="https://js-recon.io/img/js-recon-logo.png" alt="JS Recon Logo" width="100">
+  </a>
+</p>
+
 A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application running supported frameworks
 
 ## Installation
@@ -13,6 +19,14 @@ To install the tool globally, run:
 ```bash
 npm i -g @shriyanss/js-recon
 ```
+
+For detailed installation and setup process, please refer to the [Installation page](https://js-recon.io/docs/installation)
+
+## Framework Support
+
+The features in JS Recon tool are built after thorough research on apps running different frameworks.
+
+Please refer to the [Framework Support](https://js-recon.io/docs/framework-support) page for detailed information on feature compatibility across different frameworks.
 
 ## Quick Start
 
@@ -34,16 +48,14 @@ js-recon run -u https://app.example.com
 
 `js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to its full documentation.
 
-**_The `lazyload` module will work on Next.JS, Nuxt.JS, and Svelte apps. All other modules are only expected to work on Next.JS apps._**
-
-| Command       | Description                                                                   | Documentation                      |
-| ------------- | ----------------------------------------------------------------------------- | ---------------------------------- |
-| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](./docs/lazyload.md)    |
-| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](./docs/endpoints.md)   |
-| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](./docs/strings.md)     |
-| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](./docs/map.md)         |
-| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](./docs/api-gateway.md) |
-| `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](./docs/run.md)         |
+| Command       | Description                                                                   | Documentation                                             |
+| ------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](https://js-recon.io/docs/modules/lazyload)    |
+| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](https://js-recon.io/docs/modules/endpoints)   |
+| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](https://js-recon.io/docs/modules/strings)     |
+| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](https://js-recon.io/docs/modules/map)         |
+| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](https://js-recon.io/docs/modules/api-gateway) |
+| `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](https://js-recon.io/docs/modules/run)         |
 
 ## Key Features
 
@@ -55,8 +67,8 @@ js-recon run -u https://app.example.com
 
 ## Example Scenario
 
-Refer to [this page](./docs/example-scenario.md) where an example scenario of running this tool against a target is demonstrated.
+Refer to [this page](https://js-recon.io/docs/example-scenarios/next-js) where an example scenario of running this tool against a Next.JS target is demonstrated.
 
 ## Documentation
 
-For detailed guides, command options, and advanced usage examples, please check out the **[full documentation here](./docs/README.md)**.
+For detailed guides, command options, and advanced usage examples, please check out the JS Recon Site at https://js-recon.io
