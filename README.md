@@ -20,13 +20,13 @@ To install the tool globally, run:
 npm i -g @shriyanss/js-recon
 ```
 
-For detailed installation and setup process, please refer to the [Installation page](https://js-recon.io/docs/installation)
+For detailed installation and setup process, please refer to the [Installation page](https://js-recon.io/docs/docs/installation)
 
 ## Framework Support
 
 The features in JS Recon tool are built after thorough research on apps running different frameworks.
 
-Please refer to the [Framework Support](https://js-recon.io/docs/framework-support) page for detailed information on feature compatibility across different frameworks.
+Please refer to the [Framework Support](https://js-recon.io/docs/docs/framework-support) page for detailed information on feature compatibility across different frameworks.
 
 ## Quick Start
 
@@ -50,12 +50,12 @@ js-recon run -u https://app.example.com
 
 | Command       | Description                                                                   | Documentation                                             |
 | ------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](https://js-recon.io/docs/modules/lazyload)    |
-| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](https://js-recon.io/docs/modules/endpoints)   |
-| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](https://js-recon.io/docs/modules/strings)     |
-| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](https://js-recon.io/docs/modules/map)         |
-| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](https://js-recon.io/docs/modules/api-gateway) |
-| `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](https://js-recon.io/docs/modules/run)         |
+| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](https://js-recon.io/docs/docs/modules/lazyload)    |
+| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](https://js-recon.io/docs/docs/modules/endpoints)   |
+| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](https://js-recon.io/docs/docs/modules/strings)     |
+| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](https://js-recon.io/docs/docs/modules/map)         |
+| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](https://js-recon.io/docs/docs/modules/api-gateway) |
+| `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](https://js-recon.io/docs/docs/modules/run)         |
 
 ## Key Features
 
@@ -67,7 +67,7 @@ js-recon run -u https://app.example.com
 
 ## Example Scenario
 
-Refer to [this page](https://js-recon.io/docs/example-scenarios/next-js) where an example scenario of running this tool against a Next.JS target is demonstrated.
+Refer to [this page](https://js-recon.io/docs/docs/example-scenarios/next-js) where an example scenario of running this tool against a Next.JS target is demonstrated.
 
 ## Documentation
 
