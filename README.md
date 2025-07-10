@@ -48,8 +48,8 @@ js-recon run -u https://app.example.com
 
 `js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to its full documentation.
 
-| Command       | Description                                                                   | Documentation                                             |
-| ------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Command       | Description                                                                   | Documentation                                                  |
+| ------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](https://js-recon.io/docs/docs/modules/lazyload)    |
 | `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](https://js-recon.io/docs/docs/modules/endpoints)   |
 | `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](https://js-recon.io/docs/docs/modules/strings)     |
