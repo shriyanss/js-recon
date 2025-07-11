@@ -9,7 +9,8 @@ import { URL } from "url";
 // Next.js
 import subsequentRequests from "./next_js/next_SubsequentRequests.js";
 import next_getJSScript from "./next_js/next_GetJSScript.js";
-import next_getLazyResources from "./next_js/next_GetLazyResources.js";
+import next_GetLazyResourcesWebpackJs from "./next_js/next_GetLazyResourcesWebpackJs.js";
+import next_getLazyResourcesBuildManifestJs from "./next_js/next_GetLazyResourcesBuildManifestJs.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
@@ -100,7 +101,8 @@ const lazyLoad = async (
 
                 // get lazy resources
                 const lazyResourcesFromWebpack =
-                    await next_getLazyResources(url);
+                    await next_GetLazyResourcesWebpackJs(url);
+                const lazyResourcesFromBuildManifest = await next_getLazyResourcesBuildManifestJs(url);
                 let lazyResourcesFromSubsequentRequests;
 
                 if (subsequentRequestsFlag) {
@@ -120,6 +122,7 @@ const lazyLoad = async (
                 let jsFilesToDownload: string[] | any = [
                     ...(jsFilesFromScriptTag || []),
                     ...(lazyResourcesFromWebpack || []),
+                    ...(lazyResourcesFromBuildManifest || []),
                     ...(lazyResourcesFromSubsequentRequests || []),
                 ];
                 // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
