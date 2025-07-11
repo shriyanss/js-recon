@@ -1,5 +1,5 @@
 const githubURL = "https://github.com/shriyanss/js-recon";
-const version = "1.1.0-beta.4";
+const version = "1.1.0-beta.5";
 const toolDesc = "JS Recon Tool";
 
 let CONFIG = {
