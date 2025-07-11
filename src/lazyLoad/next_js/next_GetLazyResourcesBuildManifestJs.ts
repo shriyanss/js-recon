@@ -6,11 +6,11 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
 const next_getLazyResourcesBuildManifestJs = async (
-    url: string,
+    url: string
 ): Promise<string[] | any> => {
     // get the JS URLs
     const foundUrls = globals.getJsUrls();
-    let toReturn:string[] = [];
+    let toReturn: string[] = [];
 
     let buildManifestUrl: string = "";
     // iterate over them, and find the build manifest
@@ -22,7 +22,7 @@ const next_getLazyResourcesBuildManifestJs = async (
     }
 
     if (buildManifestUrl === "") {
-        return []
+        return [];
     }
 
     // get the contents of that
@@ -46,19 +46,24 @@ const next_getLazyResourcesBuildManifestJs = async (
     });
 
     // iterate over the strings, and find the chunks
-    
+
     for (const stringTxt of strings) {
         if (stringTxt.includes("static/chunks/")) {
             // a chunk is found
             // bui;d the relative URL
-            const foundUrl = (new URL(`../../${stringTxt}`, buildManifestUrl)).href;
+            const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl)
+                .href;
             globals.pushToJsUrls(foundUrl);
             toReturn.push(foundUrl);
         }
     }
 
     if (toReturn.length > 0) {
-        console.log(chalk.green(`[✓] Found ${toReturn.length} JS files from _buildManifest.js`));
+        console.log(
+            chalk.green(
+                `[✓] Found ${toReturn.length} JS files from _buildManifest.js`
+            )
+        );
     }
 
     return toReturn;

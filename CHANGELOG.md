@@ -3,13 +3,13 @@
 ## 1.1.0-beta.5 - (unreleased)
 
 ### Added
-- Detect next in servers in which src includes '/_next/' rather than just startsWith
-- Detect webpack chunks in _buildManifest.js
+
+- Detect next in servers in which src includes '/\_next/' rather than just startsWith
+- Detect webpack chunks in \_buildManifest.js
 
 ### Changed
 
 ### Fixed
-
 
 ## 1.1.0-beta.4 - 2025.07.09
 

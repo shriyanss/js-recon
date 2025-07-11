@@ -24,7 +24,9 @@ import * as globals from "../../utility/globals.js";
  * absolute URLs pointing to JavaScript files found in require.ensure()
  * functions, or undefined if no webpack JS is found.
  */
-const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | any> => {
+const next_GetLazyResourcesWebpackJs = async (
+    url: string
+): Promise<string[] | any> => {
     const browser = await puppeteer.launch({
         headless: true,
     });
