@@ -102,7 +102,8 @@ const lazyLoad = async (
                 // get lazy resources
                 const lazyResourcesFromWebpack =
                     await next_GetLazyResourcesWebpackJs(url);
-                const lazyResourcesFromBuildManifest = await next_getLazyResourcesBuildManifestJs(url);
+                const lazyResourcesFromBuildManifest =
+                    await next_getLazyResourcesBuildManifestJs(url);
                 let lazyResourcesFromSubsequentRequests;
 
                 if (subsequentRequestsFlag) {
