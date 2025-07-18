@@ -24,7 +24,9 @@ import * as globals from "../../utility/globals.js";
  * absolute URLs pointing to JavaScript files found in require.ensure()
  * functions, or undefined if no webpack JS is found.
  */
-const next_getLazyResources = async (url: string): Promise<string[] | any> => {
+const next_GetLazyResourcesWebpackJs = async (
+    url: string
+): Promise<string[] | any> => {
     const browser = await puppeteer.launch({
         headless: true,
     });
@@ -85,7 +87,7 @@ const next_getLazyResources = async (url: string): Promise<string[] | any> => {
     if (!webpack_js) {
         console.log(chalk.red("[!] No webpack JS file found"));
         console.log(chalk.magenta(CONFIG.notFoundMessage));
-        return; // Return undefined as per JSDoc
+        return []; // Return undefined as per JSDoc
     }
 
     // parse the webpack JS file
@@ -232,4 +234,4 @@ const next_getLazyResources = async (url: string): Promise<string[] | any> => {
     return final_urls;
 };
 
-export default next_getLazyResources;
+export default next_GetLazyResourcesWebpackJs;

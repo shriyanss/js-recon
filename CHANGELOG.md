@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.1.0 - 2025.07.18
+
+### Added
+
+- Detect next in servers in which src includes '/\_next/' rather than just startsWith
+- Detect webpack chunks in \_buildManifest.js
+
+### Changed
+
+### Fixed
+
 ## 1.1.0-beta.4 - 2025.07.09
 
 ### Added
