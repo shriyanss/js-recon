@@ -80,7 +80,7 @@ const strings = async (
     scan_secrets: boolean,
     permutate_option: boolean,
     openapi_option: boolean
-) => {
+):Promise<undefined> => {
     console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
     // check if the directory exists
