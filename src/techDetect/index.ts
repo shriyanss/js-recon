@@ -29,10 +29,10 @@ const checkNextJS = async ($) => {
             if (src && src.includes("/_next/")) {
                 detected = true;
                 evidence = `${tag} :: ${src}`;
-            } else if (srcSet && src.includes("/_next/")) {
+            } else if (srcSet && srcSet.includes("/_next/")) {
                 detected = true;
                 evidence = `${tag} :: ${srcSet}`;
-            } else if (imageSrcSet && src.includes("/_next/")) {
+            } else if (imageSrcSet && imageSrcSet.includes("/_next/")) {
                 detected = true;
                 evidence = `${tag} :: ${imageSrcSet}`;
             }
