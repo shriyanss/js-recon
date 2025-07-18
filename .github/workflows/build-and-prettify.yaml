@@ -6,6 +6,22 @@ on:
       - dev
 
 jobs:
+  version_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version mismatch
+        run: |
+          echo "[i] Checking if the version in the CHANGELOG.md and package.json version matches"
+          PACKAGE_JSON_VERSION=$(cat package.json | jq ".version" -r)
+          CHANGELOG_VERSION=$(cat CHANGELOG.md | grep -E "^## [0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+)?)?" | head -n 1 | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+)?)?).*/\1/')
+          if [[ "$PACKAGE_JSON_VERSION" != "$CHANGELOG_VERSION" ]]; then
+            echo "Version number mismatch between PACKAGE_JSON_VERSION and CHANGELOG_VERSION"
+            exit 1
+          else
+            echo "[✓] Version matches"
+          fi
+
   build:
     runs-on: ubuntu-latest
     steps:
