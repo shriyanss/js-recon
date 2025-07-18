@@ -8,7 +8,30 @@ on:
     types: [created]
 
 jobs:
+  version_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version mismatch
+        run: |
+          echo "[i] Checking if the version in the CHANGELOG.md, package.json, and Github release version matches"
+          PACKAGE_JSON_VERSION=$(cat package.json | jq ".version" -r)
+          CHANGELOG_VERSION=$(cat CHANGELOG.md | grep -E "^## [0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+)?)?" | head -n 1 | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+)?)?).*/\1/')
+          GITHUB_RELEASE_VERSION=$(echo $GITHUB_RELEASE_VERSION_RAW | sed -E 's/^[[:space:]]*v//')
+          if [[ "$PACKAGE_JSON_VERSION" != "$CHANGELOG_VERSION" ]]; then
+            echo "Version number mismatch between PACKAGE_JSON_VERSION and CHANGELOG_VERSION"
+            exit 1
+          elif [[ "$PACKAGE_JSON_VERSION" != "$GITHUB_RELEASE_VERSION" ]]; then
+            echo "Version number mismatch between PACKAGE_JSON_VERSION and GITHUB_RELEASE_VERSION"
+            exit 1
+          else
+            echo "[✓] Version matches"
+          fi
+        env:
+          GITHUB_RELEASE_VERSION_RAW: ${{ github.event.release.tag_name }}
+
   build:
+    needs: version_check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
