@@ -1,6 +1,16 @@
 # Change Log
 
-## 1.1.0 - 2025.07.18
+## 1.1.1 - 2025.07.18
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fixed the version number mismatch in `CHANGELOG.md` (stated 1.1.0) and `package.json` (stated 1.1.0-beta.5)
+
+## 1.1.0/1.1.0-beta.5 - 2025.07.18
 
 ### Added
 
