@@ -23,6 +23,7 @@ jobs:
           fi
 
   build:
+    needs: version_check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
