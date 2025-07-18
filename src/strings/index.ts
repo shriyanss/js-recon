@@ -73,13 +73,13 @@ function extractStrings(node) {
  * @param {string} output_file - The file to write the extracted strings to
  */
 const strings = async (
-    directory:string,
-    output_file:string,
-    extract_urls:boolean,
-    extracted_url_path:string,
-    scan_secrets:boolean,
-    permutate_option:boolean,
-    openapi_option:boolean
+    directory: string,
+    output_file: string,
+    extract_urls: boolean,
+    extracted_url_path: string,
+    scan_secrets: boolean,
+    permutate_option: boolean,
+    openapi_option: boolean
 ) => {
     console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
