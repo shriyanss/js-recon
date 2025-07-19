@@ -11,7 +11,8 @@
     "scripts": {
         "build": "rm -rf build/ && tsc",
         "start": "node build/index.js",
-        "test": "node build/index.js -h"
+        "test": "node build/index.js -h",
+        "cleanup": "rm -rf output/ .resp_cache.json extracted_urls.txt extracted_urls.json extracted_urls-openapi.json strings.json mapped.json test.js"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
