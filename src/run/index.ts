@@ -138,7 +138,7 @@ export default async (cmd) => {
     // now, run map
     console.log(chalk.bgCyan("[6/6] Running map to find functions..."));
     await map(
-        cmd.output,
+        cmd.output + "/" + targetHost,
         "mapped",
         ["json"],
         globalsUtil.getTech(),

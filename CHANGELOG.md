@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Provide proper directory for JS files to the `map` module when the `run` module is used
+
 ## 1.1.1 - 2025.07.18
 
 ### Added
