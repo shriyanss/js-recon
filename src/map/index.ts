@@ -7,6 +7,8 @@ import resolveFetch from "./next_js/resolveFetch.js";
 import interactive from "./next_js/interactive.js";
 import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
+import getAxiosInstances from "./next_js/getAxiosInstances.js";
+import resolveAxios from "./next_js/resolveAxios.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -19,7 +21,7 @@ const availableFormats = {
 const map = async (
     directory: string,
     output: string,
-    formats: string[],
+    formats: Array<keyof typeof availableFormats>,
     tech: string,
     list: boolean,
     interactive_mode: boolean
@@ -74,6 +76,9 @@ const map = async (
 
             // now, iterate through them, and check fetch instances
             chunks = await getFetchInstances(chunks, output, formats);
+
+            // now, iterate through them, and check axios instances
+            chunks = await getAxiosInstances(chunks, output, formats);
         } else {
             // read the JSON file, and load the value
             chunks = JSON.parse(
@@ -82,7 +87,10 @@ const map = async (
         }
 
         // resolve fetch once you've got all
-        await resolveFetch(chunks, directory, formats);
+        await resolveFetch(chunks, directory);
+
+        // also, the axios instances
+        await resolveAxios(chunks, directory);
 
         if (interactive_mode) {
             await interactive(chunks, `${output}.json`);
