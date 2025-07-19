@@ -57,6 +57,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
             } else if (option === "fetch") {
                 outputBox.log(commandHelpers.fetchMenu(state.chunks));
                 state.lastCommandStatus = true;
+            } else if (option === "axios") {
+                outputBox.log(commandHelpers.axiosClientsMenu(state.chunks));
+                state.lastCommandStatus = true;
             } else if (option === "all") {
                 outputBox.log(commandHelpers.listAllFunctions(state.chunks));
                 state.lastCommandStatus = true;

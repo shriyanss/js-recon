@@ -3,6 +3,7 @@ export interface Chunk {
     description: string;
     loadedOn: [];
     containsFetch: boolean;
+    isAxiosClient: boolean;
     exports: string;
     callStack: [];
     code: string;

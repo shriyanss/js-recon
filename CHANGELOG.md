@@ -1,5 +1,19 @@
 # Change Log
 
+## 1.1.2-alpha.1 - 2025.07.19
+
+### Added
+
+- Added axios client detection in next.js
+- Added `list axios` command in interactive mode for next.js
+
+### Changed
+
+### Fixed
+
+- Provide proper directory for JS files to the `map` module when the `run` module is used
+- Added output directory conflict check when using `run` module
+
 ## 1.1.1 - 2025.07.18
 
 ### Added
