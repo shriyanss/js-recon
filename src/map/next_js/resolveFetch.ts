@@ -18,7 +18,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
         }
 
         const filePath = path.join(directory, chunk.file);
-        let fileContent;
+        let fileContent: string;
 
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
