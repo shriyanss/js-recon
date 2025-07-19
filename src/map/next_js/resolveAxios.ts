@@ -186,9 +186,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 }
 
                                 // resolve the URL first
-                                if (
-                                    axiosFirstArg?.type === "StringLiteral"
-                                ) {
+                                if (axiosFirstArg?.type === "StringLiteral") {
                                     callUrl = axiosFirstArg.value;
                                 } else {
                                     // since it isn't a string, we have to resolve it
