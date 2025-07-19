@@ -5,6 +5,7 @@ import * as globalsUtil from "../utility/globals.js";
 import * as fs from "fs";
 import lazyLoad from "../lazyLoad/index.js";
 import chalk from "chalk";
+import CONFIG from "../globalConfig.js";
 
 export default async (cmd) => {
     globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
@@ -25,6 +26,19 @@ export default async (cmd) => {
                 `To run the tool against, a list of targets, pass the file in '-u' flag of 'lazyload' module, and it will download the JS files`
             )
         );
+        return;
+    }
+
+    // check if output directory exists. If so, ask the user to switch to other directory
+    // if not done, it might conflict this process
+    // for devs: run `npm run cleanup` to prepare this directory
+    if (fs.existsSync(cmd.output)) {
+        console.log(
+            chalk.red(
+                `[!] Output directory ${cmd.output} already exists. Please switch to other directory or it might conflict with this process.`
+            )
+        );
+        console.log(chalk.yellow(`[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`));
         return;
     }
 
