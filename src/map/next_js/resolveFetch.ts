@@ -7,8 +7,6 @@ import path from "path";
 import { Chunks } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
 
-
-
 const resolveFetch = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving fetch instances"));
 
