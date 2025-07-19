@@ -9,8 +9,7 @@ const getAxiosInstances = async (
 ) => {
     console.log(chalk.cyan("[i] Getting axios instances"));
 
-    let chunkCopy = chunks;
-
+    let chunkCopy = structuredClone(chunks);
     // iterate through all the chunks
     for (const chunk of Object.values(chunks)) {
         const chunkCode = chunk.code;
