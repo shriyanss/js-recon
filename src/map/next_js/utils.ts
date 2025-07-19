@@ -11,7 +11,7 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
             return node.value;
         case "NullLiteral":
             return null;
-        case "TemplateLiteral":
+        case "TemplateLiteral": {
             let result = "";
             for (let i = 0; i < node.quasis.length; i++) {
                 result += node.quasis[i].value.raw;
@@ -20,6 +20,7 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
                 }
             }
             return result;
+        }
         case "Identifier": {
             const binding = scope.getBinding(node.name);
             if (binding && binding.path.node.init) {
