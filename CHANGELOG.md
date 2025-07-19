@@ -12,6 +12,7 @@
 ### Fixed
 
 - Provide proper directory for JS files to the `map` module when the `run` module is used
+- Added output directory conflict check when using `run` module
 
 ## 1.1.1 - 2025.07.18
 
