@@ -38,7 +38,11 @@ export default async (cmd) => {
                 `[!] Output directory ${cmd.output} already exists. Please switch to other directory or it might conflict with this process.`
             )
         );
-        console.log(chalk.yellow(`[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`));
+        console.log(
+            chalk.yellow(
+                `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
+            )
+        );
         return;
     }
 

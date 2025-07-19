@@ -34,9 +34,9 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
                     let key;
                     if (prop.computed) {
                         key = resolveNodeValue(prop.key, scope);
-                    } else if (prop.key.type === 'Identifier') {
+                    } else if (prop.key.type === "Identifier") {
                         key = prop.key.name;
-                    } else if (prop.key.type === 'StringLiteral') {
+                    } else if (prop.key.type === "StringLiteral") {
                         key = prop.key.value;
                     }
                     const value = resolveNodeValue(prop.value, scope);
@@ -56,7 +56,7 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
                 let propertyName;
                 if (node.computed) {
                     propertyName = resolveNodeValue(node.property, scope);
-                } else if (node.property.type === 'Identifier') {
+                } else if (node.property.type === "Identifier") {
                     propertyName = node.property.name;
                 }
                 return object[propertyName];
@@ -66,13 +66,13 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
         case "CallExpression": {
             if (
                 node.callee.type === "MemberExpression" &&
-                node.callee.property.type === 'Identifier' &&
+                node.callee.property.type === "Identifier" &&
                 node.callee.property.name === "toString"
             ) {
                 return resolveNodeValue(node.callee.object, scope);
             }
-            let calleeName = '[unknown]';
-            if (node.callee.type === 'Identifier') {
+            let calleeName = "[unknown]";
+            if (node.callee.type === "Identifier") {
                 calleeName = node.callee.name;
             }
             return `[unresolved call to ${calleeName || "function"}]`;
