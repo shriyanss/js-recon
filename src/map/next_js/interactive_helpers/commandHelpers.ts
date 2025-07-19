@@ -17,6 +17,17 @@ const commandHelpers = {
         }
         return returnText;
     },
+    axiosClientsMenu: (chunks: Chunks) => {
+        let returnText = chalk.cyan("List of chunks that are axios clients\n");
+        for (const chunk of Object.values(chunks)) {
+            if (chunk.isAxiosClient) {
+                returnText += chalk.green(
+                    `- ${chunk.id}: ${chunk.file} (${chunk.description})\n`
+                );
+            }
+        }
+        return returnText;
+    },
     getFunctionCode: async (chunks: Chunks, funcName: string, state: State) => {
         let funcCode: string;
         for (const chunk of Object.values(chunks)) {

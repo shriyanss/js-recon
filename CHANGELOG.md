@@ -5,6 +5,7 @@
 ### Added
 
 - Added axios client detection in next.js
+- Added `list axios` command in interactive mode for next.js
 
 ### Changed
 
