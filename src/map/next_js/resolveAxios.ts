@@ -95,8 +95,6 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                 });
 
                 if (axiosInstance !== "") {
-                    console.log(chalk.green(`[✓] ${chunkName} uses axios client initialized in ${axiosInstance}`));
-
                     // now that we've got the axios instance, we need to find where it is being called
                     // for example, if the axios instance is `a`, then it is being called like `a.b.get(...)`
                     traverse(ast, {
