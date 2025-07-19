@@ -64,7 +64,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                 },
                 AssignmentExpression(path) {
                     const args = path.node.right.params;
-                    if (args.length === 3) {
+                    if (args?.length === 3) {
                         thirdArg = args[2].name;
                     }
                 },
