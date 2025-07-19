@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { resolveNodeValue } from "./utils.js";
 import fs from "fs";
 import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
@@ -82,11 +83,20 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                             // see if it is calling the third arg
                             if (assignmentValue.callee.name === thirdArg) {
                                 // finally, check if the first argument is equal to the axios instance\
-                                const thisFunctionAssignmentValue = (assignmentValue.arguments[0].value).toString();
-                                const targetFunctionAssignmentValue = axiosImportedTo[chunkName];
-                                if (thisFunctionAssignmentValue === targetFunctionAssignmentValue) {
+                                const thisFunctionAssignmentValue =
+                                    assignmentValue.arguments[0].value.toString();
+                                const targetFunctionAssignmentValue =
+                                    axiosImportedTo[chunkName];
+                                if (
+                                    thisFunctionAssignmentValue ===
+                                    targetFunctionAssignmentValue
+                                ) {
                                     // print the variable name
-                                    console.log(chalk.green(`[✓] ${chunkName} uses axios client initialized in ${varName}`));
+                                    console.log(
+                                        chalk.green(
+                                            `[✓] ${chunkName} uses axios client initialized in ${varName}`
+                                        )
+                                    );
                                     axiosInstance = varName;
                                 }
                             }
@@ -99,10 +109,17 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                     // for example, if the axios instance is `a`, then it is being called like `a.b.get(...)`
                     traverse(ast, {
                         MemberExpression(path) {
-                            if (path.node.object.type === 'MemberExpression' && path.node.object.object.name === axiosInstance) {
+                            if (
+                                path.node.object.type === "MemberExpression" &&
+                                path.node.object.object.name === axiosInstance
+                            ) {
                                 // This handles o.A.post
-                                const codeSnippet = chunkCode.split("\n")[path.node.loc.start.line - 1];
-                                const firstProp = path.node.object.property.name; // A
+                                const codeSnippet =
+                                    chunkCode.split("\n")[
+                                        path.node.loc.start.line - 1
+                                    ];
+                                const firstProp =
+                                    path.node.object.property.name; // A
                                 const secondProp = path.node.property.name; // post
 
                                 let axiosFirstArg;
@@ -114,11 +131,17 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     const args = path.parentPath.node.arguments;
                                     if (args.length > 0) {
                                         axiosFirstArg = args[0];
-                                        axiosFirstArgText = chunkCode.slice(axiosFirstArg.start, axiosFirstArg.end);
+                                        axiosFirstArgText = chunkCode.slice(
+                                            axiosFirstArg.start,
+                                            axiosFirstArg.end
+                                        );
                                     }
                                     if (args.length > 1) {
                                         axiosSecondArg = args[1];
-                                        axiosSecondArgText = chunkCode.slice(axiosSecondArg.start, axiosSecondArg.end);
+                                        axiosSecondArgText = chunkCode.slice(
+                                            axiosSecondArg.start,
+                                            axiosSecondArg.end
+                                        );
                                     }
                                 }
 
@@ -139,30 +162,112 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 chunkId = chunkName;
 
                                 // now, get the function file
-                                functionFile = directory + "/" + chunks[chunkId].file;
-                                
+                                functionFile =
+                                    directory + "/" + chunks[chunkId].file;
+
                                 // now, get the function file line
                                 // to do so, iterate through the lines of code, and see if it is equal to codeSnippet
-                                const codeFileContent = fs.readFileSync(functionFile, 'utf-8');
-                                for (let i = 0; i < codeFileContent.split("\n").length; i++) {
-                                    if (codeFileContent.split("\n")[i] === codeSnippet) {
+                                const codeFileContent = fs.readFileSync(
+                                    functionFile,
+                                    "utf-8"
+                                );
+                                for (
+                                    let i = 0;
+                                    i < codeFileContent.split("\n").length;
+                                    i++
+                                ) {
+                                    if (
+                                        codeFileContent.split("\n")[i] ===
+                                        codeSnippet
+                                    ) {
                                         functionFileLine = i + 1;
                                         break;
                                     }
                                 }
-                                
 
-                                if (axiosFirstArgText?.type === "StringLiteral") {
-                                    console.log(chalk.green("[✓] First argument is a string"));
+                                // resolve the URL first
+                                if (
+                                    axiosFirstArgText?.type === "StringLiteral"
+                                ) {
+                                    callUrl = axiosFirstArgText;
+                                } else {
+                                    // since it isn't a string, we have to resolve it
+                                    const callExpressionPath = path.parentPath;
+                                    callUrl = resolveNodeValue(
+                                        axiosFirstArg,
+                                        callExpressionPath.scope
+                                    );
+                                }
+
+                                // now, go for the method
+                                if (
+                                    secondProp === "post" ||
+                                    secondProp === "POST"
+                                ) {
+                                    callMethod = "POST";
+                                } else if (
+                                    secondProp === "get" ||
+                                    secondProp === "GET"
+                                ) {
+                                    callMethod = "GET";
+                                } else if (
+                                    secondProp === "put" ||
+                                    secondProp === "PUT"
+                                ) {
+                                    callMethod = "PUT";
+                                } else if (
+                                    secondProp === "delete" ||
+                                    secondProp === "DELETE"
+                                ) {
+                                    callMethod = "DELETE";
+                                } else if (
+                                    secondProp === "patch" ||
+                                    secondProp === "PATCH"
+                                ) {
+                                    callMethod = "PATCH";
+                                } else if (
+                                    secondProp === "head" ||
+                                    secondProp === "HEAD"
+                                ) {
+                                    callMethod = "HEAD";
+                                } else if (
+                                    secondProp === "options" ||
+                                    secondProp === "OPTIONS"
+                                ) {
+                                    callMethod = "OPTIONS";
+                                } else if (
+                                    secondProp === "trace" ||
+                                    secondProp === "TRACE"
+                                ) {
+                                    callMethod = "TRACE";
+                                } else if (
+                                    secondProp === "connect" ||
+                                    secondProp === "CONNECT"
+                                ) {
+                                    callMethod = "CONNECT";
+                                } else {
+                                    callMethod = "UNKNOWN";
                                 }
 
                                 // finally, print the human readable output
-                                console.log(chalk.blue(`[+] Found axios call in chunk ${chunkId} (${functionFile}) at L${functionFileLine}`));
+                                console.log(
+                                    chalk.blue(
+                                        `[+] Found axios call in chunk ${chunkId} (${functionFile}) at L${functionFileLine}`
+                                    )
+                                );
+                                console.log(chalk.green(`    URL: ${callUrl}`));
+                                console.log(
+                                    chalk.green(`    Method: ${callMethod}`)
+                                );
                             }
                         },
                     });
                 } else {
-                    console.log(chalk.yellow("[!] No axios instance found in " + chunkName));
+                    console.log(
+                        chalk.yellow(
+                            "[!] No axios instance found in " + chunkName
+                        )
+                    );
                 }
             } else {
                 console.log(chalk.yellow("[!] No function uses axios client"));
