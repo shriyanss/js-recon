@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.2-alpha.1 - (unreleased)
+
+### Added
+
+- Added axios client detection in next.js
+
+### Changed
+
+### Fixed
+
 ## 1.1.1 - 2025.07.18
 
 ### Added
