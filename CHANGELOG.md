@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.2-alpha.2 - 2025.07.20
+
+### Added
+
+- Created docker image for js-recon
+
+### Changed
+
+### Fixed
+
 ## 1.1.2-alpha.1 - 2025.07.19
 
 ### Added
