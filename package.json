@@ -1,6 +1,6 @@
 {
     "name": "@shriyanss/js-recon",
-    "version": "1.1.2-alpha.1",
+    "version": "1.1.2-alpha.2",
     "description": "JS Recon Tool",
     "main": "build/index.js",
     "type": "module",
@@ -12,7 +12,7 @@
         "build": "rm -rf build/ && tsc",
         "start": "node build/index.js",
         "test": "node build/index.js -h",
-        "cleanup": "rm -rf build/ output/ .resp_cache.json extracted_urls.txt extracted_urls.json extracted_urls-openapi.json strings.json mapped.json test.js #"
+        "cleanup": "rm -rf build output .resp_cache.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped.json test.js shriyanss-js-recon-*.tgz"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
