@@ -1,7 +1,7 @@
 # This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
 # For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
 
-name: Node.js Package
+name: Publish JS Recon
 
 on:
   release:
@@ -65,4 +65,31 @@ jobs:
           npm publish --tag $TAG
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          VERSION: ${{ github.event.release.tag_name }}
+  publish-docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and push Docker image
+        run: |
+          # login to docker
+          echo $DOCKER_SECRET | docker login -u shriyanss --password-stdin
+
+          # build the image
+          docker build -t shriyanss/js-recon:$VERSION .
+
+          # check if it is alpha or beta. default to latest
+          TAG="latest"
+          [[ "$VERSION" == *"beta"* ]] && TAG="beta"
+          [[ "$VERSION" == *"alpha"* ]] && TAG="alpha"
+
+          # tag again with whatever has been set
+          docker tag shriyanss/js-recon:$VERSION shriyanss/js-recon:$TAG
+
+          # push images with both tags
+          docker push shriyanss/js-recon:$VERSION
+          docker push shriyanss/js-recon:$TAG
+          
+        env:
+          DOCKER_SECRET: ${{ secrets.DOCKER_SECRET }}
           VERSION: ${{ github.event.release.tag_name }}
