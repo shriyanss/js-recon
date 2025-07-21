@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.2-alpha.3 - (unreleased)
+
+### Added
+
+### Changed
+
+- Remove `--no-sandbox` arg when launching browser (security)
+
+### Fixed
+
 ## 1.1.2-alpha.2 - 2025.07.20
 
 ### Added
