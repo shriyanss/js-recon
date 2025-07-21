@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.1.2-alpha.3 - 2025.07.21
+
+### Added
+
+### Changed
+
+- Remove `--no-sandbox` arg when launching browser (security)
+
+### Fixed
+
+- Disable chrome sandbox when running in docker to fix errors
+
 ## 1.1.2-alpha.2 - 2025.07.20
 
 ### Added

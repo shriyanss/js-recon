@@ -238,12 +238,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
-                args: [
-                    "--disable-gpu",
-                    "--disable-dev-shm-usage",
-                    "--disable-setuid-sandbox",
-                    "--no-sandbox",
-                ],
+                args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
             });
             const page = await browser.newPage();
             await page.goto(url);
@@ -265,12 +260,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
-                args: [
-                    "--disable-gpu",
-                    "--disable-dev-shm-usage",
-                    "--disable-setuid-sandbox",
-                    "--no-sandbox",
-                ],
+                args: process.env.IS_DOCKER ? ["--no-sandbox"] : [],
             });
             const page = await browser.newPage();
             await page.goto(url);
