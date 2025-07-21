@@ -14,4 +14,6 @@ RUN npm run build
 
 USER pptruser
 RUN npx puppeteer browsers install chrome
+
+ENV IS_DOCKER=true
 ENTRYPOINT ["node", "build/index.js"]

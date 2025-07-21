@@ -22,6 +22,7 @@ const downloadLoadedJs = async (url) => {
 
     const browser = await puppeteer.launch({
         headless: true,
+        args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
     });
 
     const page = await browser.newPage();
