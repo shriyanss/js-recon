@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.2-alpha.4 - 2025.07.21
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix CI pipeline for GitHub Container Registry publishing
+
 ## 1.1.2-alpha.3 - 2025.07.21
 
 ### Added
