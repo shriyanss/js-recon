@@ -57,7 +57,9 @@ const lazyLoad = async (
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
     if (process.env.IS_DOCKER === "true") {
-        console.log(chalk.yellow("[!] Running in Docker. Browser sandbox disabled"));
+        console.log(
+            chalk.yellow("[!] Running in Docker. Browser sandbox disabled")
+        );
     }
 
     // if cache enabled, check if the cache file exists or not. If no, then create a new one
