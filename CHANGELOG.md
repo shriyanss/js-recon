@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.3-alpha.2 - (unreleased)
+
+### Added
+
+- Added request body extraction and display for axios calls
+
+### Changed
+
+### Fixed
+
 ## 1.1.3-alpha.1 - 2025.07.22
 
 ### Added
