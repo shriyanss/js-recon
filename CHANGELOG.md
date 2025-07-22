@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.3-alpha.1 - (unreleased)
+
+### Added
+
+- Added axios URL resolution in next.js (those using `.concat()`)
+
+### Changed
+
+### Fixed
+
 ## 1.1.2 - 2025.07.21
 
 ### Added
