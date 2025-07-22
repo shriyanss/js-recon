@@ -130,13 +130,13 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 let axiosSecondArgText;
 
                                 // define some arguments to be finally printed
-                                let callUrl:string;
-                                let callMethod:string;
-                                let callHeaders:{[key:string]:string};
-                                let callBody:string;
-                                let functionFile:string;
-                                let functionFileLine:number;
-                                let chunkId:string;
+                                let callUrl: string;
+                                let callMethod: string;
+                                let callHeaders: { [key: string]: string };
+                                let callBody: string;
+                                let functionFile: string;
+                                let functionFileLine: number;
+                                let chunkId: string;
 
                                 // now, resolve the arguments
                                 if (path.parentPath.isCallExpression()) {
