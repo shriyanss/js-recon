@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.1.3-alpha.1 - 2025.07.22
+
+### Added
+
+- Added axios URL resolution in next.js (those using `.concat()`)
+- Added openapi spec generation for map module
+
+### Changed
+
+### Fixed
+
 ## 1.1.2 - 2025.07.21
 
 ### Added

@@ -85,3 +85,49 @@ export const setTech = (value: string) => {
 export const getTech = () => {
     return tech;
 };
+
+// mapped
+export let openapi = false;
+export let openapiOutputFile = "mapped-openapi.json";
+export const setOpenapi = (value: boolean) => {
+    openapi = value;
+};
+export const getOpenapi = () => {
+    return openapi;
+};
+export const setOpenapiOutputFile = (value: string) => {
+    openapiOutputFile = value;
+};
+export const getOpenapiOutputFile = () => {
+    return openapiOutputFile;
+};
+
+// openapi output
+export interface OpenapiOutputItem {
+    url: string;
+    method: string;
+    path: string;
+    headers: {
+        [key: string]: string;
+    };
+    body: string;
+    chunkId: string;
+    functionFile: string;
+    functionFileLine: number;
+}
+export let openapiOutput: OpenapiOutputItem[] = [];
+export const addOpenapiOutput = (value: OpenapiOutputItem) => {
+    openapiOutput.push(value);
+};
+export const getOpenapiOutput = () => {
+    return openapiOutput;
+};
+
+// openapi chunk tag
+export let openapiChunkTag = false;
+export const setOpenapiChunkTag = (value: boolean) => {
+    openapiChunkTag = value;
+};
+export const getOpenapiChunkTag = () => {
+    return openapiChunkTag;
+};

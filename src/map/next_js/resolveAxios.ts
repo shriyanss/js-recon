@@ -1,9 +1,10 @@
 import chalk from "chalk";
-import { resolveNodeValue } from "./utils.js";
+import { resolveNodeValue, resolveStringOps } from "./utils.js";
 import fs from "fs";
 import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import * as globals from "../../utility/globals.js";
 const traverse = _traverse.default;
 
 const resolveAxios = async (chunks: Chunks, directory: string) => {
@@ -82,7 +83,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                         if (assignmentValue?.type === "CallExpression") {
                             // see if it is calling the third arg
                             if (assignmentValue.callee.name === thirdArg) {
-                                // finally, check if the first argument is equal to the axios instance\
+                                // finally, check if the first argument is equal to the axios instance
                                 const thisFunctionAssignmentValue =
                                     assignmentValue.arguments[0].value.toString();
                                 const targetFunctionAssignmentValue =
@@ -127,6 +128,17 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
 
                                 let axiosFirstArgText;
                                 let axiosSecondArgText;
+
+                                // define some arguments to be finally printed
+                                let callUrl: string;
+                                let callMethod: string;
+                                let callHeaders: { [key: string]: string };
+                                let callBody: string;
+                                let functionFile: string;
+                                let functionFileLine: number;
+                                let chunkId: string;
+
+                                // now, resolve the arguments
                                 if (path.parentPath.isCallExpression()) {
                                     const args = path.parentPath.node.arguments;
                                     if (args.length > 0) {
@@ -135,6 +147,29 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                             axiosFirstArg.start,
                                             axiosFirstArg.end
                                         );
+
+                                        // try to resolve this by seeing where this ends at
+                                        // the code snippet is `"/api/teams/".concat(i, "/members")`
+
+                                        // so, first of all see if this is a string operation
+
+                                        // regex for only concat ops
+                                        const concatRegex =
+                                            /".*"(\.concat\(.+\))+/;
+                                        if (
+                                            concatRegex.test(axiosFirstArgText)
+                                        ) {
+                                            // now, resolve it
+
+                                            // assuming that the code is like `"/api/teams/".concat(i, "/members")`
+                                            // Replace variables with placeholders using resolveStringOps utility
+                                            const varsReplaced =
+                                                resolveStringOps(
+                                                    axiosFirstArgText
+                                                );
+
+                                            callUrl = varsReplaced;
+                                        }
                                     }
                                     if (args.length > 1) {
                                         axiosSecondArg = args[1];
@@ -148,15 +183,6 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 // console.log(axiosFirstArgText, axiosSecondArgText);
 
                                 // since it has got the two arguments, check their types
-
-                                // define some arguments to be finally printed
-                                let callUrl;
-                                let callMethod;
-                                let callHeaders;
-                                let callBody;
-                                let functionFile;
-                                let functionFileLine;
-                                let chunkId;
 
                                 // first resolve the chunk id
                                 chunkId = chunkName;
@@ -185,16 +211,23 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     }
                                 }
 
-                                // resolve the URL first
-                                if (axiosFirstArg?.type === "StringLiteral") {
-                                    callUrl = axiosFirstArg.value;
-                                } else {
-                                    // since it isn't a string, we have to resolve it
-                                    const callExpressionPath = path.parentPath;
-                                    callUrl = resolveNodeValue(
-                                        axiosFirstArg,
-                                        callExpressionPath.scope
-                                    );
+                                // resolve the URL first in case it hasn't been resolved earlier
+                                if (callUrl === undefined) {
+                                    if (
+                                        axiosFirstArg?.type === "StringLiteral"
+                                    ) {
+                                        callUrl = axiosFirstArg.value;
+                                    } else {
+                                        // since it isn't a string, we have to resolve it
+                                        const callExpressionPath =
+                                            path.parentPath;
+                                        // will also pass the code snippet just in case it could resolve it
+                                        callUrl = resolveNodeValue(
+                                            axiosFirstArg,
+                                            callExpressionPath.scope,
+                                            axiosFirstArgText
+                                        );
+                                    }
                                 }
 
                                 // now, go for the method
@@ -257,6 +290,17 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 console.log(
                                     chalk.green(`    Method: ${callMethod}`)
                                 );
+
+                                globals.addOpenapiOutput({
+                                    url: callUrl || "",
+                                    method: callMethod || "",
+                                    path: callUrl || "",
+                                    headers: callHeaders || {},
+                                    body: callBody || "",
+                                    chunkId: chunkId,
+                                    functionFile: functionFile,
+                                    functionFileLine: functionFileLine,
+                                });
                             }
                         },
                     });

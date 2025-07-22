@@ -232,13 +232,27 @@ program
     )
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
+    .option("--openapi", "Generate OpenAPI spec from the code", false)
+    .option(
+        "--openapi-output <file>",
+        "Output file for OpenAPI spec",
+        "mapped-openapi.json"
+    )
+    .option(
+        "--openapi-chunk-tag",
+        "Add chunk ID tag to OpenAPI spec for each request found",
+        false
+    )
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
+        globalsUtil.setOpenapiChunkTag(cmd.openapiChunkTag);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
         globalsUtil.setAiModel(cmd.model);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setAiThreads(cmd.aiThreads);
+        globalsUtil.setOpenapi(cmd.openapi);
+        globalsUtil.setOpenapiOutputFile(cmd.openapiOutput);
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {
