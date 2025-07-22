@@ -69,7 +69,7 @@ export const generateOpenapiV3Spec = (
         );
 
         const operationObject: any = {
-            summary: `Auto-generated endpoint for ${item.method.toUpperCase()} ${pathKey}`,
+            summary: `${item.method.toUpperCase()} ${pathKey}`,
             responses: {
                 200: {
                     description:
