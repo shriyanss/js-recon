@@ -238,7 +238,11 @@ program
         "Output file for OpenAPI spec",
         "mapped-openapi.json"
     )
-    .option("--openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found", false)
+    .option(
+        "--openapi-chunk-tag",
+        "Add chunk ID tag to OpenAPI spec for each request found",
+        false
+    )
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);

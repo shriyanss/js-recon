@@ -131,4 +131,3 @@ export const setOpenapiChunkTag = (value: boolean) => {
 export const getOpenapiChunkTag = () => {
     return openapiChunkTag;
 };
-
