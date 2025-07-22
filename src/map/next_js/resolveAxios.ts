@@ -285,13 +285,22 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 if (axiosSecondArgText) {
                                     // see if axios second arg is an object in type {[key]: any, ...}
                                     // do this on axiosSecondArg
-                                    if (axiosSecondArg?.type === "ObjectExpression") {
+                                    if (
+                                        axiosSecondArg?.type ===
+                                        "ObjectExpression"
+                                    ) {
                                         // see if it contains data
                                         let dataFound = false;
 
                                         // iterate through the properties
-                                        for (let i = 0; i < axiosSecondArg.properties.length; i++) {
-                                            const property = axiosSecondArg.properties[i];
+                                        for (
+                                            let i = 0;
+                                            i <
+                                            axiosSecondArg.properties.length;
+                                            i++
+                                        ) {
+                                            const property =
+                                                axiosSecondArg.properties[i];
                                             // @ts-ignore
                                             if (property.key.name === "data") {
                                                 dataFound = true;
@@ -303,17 +312,36 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         if (dataFound) {
                                             // value of data
                                             // @ts-ignore
-                                            const dataValue:Node = axiosSecondArg.properties.find((property) => property.key.name === "data");
+                                            const dataValue: Node =
+                                                axiosSecondArg.properties.find(
+                                                    (property) =>
+                                                        property.key.name ===
+                                                        "data"
+                                                );
                                             // slice the string
                                             // @ts-ignore
-                                            const dataValueText = chunkCode.slice(dataValue.value.start, dataValue.value.end);
-                                            
-                                            callBody = dataValueText.replace(/\n\s+/g, " ");
+                                            const dataValueText =
+                                                chunkCode.slice(
+                                                    dataValue.value.start,
+                                                    dataValue.value.end
+                                                );
+
+                                            callBody = dataValueText.replace(
+                                                /\n\s+/g,
+                                                " "
+                                            );
                                         } else {
                                             // since it is not found, the second value should be the body
-                                            const bodyValueText = chunkCode.slice(axiosSecondArg.start, axiosSecondArg.end);
-                                            
-                                            callBody = bodyValueText.replace(/\n\s+/g, " ");
+                                            const bodyValueText =
+                                                chunkCode.slice(
+                                                    axiosSecondArg.start,
+                                                    axiosSecondArg.end
+                                                );
+
+                                            callBody = bodyValueText.replace(
+                                                /\n\s+/g,
+                                                " "
+                                            );
                                         }
                                     }
                                 }
