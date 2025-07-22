@@ -5,6 +5,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import * as globals from "../../utility/globals.js";
+import { Node } from "@babel/types";
 const traverse = _traverse.default;
 
 const resolveAxios = async (chunks: Chunks, directory: string) => {
@@ -123,11 +124,11 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     path.node.object.property.name; // A
                                 const secondProp = path.node.property.name; // post
 
-                                let axiosFirstArg;
-                                let axiosSecondArg;
+                                let axiosFirstArg: Node;
+                                let axiosSecondArg: Node;
 
-                                let axiosFirstArgText;
-                                let axiosSecondArgText;
+                                let axiosFirstArgText: string;
+                                let axiosSecondArgText: string;
 
                                 // define some arguments to be finally printed
                                 let callUrl: string;
@@ -280,6 +281,43 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     callMethod = "UNKNOWN";
                                 }
 
+                                // now, get the second argument
+                                if (axiosSecondArgText) {
+                                    // see if axios second arg is an object in type {[key]: any, ...}
+                                    // do this on axiosSecondArg
+                                    if (axiosSecondArg?.type === "ObjectExpression") {
+                                        // see if it contains data
+                                        let dataFound = false;
+
+                                        // iterate through the properties
+                                        for (let i = 0; i < axiosSecondArg.properties.length; i++) {
+                                            const property = axiosSecondArg.properties[i];
+                                            // @ts-ignore
+                                            if (property.key.name === "data") {
+                                                dataFound = true;
+                                                break;
+                                            }
+                                        }
+
+                                        // if data is found, get the value of the `data` property
+                                        if (dataFound) {
+                                            // value of data
+                                            // @ts-ignore
+                                            const dataValue:Node = axiosSecondArg.properties.find((property) => property.key.name === "data");
+                                            // slice the string
+                                            // @ts-ignore
+                                            const dataValueText = chunkCode.slice(dataValue.value.start, dataValue.value.end);
+                                            
+                                            callBody = dataValueText.replace(/\n\s+/g, " ");
+                                        } else {
+                                            // since it is not found, the second value should be the body
+                                            const bodyValueText = chunkCode.slice(axiosSecondArg.start, axiosSecondArg.end);
+                                            
+                                            callBody = bodyValueText.replace(/\n\s+/g, " ");
+                                        }
+                                    }
+                                }
+
                                 // finally, print the human readable output
                                 console.log(
                                     chalk.blue(
@@ -290,6 +328,12 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 console.log(
                                     chalk.green(`    Method: ${callMethod}`)
                                 );
+
+                                if (callBody) {
+                                    console.log(
+                                        chalk.green(`    Body: ${callBody}`)
+                                    );
+                                }
 
                                 globals.addOpenapiOutput({
                                     url: callUrl || "",
