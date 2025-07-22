@@ -211,7 +211,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 }
 
                                 // resolve the URL first in case it hasn't been resolved earlier
-                                if (callUrl === "") {
+                                if (callUrl === undefined) {
                                     if (
                                         axiosFirstArg?.type === "StringLiteral"
                                     ) {
