@@ -1,7 +1,11 @@
 import { Node } from "@babel/types";
 import { Scope } from "@babel/traverse";
 
-export const resolveNodeValue = (node: Node, scope: Scope, nodeCode?: string): any => {
+export const resolveNodeValue = (
+    node: Node,
+    scope: Scope,
+    nodeCode?: string
+): any => {
     if (!node) return null;
 
     switch (node.type) {
