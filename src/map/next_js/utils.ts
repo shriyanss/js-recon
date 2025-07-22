@@ -123,3 +123,70 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
             return `[unsupported node type: ${node.type}]`;
     }
 };
+
+// Resolve string operations like "\"/api/teams/\".concat(i, \"/members\")"
+// Replaces any identifier (variable) with a placeholder string `[var <name>]` and flattens the concat chain
+export const resolveStringOps = (rawExpr: string): string => {
+    if (!rawExpr || typeof rawExpr !== "string") return rawExpr;
+
+    // Quick check for pattern "<string literal>.concat(... )"
+    const concatMatch = rawExpr.match(/^(\s*["'`])(.*?)(\1)\.concat\(([\s\S]*)\)$/);
+    if (!concatMatch) {
+        // Not in expected pattern – return as-is for now.
+        return rawExpr;
+    }
+
+    const leadingLiteral = concatMatch[2];
+    const argsPart = concatMatch[4]; // everything inside the concat(...)
+
+    // Split arguments respecting quotes. We'll do a naive split on commas that are not inside quotes.
+    const args: string[] = [];
+    let current = "";
+    let inSingle = false;
+    let inDouble = false;
+    let inBacktick = false;
+
+    for (let i = 0; i < argsPart.length; i++) {
+        const ch = argsPart[i];
+        if (ch === "'" && !inDouble && !inBacktick) {
+            inSingle = !inSingle;
+            current += ch;
+            continue;
+        }
+        if (ch === '"' && !inSingle && !inBacktick) {
+            inDouble = !inDouble;
+            current += ch;
+            continue;
+        }
+        if (ch === "`" && !inSingle && !inDouble) {
+            inBacktick = !inBacktick;
+            current += ch;
+            continue;
+        }
+        if (ch === "," && !inSingle && !inDouble && !inBacktick) {
+            args.push(current.trim());
+            current = "";
+            continue;
+        }
+        current += ch;
+    }
+    if (current.trim() !== "") args.push(current.trim());
+
+    // Build resolved string
+    let result = leadingLiteral;
+    for (const arg of args) {
+        const trimmed = arg.trim();
+        if (/^['"`].*['"`]$/.test(trimmed)) {
+            // string literal – strip quotes
+            result += trimmed.slice(1, -1);
+        } else if (trimmed.length) {
+            // treat as identifier / expression – replace with placeholder
+            // attempt to extract simple identifier name if possible
+            const idMatch = trimmed.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*/);
+            const idName = idMatch ? idMatch[0] : trimmed;
+            result += `[var ${idName}]`;
+        }
+    }
+
+    return result;
+};
