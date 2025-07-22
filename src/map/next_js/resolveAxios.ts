@@ -221,9 +221,11 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         // since it isn't a string, we have to resolve it
                                         const callExpressionPath =
                                             path.parentPath;
+                                        // will also pass the code snippet just in case it could resolve it
                                         callUrl = resolveNodeValue(
                                             axiosFirstArg,
-                                            callExpressionPath.scope
+                                            callExpressionPath.scope,
+                                            axiosFirstArgText
                                         );
                                     }
                                 }
