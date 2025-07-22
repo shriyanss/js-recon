@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { Chunks } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
+import * as globals from "../../utility/globals.js";
 
 const resolveFetch = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving fetch instances"));
@@ -15,9 +16,11 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
             continue;
         }
 
+        // get the path of the file in which chunk is there
         const filePath = path.join(directory, chunk.file);
         let fileContent: string;
 
+        // try to read the file
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
         } catch (error) {
@@ -25,6 +28,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
             continue;
         }
 
+        // try to parse the file
         let fileAst;
         try {
             fileAst = parser.parse(fileContent, {
@@ -60,6 +64,14 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
             },
         });
 
+        // define some arguments to be finally printed
+        let callUrl: string;
+        let callMethod: string;
+        let callHeaders: { [key: string]: string };
+        let callBody: string;
+        let chunkId: string;
+        let functionFileLine: number;
+
         // Pass 2: Find and resolve fetch calls on the full file AST
         traverse(fileAst, {
             CallExpression(path) {
@@ -83,9 +95,11 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                             }`
                         )
                     );
+                    functionFileLine = path.node.loc.start.line;
                     const args = path.node.arguments;
                     if (args.length > 0) {
                         const url = resolveNodeValue(args[0], path.scope);
+                        callUrl = url;
                         console.log(chalk.green(`    URL: ${url}`));
 
                         if (args.length > 1) {
@@ -102,6 +116,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                         `    Method: ${options.method || "GET"}`
                                     )
                                 );
+                                callMethod = options.method || "UNKNOWN";
                                 if (options.headers)
                                     console.log(
                                         chalk.green(
@@ -114,11 +129,24 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                             `    Body: ${JSON.stringify(options.body)}`
                                         )
                                     );
+                                callHeaders = options.headers || {};
+                                callBody = options.body || "";
                             } else {
                                 console.log(
                                     chalk.yellow(`    Options: ${options}`)
                                 );
                             }
+
+                            globals.addOpenapiOutput({
+                                url: callUrl || "",
+                                method: callMethod || "",
+                                path: callUrl || "",
+                                headers: callHeaders || {},
+                                body: callBody || "",
+                                chunkId: chunk.id,
+                                functionFile: filePath,
+                                functionFileLine: functionFileLine,
+                            });
                         }
                     }
                 }

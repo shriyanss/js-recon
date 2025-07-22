@@ -1,4 +1,5 @@
 import { OpenapiOutputItem } from "./globals.js";
+import { Chunks } from "./interfaces.js";
 
 export interface OpenAPISpec {
     openapi: string;
@@ -27,7 +28,8 @@ export interface OpenAPISpec {
  *    discovered, including request headers & body where available.
  */
 export const generateOpenapiV3Spec = (
-    items: OpenapiOutputItem[]
+    items: OpenapiOutputItem[],
+    chunks: Chunks
 ): OpenAPISpec => {
     const spec: OpenAPISpec = {
         openapi: "3.0.0",
@@ -69,13 +71,14 @@ export const generateOpenapiV3Spec = (
         );
 
         const operationObject: any = {
-            summary: `${item.method.toUpperCase()} ${pathKey}`,
+            summary: `${pathKey}`,
             responses: {
                 200: {
                     description:
                         "Successful response. The actual response will vary.",
                 },
             },
+            tags: [item.chunkId],
         };
 
         if (parameters.length > 0) {

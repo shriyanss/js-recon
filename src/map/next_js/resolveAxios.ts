@@ -297,6 +297,9 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     path: callUrl || "",
                                     headers: callHeaders || {},
                                     body: callBody || "",
+                                    chunkId: chunkId,
+                                    functionFile: functionFile,
+                                    functionFileLine: functionFileLine,
                                 });
                             }
                         },

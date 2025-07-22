@@ -111,6 +111,9 @@ export interface OpenapiOutputItem {
         [key: string]: string;
     };
     body: string;
+    chunkId: string;
+    functionFile: string;
+    functionFileLine: number;
 }
 export let openapiOutput: OpenapiOutputItem[] = [];
 export const addOpenapiOutput = (value: OpenapiOutputItem) => {

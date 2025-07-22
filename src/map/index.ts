@@ -107,7 +107,7 @@ const map = async (
         if (getOpenapi() === true) {
             // convert the openapi output to JSON
             // it should be openapi v3 specification
-            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput());
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
             const openapiJson = JSON.stringify(openapiSpec, null, 2);
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
