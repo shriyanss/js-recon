@@ -5,6 +5,7 @@
 ### Added
 
 - Added axios URL resolution in next.js (those using `.concat()`)
+- Added openapi spec generation for map module
 
 ### Changed
 

@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import fs from "fs";
 
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
@@ -9,6 +10,8 @@ import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
+import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
+import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -94,6 +97,17 @@ const map = async (
 
         if (interactive_mode) {
             await interactive(chunks, `${output}.json`);
+        }
+
+        // check if the openapi output is enabled. if so, then write to file
+        if (getOpenapi() === true) {
+            // convert the openapi output to JSON
+            // it should be openapi v3 specification
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput());
+            const openapiJson = JSON.stringify(openapiSpec, null, 2);
+            // write to file
+            fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
+            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
         }
     }
 };

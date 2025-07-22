@@ -148,3 +148,4 @@ endpoints.txt
 test.js
 strings.md
 .DS_Store
+mapped-openapi.json

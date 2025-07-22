@@ -4,6 +4,7 @@ import fs from "fs";
 import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import * as globals from "../../utility/globals.js";
 const traverse = _traverse.default;
 
 const resolveAxios = async (chunks: Chunks, directory: string) => {
@@ -129,13 +130,13 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 let axiosSecondArgText;
 
                                 // define some arguments to be finally printed
-                                let callUrl;
-                                let callMethod;
-                                let callHeaders;
-                                let callBody;
-                                let functionFile;
-                                let functionFileLine;
-                                let chunkId;
+                                let callUrl:string;
+                                let callMethod:string;
+                                let callHeaders:{[key:string]:string};
+                                let callBody:string;
+                                let functionFile:string;
+                                let functionFileLine:number;
+                                let chunkId:string;
 
                                 // now, resolve the arguments
                                 if (path.parentPath.isCallExpression()) {
@@ -287,6 +288,14 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 console.log(
                                     chalk.green(`    Method: ${callMethod}`)
                                 );
+
+                                globals.addOpenapiOutput({
+                                    url: callUrl || "",
+                                    method: callMethod || "",
+                                    path: callUrl || "",
+                                    headers: callHeaders || {},
+                                    body: callBody || "",
+                                });
                             }
                         },
                     });
