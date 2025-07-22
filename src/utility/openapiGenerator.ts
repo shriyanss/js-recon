@@ -1,5 +1,6 @@
 import { OpenapiOutputItem } from "./globals.js";
 import { Chunks } from "./interfaces.js";
+import * as globalsUtil from "./globals.js";
 
 export interface OpenAPISpec {
     openapi: string;
@@ -78,7 +79,7 @@ export const generateOpenapiV3Spec = (
                         "Successful response. The actual response will vary.",
                 },
             },
-            tags: [item.chunkId],
+            tags: globalsUtil.getOpenapiChunkTag() ? [item.chunkId] : [],
         };
 
         if (parameters.length > 0) {

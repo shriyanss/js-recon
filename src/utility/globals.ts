@@ -122,3 +122,13 @@ export const addOpenapiOutput = (value: OpenapiOutputItem) => {
 export const getOpenapiOutput = () => {
     return openapiOutput;
 };
+
+// openapi chunk tag
+export let openapiChunkTag = false;
+export const setOpenapiChunkTag = (value: boolean) => {
+    openapiChunkTag = value;
+};
+export const getOpenapiChunkTag = () => {
+    return openapiChunkTag;
+};
+
