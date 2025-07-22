@@ -1,7 +1,7 @@
 import { Node } from "@babel/types";
 import { Scope } from "@babel/traverse";
 
-export const resolveNodeValue = (node: Node, scope: Scope): any => {
+export const resolveNodeValue = (node: Node, scope: Scope, nodeCode?: string): any => {
     if (!node) return null;
 
     switch (node.type) {
@@ -76,7 +76,7 @@ export const resolveNodeValue = (node: Node, scope: Scope): any => {
             if (node.callee.type === "Identifier") {
                 calleeName = node.callee.name;
             }
-            return `[unresolved call to ${calleeName || "function"}]`;
+            return `[unresolved call to ${calleeName || "function"} -> ${nodeCode}]`;
         }
         case "NewExpression": {
             if (
