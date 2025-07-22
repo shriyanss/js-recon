@@ -155,7 +155,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
 
                                         // regex for only concat ops
                                         const concatRegex =
-                                            /".+"(\.concat\(.+\))+/;
+                                            /".*"(\.concat\(.+\))+/;
                                         if (
                                             concatRegex.test(axiosFirstArgText)
                                         ) {
