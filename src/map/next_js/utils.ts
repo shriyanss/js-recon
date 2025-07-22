@@ -130,7 +130,9 @@ export const resolveStringOps = (rawExpr: string): string => {
     if (!rawExpr || typeof rawExpr !== "string") return rawExpr;
 
     // Quick check for pattern "<string literal>.concat(... )"
-    const concatMatch = rawExpr.match(/^(\s*["'`])(.*?)(\1)\.concat\(([\s\S]*)\)$/);
+    const concatMatch = rawExpr.match(
+        /^(\s*["'`])(.*?)(\1)\.concat\(([\s\S]*)\)$/
+    );
     if (!concatMatch) {
         // Not in expected pattern – return as-is for now.
         return rawExpr;
