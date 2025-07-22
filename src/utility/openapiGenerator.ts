@@ -72,7 +72,8 @@ export const generateOpenapiV3Spec = (
             summary: `Auto-generated endpoint for ${item.method.toUpperCase()} ${pathKey}`,
             responses: {
                 200: {
-                    description: "Successful response. The actual response will vary.",
+                    description:
+                        "Successful response. The actual response will vary.",
                 },
             },
         };

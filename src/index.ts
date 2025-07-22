@@ -233,7 +233,11 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--openapi", "Generate OpenAPI spec from the code", false)
-    .option("--openapi-output <file>", "Output file for OpenAPI spec", "mapped-openapi.json")
+    .option(
+        "--openapi-output <file>",
+        "Output file for OpenAPI spec",
+        "mapped-openapi.json"
+    )
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);

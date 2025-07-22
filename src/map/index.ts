@@ -10,7 +10,11 @@ import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
-import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
+import {
+    getOpenapi,
+    getOpenapiOutput,
+    getOpenapiOutputFile,
+} from "../utility/globals.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 
 const availableTech = {
@@ -107,7 +111,11 @@ const map = async (
             const openapiJson = JSON.stringify(openapiSpec, null, 2);
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
-            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+            console.log(
+                chalk.green(
+                    `[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`
+                )
+            );
         }
     }
 };

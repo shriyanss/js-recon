@@ -104,13 +104,13 @@ export const getOpenapiOutputFile = () => {
 
 // openapi output
 export interface OpenapiOutputItem {
-    url: string,
-    method: string,
-    path: string,
+    url: string;
+    method: string;
+    path: string;
     headers: {
-        [key: string]: string
-    },
-    body: string,
+        [key: string]: string;
+    };
+    body: string;
 }
 export let openapiOutput: OpenapiOutputItem[] = [];
 export const addOpenapiOutput = (value: OpenapiOutputItem) => {
@@ -118,4 +118,4 @@ export const addOpenapiOutput = (value: OpenapiOutputItem) => {
 };
 export const getOpenapiOutput = () => {
     return openapiOutput;
-};    
+};
