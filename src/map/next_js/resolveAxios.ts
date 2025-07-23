@@ -312,9 +312,9 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         if (dataFound) {
                                             // value of data
                                             const dataValue: Node =
-                                            axiosSecondArg.properties.find(
-                                                (property) =>
-                                                    // @ts-ignore
+                                                axiosSecondArg.properties.find(
+                                                    (property) =>
+                                                        // @ts-ignore
                                                         property.key.name ===
                                                         "data"
                                                 );
