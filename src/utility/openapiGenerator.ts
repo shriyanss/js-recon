@@ -36,7 +36,7 @@ const getOpenApiType = (value: any): string => {
         return "array";
     }
     const jsType = typeof value;
-    if (['string', 'number', 'boolean', 'object'].includes(jsType)) {
+    if (["string", "number", "boolean", "object"].includes(jsType)) {
         return jsType;
     }
     return "string"; // Fallback for other types
@@ -130,7 +130,7 @@ export const generateOpenapiV3Spec = (
                 } else {
                     throw new Error("Body is not a JSON object.");
                 }
-            } catch (error) { 
+            } catch (error) {
                 // Fallback for non-JSON bodies
                 requestBody = {
                     content: {
