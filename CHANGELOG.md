@@ -10,6 +10,7 @@
 ### Changed
 
 - Display full file path in fetch call log message
+- Improve output in the openapi file
 
 ### Fixed
 
