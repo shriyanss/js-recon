@@ -48,12 +48,12 @@ const astNodeToJsonString = (node: Node, code: string): string => {
             return `"${node.name}"`;
 
         case "MemberExpression":
-            // Reconstruct the member expression as a string
-            return `"${code.slice(node.start, node.end)}"`;
+            // Reconstruct the member expression as a string, removing newlines
+            return `"${code.slice(node.start, node.end).replace(/\n\s*/g, " ")}"`;
 
         default:
-            // For any other node types, slice the original code and wrap in quotes
-            return `"${code.slice(node.start, node.end)}"`;
+            // For any other node types, slice the original code, remove newlines, and wrap in quotes
+            return `"${code.slice(node.start, node.end).replace(/\n\s*/g, " ")}"`;
     }
 };
 
