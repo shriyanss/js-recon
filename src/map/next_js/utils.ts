@@ -193,9 +193,49 @@ export const resolveNodeValue = (
 
                 // get all the concat calls first. Like .concat(...)
                 // I want to only get concat() and nothing else. Also, it doesn't matter how many times they are called
-                const concatCalls = [];
+                const concatCalls: any[][] = [];
 
-                traverse(ast, {});
+                const getArgValue = (arg: Node): any => {
+                    switch (arg.type) {
+                        case "StringLiteral":
+                        case "NumericLiteral":
+                        case "BooleanLiteral":
+                            return arg.value;
+                        case "NullLiteral":
+                            return null;
+                        case "Identifier":
+                            return arg.name;
+                        default:
+                            return `[${arg.type}]`;
+                    }
+                };
+
+                const visitor = {
+                    CallExpression(path: any) {
+                        if (
+                            path.node.callee.type === "MemberExpression" &&
+                            path.node.callee.property.type === "Identifier" &&
+                            path.node.callee.property.name === "concat"
+                        ) {
+                            const args = path.node.arguments.map(getArgValue);
+                            concatCalls.unshift(args);
+
+                            // To continue traversal on the object of the member expression
+                            // which is the next chained call expression
+                            if (path.node.callee.object.type === "CallExpression") {
+                                path.traverse(visitor, { ...this, ...path.scope.getAllBindings() });
+                            }
+                        }
+                    },
+                };
+
+                traverse(ast, visitor);
+
+                // process the concatCalls to return a single string
+                if (concatCalls.length > 0) {
+                    const toReturn = concatCalls.flat().join("");
+                    return toReturn;
+                }
             }
 
             return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
