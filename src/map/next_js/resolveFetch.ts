@@ -98,7 +98,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                     functionFileLine = path.node.loc.start.line;
                     const args = path.node.arguments;
                     if (args.length > 0) {
-                        // extract the whole code from teh main file just in case the resolution fails
+                        // extract the whole code from the main file just in case the resolution fails
                         const argText = fileContent
                             .slice(args[0].start, args[0].end)
                             .replace(/\n\s*/g, "");
