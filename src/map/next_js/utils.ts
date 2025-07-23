@@ -80,7 +80,7 @@ export const resolveNodeValue = (
             if (node.callee.type === "Identifier") {
                 calleeName = node.callee.name;
             }
-            return `[unresolved call to ${calleeName || "function"} -> ${nodeCode}]`;
+            return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
         }
         case "NewExpression": {
             if (
