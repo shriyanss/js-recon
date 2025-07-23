@@ -204,32 +204,45 @@ export const resolveNodeValue = (
                         case "NullLiteral":
                             return null;
                         case "Identifier":
-                            return arg.name;
+                            return `[var ${arg.name}]`; // Format identifiers as [var name]
                         default:
                             return `[${arg.type}]`;
                     }
                 };
 
-                const visitor = {
-                    CallExpression(path: any) {
+                traverse(ast, {
+                    CallExpression(path) {
+                        // We only want to start from the outermost `concat` call.
                         if (
-                            path.node.callee.type === "MemberExpression" &&
-                            path.node.callee.property.type === "Identifier" &&
-                            path.node.callee.property.name === "concat"
+                            path.node.callee.type !== "MemberExpression" ||
+                            path.node.callee.property.type !== "Identifier" ||
+                            path.node.callee.property.name !== "concat" ||
+                            path.parent.type === "MemberExpression"
                         ) {
-                            const args = path.node.arguments.map(getArgValue);
-                            concatCalls.unshift(args);
+                            return;
+                        }
 
-                            // To continue traversal on the object of the member expression
-                            // which is the next chained call expression
-                            if (path.node.callee.object.type === "CallExpression") {
-                                path.traverse(visitor, { ...this, ...path.scope.getAllBindings() });
+                        let current = path.node;
+                        while (current && current.type === "CallExpression" && current.callee.type === "MemberExpression") {
+                            const args = current.arguments.map(getArgValue);
+                            concatCalls.unshift(args);
+                            current = current.callee.object;
+                        }
+
+                        if (current) {
+                             if (current.type === "StringLiteral") {
+                                concatCalls.unshift([current.value]);
+                            } else if (current.type === "Identifier") {
+                                concatCalls.unshift([`[var ${current.name}]`]);
+                            } else {
+                                concatCalls.unshift([`[${current.type}]`]);
                             }
                         }
-                    },
-                };
-
-                traverse(ast, visitor);
+                        
+                        // Stop traversal once we've processed the chain.
+                        path.stop();
+                    }
+                });
 
                 // process the concatCalls to return a single string
                 if (concatCalls.length > 0) {
