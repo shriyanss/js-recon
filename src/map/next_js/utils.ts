@@ -21,7 +21,12 @@ export const resolveNodeValue = (
             for (let i = 0; i < node.quasis.length; i++) {
                 result += node.quasis[i].value.raw;
                 if (i < node.expressions.length) {
-                    result += resolveNodeValue(node.expressions[i], scope, nodeCode, callType);
+                    result += resolveNodeValue(
+                        node.expressions[i],
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                 }
             }
             return result;
@@ -29,7 +34,12 @@ export const resolveNodeValue = (
         case "Identifier": {
             const binding = scope.getBinding(node.name);
             if (binding && binding.path.node.init) {
-                return resolveNodeValue(binding.path.node.init, scope, nodeCode, callType);
+                return resolveNodeValue(
+                    binding.path.node.init,
+                    scope,
+                    nodeCode,
+                    callType
+                );
             }
             return `[unresolved: ${node.name}]`;
         }
@@ -39,16 +49,31 @@ export const resolveNodeValue = (
                 if (prop.type === "ObjectProperty") {
                     let key;
                     if (prop.computed) {
-                        key = resolveNodeValue(prop.key, scope, nodeCode, callType);
+                        key = resolveNodeValue(
+                            prop.key,
+                            scope,
+                            nodeCode,
+                            callType
+                        );
                     } else if (prop.key.type === "Identifier") {
                         key = prop.key.name;
                     } else if (prop.key.type === "StringLiteral") {
                         key = prop.key.value;
                     }
-                    const value = resolveNodeValue(prop.value, scope, nodeCode, callType);
+                    const value = resolveNodeValue(
+                        prop.value,
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                     obj[key] = value;
                 } else if (prop.type === "SpreadElement") {
-                    const spreadObj = resolveNodeValue(prop.argument, scope, nodeCode, callType);
+                    const spreadObj = resolveNodeValue(
+                        prop.argument,
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                     if (typeof spreadObj === "object" && spreadObj !== null) {
                         Object.assign(obj, spreadObj);
                     }
@@ -57,11 +82,21 @@ export const resolveNodeValue = (
             return obj;
         }
         case "MemberExpression": {
-            const object = resolveNodeValue(node.object, scope, nodeCode, callType);
+            const object = resolveNodeValue(
+                node.object,
+                scope,
+                nodeCode,
+                callType
+            );
             if (typeof object === "object" && object !== null) {
                 let propertyName;
                 if (node.computed) {
-                    propertyName = resolveNodeValue(node.property, scope, nodeCode, callType);
+                    propertyName = resolveNodeValue(
+                        node.property,
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                 } else if (node.property.type === "Identifier") {
                     propertyName = node.property.name;
                 }
@@ -75,7 +110,12 @@ export const resolveNodeValue = (
                 node.callee.property.type === "Identifier" &&
                 node.callee.property.name === "toString"
             ) {
-                return resolveNodeValue(node.callee.object, scope, nodeCode, callType);
+                return resolveNodeValue(
+                    node.callee.object,
+                    scope,
+                    nodeCode,
+                    callType
+                );
             }
             let calleeName = "[unknown]";
             if (node.callee.type === "Identifier") {
@@ -89,7 +129,12 @@ export const resolveNodeValue = (
                 node.callee.name === "URL" &&
                 node.arguments.length > 0
             ) {
-                return resolveNodeValue(node.arguments[0], scope, nodeCode, callType);
+                return resolveNodeValue(
+                    node.arguments[0],
+                    scope,
+                    nodeCode,
+                    callType
+                );
             }
             return `[unresolved new expression]`;
         }
@@ -101,7 +146,12 @@ export const resolveNodeValue = (
             return resolveNodeValue(node.right, scope, nodeCode, callType);
         }
         case "ConditionalExpression": {
-            const consequent = resolveNodeValue(node.consequent, scope, nodeCode, callType);
+            const consequent = resolveNodeValue(
+                node.consequent,
+                scope,
+                nodeCode,
+                callType
+            );
             if (consequent && !String(consequent).startsWith("[")) {
                 return consequent;
             }
@@ -109,7 +159,12 @@ export const resolveNodeValue = (
         }
         case "BinaryExpression": {
             const left = resolveNodeValue(node.left, scope, nodeCode, callType);
-            const right = resolveNodeValue(node.right, scope, nodeCode, callType);
+            const right = resolveNodeValue(
+                node.right,
+                scope,
+                nodeCode,
+                callType
+            );
             if (
                 left !== null &&
                 right !== null &&
