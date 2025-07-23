@@ -20,8 +20,25 @@ export const resolveNodeValue = (
                 // see if the first arg is an object
                 if (args.length > 0 && args[0].type === "ObjectExpression") {
                     // if it is an object, then convert stringify it
-
-                    
+                    const obj: { [key: string]: any } = {};
+                    for (const prop of args[0].properties) {
+                        if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
+                            const key = prop.key.name;
+                            if (prop.value.type === "Identifier") {
+                                obj[key] = prop.value.name;
+                            } else if (prop.value.type === "CallExpression" && prop.value.callee.type === "MemberExpression" && prop.value.callee.property.type === "Identifier" && prop.value.callee.property.name === "stringify") {
+                                obj[key] = "[call to object...]";
+                            } else {
+                                // For other types of values, you might want to add more handling
+                                // For now, we'll just represent them as a string of their type.
+                                obj[key] = `[${prop.value.type}]`;
+                            }
+                        } else if (prop.type === "SpreadElement") {
+                            // Handle spread elements if necessary, e.g., by adding a placeholder
+                            obj["...spread"] = `[${prop.argument.type}]`;
+                        }
+                    }
+                    return JSON.stringify(obj);
                 }
             }
         }
