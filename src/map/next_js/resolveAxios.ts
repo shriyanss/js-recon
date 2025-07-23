@@ -377,15 +377,18 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                     dataValue.value.end
                                                 );
 
-                                            // @ts-ignore
                                             callBody = astNodeToJsonString(
+                                                // @ts-ignore
                                                 dataValue.value,
                                                 chunkCode
                                             );
                                             console.log(callBody);
                                         } else {
                                             // since it is not found, the second value should be the body
-                                            callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
+                                            callBody = astNodeToJsonString(
+                                                axiosSecondArg,
+                                                chunkCode
+                                            );
                                             console.log(callBody);
                                         }
                                     }
