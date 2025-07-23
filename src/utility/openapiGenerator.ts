@@ -87,15 +87,41 @@ export const generateOpenapiV3Spec = (
         }
 
         if (item.body) {
-            operationObject.requestBody = {
-                description: "Request body",
-                content: {
-                    "application/json": {
-                        schema: { type: "string" },
-                        example: item.body,
+            let requestBody;
+            try {
+                const body = JSON.parse(item.body);
+                if (typeof body === "object" && body !== null) {
+                    const properties = {};
+                    for (const key in body) {
+                        properties[key] = {
+                            type: typeof body[key],
+                        };
+                    }
+                    requestBody = {
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: properties,
+                                },
+                            },
+                        },
+                    };
+                } else {
+                    throw new Error("Body is not a JSON object.");
+                }
+            } catch (error) {
+                // Fallback for non-JSON bodies
+                requestBody = {
+                    content: {
+                        "application/json": {
+                            schema: { type: "string" },
+                            example: item.body,
+                        },
                     },
-                },
-            };
+                };
+            }
+            operationObject.requestBody = requestBody;
         }
 
         spec.paths[pathKey][method] = operationObject;
