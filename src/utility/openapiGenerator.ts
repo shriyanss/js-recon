@@ -28,7 +28,7 @@ export interface OpenAPISpec {
  *  - An entry in `paths` for every unique combination of `path` & HTTP `method`
  *    discovered, including request headers & body where available.
  */
-const getOpenApiType = (value: any): string => {
+export const getOpenApiType = (value: any): string => {
     if (value === null) {
         return "string"; // OpenAPI 3.0 doesn't have a 'null' type, use nullable
     }
