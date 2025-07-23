@@ -377,16 +377,8 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                             console.log(callBody);
                                         } else {
                                             // since it is not found, the second value should be the body
-                                            const bodyValueText =
-                                                chunkCode.slice(
-                                                    axiosSecondArg.start,
-                                                    axiosSecondArg.end
-                                                );
-
-                                            callBody = bodyValueText.replace(
-                                                /\n\s+/g,
-                                                " "
-                                            );
+                                            callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
+                                            console.log(callBody);
                                         }
                                     }
                                 }
