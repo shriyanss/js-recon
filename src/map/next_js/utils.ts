@@ -38,7 +38,7 @@ export const resolveNodeValue = (
                             obj["...spread"] = `[${prop.argument.type}]`;
                         }
                     }
-                    return JSON.stringify(obj);
+                    return obj;
                 }
             }
         }
