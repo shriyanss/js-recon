@@ -28,6 +28,20 @@ export interface OpenAPISpec {
  *  - An entry in `paths` for every unique combination of `path` & HTTP `method`
  *    discovered, including request headers & body where available.
  */
+const getOpenApiType = (value: any): string => {
+    if (value === null) {
+        return "string"; // OpenAPI 3.0 doesn't have a 'null' type, use nullable
+    }
+    if (Array.isArray(value)) {
+        return "array";
+    }
+    const jsType = typeof value;
+    if (['string', 'number', 'boolean', 'object'].includes(jsType)) {
+        return jsType;
+    }
+    return "string"; // Fallback for other types
+};
+
 export const generateOpenapiV3Spec = (
     items: OpenapiOutputItem[],
     chunks: Chunks
@@ -93,9 +107,15 @@ export const generateOpenapiV3Spec = (
                 if (typeof body === "object" && body !== null) {
                     const properties = {};
                     for (const key in body) {
+                        const value = body[key];
+                        const type = getOpenApiType(value);
                         properties[key] = {
-                            type: typeof body[key],
+                            type: type,
+                            example: value,
                         };
+                        if (value === null) {
+                            properties[key].nullable = true;
+                        }
                     }
                     requestBody = {
                         content: {
@@ -110,7 +130,7 @@ export const generateOpenapiV3Spec = (
                 } else {
                     throw new Error("Body is not a JSON object.");
                 }
-            } catch (error) {
+            } catch (error) { 
                 // Fallback for non-JSON bodies
                 requestBody = {
                     content: {
