@@ -8,6 +8,8 @@
 
 ### Changed
 
+- Display full file path in fetch call log message
+
 ### Fixed
 
 ## 1.1.3-alpha.1 - 2025.07.22
