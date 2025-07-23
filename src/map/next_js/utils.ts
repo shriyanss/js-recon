@@ -1,5 +1,8 @@
 import { Node } from "@babel/types";
+import parser from "@babel/parser";
 import { Scope } from "@babel/traverse";
+import _traverse from "@babel/traverse";
+const traverse = _traverse.default;
 
 export const resolveNodeValue = (
     node: Node,
@@ -171,6 +174,30 @@ export const resolveNodeValue = (
             if (node.callee.type === "Identifier") {
                 calleeName = node.callee.name;
             }
+
+            // a lot of times, things like `"".concat(var1).concat(var2)` - which is basically multiple
+            // .concat() with varying arguments end up here. They needs to be resolved as a string
+
+            // first, match as regex
+            if (
+                nodeCode
+                    .replace(/\n\s*/g, "")
+                    .match(/^"[\d\w\/]*"(\.concat\(.+\))+$/)
+            ) {
+                // parse it separately with ast
+                const ast = parser.parse(nodeCode, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+
+                // get all the concat calls first. Like .concat(...)
+                // I want to only get concat() and nothing else. Also, it doesn't matter how many times they are called
+                const concatCalls = [];
+
+                traverse(ast, {});
+            }
+
             return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
         }
         case "NewExpression": {
