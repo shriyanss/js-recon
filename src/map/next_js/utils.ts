@@ -12,21 +12,36 @@ export const resolveNodeValue = (
     // fetch specific ops
     if (callType === "fetch") {
         // check if it is a JSON.stringify call
-        if (node.type === "CallExpression" && node.callee.type === "MemberExpression") {
-            if (node.callee.property.type === "Identifier" && node.callee.property.name === "stringify") {
+        if (
+            node.type === "CallExpression" &&
+            node.callee.type === "MemberExpression"
+        ) {
+            if (
+                node.callee.property.type === "Identifier" &&
+                node.callee.property.name === "stringify"
+            ) {
                 // if so, then first get the args for it
                 const args = node.arguments;
-                
+
                 // see if the first arg is an object
                 if (args.length > 0 && args[0].type === "ObjectExpression") {
                     // if it is an object, then convert stringify it
                     const obj: { [key: string]: any } = {};
                     for (const prop of args[0].properties) {
-                        if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
+                        if (
+                            prop.type === "ObjectProperty" &&
+                            prop.key.type === "Identifier"
+                        ) {
                             const key = prop.key.name;
                             if (prop.value.type === "Identifier") {
                                 obj[key] = prop.value.name;
-                            } else if (prop.value.type === "CallExpression" && prop.value.callee.type === "MemberExpression" && prop.value.callee.property.type === "Identifier" && prop.value.callee.property.name === "stringify") {
+                            } else if (
+                                prop.value.type === "CallExpression" &&
+                                prop.value.callee.type === "MemberExpression" &&
+                                prop.value.callee.property.type ===
+                                    "Identifier" &&
+                                prop.value.callee.property.name === "stringify"
+                            ) {
                                 obj[key] = "[call to object...]";
                             } else {
                                 // For other types of values, you might want to add more handling
