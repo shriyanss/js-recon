@@ -5,6 +5,7 @@
 ### Added
 
 - Added request body extraction and display for axios calls
+- Resolve `.concat()` operations when traversing code
 
 ### Changed
 
