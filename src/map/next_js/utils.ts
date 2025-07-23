@@ -1,12 +1,66 @@
 import { Node } from "@babel/types";
+import parser from "@babel/parser";
 import { Scope } from "@babel/traverse";
+import _traverse from "@babel/traverse";
+const traverse = _traverse.default;
 
 export const resolveNodeValue = (
     node: Node,
     scope: Scope,
-    nodeCode?: string
+    nodeCode: string,
+    callType: "fetch" | "axios"
 ): any => {
     if (!node) return null;
+
+    // fetch specific ops
+    if (callType === "fetch") {
+        // check if it is a JSON.stringify call
+        if (
+            node.type === "CallExpression" &&
+            node.callee.type === "MemberExpression"
+        ) {
+            if (
+                node.callee.property.type === "Identifier" &&
+                node.callee.property.name === "stringify"
+            ) {
+                // if so, then first get the args for it
+                const args = node.arguments;
+
+                // see if the first arg is an object
+                if (args.length > 0 && args[0].type === "ObjectExpression") {
+                    // if it is an object, then convert stringify it
+                    const obj: { [key: string]: any } = {};
+                    for (const prop of args[0].properties) {
+                        if (
+                            prop.type === "ObjectProperty" &&
+                            prop.key.type === "Identifier"
+                        ) {
+                            const key = prop.key.name;
+                            if (prop.value.type === "Identifier") {
+                                obj[key] = prop.value.name;
+                            } else if (
+                                prop.value.type === "CallExpression" &&
+                                prop.value.callee.type === "MemberExpression" &&
+                                prop.value.callee.property.type ===
+                                    "Identifier" &&
+                                prop.value.callee.property.name === "stringify"
+                            ) {
+                                obj[key] = "[call to object...]";
+                            } else {
+                                // For other types of values, you might want to add more handling
+                                // For now, we'll just represent them as a string of their type.
+                                obj[key] = `[${prop.value.type}]`;
+                            }
+                        } else if (prop.type === "SpreadElement") {
+                            // Handle spread elements if necessary, e.g., by adding a placeholder
+                            obj["...spread"] = `[${prop.argument.type}]`;
+                        }
+                    }
+                    return obj;
+                }
+            }
+        }
+    }
 
     switch (node.type) {
         case "StringLiteral":
@@ -20,7 +74,12 @@ export const resolveNodeValue = (
             for (let i = 0; i < node.quasis.length; i++) {
                 result += node.quasis[i].value.raw;
                 if (i < node.expressions.length) {
-                    result += resolveNodeValue(node.expressions[i], scope);
+                    result += resolveNodeValue(
+                        node.expressions[i],
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                 }
             }
             return result;
@@ -28,7 +87,12 @@ export const resolveNodeValue = (
         case "Identifier": {
             const binding = scope.getBinding(node.name);
             if (binding && binding.path.node.init) {
-                return resolveNodeValue(binding.path.node.init, scope);
+                return resolveNodeValue(
+                    binding.path.node.init,
+                    scope,
+                    nodeCode,
+                    callType
+                );
             }
             return `[unresolved: ${node.name}]`;
         }
@@ -38,16 +102,31 @@ export const resolveNodeValue = (
                 if (prop.type === "ObjectProperty") {
                     let key;
                     if (prop.computed) {
-                        key = resolveNodeValue(prop.key, scope);
+                        key = resolveNodeValue(
+                            prop.key,
+                            scope,
+                            nodeCode,
+                            callType
+                        );
                     } else if (prop.key.type === "Identifier") {
                         key = prop.key.name;
                     } else if (prop.key.type === "StringLiteral") {
                         key = prop.key.value;
                     }
-                    const value = resolveNodeValue(prop.value, scope);
+                    const value = resolveNodeValue(
+                        prop.value,
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                     obj[key] = value;
                 } else if (prop.type === "SpreadElement") {
-                    const spreadObj = resolveNodeValue(prop.argument, scope);
+                    const spreadObj = resolveNodeValue(
+                        prop.argument,
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                     if (typeof spreadObj === "object" && spreadObj !== null) {
                         Object.assign(obj, spreadObj);
                     }
@@ -56,11 +135,21 @@ export const resolveNodeValue = (
             return obj;
         }
         case "MemberExpression": {
-            const object = resolveNodeValue(node.object, scope);
+            const object = resolveNodeValue(
+                node.object,
+                scope,
+                nodeCode,
+                callType
+            );
             if (typeof object === "object" && object !== null) {
                 let propertyName;
                 if (node.computed) {
-                    propertyName = resolveNodeValue(node.property, scope);
+                    propertyName = resolveNodeValue(
+                        node.property,
+                        scope,
+                        nodeCode,
+                        callType
+                    );
                 } else if (node.property.type === "Identifier") {
                     propertyName = node.property.name;
                 }
@@ -74,13 +163,106 @@ export const resolveNodeValue = (
                 node.callee.property.type === "Identifier" &&
                 node.callee.property.name === "toString"
             ) {
-                return resolveNodeValue(node.callee.object, scope);
+                return resolveNodeValue(
+                    node.callee.object,
+                    scope,
+                    nodeCode,
+                    callType
+                );
             }
             let calleeName = "[unknown]";
             if (node.callee.type === "Identifier") {
                 calleeName = node.callee.name;
             }
-            return `[unresolved call to ${calleeName || "function"} -> ${nodeCode}]`;
+
+            // a lot of times, things like `"".concat(var1).concat(var2)` - which is basically multiple
+            // .concat() with varying arguments end up here. They needs to be resolved as a string
+
+            // first, match as regex
+            if (
+                nodeCode
+                    .replace(/\n\s*/g, "")
+                    .match(/^"[\d\w\/]*"(\.concat\(.+\))+$/)
+            ) {
+                // parse it separately with ast
+                const ast = parser.parse(nodeCode, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+
+                // get all the concat calls first. Like .concat(...)
+                // I want to only get concat() and nothing else. Also, it doesn't matter how many times they are called
+                const concatCalls: any[][] = [];
+
+                const getArgValue = (arg: Node): any => {
+                    switch (arg.type) {
+                        case "StringLiteral":
+                        case "NumericLiteral":
+                        case "BooleanLiteral":
+                            return arg.value;
+                        case "NullLiteral":
+                            return null;
+                        case "Identifier":
+                            return `[var ${arg.name}]`; // Format identifiers as [var name]
+                        default:
+                            // @ts-ignore
+                            return `[${arg.type} -> ${arg.type === "MemberExpression" ? arg.property?.name : ""}]`;
+                    }
+                };
+
+                traverse(ast, {
+                    CallExpression(path) {
+                        // We only want to start from the outermost `concat` call.
+                        if (
+                            path.node.callee.type !== "MemberExpression" ||
+                            path.node.callee.property.type !== "Identifier" ||
+                            path.node.callee.property.name !== "concat" ||
+                            path.parent.type === "MemberExpression"
+                        ) {
+                            return;
+                        }
+
+                        let current = path.node;
+                        while (
+                            current &&
+                            current.type === "CallExpression" &&
+                            current.callee.type === "MemberExpression"
+                        ) {
+                            const args = current.arguments.map(getArgValue);
+                            concatCalls.unshift(args);
+                            current = current.callee.object;
+                        }
+
+                        if (current) {
+                            if (current.type === "StringLiteral") {
+                                concatCalls.unshift([current.value]);
+                            } else if (current.type === "Identifier") {
+                                concatCalls.unshift([`[var ${current.name}]`]);
+                            } else {
+                                concatCalls.unshift([
+                                    `[${current.type} -> ${
+                                        current.type === "MemberExpression"
+                                            ? current.property?.name
+                                            : ""
+                                    }]`,
+                                ]);
+                            }
+                        }
+
+                        // Stop traversal once we've processed the chain.
+                        path.stop();
+                    },
+                });
+
+                // process the concatCalls to return a single string
+                if (concatCalls.length > 0) {
+                    const toReturn = concatCalls.flat().join("");
+                    return toReturn;
+                }
+            }
+
+            return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
         }
         case "NewExpression": {
             if (
@@ -88,27 +270,42 @@ export const resolveNodeValue = (
                 node.callee.name === "URL" &&
                 node.arguments.length > 0
             ) {
-                return resolveNodeValue(node.arguments[0], scope);
+                return resolveNodeValue(
+                    node.arguments[0],
+                    scope,
+                    nodeCode,
+                    callType
+                );
             }
             return `[unresolved new expression]`;
         }
         case "LogicalExpression": {
-            const left = resolveNodeValue(node.left, scope);
+            const left = resolveNodeValue(node.left, scope, nodeCode, callType);
             if (left && !String(left).startsWith("[")) {
                 return left;
             }
-            return resolveNodeValue(node.right, scope);
+            return resolveNodeValue(node.right, scope, nodeCode, callType);
         }
         case "ConditionalExpression": {
-            const consequent = resolveNodeValue(node.consequent, scope);
+            const consequent = resolveNodeValue(
+                node.consequent,
+                scope,
+                nodeCode,
+                callType
+            );
             if (consequent && !String(consequent).startsWith("[")) {
                 return consequent;
             }
-            return resolveNodeValue(node.alternate, scope);
+            return resolveNodeValue(node.alternate, scope, nodeCode, callType);
         }
         case "BinaryExpression": {
-            const left = resolveNodeValue(node.left, scope);
-            const right = resolveNodeValue(node.right, scope);
+            const left = resolveNodeValue(node.left, scope, nodeCode, callType);
+            const right = resolveNodeValue(
+                node.right,
+                scope,
+                nodeCode,
+                callType
+            );
             if (
                 left !== null &&
                 right !== null &&

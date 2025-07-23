@@ -5,7 +5,60 @@ import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import * as globals from "../../utility/globals.js";
+import { Node } from "@babel/types";
 const traverse = _traverse.default;
+
+const astNodeToJsonString = (node: Node, code: string): string => {
+    if (!node) {
+        return '""';
+    }
+
+    switch (node.type) {
+        case "ObjectExpression": {
+            const props = node.properties.map((prop) => {
+                if (prop.type === "ObjectProperty") {
+                    const key =
+                        prop.key.type === "Identifier"
+                            ? `"${prop.key.name}"`
+                            : astNodeToJsonString(prop.key, code);
+                    const value = astNodeToJsonString(prop.value, code);
+                    return `${key}: ${value}`;
+                }
+                return '""'; // SpreadElement not handled
+            });
+            return `{${props.join(", ")}}`;
+        }
+        case "ArrayExpression": {
+            const elements = node.elements.map((elem) =>
+                astNodeToJsonString(elem, code)
+            );
+            return `[${elements.join(", ")}]`;
+        }
+        case "StringLiteral": {
+            return JSON.stringify(node.value);
+        }
+        case "NumericLiteral": {
+            return String(node.value);
+        }
+        case "BooleanLiteral": {
+            return String(node.value);
+        }
+        case "NullLiteral": {
+            return "null";
+        }
+        case "Identifier": {
+            return `"${node.name}"`;
+        }
+        case "MemberExpression": {
+            // Reconstruct the member expression as a string, removing newlines
+            return `"${code.slice(node.start, node.end).replace(/\n\s*/g, " ")}"`;
+        }
+        default: {
+            // For any other node types, slice the original code, remove newlines, and wrap in quotes
+            return `"${code.slice(node.start, node.end).replace(/\n\s*/g, " ")}"`;
+        }
+    }
+};
 
 const resolveAxios = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving axios instances"));
@@ -123,11 +176,11 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     path.node.object.property.name; // A
                                 const secondProp = path.node.property.name; // post
 
-                                let axiosFirstArg;
-                                let axiosSecondArg;
+                                let axiosFirstArg: Node;
+                                let axiosSecondArg: Node;
 
-                                let axiosFirstArgText;
-                                let axiosSecondArgText;
+                                let axiosFirstArgText: string;
+                                let axiosSecondArgText: string;
 
                                 // define some arguments to be finally printed
                                 let callUrl: string;
@@ -225,7 +278,8 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         callUrl = resolveNodeValue(
                                             axiosFirstArg,
                                             callExpressionPath.scope,
-                                            axiosFirstArgText
+                                            axiosFirstArgText,
+                                            "axios"
                                         );
                                     }
                                 }
@@ -280,6 +334,81 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     callMethod = "UNKNOWN";
                                 }
 
+                                // now, get the second argument
+                                if (axiosSecondArgText) {
+                                    // see if axios second arg is an object in type {[key]: any, ...}
+                                    // do this on axiosSecondArg
+                                    if (
+                                        axiosSecondArg?.type ===
+                                        "ObjectExpression"
+                                    ) {
+                                        // see if it contains data
+                                        let dataFound = false;
+                                        let responseTypeFound = false;
+
+                                        // iterate through the properties
+                                        for (
+                                            let i = 0;
+                                            i <
+                                            axiosSecondArg.properties.length;
+                                            i++
+                                        ) {
+                                            const property =
+                                                axiosSecondArg.properties[i];
+                                            // @ts-ignore
+                                            if (property.key.name === "data") {
+                                                dataFound = true;
+                                                break;
+                                            }
+                                            if (
+                                                // @ts-ignore
+                                                property.key.name ===
+                                                "responseType"
+                                            ) {
+                                                responseTypeFound = true;
+                                                break;
+                                            }
+                                        }
+
+                                        // if data is found, get the value of the `data` property
+                                        if (dataFound) {
+                                            // value of data
+                                            const dataValue: Node =
+                                                axiosSecondArg.properties.find(
+                                                    (property) =>
+                                                        // @ts-ignore
+                                                        property.key.name ===
+                                                        "data"
+                                                );
+                                            // slice the string
+                                            // @ts-ignore
+                                            const dataValueText =
+                                                chunkCode.slice(
+                                                    // @ts-ignore
+                                                    dataValue.value.start,
+                                                    // @ts-ignore
+                                                    dataValue.value.end
+                                                );
+
+                                            callBody = astNodeToJsonString(
+                                                // @ts-ignore
+                                                dataValue.value,
+                                                chunkCode
+                                            );
+                                        } else if (responseTypeFound) {
+                                            // do nothing, coz this is the default property in axios clients
+                                            // if you add this to the body, swagger will throw an error
+                                            // and, if it's get, GET DOESN'T HAVE A BODY
+                                        } else {
+                                            // since it is not found, the second value should be the body
+                                            callBody = astNodeToJsonString(
+                                                axiosSecondArg,
+                                                chunkCode
+                                            );
+                                        }
+                                    }
+                                }
+
                                 // finally, print the human readable output
                                 console.log(
                                     chalk.blue(
@@ -290,6 +419,12 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 console.log(
                                     chalk.green(`    Method: ${callMethod}`)
                                 );
+
+                                if (callBody) {
+                                    console.log(
+                                        chalk.green(`    Body: ${callBody}`)
+                                    );
+                                }
 
                                 globals.addOpenapiOutput({
                                     url: callUrl || "",
