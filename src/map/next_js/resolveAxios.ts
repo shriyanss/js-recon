@@ -15,9 +15,12 @@ const astNodeToJsonString = (node: Node, code: string): string => {
 
     switch (node.type) {
         case "ObjectExpression":
-            const props = node.properties.map(prop => {
+            const props = node.properties.map((prop) => {
                 if (prop.type === "ObjectProperty") {
-                    const key = prop.key.type === "Identifier" ? `"${prop.key.name}"` : astNodeToJsonString(prop.key, code);
+                    const key =
+                        prop.key.type === "Identifier"
+                            ? `"${prop.key.name}"`
+                            : astNodeToJsonString(prop.key, code);
                     const value = astNodeToJsonString(prop.value, code);
                     return `${key}: ${value}`;
                 }
@@ -26,7 +29,9 @@ const astNodeToJsonString = (node: Node, code: string): string => {
             return `{${props.join(", ")}}`;
 
         case "ArrayExpression":
-            const elements = node.elements.map(elem => astNodeToJsonString(elem, code));
+            const elements = node.elements.map((elem) =>
+                astNodeToJsonString(elem, code)
+            );
             return `[${elements.join(", ")}]`;
 
         case "StringLiteral":
@@ -373,7 +378,10 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                 );
 
                                             // @ts-ignore
-                                            callBody = astNodeToJsonString(dataValue.value, chunkCode);
+                                            callBody = astNodeToJsonString(
+                                                dataValue.value,
+                                                chunkCode
+                                            );
                                             console.log(callBody);
                                         } else {
                                             // since it is not found, the second value should be the body
