@@ -90,7 +90,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 if (isFetchCall) {
                     console.log(
                         chalk.blue(
-                            `[+] Found fetch call in chunk ${chunk.id} (${chunk.file}) at L${
+                            `[+] Found fetch call in chunk ${chunk.id} (${filePath}) at L${
                                 path.node.loc.start.line
                             }`
                         )
@@ -98,14 +98,26 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                     functionFileLine = path.node.loc.start.line;
                     const args = path.node.arguments;
                     if (args.length > 0) {
-                        const url = resolveNodeValue(args[0], path.scope);
+                        // extract the whole code from the main file just in case the resolution fails
+                        const argText = fileContent
+                            .slice(args[0].start, args[0].end)
+                            .replace(/\n\s*/g, "");
+
+                        const url = resolveNodeValue(
+                            args[0],
+                            path.scope,
+                            argText,
+                            "fetch"
+                        );
                         callUrl = url;
                         console.log(chalk.green(`    URL: ${url}`));
 
                         if (args.length > 1) {
                             const options = resolveNodeValue(
                                 args[1],
-                                path.scope
+                                path.scope,
+                                "",
+                                "fetch"
                             );
                             if (
                                 typeof options === "object" &&

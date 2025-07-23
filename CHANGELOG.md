@@ -1,5 +1,19 @@
 # Change Log
 
+## 1.1.3-alpha.2 - 2025.07.23
+
+### Added
+
+- Added request body extraction and display for axios calls
+- Resolve `.concat()` operations when traversing code
+
+### Changed
+
+- Display full file path in fetch call log message
+- Improve output in the openapi file
+
+### Fixed
+
 ## 1.1.3-alpha.1 - 2025.07.22
 
 ### Added
