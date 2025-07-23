@@ -9,6 +9,24 @@ export const resolveNodeValue = (
 ): any => {
     if (!node) return null;
 
+    // fetch specific ops
+    if (callType === "fetch") {
+        // check if it is a JSON.stringify call
+        if (node.type === "CallExpression" && node.callee.type === "MemberExpression") {
+            if (node.callee.property.type === "Identifier" && node.callee.property.name === "stringify") {
+                // if so, then first get the args for it
+                const args = node.arguments;
+                
+                // see if the first arg is an object
+                if (args.length > 0 && args[0].type === "ObjectExpression") {
+                    // if it is an object, then convert stringify it
+
+                    
+                }
+            }
+        }
+    }
+
     switch (node.type) {
         case "StringLiteral":
         case "NumericLiteral":
