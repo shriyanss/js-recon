@@ -311,10 +311,10 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         // if data is found, get the value of the `data` property
                                         if (dataFound) {
                                             // value of data
-                                            // @ts-ignore
                                             const dataValue: Node =
-                                                axiosSecondArg.properties.find(
-                                                    (property) =>
+                                            axiosSecondArg.properties.find(
+                                                (property) =>
+                                                    // @ts-ignore
                                                         property.key.name ===
                                                         "data"
                                                 );
@@ -322,7 +322,9 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                             // @ts-ignore
                                             const dataValueText =
                                                 chunkCode.slice(
+                                                    // @ts-ignore
                                                     dataValue.value.start,
+                                                    // @ts-ignore
                                                     dataValue.value.end
                                                 );
 
