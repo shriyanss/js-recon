@@ -206,7 +206,8 @@ export const resolveNodeValue = (
                         case "Identifier":
                             return `[var ${arg.name}]`; // Format identifiers as [var name]
                         default:
-                            return `[${arg.type}]`;
+                            // @ts-ignore
+                            return `[${arg.type} -> ${arg.type === "MemberExpression" ? arg.property?.name : ""}]`;
                     }
                 };
 
@@ -239,7 +240,13 @@ export const resolveNodeValue = (
                             } else if (current.type === "Identifier") {
                                 concatCalls.unshift([`[var ${current.name}]`]);
                             } else {
-                                concatCalls.unshift([`[${current.type}]`]);
+                                concatCalls.unshift([
+                                    `[${current.type} -> ${
+                                        current.type === "MemberExpression"
+                                            ? current.property?.name
+                                            : ""
+                                    }]`,
+                                ]);
                             }
                         }
 
