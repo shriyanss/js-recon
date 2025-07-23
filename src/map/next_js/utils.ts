@@ -223,14 +223,18 @@ export const resolveNodeValue = (
                         }
 
                         let current = path.node;
-                        while (current && current.type === "CallExpression" && current.callee.type === "MemberExpression") {
+                        while (
+                            current &&
+                            current.type === "CallExpression" &&
+                            current.callee.type === "MemberExpression"
+                        ) {
                             const args = current.arguments.map(getArgValue);
                             concatCalls.unshift(args);
                             current = current.callee.object;
                         }
 
                         if (current) {
-                             if (current.type === "StringLiteral") {
+                            if (current.type === "StringLiteral") {
                                 concatCalls.unshift([current.value]);
                             } else if (current.type === "Identifier") {
                                 concatCalls.unshift([`[var ${current.name}]`]);
@@ -238,10 +242,10 @@ export const resolveNodeValue = (
                                 concatCalls.unshift([`[${current.type}]`]);
                             }
                         }
-                        
+
                         // Stop traversal once we've processed the chain.
                         path.stop();
-                    }
+                    },
                 });
 
                 // process the concatCalls to return a single string
