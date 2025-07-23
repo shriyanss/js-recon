@@ -275,7 +275,8 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         callUrl = resolveNodeValue(
                                             axiosFirstArg,
                                             callExpressionPath.scope,
-                                            axiosFirstArgText
+                                            axiosFirstArgText,
+                                            "axios"
                                         );
                                     }
                                 }

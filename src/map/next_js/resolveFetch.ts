@@ -98,14 +98,16 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                     functionFileLine = path.node.loc.start.line;
                     const args = path.node.arguments;
                     if (args.length > 0) {
-                        const url = resolveNodeValue(args[0], path.scope);
+                        const url = resolveNodeValue(args[0], path.scope, "", "fetch");
                         callUrl = url;
                         console.log(chalk.green(`    URL: ${url}`));
 
                         if (args.length > 1) {
                             const options = resolveNodeValue(
                                 args[1],
-                                path.scope
+                                path.scope,
+                                "",
+                                "fetch"
                             );
                             if (
                                 typeof options === "object" &&
