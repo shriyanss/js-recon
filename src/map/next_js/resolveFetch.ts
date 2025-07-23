@@ -90,7 +90,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 if (isFetchCall) {
                     console.log(
                         chalk.blue(
-                            `[+] Found fetch call in chunk ${chunk.id} (${chunk.file}) at L${
+                            `[+] Found fetch call in chunk ${chunk.id} (${filePath}) at L${
                                 path.node.loc.start.line
                             }`
                         )
