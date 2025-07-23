@@ -37,7 +37,8 @@ const astNodeToJsonString = (node: Node, code: string): string => {
         case "StringLiteral": {
             return JSON.stringify(node.value);
         }
-        case "NumericLiteral":{}
+        case "NumericLiteral": {
+        }
         case "BooleanLiteral": {
             return String(node.value);
         }
