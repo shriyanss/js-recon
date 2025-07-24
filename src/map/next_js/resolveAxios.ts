@@ -358,7 +358,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     if (axiosCreateVarName !== "") {
                                         console.log(
                                             chalk.magenta(
-                                                `[+] Create function assigned to '${axiosCreateVarName}' found at ${chunks[chunkName].file}:${path.node.loc.start.line}`
+                                                `[+] Create function assigned to '${axiosCreateVarName}' found at ${directory}/${chunks[chunkName].file}:${path.node.loc.start.line}`
                                             )
                                         );
                                         return;

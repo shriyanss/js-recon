@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.3-alpha.3 - (unreleased)
+
+### Added
+
+- Added support for axios.create() detection in Next.js resolver
+
+### Changed
+
+### Fixed
+
 ## 1.1.3-alpha.2 - 2025.07.23
 
 ### Added
