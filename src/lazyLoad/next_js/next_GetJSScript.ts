@@ -30,12 +30,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
         const src = $(scriptTag).attr("src");
 
         // see if the src is a JS file
-        if (
-            src !== undefined &&
-            src.match(
-                /(https:\/\/[a-zA-Z0-9_\_\.]+\/.+\.js\??.*|\/.+\.js\??.*)/
-            )
-        ) {
+        if (src !== undefined && src.match(/(https:\/\/[a-zA-Z0-9_\_\.]+\/.+\.js\??.*|\/.+\.js\??.*)/)) {
             // if the src starts with /, like `/static/js/a.js` find the absolute URL
             if (src.startsWith("/")) {
                 const absoluteUrl = new URL(url).origin + src;
@@ -47,8 +42,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
                 // Get directory URL (origin + path without filename)
                 const pathParts = new URL(url).pathname.split("/");
                 pathParts.pop(); // remove filename from last
-                const directory =
-                    new URL(url).origin + pathParts.join("/") + "/";
+                const directory = new URL(url).origin + pathParts.join("/") + "/";
 
                 if (!getJsUrls().includes(directory + src)) {
                     pushToJsUrls(directory + src);
@@ -63,9 +57,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
             // to get these, simply regex from the JS script
 
             const js_script = $(scriptTag).html();
-            const matches = js_script.match(
-                /static\/chunks\/[a-zA-Z0-9_\-]+\.js/g
-            );
+            const matches = js_script.match(/static\/chunks\/[a-zA-Z0-9_\-]+\.js/g);
 
             if (matches) {
                 const uniqueMatches = [...new Set(matches)];
@@ -96,11 +88,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
         }
     }
 
-    console.log(
-        chalk.green(
-            `[✓] Found ${getJsUrls().length} JS files from the script tags`
-        )
-    );
+    console.log(chalk.green(`[✓] Found ${getJsUrls().length} JS files from the script tags`));
 
     return getJsUrls();
 };

@@ -16,9 +16,7 @@ import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max
  * @returns {Promise<void>}
  */
 const downloadFiles = async (urls: string[], output: string) => {
-    console.log(
-        chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`)
-    );
+    console.log(chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`));
     fs.mkdirSync(output, { recursive: true });
 
     // to store ignored JS domain
@@ -30,9 +28,7 @@ const downloadFiles = async (urls: string[], output: string) => {
 
     const downloadPromises = urls.map(async (url) => {
         try {
-            await new Promise((resolve) =>
-                setTimeout(resolve, Math.random() * 4950 + 50)
-            );
+            await new Promise((resolve) => setTimeout(resolve, Math.random() * 4950 + 50));
             if (url.match(/(\.js|\.json)/)) {
                 // get the directory of the url
                 const { host, directory } = getURLDirectory(url);
@@ -56,9 +52,7 @@ const downloadFiles = async (urls: string[], output: string) => {
                 try {
                     // Wait until there is an available slot in the request queue
                     while (queue >= getMaxReqQueue()) {
-                        await new Promise((resolve) =>
-                            setTimeout(resolve, Math.random() * 250 + 50)
-                        );
+                        await new Promise((resolve) => setTimeout(resolve, Math.random() * 250 + 50));
                     }
                     queue++; // acquire a slot in the queue
 
@@ -96,11 +90,7 @@ const downloadFiles = async (urls: string[], output: string) => {
 
                 if (!filename) {
                     // Handle cases where filename might not be found
-                    console.warn(
-                        chalk.yellow(
-                            `[!] Could not determine filename for URL: ${url}. Skipping.`
-                        )
-                    );
+                    console.warn(chalk.yellow(`[!] Could not determine filename for URL: ${url}. Skipping.`));
                     return;
                 }
 
@@ -108,20 +98,12 @@ const downloadFiles = async (urls: string[], output: string) => {
                 try {
                     // if it's json, then use different parser
                     if (url.match(/\.json/)) {
-                        fs.writeFileSync(
-                            filePath,
-                            await prettier.format(file, { parser: "json" })
-                        );
+                        fs.writeFileSync(filePath, await prettier.format(file, { parser: "json" }));
                     } else {
-                        fs.writeFileSync(
-                            filePath,
-                            await prettier.format(file, { parser: "babel" })
-                        );
+                        fs.writeFileSync(filePath, await prettier.format(file, { parser: "babel" }));
                     }
                 } catch (err) {
-                    console.error(
-                        chalk.red(`[!] Failed to write file: ${filePath}`)
-                    );
+                    console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
                 }
                 download_count++;
             }
@@ -141,11 +123,7 @@ const downloadFiles = async (urls: string[], output: string) => {
     }
 
     if (download_count > 0) {
-        console.log(
-            chalk.green(
-                `[✓] Downloaded ${download_count} JS chunks to ${output} directory`
-            )
-        );
+        console.log(chalk.green(`[✓] Downloaded ${download_count} JS chunks to ${output} directory`));
     }
 };
 

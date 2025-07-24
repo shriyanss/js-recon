@@ -70,9 +70,7 @@ const nuxt_astParse = async (url: string) => {
 
     for (const func of functions) {
         if (func.source.match(/"\.js".{0,15}$/)) {
-            console.log(
-                chalk.green(`[✓] Found JS chunk having the following source:`)
-            );
+            console.log(chalk.green(`[✓] Found JS chunk having the following source:`));
             console.log(chalk.yellow(func.source));
 
             let user_verified;
@@ -94,11 +92,7 @@ const nuxt_astParse = async (url: string) => {
                 user_verified = true;
             }
             if (user_verified === true) {
-                console.log(
-                    chalk.cyan(
-                        "[i] Proceeding with the selected function to fetch files"
-                    )
-                );
+                console.log(chalk.cyan("[i] Proceeding with the selected function to fetch files"));
             } else {
                 console.log(chalk.red("[!] Not executing function."));
                 continue;
@@ -147,10 +141,7 @@ const nuxt_astParse = async (url: string) => {
                             unknownVarValue = right.value;
                         } else {
                             // fallback to source snippet
-                            unknownVarValue = func.source.slice(
-                                right.start,
-                                right.end
-                            );
+                            unknownVarValue = func.source.slice(right.start, right.end);
                         }
                     }
                 },

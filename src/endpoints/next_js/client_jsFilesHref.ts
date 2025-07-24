@@ -13,9 +13,7 @@ const client_jsFilesHref = async (directory) => {
     files = fs.readdirSync(directory, { recursive: true });
 
     // filter out the directories
-    files = files.filter(
-        (file) => !fs.statSync(path.join(directory, file)).isDirectory()
-    );
+    files = files.filter((file) => !fs.statSync(path.join(directory, file)).isDirectory());
 
     // filter out the subsequent requests files
     files = files.filter((file) => !file.startsWith("___subsequent_requests"));
@@ -61,8 +59,7 @@ const client_jsFilesHref = async (directory) => {
                         const pathArg = valueNode.arguments.find(
                             (arg) =>
                                 arg.type === "StringLiteral" &&
-                                (arg.value.startsWith("/") ||
-                                    arg.value.startsWith("http"))
+                                (arg.value.startsWith("/") || arg.value.startsWith("http"))
                         );
 
                         if (pathArg) {
@@ -70,23 +67,16 @@ const client_jsFilesHref = async (directory) => {
                         } else {
                             // Handle fallback case: e.g. "".concat(s || "/docs/guides")
                             const logicalExprArg = valueNode.arguments.find(
-                                (arg) =>
-                                    arg.type === "LogicalExpression" &&
-                                    arg.operator === "||"
+                                (arg) => arg.type === "LogicalExpression" && arg.operator === "||"
                             );
-                            if (
-                                logicalExprArg &&
-                                logicalExprArg.right.type === "StringLiteral"
-                            ) {
+                            if (logicalExprArg && logicalExprArg.right.type === "StringLiteral") {
                                 hrefValue = logicalExprArg.right.value;
                             }
                         }
                     }
 
                     if (hrefValue) {
-                        const isPath =
-                            hrefValue.startsWith("/") ||
-                            hrefValue.startsWith("http");
+                        const isPath = hrefValue.startsWith("/") || hrefValue.startsWith("http");
                         if (isPath && !discoveredPaths.includes(hrefValue)) {
                             discoveredPaths.push(hrefValue);
                         }

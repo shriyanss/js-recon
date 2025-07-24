@@ -30,19 +30,12 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
     // Load and parse API Gateway config with error handling
     let config;
     try {
-        config = JSON.parse(
-            fs.readFileSync(globals.apiGatewayConfigFile, "utf8")
-        );
+        config = JSON.parse(fs.readFileSync(globals.apiGatewayConfigFile, "utf8"));
     } catch (error) {
-        throw new Error(
-            `Failed to read or parse API Gateway config file: ${error.message}`
-        );
+        throw new Error(`Failed to read or parse API Gateway config file: ${error.message}`);
     }
     // select a random api gateway
-    let apiGateway =
-        Object.keys(config)[
-            Math.floor(Math.random() * Object.keys(config).length)
-        ];
+    let apiGateway = Object.keys(config)[Math.floor(Math.random() * Object.keys(config).length)];
 
     const client = new APIGatewayClient({
         region: config[apiGateway].region,
@@ -76,9 +69,7 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
         // create a new resource
         let rootId;
         if (getResourceResponse.items.find((item) => item.path === "/")) {
-            rootId = getResourceResponse.items.find(
-                (item) => item.path === "/"
-            ).id;
+            rootId = getResourceResponse.items.find((item) => item.path === "/").id;
         } else {
             rootId = getResourceResponse.items[0].parentId;
         }
@@ -139,23 +130,17 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
             restApiId: config[apiGateway].id,
             statusCode: "200",
         });
-        const newMethodResponseResponse = await client.send(
-            newMethodResponseCommand
-        );
+        const newMethodResponseResponse = await client.send(newMethodResponseCommand);
         await sleep(100);
 
         // put integration response
-        const putIntegrationResponseCommand = new PutIntegrationResponseCommand(
-            {
-                httpMethod: "GET",
-                resourceId: newResourceResponse.id,
-                restApiId: config[apiGateway].id,
-                statusCode: "200",
-            }
-        );
-        const putIntegrationResponseResponse = await client.send(
-            putIntegrationResponseCommand
-        );
+        const putIntegrationResponseCommand = new PutIntegrationResponseCommand({
+            httpMethod: "GET",
+            resourceId: newResourceResponse.id,
+            restApiId: config[apiGateway].id,
+            statusCode: "200",
+        });
+        const putIntegrationResponseResponse = await client.send(putIntegrationResponseCommand);
         await sleep(100);
     }
 
@@ -195,11 +180,7 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
     try {
         await client.send(deleteResourceCommand);
     } catch (err) {
-        console.error(
-            chalk.red(
-                `[!] Error when sending delete resource command to AWS: ${err}`
-            )
-        );
+        console.error(chalk.red(`[!] Error when sending delete resource command to AWS: ${err}`));
     }
 
     if (isFireWallBlocking) {

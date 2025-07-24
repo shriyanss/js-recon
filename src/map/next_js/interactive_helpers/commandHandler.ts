@@ -17,11 +17,7 @@ interface Screen {
 async function handleCommand(text: string, state: State, ui: Screen) {
     const { outputBox, inputBox, screen } = ui;
 
-    if (
-        text !== "" &&
-        !text.match(/^\s+$/) &&
-        text !== state.commandHistory[state.commandHistory.length - 1]
-    ) {
+    if (text !== "" && !text.match(/^\s+$/) && text !== state.commandHistory[state.commandHistory.length - 1]) {
         state.commandHistory.push(text);
         state.commandHistoryIndex = state.commandHistory.length;
     }
@@ -64,12 +60,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 outputBox.log(commandHelpers.listAllFunctions(state.chunks));
                 state.lastCommandStatus = true;
             } else if (option === "nav") {
-                outputBox.log(
-                    commandHelpers.navHistory(
-                        state.chunks,
-                        state.functionNavHistory
-                    )
-                );
+                outputBox.log(commandHelpers.navHistory(state.chunks, state.functionNavHistory));
                 state.lastCommandStatus = true;
             } else {
                 outputBox.log(chalk.red(option) + " is not a valid option");
@@ -90,30 +81,18 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 const funcId = text.split(" ")[2];
                 // check if the function exists
                 if (state.chunks[funcId]) {
-                    const funcCode = await commandHelpers.getFunctionCode(
-                        state.chunks,
-                        funcId,
-                        state
-                    );
-                    printFunction(
-                        outputBox,
-                        funcCode,
-                        state.chunks[funcId]?.description,
-                        state.funcWriteFile
-                    );
+                    const funcCode = await commandHelpers.getFunctionCode(state.chunks, funcId, state);
+                    printFunction(outputBox, funcCode, state.chunks[funcId]?.description, state.funcWriteFile);
                     state.lastCommandStatus = true;
                 } else {
-                    outputBox.log(
-                        chalk.red(`No function with ID ${funcId} found`)
-                    );
+                    outputBox.log(chalk.red(`No function with ID ${funcId} found`));
                     state.lastCommandStatus = false;
                 }
 
                 // before pushing to the function nav history,
                 // make sure this is not the same as the last one
                 if (
-                    state.functionNavHistory[state.functionNavHistoryIndex] !==
-                        funcId &&
+                    state.functionNavHistory[state.functionNavHistoryIndex] !== funcId &&
                     Object.keys(state.chunks).includes(funcId)
                 ) {
                     state.functionNavHistory.push(funcId);
@@ -123,29 +102,14 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 if (state.functionNavHistory.length > 0) {
                     if (state.functionNavHistoryIndex > 0) {
                         state.functionNavHistoryIndex--;
-                        const funcId =
-                            state.functionNavHistory[
-                                state.functionNavHistoryIndex
-                            ];
+                        const funcId = state.functionNavHistory[state.functionNavHistoryIndex];
 
                         if (Object.keys(state.chunks).includes(funcId)) {
-                            const funcCode =
-                                await commandHelpers.getFunctionCode(
-                                    state.chunks,
-                                    funcId,
-                                    state
-                                );
-                            printFunction(
-                                outputBox,
-                                funcCode,
-                                state.chunks[funcId].description,
-                                state.funcWriteFile
-                            );
+                            const funcCode = await commandHelpers.getFunctionCode(state.chunks, funcId, state);
+                            printFunction(outputBox, funcCode, state.chunks[funcId].description, state.funcWriteFile);
                             state.lastCommandStatus = true;
                         } else {
-                            outputBox.log(
-                                chalk.red(`No function with ID ${funcId} found`)
-                            );
+                            outputBox.log(chalk.red(`No function with ID ${funcId} found`));
                             state.lastCommandStatus = false;
                         }
                     } else {
@@ -158,33 +122,15 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 }
             } else if (funcName === "ahead") {
                 if (state.functionNavHistory.length > 0) {
-                    if (
-                        state.functionNavHistoryIndex <
-                        state.functionNavHistory.length - 1
-                    ) {
+                    if (state.functionNavHistoryIndex < state.functionNavHistory.length - 1) {
                         state.functionNavHistoryIndex++;
-                        const funcId =
-                            state.functionNavHistory[
-                                state.functionNavHistoryIndex
-                            ];
+                        const funcId = state.functionNavHistory[state.functionNavHistoryIndex];
                         if (Object.keys(state.chunks).includes(funcId)) {
-                            const funcCode =
-                                await commandHelpers.getFunctionCode(
-                                    state.chunks,
-                                    funcId,
-                                    state
-                                );
-                            printFunction(
-                                outputBox,
-                                funcCode,
-                                state.chunks[funcId].description,
-                                state.funcWriteFile
-                            );
+                            const funcCode = await commandHelpers.getFunctionCode(state.chunks, funcId, state);
+                            printFunction(outputBox, funcCode, state.chunks[funcId].description, state.funcWriteFile);
                             state.lastCommandStatus = true;
                         } else {
-                            outputBox.log(
-                                chalk.red(`No function with ID ${funcId} found`)
-                            );
+                            outputBox.log(chalk.red(`No function with ID ${funcId} found`));
                             state.lastCommandStatus = false;
                         }
                     } else {
@@ -212,11 +158,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
             if (option === "funcwritefile") {
                 const fileName = text.split(" ")[2];
                 state.funcWriteFile = path.join(`${fileName}`);
-                outputBox.log(
-                    chalk.green(
-                        `Function write file set to ${state.funcWriteFile}`
-                    )
-                );
+                outputBox.log(chalk.green(`Function write file set to ${state.funcWriteFile}`));
                 state.lastCommandStatus = true;
             } else if (option === "writeimports") {
                 // modify the var in state
@@ -243,9 +185,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 } else {
                     // check if the function id exists or not
                     if (!Object.keys(state.chunks).includes(chunkId)) {
-                        outputBox.log(
-                            chalk.red(`Chunk ID ${chunkId} not found`)
-                        );
+                        outputBox.log(chalk.red(`Chunk ID ${chunkId} not found`));
                         state.lastCommandStatus = false;
                     } else {
                         // proceed with modifying chunk name
@@ -253,16 +193,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                         state.chunks[chunkId].description = newChunkDesc;
 
                         // write to file also
-                        fs.writeFileSync(
-                            state.mapFile,
-                            JSON.stringify(state.chunks, null, 2)
-                        );
+                        fs.writeFileSync(state.mapFile, JSON.stringify(state.chunks, null, 2));
 
-                        outputBox.log(
-                            chalk.green(
-                                `Description for ${chunkId} modified: ${newChunkDesc}`
-                            )
-                        );
+                        outputBox.log(chalk.green(`Description for ${chunkId} modified: ${newChunkDesc}`));
 
                         state.lastCommandStatus = true;
                     }
@@ -284,9 +217,7 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 state.lastCommandStatus = false;
             } else {
                 const funcName = text.split(" ")[1];
-                outputBox.log(
-                    commandHelpers.traceFunction(state.chunks, funcName)
-                );
+                outputBox.log(commandHelpers.traceFunction(state.chunks, funcName));
                 state.lastCommandStatus = true;
             }
         }

@@ -57,9 +57,7 @@ const lazyLoad = async (
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
     if (process.env.IS_DOCKER === "true") {
-        console.log(
-            chalk.yellow("[!] Running in Docker. Browser sandbox disabled")
-        );
+        console.log(chalk.yellow("[!] Running in Docker. Browser sandbox disabled"));
     }
 
     // if cache enabled, check if the cache file exists or not. If no, then create a new one
@@ -106,22 +104,19 @@ const lazyLoad = async (
                 const jsFilesFromScriptTag = await next_getJSScript(url);
 
                 // get lazy resources
-                const lazyResourcesFromWebpack =
-                    await next_GetLazyResourcesWebpackJs(url);
-                const lazyResourcesFromBuildManifest =
-                    await next_getLazyResourcesBuildManifestJs(url);
+                const lazyResourcesFromWebpack = await next_GetLazyResourcesWebpackJs(url);
+                const lazyResourcesFromBuildManifest = await next_getLazyResourcesBuildManifestJs(url);
                 let lazyResourcesFromSubsequentRequests;
 
                 if (subsequentRequestsFlag) {
                     // get JS files from subsequent requests
-                    lazyResourcesFromSubsequentRequests =
-                        await subsequentRequests(
-                            url,
-                            urlsFile,
-                            threads,
-                            output,
-                            lazyLoadGlobals.getJsUrls() // Pass the global js_urls
-                        );
+                    lazyResourcesFromSubsequentRequests = await subsequentRequests(
+                        url,
+                        urlsFile,
+                        threads,
+                        output,
+                        lazyLoadGlobals.getJsUrls() // Pass the global js_urls
+                    );
                 }
 
                 // download the resources
@@ -156,8 +151,7 @@ const lazyLoad = async (
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
-                const jsFilesFromStringAnalysis =
-                    await nuxt_stringAnalysisJSFiles(url);
+                const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
 
                 jsFilesToDownload.push(...jsFilesFromPageSource);
                 jsFilesToDownload.push(...jsFilesFromStringAnalysis);
@@ -165,9 +159,7 @@ const lazyLoad = async (
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 let jsFilesFromAST = [];
-                console.log(
-                    chalk.cyan("[i] Analyzing functions in the files found")
-                );
+                console.log(chalk.cyan("[i] Analyzing functions in the files found"));
                 for (const jsFile of jsFilesToDownload) {
                     jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
                 }
@@ -187,13 +179,11 @@ const lazyLoad = async (
                 let jsFilesToDownload = [];
 
                 // find the files from the page source
-                const jsFilesFromPageSource =
-                    await svelte_getFromPageSource(url);
+                const jsFilesFromPageSource = await svelte_getFromPageSource(url);
                 jsFilesToDownload.push(...jsFilesFromPageSource);
 
                 // analyze the strings now
-                const jsFilesFromStringAnalysis =
-                    await svelte_stringAnalysisJSFiles(url);
+                const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
                 jsFilesToDownload.push(...jsFilesFromStringAnalysis);
 
                 // dedupe the files
@@ -207,9 +197,7 @@ const lazyLoad = async (
             console.log(chalk.yellow("[i] Trying to download loaded JS files"));
             const js_urls = await downloadLoadedJs(url);
             if (js_urls && js_urls.length > 0) {
-                console.log(
-                    chalk.green(`[✓] Found ${js_urls.length} JS chunks`)
-                );
+                console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
                 await downloadFiles(js_urls, output);
             }
         }

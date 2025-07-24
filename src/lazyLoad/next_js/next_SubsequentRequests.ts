@@ -19,9 +19,7 @@ let max_queue;
  */
 const findStaticFiles = async (js_content) => {
     // do some regex-ing
-    const matches = [
-        ...js_content.matchAll(/\/?static\/chunks\/[a-zA-Z0-9\._\-\/]+\.js/g),
-    ];
+    const matches = [...js_content.matchAll(/\/?static\/chunks\/[a-zA-Z0-9\._\-\/]+\.js/g)];
     // return matches
 
     let toReturn = [];
@@ -42,13 +40,7 @@ const getURLDirectoryServer = (urlString) => {
     return `${url.origin}${newPath}`; // 'http://something.com/business'
 };
 
-const subsequentRequests = async (
-    url,
-    urlsFile,
-    threads,
-    output,
-    js_urls
-): Promise<string[] | any> => {
+const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Promise<string[] | any> => {
     max_queue = threads;
     let staticJSURLs = [];
 
@@ -57,12 +49,8 @@ const subsequentRequests = async (
     // open the urls file, and load the paths (JSON)
     if (!fs.existsSync(urlsFile)) {
         console.log(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
-        console.log(
-            chalk.yellow(`[!] Please run strings module first with -e flag`)
-        );
-        console.log(
-            chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`)
-        );
+        console.log(chalk.yellow(`[!] Please run strings module first with -e flag`));
+        console.log(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
         process.exit(1);
     }
     const endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
@@ -85,11 +73,7 @@ const subsequentRequests = async (
                 },
             });
 
-            if (
-                res &&
-                res.status === 200 &&
-                res.headers.get("content-type").includes("text/x-component")
-            ) {
+            if (res && res.status === 200 && res.headers.get("content-type").includes("text/x-component")) {
                 const text = await res.text();
                 js_contents[endpoint] = text;
 
@@ -98,12 +82,7 @@ const subsequentRequests = async (
                 // save the contents to "___subsequent_requests/"
                 // make the subsequent_requests directory if it doesn't exist
 
-                const output_path = path.join(
-                    output,
-                    host,
-                    "___subsequent_requests",
-                    directory
-                );
+                const output_path = path.join(output, host, "___subsequent_requests", directory);
                 if (!fs.existsSync(output_path)) {
                     fs.mkdirSync(output_path, { recursive: true });
                 }
@@ -129,9 +108,7 @@ const subsequentRequests = async (
                 });
 
                 // Filter out paths that are already in js_urls before pushing to staticJSURLs
-                const newPaths = absolutePaths.filter(
-                    (path) => !js_urls.includes(path)
-                );
+                const newPaths = absolutePaths.filter((path) => !js_urls.includes(path));
                 if (newPaths.length > 0) {
                     staticJSURLs.push(...newPaths);
                 }
@@ -148,11 +125,7 @@ const subsequentRequests = async (
 
     staticJSURLs = [...new Set(staticJSURLs)];
 
-    console.log(
-        chalk.green(
-            `[✓] Found ${staticJSURLs.length} JS chunks from subsequent requests`
-        )
-    );
+    console.log(chalk.green(`[✓] Found ${staticJSURLs.length} JS chunks from subsequent requests`));
 
     return staticJSURLs;
 };
