@@ -27,7 +27,11 @@ export const processAxiosCall = (
     chunks: Chunks,
     ast: any
 ) => {
-    if (path.node.object.type !== "MemberExpression" || path.node.object.object.type !== "Identifier" || path.node.object.object.name !== axiosInstance) {
+    if (
+        path.node.object.type !== "MemberExpression" ||
+        path.node.object.object.type !== "Identifier" ||
+        path.node.object.object.name !== axiosInstance
+    ) {
         return;
     }
 
