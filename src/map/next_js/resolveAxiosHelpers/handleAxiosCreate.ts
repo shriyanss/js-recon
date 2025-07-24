@@ -97,7 +97,8 @@ export const handleAxiosCreate = (
                     }
 
                     if (axiosCreateCallUrl) console.log(chalk.magenta(`    URL: ${axiosCreateCallUrl}`));
-                    if (axiosCreateCallMethod) console.log(chalk.magenta(`    Method: ${axiosCreateCallMethod.toUpperCase()}`));
+                    if (axiosCreateCallMethod)
+                        console.log(chalk.magenta(`    Method: ${axiosCreateCallMethod.toUpperCase()}`));
                     if (axiosCreateCallParams) console.log(chalk.magenta(`    Params: ${axiosCreateCallParams}`));
                     if (axiosCreateCallHeaders) console.log(chalk.magenta(`    Headers: ${axiosCreateCallHeaders}`));
 

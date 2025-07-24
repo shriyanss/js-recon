@@ -1,7 +1,9 @@
 import { Chunks } from "../../../utility/interfaces.js";
 import chalk from "chalk";
 
-export const findAxiosClients = (chunks: Chunks): { axiosExportedTo: string[], axiosImportedTo: { [key: string]: string } } => {
+export const findAxiosClients = (
+    chunks: Chunks
+): { axiosExportedTo: string[]; axiosImportedTo: { [key: string]: string } } => {
     let axiosExportedTo: string[] = [];
     let axiosImportedTo: { [key: string]: string } = {};
 
@@ -28,4 +30,4 @@ export const findAxiosClients = (chunks: Chunks): { axiosExportedTo: string[], a
     }
 
     return { axiosExportedTo, axiosImportedTo };
-}
+};
