@@ -86,17 +86,23 @@ const readCache = async (
         const rscEnabled = headers["RSC"] ? true : false;
         if (rscEnabled) {
             if (cache[url].rsc) {
-                return new Response(Buffer.from(cache[url].rsc.body_b64, "base64"), {
-                    status: cache[url].rsc.status,
-                    headers: cache[url].rsc.resp_headers,
-                });
+                return new Response(
+                    Buffer.from(cache[url].rsc.body_b64, "base64"),
+                    {
+                        status: cache[url].rsc.status,
+                        headers: cache[url].rsc.resp_headers,
+                    }
+                );
             }
         }
         if (!rscEnabled && cache[url] && cache[url].normal) {
-            return new Response(Buffer.from(cache[url].normal.body_b64, "base64"), {
-                status: cache[url].normal.status,
-                headers: cache[url].normal.resp_headers,
-            });
+            return new Response(
+                Buffer.from(cache[url].normal.body_b64, "base64"),
+                {
+                    status: cache[url].normal.status,
+                    headers: cache[url].normal.resp_headers,
+                }
+            );
         }
     }
     // console.log("cache not found for ", url);
@@ -121,7 +127,9 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
         cache[url] = {};
     }
 
-    const body = Buffer.from(await clonedResponse.arrayBuffer()).toString("base64");
+    const body = Buffer.from(await clonedResponse.arrayBuffer()).toString(
+        "base64"
+    );
     const status = clonedResponse.status;
     const resp_headers = clonedResponse.headers;
     if (headers["RSC"]) {
