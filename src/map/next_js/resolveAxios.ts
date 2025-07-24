@@ -8,6 +8,7 @@ import * as globals from "../../utility/globals.js";
 import globalConfig from "../../globalConfig.js";
 import { Node } from "@babel/types";
 const traverse = _traverse.default;
+import * as fsPath from "path";
 
 const astNodeToJsonString = (node: Node, code: string): string => {
     if (!node) {
@@ -340,6 +341,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     // it would be something like o = r.Z.create({})
                                     // in this, I would have to get `o`
                                     let axiosCreateVarName = "";
+                                    let axiosCreateLineNumber = 0;
                                     if (
                                         path.parentPath.isCallExpression() &&
                                         path.parentPath.parentPath.isVariableDeclarator()
@@ -352,13 +354,24 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         ) {
                                             axiosCreateVarName =
                                                 varDeclarator.id.name;
+                                            
+                                            const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
+                                            
+                                            // iterate through the chunkCode, and find which line number it is
+                                            const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
+                                            for (let i = 0; i < chunkFile.split("\n").length; i++) {
+                                                if (chunkFile.split("\n")[i].trim() === axiosCreateLineContent.trim()) {
+                                                    axiosCreateLineNumber = i + 1;
+                                                    break;
+                                                }
+                                            }
                                         }
                                     }
 
                                     if (axiosCreateVarName !== "") {
                                         console.log(
                                             chalk.magenta(
-                                                `[+] Create function assigned to '${axiosCreateVarName}' found at ${directory}/${chunks[chunkName].file}:${path.node.loc.start.line}`
+                                                `[+] Create function assigned to '${axiosCreateVarName}' found at ${directory}/${chunks[chunkName].file}:${axiosCreateLineNumber}`
                                             )
                                         );
                                         return;
