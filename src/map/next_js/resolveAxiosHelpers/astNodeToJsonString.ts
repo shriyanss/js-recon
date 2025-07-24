@@ -7,16 +7,20 @@ export const astNodeToJsonString = (node: Node, code: string): string => {
 
     switch (node.type) {
         case "ObjectExpression": {
-            const props = node.properties.map((prop) => {
-                if (prop.type === "ObjectProperty") {
-                    const key =
-                        prop.key.type === "Identifier" ? `"${prop.key.name}"` : astNodeToJsonString(prop.key, code);
-                    const value = astNodeToJsonString(prop.value, code);
-                    return `${key}: ${value}`;
-                }
-                return '""'; // SpreadElement not handled
-            });
-            return `{${props.join(", ")}`;
+            const props = node.properties
+                .map((prop) => {
+                    if (prop.type === "ObjectProperty") {
+                        const key = astNodeToJsonString(prop.key, code);
+                        const value = astNodeToJsonString(prop.value, code);
+                        return `${key}: ${value}`;
+                    } else if (prop.type === "SpreadElement") {
+                        // Handle spread elements by trying to resolve them, or returning a placeholder
+                        return `"...${astNodeToJsonString(prop.argument, code)}"`;
+                    }
+                    return null; // Or handle other property types if necessary
+                })
+                .filter(Boolean);
+            return `{${props.join(", ")}}`;
         }
         case "ArrayExpression": {
             const elements = node.elements.map((elem) => astNodeToJsonString(elem, code));
