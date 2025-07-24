@@ -440,19 +440,21 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                         }
                                                     }
 
+                                                    
+                                                    // get the first arg of this, and check if it an {}
+                                                    const firstArg =
+                                                    path.node.arguments[0];
+                                                    let axiosCreateCallUrl: string;
+                                                    let axiosCreateCallMethod: string;
+                                                    let axiosCreateCallParams: any;
+                                                    let axiosCreateCallHeaders: any;
+
                                                     console.log(
                                                         chalk.magenta(
                                                             `[+] Found axios.create() call in chunk ${chunkName} at ${directory}/${chunks[chunkName].file}:${axiosCreateCallLineNumber}`
                                                         )
                                                     );
 
-                                                    // get the first arg of this, and check if it an {}
-                                                    const firstArg =
-                                                        path.node.arguments[0];
-                                                    let axiosCreateCallUrl: string;
-                                                    let axiosCreateCallMethod: string;
-                                                    let axiosCreateCallParams: any;
-                                                    let axiosCreateCallHeaders: any;
                                                     if (
                                                         firstArg.type ===
                                                         "ObjectExpression"
@@ -475,10 +477,38 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                                     .name ===
                                                                 "url"
                                                             ) {
-                                                                axiosCreateCallUrl =
+                                                                // if it is string, directly assign the value
+                                                                if (
                                                                     property
                                                                         .value
-                                                                        .value;
+                                                                        .type ===
+                                                                    "StringLiteral"
+                                                                ) {
+                                                                    axiosCreateCallUrl =
+                                                                        property
+                                                                            .value
+                                                                            .value;
+                                                                } else {
+                                                                    // or resolve it using resolveNodeValue
+                                                                    const scope =
+                                                                        path
+                                                                            .parentPath
+                                                                            .scope;
+                                                                    const nodeCode =
+                                                                        chunkCode.slice(
+                                                                            axiosCreateCallLineNumber -
+                                                                                1,
+                                                                            axiosCreateCallLineNumber +
+                                                                                1
+                                                                        );
+                                                                    axiosCreateCallUrl =
+                                                                        resolveNodeValue(
+                                                                            property.value,
+                                                                            scope,
+                                                                            nodeCode,
+                                                                            "axios"
+                                                                        );
+                                                                }
                                                             } else if (
                                                                 property.key
                                                                     .name ===
@@ -493,22 +523,36 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                                     .name ===
                                                                 "params"
                                                             ) {
+                                                                // convert it using astNodeToJsonString
                                                                 axiosCreateCallParams =
-                                                                    property
-                                                                        .value
-                                                                        .value;
+                                                                    astNodeToJsonString(
+                                                                        property.value,
+                                                                        chunkCode
+                                                                    );
                                                             } else if (
                                                                 property.key
                                                                     .name ===
                                                                 "headers"
                                                             ) {
-                                                                axiosCreateCallHeaders =
+                                                                // if the type of the value is an object
+                                                                if (
                                                                     property
                                                                         .value
-                                                                        .value;
+                                                                        .type ===
+                                                                    "ObjectExpression"
+                                                                ) {
+                                                                    // use astNodeToJsonString
+                                                                    axiosCreateCallHeaders =
+                                                                        astNodeToJsonString(
+                                                                            property.value,
+                                                                            chunkCode
+                                                                        );
+                                                                }
                                                             }
                                                         }
                                                     }
+
+                                                    // now, print the request data
 
                                                     if (axiosCreateCallUrl) {
                                                         console.log(
@@ -521,7 +565,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                     if (axiosCreateCallMethod) {
                                                         console.log(
                                                             chalk.magenta(
-                                                                `    Method: ${axiosCreateCallMethod}`
+                                                                `    Method: ${axiosCreateCallMethod.toUpperCase()}`
                                                             )
                                                         );
                                                     }
@@ -543,6 +587,18 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                             )
                                                         );
                                                     }
+
+                                                    // push it to the api collection
+                                                    globals.addOpenapiOutput({
+                                                        url: axiosCreateCallUrl || "",
+                                                        method: axiosCreateCallMethod || "",
+                                                        path: axiosCreateCallUrl || "",
+                                                        headers: axiosCreateCallHeaders || {},
+                                                        body: axiosCreateCallParams || "",
+                                                        chunkId: chunkId,
+                                                        functionFile: functionFile,
+                                                        functionFileLine: axiosCreateCallLineNumber,
+                                                    });
                                                 }
                                             },
                                         });
