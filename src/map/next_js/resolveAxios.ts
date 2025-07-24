@@ -440,10 +440,9 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                         }
                                                     }
 
-                                                    
                                                     // get the first arg of this, and check if it an {}
                                                     const firstArg =
-                                                    path.node.arguments[0];
+                                                        path.node.arguments[0];
                                                     let axiosCreateCallUrl: string;
                                                     let axiosCreateCallMethod: string;
                                                     let axiosCreateCallParams: any;
@@ -590,14 +589,26 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
 
                                                     // push it to the api collection
                                                     globals.addOpenapiOutput({
-                                                        url: axiosCreateCallUrl || "",
-                                                        method: axiosCreateCallMethod || "",
-                                                        path: axiosCreateCallUrl || "",
-                                                        headers: axiosCreateCallHeaders || {},
-                                                        body: axiosCreateCallParams || "",
+                                                        url:
+                                                            axiosCreateCallUrl ||
+                                                            "",
+                                                        method:
+                                                            axiosCreateCallMethod ||
+                                                            "",
+                                                        path:
+                                                            axiosCreateCallUrl ||
+                                                            "",
+                                                        headers:
+                                                            axiosCreateCallHeaders ||
+                                                            {},
+                                                        body:
+                                                            axiosCreateCallParams ||
+                                                            "",
                                                         chunkId: chunkId,
-                                                        functionFile: functionFile,
-                                                        functionFileLine: axiosCreateCallLineNumber,
+                                                        functionFile:
+                                                            functionFile,
+                                                        functionFileLine:
+                                                            axiosCreateCallLineNumber,
                                                     });
                                                 }
                                             },
