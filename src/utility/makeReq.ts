@@ -86,14 +86,14 @@ const readCache = async (
         const rscEnabled = headers["RSC"] ? true : false;
         if (rscEnabled) {
             if (cache[url].rsc) {
-                return new Response(atob(cache[url].rsc.body_b64), {
+                return new Response(Buffer.from(cache[url].rsc.body_b64, "base64"), {
                     status: cache[url].rsc.status,
                     headers: cache[url].rsc.resp_headers,
                 });
             }
         }
         if (!rscEnabled && cache[url] && cache[url].normal) {
-            return new Response(atob(cache[url].normal.body_b64), {
+            return new Response(Buffer.from(cache[url].normal.body_b64, "base64"), {
                 status: cache[url].normal.status,
                 headers: cache[url].normal.resp_headers,
             });
@@ -121,12 +121,7 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
         cache[url] = {};
     }
 
-    const body = btoa(
-        encodeURIComponent(await clonedResponse.text()).replace(
-            /%([0-9A-F]{2})/g,
-            (match, p1) => String.fromCharCode(parseInt(p1, 16))
-        )
-    );
+    const body = Buffer.from(await clonedResponse.arrayBuffer()).toString("base64");
     const status = clonedResponse.status;
     const resp_headers = clonedResponse.headers;
     if (headers["RSC"]) {
