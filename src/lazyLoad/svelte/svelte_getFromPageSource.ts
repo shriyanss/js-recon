@@ -47,11 +47,7 @@ const svelte_getFromPageSource = async (url) => {
         console.log(chalk.red("[!] No JS files found from the page source"));
         return [];
     } else {
-        console.log(
-            chalk.green(
-                `[✓] Found ${foundUrls.length} JS files from the page source`
-            )
-        );
+        console.log(chalk.green(`[✓] Found ${foundUrls.length} JS files from the page source`));
     }
 
     // iterate through the foundUrls and resolve the paths

@@ -12,11 +12,8 @@ const isFetchIdentifier = (node) => {
 const isFetchFallback = (node) => {
     // x ?? fetch      OR     cond ? x : fetch
     return (
-        (node.type === "LogicalExpression" &&
-            node.right &&
-            isFetchIdentifier(node.right)) ||
-        (node.type === "ConditionalExpression" &&
-            isFetchIdentifier(node.alternate))
+        (node.type === "LogicalExpression" && node.right && isFetchIdentifier(node.right)) ||
+        (node.type === "ConditionalExpression" && isFetchIdentifier(node.alternate))
     );
 };
 
@@ -79,10 +76,7 @@ const getFetchInstances = async (chunks: Chunks, output, formats) => {
             // @ts-ignore
             binding.referencePaths.forEach((ref) => {
                 const parent = ref.parent;
-                if (
-                    parent.type === "CallExpression" &&
-                    parent.callee === ref.node
-                ) {
+                if (parent.type === "CallExpression" && parent.callee === ref.node) {
                     const { line, column } = ref.node.loc.start;
                     console.log(
                         chalk.magenta(
@@ -112,11 +106,7 @@ const getFetchInstances = async (chunks: Chunks, output, formats) => {
     if (formats.includes("json")) {
         const chunks_json = JSON.stringify(chunks, null, 2);
         fs.writeFileSync(`${output}.json`, chunks_json);
-        console.log(
-            chalk.green(
-                `[✓] Saved webpack with fetch instances to ${output}.json`
-            )
-        );
+        console.log(chalk.green(`[✓] Saved webpack with fetch instances to ${output}.json`));
     }
 
     return chunk_copy;

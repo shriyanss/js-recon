@@ -4,25 +4,14 @@ import { Scope } from "@babel/traverse";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
-export const resolveNodeValue = (
-    node: Node,
-    scope: Scope,
-    nodeCode: string,
-    callType: "fetch" | "axios"
-): any => {
+export const resolveNodeValue = (node: Node, scope: Scope, nodeCode: string, callType: "fetch" | "axios"): any => {
     if (!node) return null;
 
     // fetch specific ops
     if (callType === "fetch") {
         // check if it is a JSON.stringify call
-        if (
-            node.type === "CallExpression" &&
-            node.callee.type === "MemberExpression"
-        ) {
-            if (
-                node.callee.property.type === "Identifier" &&
-                node.callee.property.name === "stringify"
-            ) {
+        if (node.type === "CallExpression" && node.callee.type === "MemberExpression") {
+            if (node.callee.property.type === "Identifier" && node.callee.property.name === "stringify") {
                 // if so, then first get the args for it
                 const args = node.arguments;
 
@@ -31,18 +20,14 @@ export const resolveNodeValue = (
                     // if it is an object, then convert stringify it
                     const obj: { [key: string]: any } = {};
                     for (const prop of args[0].properties) {
-                        if (
-                            prop.type === "ObjectProperty" &&
-                            prop.key.type === "Identifier"
-                        ) {
+                        if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                             const key = prop.key.name;
                             if (prop.value.type === "Identifier") {
                                 obj[key] = prop.value.name;
                             } else if (
                                 prop.value.type === "CallExpression" &&
                                 prop.value.callee.type === "MemberExpression" &&
-                                prop.value.callee.property.type ===
-                                    "Identifier" &&
+                                prop.value.callee.property.type === "Identifier" &&
                                 prop.value.callee.property.name === "stringify"
                             ) {
                                 obj[key] = "[call to object...]";
@@ -74,12 +59,7 @@ export const resolveNodeValue = (
             for (let i = 0; i < node.quasis.length; i++) {
                 result += node.quasis[i].value.raw;
                 if (i < node.expressions.length) {
-                    result += resolveNodeValue(
-                        node.expressions[i],
-                        scope,
-                        nodeCode,
-                        callType
-                    );
+                    result += resolveNodeValue(node.expressions[i], scope, nodeCode, callType);
                 }
             }
             return result;
@@ -87,12 +67,7 @@ export const resolveNodeValue = (
         case "Identifier": {
             const binding = scope.getBinding(node.name);
             if (binding && binding.path.node.init) {
-                return resolveNodeValue(
-                    binding.path.node.init,
-                    scope,
-                    nodeCode,
-                    callType
-                );
+                return resolveNodeValue(binding.path.node.init, scope, nodeCode, callType);
             }
             return `[unresolved: ${node.name}]`;
         }
@@ -102,31 +77,16 @@ export const resolveNodeValue = (
                 if (prop.type === "ObjectProperty") {
                     let key;
                     if (prop.computed) {
-                        key = resolveNodeValue(
-                            prop.key,
-                            scope,
-                            nodeCode,
-                            callType
-                        );
+                        key = resolveNodeValue(prop.key, scope, nodeCode, callType);
                     } else if (prop.key.type === "Identifier") {
                         key = prop.key.name;
                     } else if (prop.key.type === "StringLiteral") {
                         key = prop.key.value;
                     }
-                    const value = resolveNodeValue(
-                        prop.value,
-                        scope,
-                        nodeCode,
-                        callType
-                    );
+                    const value = resolveNodeValue(prop.value, scope, nodeCode, callType);
                     obj[key] = value;
                 } else if (prop.type === "SpreadElement") {
-                    const spreadObj = resolveNodeValue(
-                        prop.argument,
-                        scope,
-                        nodeCode,
-                        callType
-                    );
+                    const spreadObj = resolveNodeValue(prop.argument, scope, nodeCode, callType);
                     if (typeof spreadObj === "object" && spreadObj !== null) {
                         Object.assign(obj, spreadObj);
                     }
@@ -135,21 +95,11 @@ export const resolveNodeValue = (
             return obj;
         }
         case "MemberExpression": {
-            const object = resolveNodeValue(
-                node.object,
-                scope,
-                nodeCode,
-                callType
-            );
+            const object = resolveNodeValue(node.object, scope, nodeCode, callType);
             if (typeof object === "object" && object !== null) {
                 let propertyName;
                 if (node.computed) {
-                    propertyName = resolveNodeValue(
-                        node.property,
-                        scope,
-                        nodeCode,
-                        callType
-                    );
+                    propertyName = resolveNodeValue(node.property, scope, nodeCode, callType);
                 } else if (node.property.type === "Identifier") {
                     propertyName = node.property.name;
                 }
@@ -163,12 +113,7 @@ export const resolveNodeValue = (
                 node.callee.property.type === "Identifier" &&
                 node.callee.property.name === "toString"
             ) {
-                return resolveNodeValue(
-                    node.callee.object,
-                    scope,
-                    nodeCode,
-                    callType
-                );
+                return resolveNodeValue(node.callee.object, scope, nodeCode, callType);
             }
             let calleeName = "[unknown]";
             if (node.callee.type === "Identifier") {
@@ -179,11 +124,7 @@ export const resolveNodeValue = (
             // .concat() with varying arguments end up here. They needs to be resolved as a string
 
             // first, match as regex
-            if (
-                nodeCode
-                    .replace(/\n\s*/g, "")
-                    .match(/^"[\d\w\/]*"(\.concat\(.+\))+$/)
-            ) {
+            if (nodeCode.replace(/\n\s*/g, "").match(/^"[\d\w\/]*"(\.concat\(.+\))+$/)) {
                 // parse it separately with ast
                 const ast = parser.parse(nodeCode, {
                     sourceType: "unambiguous",
@@ -242,9 +183,7 @@ export const resolveNodeValue = (
                             } else {
                                 concatCalls.unshift([
                                     `[${current.type} -> ${
-                                        current.type === "MemberExpression"
-                                            ? current.property?.name
-                                            : ""
+                                        current.type === "MemberExpression" ? current.property?.name : ""
                                     }]`,
                                 ]);
                             }
@@ -265,17 +204,8 @@ export const resolveNodeValue = (
             return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
         }
         case "NewExpression": {
-            if (
-                node.callee.type === "Identifier" &&
-                node.callee.name === "URL" &&
-                node.arguments.length > 0
-            ) {
-                return resolveNodeValue(
-                    node.arguments[0],
-                    scope,
-                    nodeCode,
-                    callType
-                );
+            if (node.callee.type === "Identifier" && node.callee.name === "URL" && node.arguments.length > 0) {
+                return resolveNodeValue(node.arguments[0], scope, nodeCode, callType);
             }
             return `[unresolved new expression]`;
         }
@@ -287,12 +217,7 @@ export const resolveNodeValue = (
             return resolveNodeValue(node.right, scope, nodeCode, callType);
         }
         case "ConditionalExpression": {
-            const consequent = resolveNodeValue(
-                node.consequent,
-                scope,
-                nodeCode,
-                callType
-            );
+            const consequent = resolveNodeValue(node.consequent, scope, nodeCode, callType);
             if (consequent && !String(consequent).startsWith("[")) {
                 return consequent;
             }
@@ -300,18 +225,8 @@ export const resolveNodeValue = (
         }
         case "BinaryExpression": {
             const left = resolveNodeValue(node.left, scope, nodeCode, callType);
-            const right = resolveNodeValue(
-                node.right,
-                scope,
-                nodeCode,
-                callType
-            );
-            if (
-                left !== null &&
-                right !== null &&
-                !String(left).startsWith("[") &&
-                !String(right).startsWith("[")
-            ) {
+            const right = resolveNodeValue(node.right, scope, nodeCode, callType);
+            if (left !== null && right !== null && !String(left).startsWith("[") && !String(right).startsWith("[")) {
                 // eslint-disable-next-line default-case
                 switch (node.operator) {
                     case "+":
@@ -331,9 +246,7 @@ export const resolveStringOps = (rawExpr: string): string => {
     if (!rawExpr || typeof rawExpr !== "string") return rawExpr;
 
     // Quick check for pattern "<string literal>.concat(... )"
-    const concatMatch = rawExpr.match(
-        /^(\s*["'`])(.*?)(\1)\.concat\(([\s\S]*)\)$/
-    );
+    const concatMatch = rawExpr.match(/^(\s*["'`])(.*?)(\1)\.concat\(([\s\S]*)\)$/);
     if (!concatMatch) {
         // Not in expected pattern – return as-is for now.
         return rawExpr;

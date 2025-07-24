@@ -22,8 +22,7 @@ const getWebpackConnections = async (directory, output, formats) => {
         );
         const provider = globals.getAiServiceProvider();
         if (provider === "openai") {
-            const apiKey =
-                globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
+            const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
             if (!apiKey) {
                 console.log(
                     chalk.red(
@@ -39,9 +38,7 @@ const getWebpackConnections = async (directory, output, formats) => {
     // if the output file already exists, and AI mode is enabled, skip coz it burns $$$
     if (fs.existsSync(`${output}.json`) && globals.getAi().length > 0) {
         console.log(
-            chalk.yellow(
-                `[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`
-            )
+            chalk.yellow(`[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`)
         );
         const chunks = JSON.parse(fs.readFileSync(`${output}.json`, "utf8"));
         return chunks;
@@ -69,23 +66,13 @@ const getWebpackConnections = async (directory, output, formats) => {
     // read all the files, and get the chunks
     for (const file of files) {
         // if the first three lines of the file doesn't contain `self.webpackChunk_N_E`, continue
-        const firstThreeLines = fs
-            .readFileSync(path.join(directory, file.toString()), "utf8")
-            .split("\n")
-            .slice(0, 3);
-        if (
-            !firstThreeLines.some((line) =>
-                line.includes("self.webpackChunk_N_E")
-            )
-        ) {
+        const firstThreeLines = fs.readFileSync(path.join(directory, file.toString()), "utf8").split("\n").slice(0, 3);
+        if (!firstThreeLines.some((line) => line.includes("self.webpackChunk_N_E"))) {
             continue;
         }
 
         // read the file
-        const code = fs.readFileSync(
-            path.join(directory, file.toString()),
-            "utf8"
-        );
+        const code = fs.readFileSync(path.join(directory, file.toString()), "utf8");
 
         // parse the code with ast
         let ast;
@@ -105,10 +92,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                 const callee = path.get("callee");
 
                 // check if the call expression is a push to a webpack chunk
-                if (
-                    !callee.isMemberExpression() ||
-                    !callee.get("property").isIdentifier({ name: "push" })
-                ) {
+                if (!callee.isMemberExpression() || !callee.get("property").isIdentifier({ name: "push" })) {
                     return;
                 }
 
@@ -121,9 +105,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     !(
                         object.isMemberExpression() &&
                         object.get("property").isIdentifier() &&
-                        object
-                            .get("property")
-                            .node.name.startsWith("webpackChunk")
+                        object.get("property").node.name.startsWith("webpackChunk")
                     )
                 ) {
                     return;
@@ -143,21 +125,12 @@ const getWebpackConnections = async (directory, output, formats) => {
                         for (const prop of properties) {
                             if (prop.isObjectProperty()) {
                                 const key = prop.get("key");
-                                if (
-                                    key.isNumericLiteral() ||
-                                    key.isStringLiteral()
-                                ) {
+                                if (key.isNumericLiteral() || key.isStringLiteral()) {
                                     const keyValue = key.node.value;
                                     const function_code = code
                                         .slice(prop.node.start, prop.node.end)
-                                        .replace(
-                                            /^\s*[\w\d]+:\s+function\s+/,
-                                            `function webpack_${keyValue} `
-                                        )
-                                        .replace(
-                                            /^s*[\w\d]+:\s\(/,
-                                            `func_${keyValue} = (`
-                                        );
+                                        .replace(/^\s*[\w\d]+:\s+function\s+/, `function webpack_${keyValue} `)
+                                        .replace(/^s*[\w\d]+:\s\(/, `func_${keyValue} = (`);
                                     chunks[String(keyValue)] = {
                                         id: String(keyValue),
                                         description: "none",
@@ -255,17 +228,10 @@ const getWebpackConnections = async (directory, output, formats) => {
             activeThreads++;
             const promise = (async () => {
                 try {
-                    const description = await getCompletion(
-                        value.code,
-                        systemPrompt
-                    );
+                    const description = await getCompletion(value.code, systemPrompt);
                     return { key, description };
                 } catch (err) {
-                    console.log(
-                        chalk.red(
-                            `[!] Error generating description for chunk ${key}: ${err.message}`
-                        )
-                    );
+                    console.log(chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`));
                     return { key, description: "none" };
                 } finally {
                     activeThreads--;
@@ -279,25 +245,17 @@ const getWebpackConnections = async (directory, output, formats) => {
         results.forEach(({ key, description }) => {
             if (chunks[key]) {
                 chunks[key].description = description || "none";
-                console.log(
-                    chalk.green(
-                        `[✓] Generated description for ${key}: ${chunks[key].description}`
-                    )
-                );
+                console.log(chalk.green(`[✓] Generated description for ${key}: ${chunks[key].description}`));
             }
         });
     }
 
-    console.log(
-        chalk.green(`[✓] Found ${Object.keys(chunks).length} webpack functions`)
-    );
+    console.log(chalk.green(`[✓] Found ${Object.keys(chunks).length} webpack functions`));
 
     if (formats.includes("json")) {
         const chunks_json = JSON.stringify(chunks, null, 2);
         fs.writeFileSync(`${output}.json`, chunks_json);
-        console.log(
-            chalk.green(`[✓] Saved webpack connections to ${output}.json`)
-        );
+        console.log(chalk.green(`[✓] Saved webpack connections to ${output}.json`));
     }
 
     return chunks;

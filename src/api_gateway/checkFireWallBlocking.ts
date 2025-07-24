@@ -5,9 +5,7 @@ const checkFireWallBlocking = async (body: string): Promise<boolean> => {
     if (body.includes("<title>Just a moment...</title>")) {
         console.log(chalk.red("[!] Cloudflare detected"));
         return true;
-    } else if (
-        body.includes("<title>Attention Required! | Cloudflare</title>")
-    ) {
+    } else if (body.includes("<title>Attention Required! | Cloudflare</title>")) {
         console.log(chalk.red("[!] Cloudflare detected"));
         return true;
     }

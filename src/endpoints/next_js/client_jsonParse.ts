@@ -7,18 +7,14 @@ import path from "path";
 
 const client_jsonParse = async (directory: string): Promise<string[]> => {
     let foundUrls = [];
-    console.log(
-        chalk.cyan("[i] Searching for client-side paths in JSON.parse()")
-    );
+    console.log(chalk.cyan("[i] Searching for client-side paths in JSON.parse()"));
 
     // filter out the directories
     let files = fs.readdirSync(directory, {
         recursive: true,
         encoding: "utf8",
     });
-    files = files.filter(
-        (file) => !fs.statSync(path.join(directory, file)).isDirectory()
-    );
+    files = files.filter((file) => !fs.statSync(path.join(directory, file)).isDirectory());
 
     // filter out the subsequent requests files
     files = files.filter((file) => !file.startsWith("___subsequent_requests"));

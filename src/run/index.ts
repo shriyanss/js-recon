@@ -16,11 +16,7 @@ export default async (cmd) => {
 
     // check if the given URL is a file
     if (fs.existsSync(cmd.url)) {
-        console.log(
-            chalk.red(
-                `[!] Please provide a single URL. Parsing a list of URLs isn't available`
-            )
-        );
+        console.log(chalk.red(`[!] Please provide a single URL. Parsing a list of URLs isn't available`));
         console.log(
             chalk.yellow(
                 `To run the tool against, a list of targets, pass the file in '-u' flag of 'lazyload' module, and it will download the JS files`
@@ -50,18 +46,8 @@ export default async (cmd) => {
 
     console.log(chalk.bgGreenBright("[+] Starting analysis..."));
 
-    console.log(
-        chalk.bgCyan("[1/6] Running lazyload to download JavaScript files...")
-    );
-    await lazyLoad(
-        cmd.url,
-        cmd.output,
-        cmd.strictScope,
-        cmd.scope.split(","),
-        cmd.threads,
-        false,
-        ""
-    );
+    console.log(chalk.bgCyan("[1/6] Running lazyload to download JavaScript files..."));
+    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "");
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
     // globals.setTech("next");
@@ -84,23 +70,11 @@ export default async (cmd) => {
 
     // run strings
     console.log(chalk.bgCyan("[2/6] Running strings to extract endpoints..."));
-    await strings(
-        cmd.output,
-        "strings.json",
-        true,
-        "extracted_urls",
-        false,
-        false,
-        false
-    );
+    await strings(cmd.output, "strings.json", true, "extracted_urls", false, false, false);
     console.log(chalk.bgGreen("[+] Strings complete."));
 
     // run lazyload with subsequent requests
-    console.log(
-        chalk.bgCyan(
-            "[3/6] Running lazyload with subsequent requests to download JavaScript files..."
-        )
-    );
+    console.log(chalk.bgCyan("[3/6] Running lazyload with subsequent requests to download JavaScript files..."));
     await lazyLoad(
         cmd.url,
         cmd.output,
@@ -110,29 +84,15 @@ export default async (cmd) => {
         true,
         "extracted_urls.json"
     );
-    console.log(
-        chalk.bgGreen("[+] Lazyload with subsequent requests complete.")
-    );
+    console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 
     // run strings again to extract endpoints from the files that are downloaded in the previous step
-    console.log(
-        chalk.bgCyan("[4/6] Running strings again to extract endpoints...")
-    );
-    await strings(
-        cmd.output,
-        "strings.json",
-        true,
-        "extracted_urls",
-        cmd.secrets,
-        true,
-        true
-    );
+    console.log(chalk.bgCyan("[4/6] Running strings again to extract endpoints..."));
+    await strings(cmd.output, "strings.json", true, "extracted_urls", cmd.secrets, true, true);
     console.log(chalk.bgGreen("[+] Strings complete."));
 
     // now, run endpoints
-    console.log(
-        chalk.bgCyan("[5/6] Running endpoints to extract endpoints...")
-    );
+    console.log(chalk.bgCyan("[5/6] Running endpoints to extract endpoints..."));
     // check if the subsequent requests directory exists
     if (fs.existsSync(`output/${targetHost}/___subsequent_requests`)) {
         await endpoints(
@@ -146,23 +106,12 @@ export default async (cmd) => {
         );
         console.log(chalk.bgGreen("[+] Endpoints complete."));
     } else {
-        console.log(
-            chalk.bgYellow(
-                "[!] Subsequent requests directory does not exist. Skipping endpoints."
-            )
-        );
+        console.log(chalk.bgYellow("[!] Subsequent requests directory does not exist. Skipping endpoints."));
     }
 
     // now, run map
     console.log(chalk.bgCyan("[6/6] Running map to find functions..."));
-    await map(
-        cmd.output + "/" + targetHost,
-        "mapped",
-        ["json"],
-        globalsUtil.getTech(),
-        false,
-        false
-    );
+    await map(cmd.output + "/" + targetHost, "mapped", ["json"], globalsUtil.getTech(), false, false);
     console.log(chalk.bgGreen("[+] Map complete."));
 
     console.log(chalk.bgGreenBright("[+] Analysis complete."));

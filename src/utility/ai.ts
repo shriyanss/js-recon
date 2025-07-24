@@ -23,17 +23,12 @@ const ai = async () => {
     return returnVal;
 };
 
-async function getCompletion(
-    prompt,
-    systemPrompt = "You are a helpful assistant."
-) {
+async function getCompletion(prompt, systemPrompt = "You are a helpful assistant.") {
     const { client, model } = await ai();
     const provider = globals.getAiServiceProvider();
 
     if (!client) {
-        throw new Error(
-            `AI service provider "${provider}" is not supported or configured.`
-        );
+        throw new Error(`AI service provider "${provider}" is not supported or configured.`);
     }
 
     if (provider === "openai") {

@@ -14,15 +14,7 @@ import gen_json from "./gen_report/gen_json.js";
 const techs = ["Next.JS (next)"];
 const outputFormats = ["md", "json"];
 
-const endpoints = async (
-    url,
-    directory,
-    output,
-    outputFormat,
-    tech,
-    list,
-    subsequentRequestsDir
-) => {
+const endpoints = async (url, directory, output, outputFormat, tech, list, subsequentRequestsDir) => {
     console.log(chalk.cyan("[i] Loading endpoints module"));
 
     // list available technologies
@@ -69,35 +61,24 @@ const endpoints = async (
     console.log(chalk.cyan("[i] Extracting endpoints"));
 
     if (tech === "next") {
-        console.log(
-            chalk.cyan("[i] Checking for client-side paths for Next.JS")
-        );
+        console.log(chalk.cyan("[i] Checking for client-side paths for Next.JS"));
 
         // check if the subsequent requests directory is present
         if (!subsequentRequestsDir) {
             console.log(
-                chalk.red(
-                    "[!] Please provide a directory containing subsequent requests (--subsequent-requests-dir)"
-                )
+                chalk.red("[!] Please provide a directory containing subsequent requests (--subsequent-requests-dir)")
             );
             return;
         }
 
         // check if the subsequent requests directory exists
         if (!fs.existsSync(subsequentRequestsDir)) {
-            console.log(
-                chalk.red(
-                    "[!] Directory containing subsequent requests does not exist"
-                )
-            );
+            console.log(chalk.red("[!] Directory containing subsequent requests does not exist"));
             return;
         }
 
         let final_client_side: string[] = [];
-        const client_subsequentRequestsResult = await client_subsequentRequests(
-            subsequentRequestsDir,
-            url
-        );
+        const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
         final_client_side.push(...client_subsequentRequestsResult);
 
         // first, get all the webpacks
@@ -110,18 +91,10 @@ const endpoints = async (
         final_client_side.push(...client_jsonParseResult);
 
         if (outputFormat.includes("md")) {
-            const gen_markdownResult = await gen_markdown(
-                url,
-                final_client_side,
-                output
-            );
+            const gen_markdownResult = await gen_markdown(url, final_client_side, output);
         }
         if (outputFormat.includes("json")) {
-            const gen_jsonResult = await gen_json(
-                url,
-                final_client_side,
-                output
-            );
+            const gen_jsonResult = await gen_json(url, final_client_side, output);
         }
     }
 };

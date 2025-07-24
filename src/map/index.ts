@@ -10,11 +10,7 @@ import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
-import {
-    getOpenapi,
-    getOpenapiOutput,
-    getOpenapiOutputFile,
-} from "../utility/globals.js";
+import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 
 const availableTech = {
@@ -61,9 +57,7 @@ const map = async (
     }
 
     if (!directory) {
-        console.log(
-            chalk.red("[!] Please specify a directory with -d/--directory")
-        );
+        console.log(chalk.red("[!] Please specify a directory with -d/--directory"));
         return;
     }
 
@@ -88,9 +82,7 @@ const map = async (
             chunks = await getAxiosInstances(chunks, output, formats);
         } else {
             // read the JSON file, and load the value
-            chunks = JSON.parse(
-                readFileSync(`${output}.json`, { encoding: "utf8" })
-            );
+            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
         }
 
         // resolve fetch once you've got all
@@ -107,18 +99,11 @@ const map = async (
         if (getOpenapi() === true) {
             // convert the openapi output to JSON
             // it should be openapi v3 specification
-            const openapiSpec = generateOpenapiV3Spec(
-                getOpenapiOutput(),
-                chunks
-            );
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
             const openapiJson = JSON.stringify(openapiSpec, null, 2);
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
-            console.log(
-                chalk.green(
-                    `[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`
-                )
-            );
+            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
         }
     }
 };
