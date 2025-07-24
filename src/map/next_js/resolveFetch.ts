@@ -97,7 +97,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                         if (args.length > 1) {
                             const options = resolveNodeValue(args[1], path.scope, "", "fetch");
                             if (typeof options === "object" && options !== null) {
-                                console.log(chalk.green(`    Method: ${options.method || "GET"}`));
+                                console.log(chalk.green(`    Method: ${options.method || "UNKNOWN"}`));
                                 callMethod = options.method || "UNKNOWN";
                                 if (options.headers)
                                     console.log(chalk.green(`    Headers: ${JSON.stringify(options.headers)}`));
