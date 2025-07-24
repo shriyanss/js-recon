@@ -12,7 +12,7 @@ import { resolveNodeValue } from "../utils.js";
 const traverse = _traverse.default;
 
 const findLineNumberByContent = (fileContent: string, targetLineContent: string): number => {
-    const lines = fileContent.split('\n');
+    const lines = fileContent.split("\n");
     const trimmedTarget = targetLineContent.trim();
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].trim() === trimmedTarget) {
