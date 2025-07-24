@@ -81,7 +81,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 if (isFetchCall) {
                     console.log(
                         chalk.blue(
-                            `[+] Found fetch call in chunk ${chunk.id} (${filePath}) at L${path.node.loc.start.line}`
+                            `[+] Found fetch call in chunk ${chunk.id} ("${filePath}":${path.node.loc.start.line})`
                         )
                     );
                     functionFileLine = path.node.loc.start.line;
@@ -105,7 +105,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                 callHeaders = options.headers || {};
                                 callBody = options.body || "";
                             } else {
-                                console.log(chalk.yellow(`    Options: ${options}`));
+                                console.log(chalk.green(`    Options: ${options}`));
                             }
 
                             globals.addOpenapiOutput({

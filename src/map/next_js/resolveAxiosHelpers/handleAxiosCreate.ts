@@ -42,7 +42,7 @@ export const handleAxiosCreate = (
     if (axiosCreateVarName !== "") {
         console.log(
             chalk.magenta(
-                `[✓] Create function assigned to '${axiosCreateVarName}' found at ${directory}/${chunks[chunkName].file}:${axiosCreateLineNumber}`
+                `[✓] axios.create() assigned to '${axiosCreateVarName}' in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateLineNumber})`
             )
         );
 
@@ -72,8 +72,8 @@ export const handleAxiosCreate = (
                     let axiosCreateCallHeaders: any;
 
                     console.log(
-                        chalk.magenta(
-                            `[+] Found axios.create() call in chunk ${chunkName} at ${directory}/${chunks[chunkName].file}:${axiosCreateCallLineNumber}`
+                        chalk.blue(
+                            `[+] Found axios.create() call in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateCallLineNumber})`
                         )
                     );
 
@@ -101,11 +101,11 @@ export const handleAxiosCreate = (
                         }
                     }
 
-                    if (axiosCreateCallUrl) console.log(chalk.magenta(`    URL: ${axiosCreateCallUrl}`));
+                    if (axiosCreateCallUrl) console.log(chalk.green(`    URL: ${axiosCreateCallUrl}`));
                     if (axiosCreateCallMethod)
-                        console.log(chalk.magenta(`    Method: ${axiosCreateCallMethod.toUpperCase()}`));
-                    if (axiosCreateCallParams) console.log(chalk.magenta(`    Params: ${axiosCreateCallParams}`));
-                    if (axiosCreateCallHeaders) console.log(chalk.magenta(`    Headers: ${axiosCreateCallHeaders}`));
+                        console.log(chalk.green(`    Method: ${axiosCreateCallMethod.toUpperCase()}`));
+                    if (axiosCreateCallParams) console.log(chalk.green(`    Params: ${axiosCreateCallParams}`));
+                    if (axiosCreateCallHeaders) console.log(chalk.green(`    Headers: ${axiosCreateCallHeaders}`));
 
                     globals.addOpenapiOutput({
                         url: axiosCreateCallUrl || "",

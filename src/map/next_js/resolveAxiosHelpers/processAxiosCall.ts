@@ -104,7 +104,7 @@ export const processAxiosCall = (
         }
     }
 
-    console.log(chalk.blue(`[+] Found axios call in chunk ${chunkName} (${functionFile}) at L${functionFileLine}`));
+    console.log(chalk.blue(`[+] Found axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`));
     console.log(chalk.green(`    URL: ${callUrl}`));
     console.log(chalk.green(`    Method: ${callMethod}`));
     if (callBody) {
