@@ -35,7 +35,7 @@ const downloadLoadedJs = async (url) => {
         const req_url = request.url(); // Renamed to avoid conflict with outer 'url'
 
         // see if the request is a JS file, and is a get request
-        if (request.method() === "GET" && req_url.match(/https?:\/\/[a-z\._\-]+\/.+\.js\??.*/)) {
+        if (request.method() === "GET" && req_url.match(/https?:\/\/[a-z0-9:\._\-]+\/.+\.js\??.*/)) {
             js_urls_local.push(req_url);
         }
 
