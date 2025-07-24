@@ -2,11 +2,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import chalk from "chalk";
 import fs from "fs";
 
-const getAxiosInstances = async (
-    chunks: Chunks,
-    output: string,
-    formats: string[]
-) => {
+const getAxiosInstances = async (chunks: Chunks, output: string, formats: string[]) => {
     console.log(chalk.cyan("[i] Getting axios instances"));
 
     let chunkCopy = structuredClone(chunks);
@@ -45,11 +41,7 @@ const getAxiosInstances = async (
     if (formats.includes("json")) {
         const chunks_json = JSON.stringify(chunkCopy, null, 2);
         fs.writeFileSync(`${output}.json`, chunks_json);
-        console.log(
-            chalk.green(
-                `[✓] Saved webpack with axios instances to ${output}.json`
-            )
-        );
+        console.log(chalk.green(`[✓] Saved webpack with axios instances to ${output}.json`));
     }
 
     return chunkCopy;

@@ -37,11 +37,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 errorRecovery: true,
             });
         } catch (err) {
-            console.log(
-                chalk.red(
-                    `[!] Failed to parse file: ${filePath}. Error: ${err.message}`
-                )
-            );
+            console.log(chalk.red(`[!] Failed to parse file: ${filePath}. Error: ${err.message}`));
             continue;
         }
 
@@ -51,13 +47,8 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
         traverse(fileAst, {
             VariableDeclarator(path) {
                 if (path.node.id.type === "Identifier" && path.node.init) {
-                    if (
-                        path.node.init.type === "Identifier" &&
-                        path.node.init.name === "fetch"
-                    ) {
-                        const binding = path.scope.getBinding(
-                            path.node.id.name
-                        );
+                    if (path.node.init.type === "Identifier" && path.node.init.name === "fetch") {
+                        const binding = path.scope.getBinding(path.node.id.name);
                         if (binding) fetchAliases.add(binding);
                     }
                 }
@@ -90,63 +81,31 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 if (isFetchCall) {
                     console.log(
                         chalk.blue(
-                            `[+] Found fetch call in chunk ${chunk.id} (${filePath}) at L${
-                                path.node.loc.start.line
-                            }`
+                            `[+] Found fetch call in chunk ${chunk.id} (${filePath}) at L${path.node.loc.start.line}`
                         )
                     );
                     functionFileLine = path.node.loc.start.line;
                     const args = path.node.arguments;
                     if (args.length > 0) {
                         // extract the whole code from the main file just in case the resolution fails
-                        const argText = fileContent
-                            .slice(args[0].start, args[0].end)
-                            .replace(/\n\s*/g, "");
+                        const argText = fileContent.slice(args[0].start, args[0].end).replace(/\n\s*/g, "");
 
-                        const url = resolveNodeValue(
-                            args[0],
-                            path.scope,
-                            argText,
-                            "fetch"
-                        );
+                        const url = resolveNodeValue(args[0], path.scope, argText, "fetch");
                         callUrl = url;
                         console.log(chalk.green(`    URL: ${url}`));
 
                         if (args.length > 1) {
-                            const options = resolveNodeValue(
-                                args[1],
-                                path.scope,
-                                "",
-                                "fetch"
-                            );
-                            if (
-                                typeof options === "object" &&
-                                options !== null
-                            ) {
-                                console.log(
-                                    chalk.green(
-                                        `    Method: ${options.method || "GET"}`
-                                    )
-                                );
+                            const options = resolveNodeValue(args[1], path.scope, "", "fetch");
+                            if (typeof options === "object" && options !== null) {
+                                console.log(chalk.green(`    Method: ${options.method || "GET"}`));
                                 callMethod = options.method || "UNKNOWN";
                                 if (options.headers)
-                                    console.log(
-                                        chalk.green(
-                                            `    Headers: ${JSON.stringify(options.headers)}`
-                                        )
-                                    );
-                                if (options.body)
-                                    console.log(
-                                        chalk.green(
-                                            `    Body: ${JSON.stringify(options.body)}`
-                                        )
-                                    );
+                                    console.log(chalk.green(`    Headers: ${JSON.stringify(options.headers)}`));
+                                if (options.body) console.log(chalk.green(`    Body: ${JSON.stringify(options.body)}`));
                                 callHeaders = options.headers || {};
                                 callBody = options.body || "";
                             } else {
-                                console.log(
-                                    chalk.yellow(`    Options: ${options}`)
-                                );
+                                console.log(chalk.yellow(`    Options: ${options}`));
                             }
 
                             globals.addOpenapiOutput({

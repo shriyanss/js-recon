@@ -62,10 +62,7 @@ const UAs = [
     "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
-const readCache = async (
-    url: string,
-    headers: {}
-): Promise<Response | null> => {
+const readCache = async (url: string, headers: {}): Promise<Response | null> => {
     // first, check if the file exists or not
     if (!fs.existsSync(globals.getRespCacheFile())) {
         return null;
@@ -73,9 +70,7 @@ const readCache = async (
 
     // console.log("reading cache for", url);
     // open the cache file, build a Response, and return
-    const cache = JSON.parse(
-        fs.readFileSync(globals.getRespCacheFile(), "utf-8")
-    );
+    const cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
     if (cache[url]) {
         // check if the response contains the specific request headers
         // iterate through cache[url] and build a Response
@@ -86,23 +81,17 @@ const readCache = async (
         const rscEnabled = headers["RSC"] ? true : false;
         if (rscEnabled) {
             if (cache[url].rsc) {
-                return new Response(
-                    Buffer.from(cache[url].rsc.body_b64, "base64"),
-                    {
-                        status: cache[url].rsc.status,
-                        headers: cache[url].rsc.resp_headers,
-                    }
-                );
+                return new Response(Buffer.from(cache[url].rsc.body_b64, "base64"), {
+                    status: cache[url].rsc.status,
+                    headers: cache[url].rsc.resp_headers,
+                });
             }
         }
         if (!rscEnabled && cache[url] && cache[url].normal) {
-            return new Response(
-                Buffer.from(cache[url].normal.body_b64, "base64"),
-                {
-                    status: cache[url].normal.status,
-                    headers: cache[url].normal.resp_headers,
-                }
-            );
+            return new Response(Buffer.from(cache[url].normal.body_b64, "base64"), {
+                status: cache[url].normal.status,
+                headers: cache[url].normal.resp_headers,
+            });
         }
     }
     // console.log("cache not found for ", url);
@@ -120,16 +109,12 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     }
 
     // open the cache file, and write the response based on the special headers
-    const cache = JSON.parse(
-        fs.readFileSync(globals.getRespCacheFile(), "utf-8")
-    );
+    const cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
     if (!cache[url]) {
         cache[url] = {};
     }
 
-    const body = Buffer.from(await clonedResponse.arrayBuffer()).toString(
-        "base64"
-    );
+    const body = Buffer.from(await clonedResponse.arrayBuffer()).toString("base64");
     const status = clonedResponse.status;
     const resp_headers = clonedResponse.headers;
     if (headers["RSC"]) {
@@ -215,9 +200,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             } catch (err) {
                 counter++;
                 if (counter > 10) {
-                    console.log(
-                        chalk.red(`[!] Failed to fetch ${url} : ${err}`)
-                    );
+                    console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
                     return null;
                 }
                 // sleep 0.5 s before retrying
@@ -233,11 +216,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
         // CF first
         const resp_text = await res.text();
         if (resp_text.includes("/?bm-verify=")) {
-            console.log(
-                chalk.yellow(
-                    `[!] CF Firewall detected. Trying to bypass with headless browser`
-                )
-            );
+            console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
@@ -255,11 +234,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             }
             return new Response(content);
         } else if (resp_text.includes("<title>Just a moment...</title>")) {
-            console.log(
-                chalk.yellow(
-                    `[!] CF Firewall detected. Trying to bypass with headless browser`
-                )
-            );
+            console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,

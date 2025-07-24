@@ -9,8 +9,7 @@ const openapi = async (paths, output_file) => {
         openapi: "3.0.0",
         info: {
             title: "API Collection",
-            description:
-                "A collection of API endpoints discovered by js-recon.",
+            description: "A collection of API endpoints discovered by js-recon.",
             version: "1.0.0",
         },
         servers: [
@@ -34,27 +33,17 @@ const openapi = async (paths, output_file) => {
             description: `An endpoint discovered at ${pathKey}.`,
             responses: {
                 200: {
-                    description:
-                        "Successful response. The actual response will vary.",
+                    description: "Successful response. The actual response will vary.",
                 },
             },
         };
     }
 
     try {
-        await writeFile(
-            `${output_file}-openapi.json`,
-            JSON.stringify(openapiData, null, 2)
-        );
-        console.log(
-            chalk.green(
-                `[✓] OpenAPI v3 file saved to: ${output_file}-openapi.json`
-            )
-        );
+        await writeFile(`${output_file}-openapi.json`, JSON.stringify(openapiData, null, 2));
+        console.log(chalk.green(`[✓] OpenAPI v3 file saved to: ${output_file}-openapi.json`));
     } catch (error) {
-        console.error(
-            chalk.red(`[!] Error writing OpenAPI file: ${error.message}`)
-        );
+        console.error(chalk.red(`[!] Error writing OpenAPI file: ${error.message}`));
     }
 };
 

@@ -18,11 +18,7 @@ function extractStrings(node) {
     const seen = new WeakSet();
 
     function recurse(currentNode) {
-        if (
-            !currentNode ||
-            typeof currentNode !== "object" ||
-            seen.has(currentNode)
-        ) {
+        if (!currentNode || typeof currentNode !== "object" || seen.has(currentNode)) {
             return;
         }
         seen.add(currentNode);
@@ -181,13 +177,8 @@ const strings = async (
     console.log(chalk.green(`[✓] Extracted strings to ${output_file}`));
 
     // if -p is enabled, but not -e, or the same case with the --openapi flag
-    if (
-        (permutate_option && !extract_urls) ||
-        (openapi_option && !extract_urls)
-    ) {
-        console.log(
-            chalk.red("[!] Please enable -e flag for -p or --openapi flag")
-        );
+    if ((permutate_option && !extract_urls) || (openapi_option && !extract_urls)) {
+        console.log(chalk.red("[!] Please enable -e flag for -p or --openapi flag"));
         return;
     }
 
@@ -207,10 +198,7 @@ const strings = async (
                 if (string.match(/^\/.+$/)) {
                     // like /path/resource
                     // make sure that the path doesn't start with two special chars except '/_'
-                    if (
-                        string.match(/^\/[^a-zA-Z0-9]/) &&
-                        !string.startsWith("/_")
-                    ) {
+                    if (string.match(/^\/[^a-zA-Z0-9]/) && !string.startsWith("/_")) {
                         // ignore the path
                     } else {
                         paths.push(string);
@@ -231,28 +219,17 @@ const strings = async (
         urls = [...new Set(urls)];
         paths = [...new Set(paths)];
 
-        console.log(
-            chalk.cyan(
-                `[i] Found ${urls.length} URLs and ${paths.length} paths`
-            )
-        );
+        console.log(chalk.cyan(`[i] Found ${urls.length} URLs and ${paths.length} paths`));
 
         // write to a JSON file
-        const formatted_urls = await prettier.format(
-            JSON.stringify({ urls, paths }),
-            {
-                parser: "json",
-                printWidth: 80,
-                singleQuote: true,
-            }
-        );
+        const formatted_urls = await prettier.format(JSON.stringify({ urls, paths }), {
+            parser: "json",
+            printWidth: 80,
+            singleQuote: true,
+        });
         fs.writeFileSync(`${extracted_url_path}.json`, formatted_urls);
 
-        console.log(
-            chalk.green(
-                `[✓] Written URLs and paths to ${extracted_url_path}.json`
-            )
-        );
+        console.log(chalk.green(`[✓] Written URLs and paths to ${extracted_url_path}.json`));
 
         if (permutate_option) {
             await permutate(urls, paths, extracted_url_path);
@@ -273,9 +250,7 @@ const strings = async (
             const foundSecrets = await secrets(fileContent);
             if (foundSecrets.length > 0) {
                 for (const foundSecret of foundSecrets) {
-                    console.log(
-                        chalk.green(`[✓] Found ${foundSecret.name} in ${file}`)
-                    );
+                    console.log(chalk.green(`[✓] Found ${foundSecret.name} in ${file}`));
                     console.log(chalk.bgGreen(foundSecret.value));
                     total_secrets++;
                 }

@@ -54,15 +54,10 @@ const checkHref = async (files, url) => {
                         let externalValue = null;
 
                         for (const prop of properties) {
-                            const prop_name = jsCode.substring(
-                                prop.key.start,
-                                prop.key.end
-                            );
+                            const prop_name = jsCode.substring(prop.key.start, prop.key.end);
                             if (prop_name === '"href"') {
                                 hasHrefOrUrl = true;
-                                hrefValue = jsCode
-                                    .substring(prop.value.start, prop.value.end)
-                                    .replace(/^"|"$/g, "");
+                                hrefValue = jsCode.substring(prop.value.start, prop.value.end).replace(/^"|"$/g, "");
                             }
                             if (prop_name === '"external"') {
                                 hasExternal = true;
@@ -76,20 +71,11 @@ const checkHref = async (files, url) => {
                         }
 
                         if (hasHrefOrUrl) {
-                            if (
-                                (hasExternal || hasChildren) &&
-                                !hrefValue.startsWith("#")
-                            ) {
+                            if ((hasExternal || hasChildren) && !hrefValue.startsWith("#")) {
                                 // if the path doesn't starts with a `/`, then resolve the path
-                                if (
-                                    !hrefValue.startsWith("/") &&
-                                    !hrefValue.startsWith("http")
-                                ) {
+                                if (!hrefValue.startsWith("/") && !hrefValue.startsWith("http")) {
                                     let path = file
-                                        .replace(
-                                            /output\/[a-zA-Z0-9_\.\-]+\/___subsequent_requests\//,
-                                            "/"
-                                        )
+                                        .replace(/output\/[a-zA-Z0-9_\.\-]+\/___subsequent_requests\//, "/")
                                         .split("/");
                                     // remove the last one
                                     path.pop();
@@ -97,10 +83,7 @@ const checkHref = async (files, url) => {
                                     const fileUrl = url + path;
 
                                     // now, resolve the path
-                                    const resolvedPath = new URL(
-                                        hrefValue,
-                                        fileUrl
-                                    ).href;
+                                    const resolvedPath = new URL(hrefValue, fileUrl).href;
                                     finds.push({
                                         href: resolvedPath,
                                         external: externalValue,
@@ -166,10 +149,7 @@ const checkSlug = async (files, url) => {
                         if (obj.slug) {
                             const slugUrl = new URL(
                                 obj.slug,
-                                file.replace(
-                                    /output\/[a-zA-Z0-9_\.\-]+\/___subsequent_requests\//,
-                                    url + "/"
-                                )
+                                file.replace(/output\/[a-zA-Z0-9_\.\-]+\/___subsequent_requests\//, url + "/")
                             ).href;
                             slugUrls.push(slugUrl);
                         }

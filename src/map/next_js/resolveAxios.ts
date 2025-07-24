@@ -20,9 +20,7 @@ const astNodeToJsonString = (node: Node, code: string): string => {
             const props = node.properties.map((prop) => {
                 if (prop.type === "ObjectProperty") {
                     const key =
-                        prop.key.type === "Identifier"
-                            ? `"${prop.key.name}"`
-                            : astNodeToJsonString(prop.key, code);
+                        prop.key.type === "Identifier" ? `"${prop.key.name}"` : astNodeToJsonString(prop.key, code);
                     const value = astNodeToJsonString(prop.value, code);
                     return `${key}: ${value}`;
                 }
@@ -31,9 +29,7 @@ const astNodeToJsonString = (node: Node, code: string): string => {
             return `{${props.join(", ")}}`;
         }
         case "ArrayExpression": {
-            const elements = node.elements.map((elem) =>
-                astNodeToJsonString(elem, code)
-            );
+            const elements = node.elements.map((elem) => astNodeToJsonString(elem, code));
             return `[${elements.join(", ")}]`;
         }
         case "StringLiteral": {
@@ -86,11 +82,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                 if (importName === axiosExportFunctionId) {
                     axiosImportedTo[chunkName] = axiosExportFunctionId;
 
-                    console.log(
-                        chalk.green(
-                            `[✓] ${chunkName} imports axios client ${axiosExportFunctionId}`
-                        )
-                    );
+                    console.log(chalk.green(`[✓] ${chunkName} imports axios client ${axiosExportFunctionId}`));
                 }
             }
         }
@@ -139,19 +131,12 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                             // see if it is calling the third arg
                             if (assignmentValue.callee.name === thirdArg) {
                                 // finally, check if the first argument is equal to the axios instance
-                                const thisFunctionAssignmentValue =
-                                    assignmentValue.arguments[0].value.toString();
-                                const targetFunctionAssignmentValue =
-                                    axiosImportedTo[chunkName];
-                                if (
-                                    thisFunctionAssignmentValue ===
-                                    targetFunctionAssignmentValue
-                                ) {
+                                const thisFunctionAssignmentValue = assignmentValue.arguments[0].value.toString();
+                                const targetFunctionAssignmentValue = axiosImportedTo[chunkName];
+                                if (thisFunctionAssignmentValue === targetFunctionAssignmentValue) {
                                     // print the variable name
                                     console.log(
-                                        chalk.green(
-                                            `[✓] ${chunkName} uses axios client initialized in ${varName}`
-                                        )
+                                        chalk.green(`[✓] ${chunkName} uses axios client initialized in ${varName}`)
                                     );
                                     axiosInstance = varName;
                                 }
@@ -170,12 +155,8 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 path.node.object.object.name === axiosInstance
                             ) {
                                 // This handles o.A.post
-                                const codeSnippet =
-                                    chunkCode.split("\n")[
-                                        path.node.loc.start.line - 1
-                                    ];
-                                const firstProp =
-                                    path.node.object.property.name; // A
+                                const codeSnippet = chunkCode.split("\n")[path.node.loc.start.line - 1];
+                                const firstProp = path.node.object.property.name; // A
                                 const secondProp = path.node.property.name; // post
 
                                 let axiosFirstArg: Node;
@@ -198,10 +179,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     const args = path.parentPath.node.arguments;
                                     if (args.length > 0) {
                                         axiosFirstArg = args[0];
-                                        axiosFirstArgText = chunkCode.slice(
-                                            axiosFirstArg.start,
-                                            axiosFirstArg.end
-                                        );
+                                        axiosFirstArgText = chunkCode.slice(axiosFirstArg.start, axiosFirstArg.end);
 
                                         // try to resolve this by seeing where this ends at
                                         // the code snippet is `"/api/teams/".concat(i, "/members")`
@@ -209,29 +187,20 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         // so, first of all see if this is a string operation
 
                                         // regex for only concat ops
-                                        const concatRegex =
-                                            /".*"(\.concat\(.+\))+/;
-                                        if (
-                                            concatRegex.test(axiosFirstArgText)
-                                        ) {
+                                        const concatRegex = /".*"(\.concat\(.+\))+/;
+                                        if (concatRegex.test(axiosFirstArgText)) {
                                             // now, resolve it
 
                                             // assuming that the code is like `"/api/teams/".concat(i, "/members")`
                                             // Replace variables with placeholders using resolveStringOps utility
-                                            const varsReplaced =
-                                                resolveStringOps(
-                                                    axiosFirstArgText
-                                                );
+                                            const varsReplaced = resolveStringOps(axiosFirstArgText);
 
                                             callUrl = varsReplaced;
                                         }
                                     }
                                     if (args.length > 1) {
                                         axiosSecondArg = args[1];
-                                        axiosSecondArgText = chunkCode.slice(
-                                            axiosSecondArg.start,
-                                            axiosSecondArg.end
-                                        );
+                                        axiosSecondArgText = chunkCode.slice(axiosSecondArg.start, axiosSecondArg.end);
                                     }
                                 }
 
@@ -243,24 +212,13 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 chunkId = chunkName;
 
                                 // now, get the function file
-                                functionFile =
-                                    directory + "/" + chunks[chunkId].file;
+                                functionFile = directory + "/" + chunks[chunkId].file;
 
                                 // now, get the function file line
                                 // to do so, iterate through the lines of code, and see if it is equal to codeSnippet
-                                const codeFileContent = fs.readFileSync(
-                                    functionFile,
-                                    "utf-8"
-                                );
-                                for (
-                                    let i = 0;
-                                    i < codeFileContent.split("\n").length;
-                                    i++
-                                ) {
-                                    if (
-                                        codeFileContent.split("\n")[i] ===
-                                        codeSnippet
-                                    ) {
+                                const codeFileContent = fs.readFileSync(functionFile, "utf-8");
+                                for (let i = 0; i < codeFileContent.split("\n").length; i++) {
+                                    if (codeFileContent.split("\n")[i] === codeSnippet) {
                                         functionFileLine = i + 1;
                                         break;
                                     }
@@ -268,14 +226,11 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
 
                                 // resolve the URL first in case it hasn't been resolved earlier
                                 if (callUrl === undefined) {
-                                    if (
-                                        axiosFirstArg?.type === "StringLiteral"
-                                    ) {
+                                    if (axiosFirstArg?.type === "StringLiteral") {
                                         callUrl = axiosFirstArg.value;
                                     } else {
                                         // since it isn't a string, we have to resolve it
-                                        const callExpressionPath =
-                                            path.parentPath;
+                                        const callExpressionPath = path.parentPath;
                                         // will also pass the code snippet just in case it could resolve it
                                         callUrl = resolveNodeValue(
                                             axiosFirstArg,
@@ -287,50 +242,23 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 }
 
                                 // now, go for the method
-                                if (
-                                    secondProp === "post" ||
-                                    secondProp === "POST"
-                                ) {
+                                if (secondProp === "post" || secondProp === "POST") {
                                     callMethod = "POST";
-                                } else if (
-                                    secondProp === "get" ||
-                                    secondProp === "GET"
-                                ) {
+                                } else if (secondProp === "get" || secondProp === "GET") {
                                     callMethod = "GET";
-                                } else if (
-                                    secondProp === "put" ||
-                                    secondProp === "PUT"
-                                ) {
+                                } else if (secondProp === "put" || secondProp === "PUT") {
                                     callMethod = "PUT";
-                                } else if (
-                                    secondProp === "delete" ||
-                                    secondProp === "DELETE"
-                                ) {
+                                } else if (secondProp === "delete" || secondProp === "DELETE") {
                                     callMethod = "DELETE";
-                                } else if (
-                                    secondProp === "patch" ||
-                                    secondProp === "PATCH"
-                                ) {
+                                } else if (secondProp === "patch" || secondProp === "PATCH") {
                                     callMethod = "PATCH";
-                                } else if (
-                                    secondProp === "head" ||
-                                    secondProp === "HEAD"
-                                ) {
+                                } else if (secondProp === "head" || secondProp === "HEAD") {
                                     callMethod = "HEAD";
-                                } else if (
-                                    secondProp === "options" ||
-                                    secondProp === "OPTIONS"
-                                ) {
+                                } else if (secondProp === "options" || secondProp === "OPTIONS") {
                                     callMethod = "OPTIONS";
-                                } else if (
-                                    secondProp === "trace" ||
-                                    secondProp === "TRACE"
-                                ) {
+                                } else if (secondProp === "trace" || secondProp === "TRACE") {
                                     callMethod = "TRACE";
-                                } else if (
-                                    secondProp === "connect" ||
-                                    secondProp === "CONNECT"
-                                ) {
+                                } else if (secondProp === "connect" || secondProp === "CONNECT") {
                                     callMethod = "CONNECT";
                                 } else if (secondProp === "create") {
                                     // since this is create, it is not a usual method
@@ -346,43 +274,21 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         path.parentPath.isCallExpression() &&
                                         path.parentPath.parentPath.isVariableDeclarator()
                                     ) {
-                                        const varDeclarator =
-                                            path.parentPath.parentPath.node;
-                                        if (
-                                            varDeclarator.id.type ===
-                                            "Identifier"
-                                        ) {
-                                            axiosCreateVarName =
-                                                varDeclarator.id.name;
+                                        const varDeclarator = path.parentPath.parentPath.node;
+                                        if (varDeclarator.id.type === "Identifier") {
+                                            axiosCreateVarName = varDeclarator.id.name;
 
                                             const axiosCreateLineContent =
-                                                chunkCode.split("\n")[
-                                                    varDeclarator.loc.start
-                                                        .line - 1
-                                                ];
+                                                chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
 
                                             // iterate through the chunkCode, and find which line number it is
                                             const chunkFile = fs.readFileSync(
-                                                fsPath.join(
-                                                    directory,
-                                                    chunks[chunkName].file
-                                                ),
+                                                fsPath.join(directory, chunks[chunkName].file),
                                                 "utf-8"
                                             );
-                                            for (
-                                                let i = 0;
-                                                i <
-                                                chunkFile.split("\n").length;
-                                                i++
-                                            ) {
-                                                if (
-                                                    chunkFile
-                                                        .split("\n")
-                                                        [i].trim() ===
-                                                    axiosCreateLineContent.trim()
-                                                ) {
-                                                    axiosCreateLineNumber =
-                                                        i + 1;
+                                            for (let i = 0; i < chunkFile.split("\n").length; i++) {
+                                                if (chunkFile.split("\n")[i].trim() === axiosCreateLineContent.trim()) {
+                                                    axiosCreateLineNumber = i + 1;
                                                     break;
                                                 }
                                             }
@@ -399,50 +305,28 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         // find all the places where this var is called like axiosCreateVarName({})
                                         traverse(ast, {
                                             CallExpression(path) {
-                                                if (
-                                                    path.node.callee.name ===
-                                                    axiosCreateVarName
-                                                ) {
+                                                if (path.node.callee.name === axiosCreateVarName) {
                                                     const axiosCreateLineContent =
-                                                        chunkCode.split("\n")[
-                                                            path.node.loc.start
-                                                                .line - 1
-                                                        ];
+                                                        chunkCode.split("\n")[path.node.loc.start.line - 1];
 
                                                     // iterate through the chunkCode, and find which line number it is
                                                     let axiosCreateCallLineNumber = 0;
-                                                    const chunkFile =
-                                                        fs.readFileSync(
-                                                            fsPath.join(
-                                                                directory,
-                                                                chunks[
-                                                                    chunkName
-                                                                ].file
-                                                            ),
-                                                            "utf-8"
-                                                        );
-                                                    for (
-                                                        let i = 0;
-                                                        i <
-                                                        chunkFile.split("\n")
-                                                            .length;
-                                                        i++
-                                                    ) {
+                                                    const chunkFile = fs.readFileSync(
+                                                        fsPath.join(directory, chunks[chunkName].file),
+                                                        "utf-8"
+                                                    );
+                                                    for (let i = 0; i < chunkFile.split("\n").length; i++) {
                                                         if (
-                                                            chunkFile
-                                                                .split("\n")
-                                                                [i].trim() ===
+                                                            chunkFile.split("\n")[i].trim() ===
                                                             axiosCreateLineContent.trim()
                                                         ) {
-                                                            axiosCreateCallLineNumber =
-                                                                i + 1;
+                                                            axiosCreateCallLineNumber = i + 1;
                                                             break;
                                                         }
                                                     }
 
                                                     // get the first arg of this, and check if it an {}
-                                                    const firstArg =
-                                                        path.node.arguments[0];
+                                                    const firstArg = path.node.arguments[0];
                                                     let axiosCreateCallUrl: string;
                                                     let axiosCreateCallMethod: string;
                                                     let axiosCreateCallParams: any;
@@ -454,98 +338,44 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                         )
                                                     );
 
-                                                    if (
-                                                        firstArg.type ===
-                                                        "ObjectExpression"
-                                                    ) {
+                                                    if (firstArg.type === "ObjectExpression") {
                                                         // get the properties of this object
-                                                        for (
-                                                            let i = 0;
-                                                            i <
-                                                            firstArg.properties
-                                                                .length;
-                                                            i++
-                                                        ) {
-                                                            const property =
-                                                                firstArg
-                                                                    .properties[
-                                                                    i
-                                                                ];
-                                                            if (
-                                                                property.key
-                                                                    .name ===
-                                                                "url"
-                                                            ) {
+                                                        for (let i = 0; i < firstArg.properties.length; i++) {
+                                                            const property = firstArg.properties[i];
+                                                            if (property.key.name === "url") {
                                                                 // if it is string, directly assign the value
-                                                                if (
-                                                                    property
-                                                                        .value
-                                                                        .type ===
-                                                                    "StringLiteral"
-                                                                ) {
-                                                                    axiosCreateCallUrl =
-                                                                        property
-                                                                            .value
-                                                                            .value;
+                                                                if (property.value.type === "StringLiteral") {
+                                                                    axiosCreateCallUrl = property.value.value;
                                                                 } else {
                                                                     // or resolve it using resolveNodeValue
-                                                                    const scope =
-                                                                        path
-                                                                            .parentPath
-                                                                            .scope;
-                                                                    const nodeCode =
-                                                                        chunkCode.slice(
-                                                                            axiosCreateCallLineNumber -
-                                                                                1,
-                                                                            axiosCreateCallLineNumber +
-                                                                                1
-                                                                        );
-                                                                    axiosCreateCallUrl =
-                                                                        resolveNodeValue(
-                                                                            property.value,
-                                                                            scope,
-                                                                            nodeCode,
-                                                                            "axios"
-                                                                        );
+                                                                    const scope = path.parentPath.scope;
+                                                                    const nodeCode = chunkCode.slice(
+                                                                        axiosCreateCallLineNumber - 1,
+                                                                        axiosCreateCallLineNumber + 1
+                                                                    );
+                                                                    axiosCreateCallUrl = resolveNodeValue(
+                                                                        property.value,
+                                                                        scope,
+                                                                        nodeCode,
+                                                                        "axios"
+                                                                    );
                                                                 }
-                                                            } else if (
-                                                                property.key
-                                                                    .name ===
-                                                                "method"
-                                                            ) {
-                                                                axiosCreateCallMethod =
-                                                                    property
-                                                                        .value
-                                                                        .value;
-                                                            } else if (
-                                                                property.key
-                                                                    .name ===
-                                                                "params"
-                                                            ) {
+                                                            } else if (property.key.name === "method") {
+                                                                axiosCreateCallMethod = property.value.value;
+                                                            } else if (property.key.name === "params") {
                                                                 // convert it using astNodeToJsonString
-                                                                axiosCreateCallParams =
-                                                                    astNodeToJsonString(
+                                                                axiosCreateCallParams = astNodeToJsonString(
+                                                                    property.value,
+                                                                    chunkCode
+                                                                );
+                                                            } else if (property.key.name === "headers") {
+                                                                // if the type of the value is an object
+                                                                if (property.value.type === "ObjectExpression") {
+                                                                    // use astNodeToJsonString
+                                                                    axiosCreateCallHeaders = astNodeToJsonString(
                                                                         property.value,
                                                                         chunkCode
                                                                     );
-                                                            } else if (
-                                                                property.key
-                                                                    .name ===
-                                                                "headers"
-                                                            ) {
-                                                                // if the type of the value is an object
-                                                                if (
-                                                                    property
-                                                                        .value
-                                                                        .type ===
-                                                                    "ObjectExpression"
-                                                                ) {
-                                                                    // use astNodeToJsonString
-                                                                    axiosCreateCallHeaders =
-                                                                        astNodeToJsonString(
-                                                                            property.value,
-                                                                            chunkCode
-                                                                        );
                                                                 }
                                                             }
                                                         }
@@ -554,11 +384,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                                     // now, print the request data
 
                                                     if (axiosCreateCallUrl) {
-                                                        console.log(
-                                                            chalk.magenta(
-                                                                `    URL: ${axiosCreateCallUrl}`
-                                                            )
-                                                        );
+                                                        console.log(chalk.magenta(`    URL: ${axiosCreateCallUrl}`));
                                                     }
 
                                                     if (axiosCreateCallMethod) {
@@ -571,44 +397,26 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
 
                                                     if (axiosCreateCallParams) {
                                                         console.log(
-                                                            chalk.magenta(
-                                                                `    Params: ${axiosCreateCallParams}`
-                                                            )
+                                                            chalk.magenta(`    Params: ${axiosCreateCallParams}`)
                                                         );
                                                     }
 
-                                                    if (
-                                                        axiosCreateCallHeaders
-                                                    ) {
+                                                    if (axiosCreateCallHeaders) {
                                                         console.log(
-                                                            chalk.magenta(
-                                                                `    Headers: ${axiosCreateCallHeaders}`
-                                                            )
+                                                            chalk.magenta(`    Headers: ${axiosCreateCallHeaders}`)
                                                         );
                                                     }
 
                                                     // push it to the api collection
                                                     globals.addOpenapiOutput({
-                                                        url:
-                                                            axiosCreateCallUrl ||
-                                                            "",
-                                                        method:
-                                                            axiosCreateCallMethod ||
-                                                            "",
-                                                        path:
-                                                            axiosCreateCallUrl ||
-                                                            "",
-                                                        headers:
-                                                            axiosCreateCallHeaders ||
-                                                            {},
-                                                        body:
-                                                            axiosCreateCallParams ||
-                                                            "",
+                                                        url: axiosCreateCallUrl || "",
+                                                        method: axiosCreateCallMethod || "",
+                                                        path: axiosCreateCallUrl || "",
+                                                        headers: axiosCreateCallHeaders || {},
+                                                        body: axiosCreateCallParams || "",
                                                         chunkId: chunkId,
-                                                        functionFile:
-                                                            functionFile,
-                                                        functionFileLine:
-                                                            axiosCreateCallLineNumber,
+                                                        functionFile: functionFile,
+                                                        functionFileLine: axiosCreateCallLineNumber,
                                                     });
                                                 }
                                             },
@@ -617,11 +425,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     }
                                 } else {
                                     callMethod = "UNKNOWN";
-                                    if (
-                                        globalConfig.axiosNonHttpMethods.includes(
-                                            secondProp
-                                        )
-                                    ) {
+                                    if (globalConfig.axiosNonHttpMethods.includes(secondProp)) {
                                         return;
                                     }
                                 }
@@ -630,23 +434,14 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                 if (axiosSecondArgText) {
                                     // see if axios second arg is an object in type {[key]: any, ...}
                                     // do this on axiosSecondArg
-                                    if (
-                                        axiosSecondArg?.type ===
-                                        "ObjectExpression"
-                                    ) {
+                                    if (axiosSecondArg?.type === "ObjectExpression") {
                                         // see if it contains data
                                         let dataFound = false;
                                         let responseTypeFound = false;
 
                                         // iterate through the properties
-                                        for (
-                                            let i = 0;
-                                            i <
-                                            axiosSecondArg.properties.length;
-                                            i++
-                                        ) {
-                                            const property =
-                                                axiosSecondArg.properties[i];
+                                        for (let i = 0; i < axiosSecondArg.properties.length; i++) {
+                                            const property = axiosSecondArg.properties[i];
                                             // @ts-ignore
                                             if (property.key.name === "data") {
                                                 dataFound = true;
@@ -654,8 +449,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                             }
                                             if (
                                                 // @ts-ignore
-                                                property.key.name ===
-                                                "responseType"
+                                                property.key.name === "responseType"
                                             ) {
                                                 responseTypeFound = true;
                                                 break;
@@ -665,22 +459,19 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         // if data is found, get the value of the `data` property
                                         if (dataFound) {
                                             // value of data
-                                            const dataValue: Node =
-                                                axiosSecondArg.properties.find(
-                                                    (property) =>
-                                                        // @ts-ignore
-                                                        property.key.name ===
-                                                        "data"
-                                                );
+                                            const dataValue: Node = axiosSecondArg.properties.find(
+                                                (property) =>
+                                                    // @ts-ignore
+                                                    property.key.name === "data"
+                                            );
                                             // slice the string
                                             // @ts-ignore
-                                            const dataValueText =
-                                                chunkCode.slice(
-                                                    // @ts-ignore
-                                                    dataValue.value.start,
-                                                    // @ts-ignore
-                                                    dataValue.value.end
-                                                );
+                                            const dataValueText = chunkCode.slice(
+                                                // @ts-ignore
+                                                dataValue.value.start,
+                                                // @ts-ignore
+                                                dataValue.value.end
+                                            );
 
                                             callBody = astNodeToJsonString(
                                                 // @ts-ignore
@@ -693,10 +484,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                             // and, if it's get, GET DOESN'T HAVE A BODY
                                         } else {
                                             // since it is not found, the second value should be the body
-                                            callBody = astNodeToJsonString(
-                                                axiosSecondArg,
-                                                chunkCode
-                                            );
+                                            callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
                                         }
                                     }
                                 }
@@ -708,14 +496,10 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     )
                                 );
                                 console.log(chalk.green(`    URL: ${callUrl}`));
-                                console.log(
-                                    chalk.green(`    Method: ${callMethod}`)
-                                );
+                                console.log(chalk.green(`    Method: ${callMethod}`));
 
                                 if (callBody) {
-                                    console.log(
-                                        chalk.green(`    Body: ${callBody}`)
-                                    );
+                                    console.log(chalk.green(`    Body: ${callBody}`));
                                 }
 
                                 globals.addOpenapiOutput({
@@ -732,11 +516,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                         },
                     });
                 } else {
-                    console.log(
-                        chalk.yellow(
-                            "[!] No axios instance found in " + chunkName
-                        )
-                    );
+                    console.log(chalk.yellow("[!] No axios instance found in " + chunkName));
                 }
             } else {
                 console.log(chalk.yellow("[!] No function uses axios client"));

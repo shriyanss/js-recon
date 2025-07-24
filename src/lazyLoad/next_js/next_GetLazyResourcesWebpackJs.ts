@@ -7,12 +7,7 @@ import inquirer from "inquirer";
 import CONFIG from "../../globalConfig.js";
 import makeRequest from "../../utility/makeReq.js";
 import execFunc from "../../utility/runSandboxed.js";
-import {
-    getJsonUrls,
-    getJsUrls,
-    pushToJsonUrls,
-    pushToJsUrls,
-} from "../globals.js"; // Import js_urls functions
+import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 import * as globals from "../../utility/globals.js";
 
 /**
@@ -24,9 +19,7 @@ import * as globals from "../../utility/globals.js";
  * absolute URLs pointing to JavaScript files found in require.ensure()
  * functions, or undefined if no webpack JS is found.
  */
-const next_GetLazyResourcesWebpackJs = async (
-    url: string
-): Promise<string[] | any> => {
+const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | any> => {
     const browser = await puppeteer.launch({
         headless: true,
         args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
@@ -41,20 +34,14 @@ const next_GetLazyResourcesWebpackJs = async (
         const req_url = request.url(); // Renamed to avoid conflict with outer 'url'
 
         // see if the request is a JS file, and is a get request
-        if (
-            request.method() === "GET" &&
-            req_url.match(/https?:\/\/[a-z\._\-]+\/.+\.js\??.*/)
-        ) {
+        if (request.method() === "GET" && req_url.match(/https?:\/\/[a-z\._\-]+\/.+\.js\??.*/)) {
             if (!getJsUrls().includes(req_url)) {
                 pushToJsUrls(req_url);
             }
         }
 
         // check if the request is a JSON file with a get request
-        if (
-            request.method() === "GET" &&
-            req_url.match(/https?:\/\/[\d\w\.\-]+\/.+\.json\??.*$/)
-        ) {
+        if (request.method() === "GET" && req_url.match(/https?:\/\/[\d\w\.\-]+\/.+\.json\??.*$/)) {
             if (!getJsonUrls().includes(req_url)) {
                 pushToJsonUrls(req_url);
             }
@@ -65,11 +52,7 @@ const next_GetLazyResourcesWebpackJs = async (
     try {
         await page.goto(url, { waitUntil: "networkidle0" });
     } catch (err) {
-        console.log(
-            chalk.yellow(
-                "[!] Timeout reached for page load. Continuing with the current state"
-            )
-        );
+        console.log(chalk.yellow("[!] Timeout reached for page load. Continuing with the current state"));
     }
 
     await browser.close();
@@ -149,9 +132,7 @@ const next_GetLazyResourcesWebpackJs = async (
     let final_Func;
     for (const func of functions) {
         if (func.source.match(/"\.js".{0,15}$/)) {
-            console.log(
-                chalk.green(`[✓] Found JS chunk having the following source`)
-            );
+            console.log(chalk.green(`[✓] Found JS chunk having the following source`));
             console.log(chalk.yellow(func.source));
             final_Func = func.source;
         }
@@ -159,11 +140,7 @@ const next_GetLazyResourcesWebpackJs = async (
 
     if (!final_Func) {
         // Added check if final_Func was not found
-        console.log(
-            chalk.red(
-                "[!] No suitable function found in webpack JS for lazy loading."
-            )
-        );
+        console.log(chalk.red("[!] No suitable function found in webpack JS for lazy loading."));
         return [];
     }
 
@@ -183,11 +160,7 @@ const next_GetLazyResourcesWebpackJs = async (
 
         user_verified = await askCorrectFuncConfirmation();
         if (user_verified === true) {
-            console.log(
-                chalk.cyan(
-                    "[i] Proceeding with the selected function to fetch files"
-                )
-            );
+            console.log(chalk.cyan("[i] Proceeding with the selected function to fetch files"));
         } else {
             console.log(chalk.red("[!] Not executing function."));
             return [];

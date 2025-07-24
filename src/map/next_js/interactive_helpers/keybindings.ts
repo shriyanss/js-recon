@@ -24,9 +24,7 @@ function setupKeybindings(
     // Clear input box on ctl-c
     inputBox.key(["C-c"], () => {
         const inputBoxValue = inputBox.value;
-        outputBox.log(
-            `${state.lastCommandStatus ? chalk.bgGreen("%") : chalk.bgRed("%")} ${inputBoxValue}`
-        );
+        outputBox.log(`${state.lastCommandStatus ? chalk.bgGreen("%") : chalk.bgRed("%")} ${inputBoxValue}`);
         outputBox.log(chalk.yellow("^C (Use Esc then C-c to exit)"));
         inputBox.clearValue();
         inputBox.focus();
@@ -61,9 +59,7 @@ function setupKeybindings(
         if (key.name === "up") {
             if (state.commandHistoryIndex > 0) {
                 state.commandHistoryIndex--;
-                inputBox.setValue(
-                    state.commandHistory[state.commandHistoryIndex]
-                );
+                inputBox.setValue(state.commandHistory[state.commandHistoryIndex]);
                 screen.render();
             } else {
                 // blink red
@@ -78,9 +74,7 @@ function setupKeybindings(
             // down
             if (state.commandHistoryIndex < state.commandHistory.length - 1) {
                 state.commandHistoryIndex++;
-                inputBox.setValue(
-                    state.commandHistory[state.commandHistoryIndex]
-                );
+                inputBox.setValue(state.commandHistory[state.commandHistoryIndex]);
                 screen.render();
             } else {
                 state.commandHistoryIndex = state.commandHistory.length;

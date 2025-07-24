@@ -76,8 +76,7 @@ const svelte_stringAnalysisJSFiles = async (url) => {
 
             const response = await makeRequest(js_url, {});
             const respText = await response.text();
-            const foundJsFiles: FoundJsFiles =
-                await parseJSFileContent(respText);
+            const foundJsFiles: FoundJsFiles = await parseJSFileContent(respText);
 
             // iterate through the foundJsFiles and resolve the paths
             for (const [key, value] of Object.entries(foundJsFiles)) {
@@ -96,11 +95,7 @@ const svelte_stringAnalysisJSFiles = async (url) => {
     // dedupe the files
     filesFound = [...new Set(filesFound)];
 
-    console.log(
-        chalk.green(
-            `[✓] Found ${filesFound.length} JS files from string analysis`
-        )
-    );
+    console.log(chalk.green(`[✓] Found ${filesFound.length} JS files from string analysis`));
 
     return filesFound;
 };
