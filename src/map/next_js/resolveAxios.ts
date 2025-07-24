@@ -5,6 +5,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import * as globals from "../../utility/globals.js";
+import globalConfig from "../../globalConfig.js";
 import { Node } from "@babel/types";
 const traverse = _traverse.default;
 
@@ -330,8 +331,43 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     secondProp === "CONNECT"
                                 ) {
                                     callMethod = "CONNECT";
+                                } else if (secondProp === "create") {
+                                    // since this is create, it is not a usual method
+                                    // rather, now this object will be used to make requests.
+                                    // another layer of complexity :/
+
+                                    // first of all, get the name of the variable to which it is being assigned to
+                                    // it would be something like o = r.Z.create({})
+                                    // in this, I would have to get `o`
+                                    let axiosCreateVarName = "";
+                                    if (
+                                        path.parentPath.isCallExpression() &&
+                                        path.parentPath.parentPath.isVariableDeclarator()
+                                    ) {
+                                        const varDeclarator =
+                                            path.parentPath.parentPath.node;
+                                        if (
+                                            varDeclarator.id.type ===
+                                            "Identifier"
+                                        ) {
+                                            axiosCreateVarName =
+                                                varDeclarator.id.name;
+                                        }
+                                    }
+
+                                    if (axiosCreateVarName !== "") {
+                                        console.log(
+                                            chalk.magenta(
+                                                `[+] Create function assigned to '${axiosCreateVarName}' found at ${chunks[chunkName].file}:${path.node.loc.start.line}`
+                                            )
+                                        );
+                                        return;
+                                    }
                                 } else {
                                     callMethod = "UNKNOWN";
+                                    if (globalConfig.axiosNonHttpMethods.includes(secondProp)) {
+                                        return;
+                                    }
                                 }
 
                                 // now, get the second argument
