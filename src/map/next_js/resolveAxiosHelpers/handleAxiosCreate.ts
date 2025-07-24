@@ -60,6 +60,11 @@ export const handleAxiosCreate = (
                         }
                     }
 
+                    // if there are no arguments, return
+                    if (callPath.node.arguments && callPath.node.arguments.length === 0) {
+                        return;
+                    }
+
                     const firstArg = callPath.node.arguments[0];
                     let axiosCreateCallUrl: string;
                     let axiosCreateCallMethod: string;
