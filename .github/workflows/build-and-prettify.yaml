@@ -51,7 +51,7 @@ jobs:
         run: npm install -g prettier
 
       - name: Run Prettier
-        run: prettier --write . --tab-width 4 --trailing-comma es5 --no-color
+        run: prettier --write . --config .prettierrc
       
       - name: Remove node_modules
         run: rm -rf node_modules

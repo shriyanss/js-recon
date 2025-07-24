@@ -42,16 +42,12 @@ export const getOpenApiType = (value: any): string => {
     return "string"; // Fallback for other types
 };
 
-export const generateOpenapiV3Spec = (
-    items: OpenapiOutputItem[],
-    chunks: Chunks
-): OpenAPISpec => {
+export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks): OpenAPISpec => {
     const spec: OpenAPISpec = {
         openapi: "3.0.0",
         info: {
             title: "API Collection",
-            description:
-                "A collection of API endpoints discovered by js-recon.",
+            description: "A collection of API endpoints discovered by js-recon.",
             version: "1.0.0",
         },
         servers: [
@@ -76,21 +72,18 @@ export const generateOpenapiV3Spec = (
             continue;
         }
 
-        const parameters = Object.entries(item.headers || {}).map(
-            ([name, value]) => ({
-                name,
-                in: "header",
-                required: true,
-                schema: { type: "string", example: value },
-            })
-        );
+        const parameters = Object.entries(item.headers || {}).map(([name, value]) => ({
+            name,
+            in: "header",
+            required: true,
+            schema: { type: "string", example: value },
+        }));
 
         const operationObject: any = {
             summary: `${pathKey}`,
             responses: {
                 200: {
-                    description:
-                        "Successful response. The actual response will vary.",
+                    description: "Successful response. The actual response will vary.",
                 },
             },
             tags: globalsUtil.getOpenapiChunkTag() ? [item.chunkId] : [],

@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.1.3-beta.1 - 2025.07.24
+
+### Added
+
+- Added support for axios.create() detection in Next.js resolver
+
+### Changed
+
+### Fixed
+
+- Fixed [issue 30](https://github.com/shriyanss/js-recon/issues/30): `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`
+
 ## 1.1.3-alpha.2 - 2025.07.23
 
 ### Added

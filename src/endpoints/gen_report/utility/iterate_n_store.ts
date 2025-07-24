@@ -25,8 +25,7 @@ const iterate_n_store = async (baseUrl: string, urls: string[]) => {
         }
 
         // Normalise the pathname – strip leading/trailing slashes and split into segments
-        const segments =
-            pathname === "/" ? [] : pathname.replace(/^\/|\/$/g, "").split("/");
+        const segments = pathname === "/" ? [] : pathname.replace(/^\/|\/$/g, "").split("/");
 
         let cumulativePath = ""; // will build up like "/app", "/app/dashboard"
         let currentNode = result[origin];

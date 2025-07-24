@@ -5,9 +5,7 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
-const next_getLazyResourcesBuildManifestJs = async (
-    url: string
-): Promise<string[] | any> => {
+const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string[] | any> => {
     // get the JS URLs
     const foundUrls = globals.getJsUrls();
     let toReturn: string[] = [];
@@ -26,9 +24,7 @@ const next_getLazyResourcesBuildManifestJs = async (
     }
 
     // get the contents of that
-    let buildManifestContent = await (
-        await makeRequest(buildManifestUrl, {})
-    ).text();
+    let buildManifestContent = await (await makeRequest(buildManifestUrl, {})).text();
 
     // parse it with babel parser
     const ast = parser.parse(buildManifestContent, {
@@ -51,19 +47,14 @@ const next_getLazyResourcesBuildManifestJs = async (
         if (stringTxt.includes("static/chunks/")) {
             // a chunk is found
             // bui;d the relative URL
-            const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl)
-                .href;
+            const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl).href;
             globals.pushToJsUrls(foundUrl);
             toReturn.push(foundUrl);
         }
     }
 
     if (toReturn.length > 0) {
-        console.log(
-            chalk.green(
-                `[✓] Found ${toReturn.length} JS files from _buildManifest.js`
-            )
-        );
+        console.log(chalk.green(`[✓] Found ${toReturn.length} JS files from _buildManifest.js`));
     }
 
     return toReturn;

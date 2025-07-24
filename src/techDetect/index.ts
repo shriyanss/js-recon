@@ -177,11 +177,7 @@ const frameworkDetect = async (url: string) => {
             waitUntil: "networkidle0",
         });
     } catch (err) {
-        console.log(
-            chalk.yellow(
-                "[!] Page load timed out, but continuing with current state"
-            )
-        );
+        console.log(chalk.yellow("[!] Page load timed out, but continuing with current state"));
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));
     const pageSource = await page.content();
@@ -217,49 +213,26 @@ const frameworkDetect = async (url: string) => {
         result_checkSvelte_res = await checkSvelte($res);
     }
 
-    if (
-        result_checkNextJS.detected === true ||
-        result_checkNextJS_res.detected === true
-    ) {
+    if (result_checkNextJS.detected === true || result_checkNextJS_res.detected === true) {
         const evidence =
-            result_checkNextJS.evidence !== ""
-                ? result_checkNextJS.evidence
-                : result_checkNextJS_res.evidence;
+            result_checkNextJS.evidence !== "" ? result_checkNextJS.evidence : result_checkNextJS_res.evidence;
         return { name: "next", evidence };
-    } else if (
-        result_checkVueJS.detected === true ||
-        result_checkVueJS_res.detected === true
-    ) {
+    } else if (result_checkVueJS.detected === true || result_checkVueJS_res.detected === true) {
         console.log(chalk.green("[✓] Vue.js detected"));
-        console.log(
-            chalk.cyan(`[i] Checking Nuxt.JS`),
-            chalk.dim("(Nuxt.JS is built on Vue.js)")
-        );
+        console.log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
         const result_checkNuxtJS = await checkNuxtJS($);
         const result_checkNuxtJS_res = await checkNuxtJS($res);
-        if (
-            result_checkNuxtJS.detected === true ||
-            result_checkNuxtJS_res.detected === true
-        ) {
+        if (result_checkNuxtJS.detected === true || result_checkNuxtJS_res.detected === true) {
             const evidence =
-                result_checkNuxtJS.evidence !== ""
-                    ? result_checkNuxtJS.evidence
-                    : result_checkNuxtJS_res.evidence;
+                result_checkNuxtJS.evidence !== "" ? result_checkNuxtJS.evidence : result_checkNuxtJS_res.evidence;
             return { name: "nuxt", evidence };
         }
         const evidence =
-            result_checkVueJS.evidence !== ""
-                ? result_checkVueJS.evidence
-                : result_checkVueJS_res.evidence;
+            result_checkVueJS.evidence !== "" ? result_checkVueJS.evidence : result_checkVueJS_res.evidence;
         return { name: "vue", evidence };
-    } else if (
-        result_checkSvelte.detected === true ||
-        result_checkSvelte_res.detected === true
-    ) {
+    } else if (result_checkSvelte.detected === true || result_checkSvelte_res.detected === true) {
         const evidence =
-            result_checkSvelte.evidence !== ""
-                ? result_checkSvelte.evidence
-                : result_checkSvelte_res.evidence;
+            result_checkSvelte.evidence !== "" ? result_checkSvelte.evidence : result_checkSvelte_res.evidence;
         return { name: "svelte", evidence };
     }
 

@@ -1,9 +1,5 @@
 import chalk from "chalk";
-import {
-    APIGatewayClient,
-    CreateRestApiCommand,
-    DeleteRestApiCommand,
-} from "@aws-sdk/client-api-gateway";
+import { APIGatewayClient, CreateRestApiCommand, DeleteRestApiCommand } from "@aws-sdk/client-api-gateway";
 import fs from "fs";
 import checkFeasibility from "./checkFeasibility.js";
 
@@ -58,9 +54,7 @@ const randomRegion = () => {
         "me-central-1", // Middle East (UAE)
         "sa-east-1", // South America (São Paulo)
     ];
-    return apiGatewayRegions[
-        Math.floor(Math.random() * apiGatewayRegions.length)
-    ];
+    return apiGatewayRegions[Math.floor(Math.random() * apiGatewayRegions.length)];
 };
 
 let aws_access_key;
@@ -90,18 +84,15 @@ const createGateway = async () => {
     const apigw_name = `js_recon-${apigw_created_at}-${Math.floor(Math.random() * 1000)}`;
     const command = new CreateRestApiCommand({
         name: apigw_name,
-        description: `API Gateway for JS Recon created at ${new Intl.DateTimeFormat(
-            "en-US",
-            {
-                year: "numeric",
-                month: "long",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                timeZoneName: "short",
-            }
-        ).format(apigw_created_at)}`,
+        description: `API Gateway for JS Recon created at ${new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            timeZoneName: "short",
+        }).format(apigw_created_at)}`,
         endpointConfiguration: {
             ipAddressType: "dualstack",
             types: ["REGIONAL"],
@@ -190,9 +181,7 @@ const destroyGateway = async (id) => {
 const destroyAllGateways = async () => {
     console.log(chalk.cyan("[i] Destroying all API Gateways"));
     //   read the config file
-    let config: ApiGatewayConfig = JSON.parse(
-        fs.readFileSync(configFile, "utf8")
-    );
+    let config: ApiGatewayConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
 
     //   destroy all the gateways
     for (const [key, value] of Object.entries(config)) {
@@ -203,22 +192,14 @@ const destroyAllGateways = async () => {
                 secretAccessKey: aws_secret_key,
             },
         });
-        console.log(
-            chalk.cyan(
-                `[i] Destroying API Gateway: ${key} : ${value.id} : ${value.region}`
-            )
-        );
+        console.log(chalk.cyan(`[i] Destroying API Gateway: ${key} : ${value.id} : ${value.region}`));
 
         const command = new DeleteRestApiCommand({
             restApiId: value.id,
         });
         await sleep(30000);
         await client.send(command);
-        console.log(
-            chalk.green(
-                `[✓] Destroyed API Gateway: ${key} : ${value.id} : ${value.region}`
-            )
-        );
+        console.log(chalk.green(`[✓] Destroyed API Gateway: ${key} : ${value.id} : ${value.region}`));
     }
 
     // nullify the config file
@@ -243,9 +224,7 @@ const listGateways = async () => {
         return;
     }
 
-    const config: ApiGatewayConfig = JSON.parse(
-        fs.readFileSync(configFile, "utf8")
-    );
+    const config: ApiGatewayConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
 
     //   if list is empty
     if (Object.keys(config).length === 0) {
@@ -296,9 +275,7 @@ const apiGateway = async (
     // if feasibility is true, check feasibility
     if (feasibilityInput) {
         if (!feasibilityUrlInput) {
-            console.log(
-                chalk.red("[!] Please provide a URL to check feasibility of")
-            );
+            console.log(chalk.red("[!] Please provide a URL to check feasibility of"));
             return;
         }
         await checkFeasibility(feasibilityUrlInput);
@@ -307,17 +284,12 @@ const apiGateway = async (
 
     // configure the access and secret key
     aws_access_key = accessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
-    aws_secret_key =
-        secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
+    aws_secret_key = secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
     region = regionInput || randomRegion();
     configFile = configInput || "config.json";
 
     if (!aws_access_key || !aws_secret_key) {
-        console.log(
-            chalk.red(
-                "[!] AWS Access Key or Secret Key not found. Run with -h to see help"
-            )
-        );
+        console.log(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
         return;
     }
 
@@ -339,11 +311,7 @@ const apiGateway = async (
     } else if (listInput) {
         await listGateways();
     } else {
-        console.log(
-            chalk.red(
-                "[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)"
-            )
-        );
+        console.log(chalk.red("[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)"));
     }
 };
 

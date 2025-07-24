@@ -13,9 +13,7 @@ const getWebpacks = (directory) => {
     files = fs.readdirSync(directory, { recursive: true });
 
     // filter out the directories
-    files = files.filter(
-        (file) => !fs.statSync(path.join(directory, file)).isDirectory()
-    );
+    files = files.filter((file) => !fs.statSync(path.join(directory, file)).isDirectory());
 
     // filter out the subsequent requests files
     files = files.filter((file) => !file.startsWith("___subsequent_requests"));

@@ -36,12 +36,7 @@ const nuxt_getFromPageSource = async (url) => {
     const scriptTags = $("script");
     for (const scriptTag of scriptTags) {
         const src = $(scriptTag).attr("src");
-        if (
-            src !== undefined &&
-            src.match(
-                /(https:\/\/[a-zA-Z0-9_\_\.]+\/.+\.js\??.*|\/.+\.js\??.*)/
-            )
-        ) {
+        if (src !== undefined && src.match(/(https:\/\/[a-zA-Z0-9_\_\.]+\/.+\.js\??.*|\/.+\.js\??.*)/)) {
             if (src.startsWith("http")) {
                 if (!getJsUrls().includes(src)) {
                     pushToJsUrls(src);
@@ -58,8 +53,7 @@ const nuxt_getFromPageSource = async (url) => {
                 // Get directory URL (origin + path without filename)
                 const pathParts = new URL(url).pathname.split("/");
                 pathParts.pop(); // remove the filename from the path
-                const directory =
-                    new URL(url).origin + pathParts.join("/") + "/";
+                const directory = new URL(url).origin + pathParts.join("/") + "/";
 
                 if (!getJsUrls().includes(directory + src)) {
                     pushToJsUrls(directory + src);
@@ -70,11 +64,7 @@ const nuxt_getFromPageSource = async (url) => {
         }
     }
 
-    console.log(
-        chalk.green(
-            `[✓] Found ${getJsUrls().length} JS files from the page source`
-        )
-    );
+    console.log(chalk.green(`[✓] Found ${getJsUrls().length} JS files from the page source`));
 
     return getJsUrls();
 };
