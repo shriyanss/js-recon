@@ -11,6 +11,17 @@ import { resolveNodeValue } from "../utils.js";
 
 const traverse = _traverse.default;
 
+const findLineNumberByContent = (fileContent: string, targetLineContent: string): number => {
+    const lines = fileContent.split('\n');
+    const trimmedTarget = targetLineContent.trim();
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() === trimmedTarget) {
+            return i + 1;
+        }
+    }
+    return 0;
+};
+
 export const handleAxiosCreate = (
     path: NodePath<MemberExpression>,
     ast: any,
@@ -30,12 +41,7 @@ export const handleAxiosCreate = (
             const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
 
             const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
-            for (let i = 0; i < chunkFile.split("\n").length; i++) {
-                if (chunkFile.split("\n")[i].trim() === axiosCreateLineContent.trim()) {
-                    axiosCreateLineNumber = i + 1;
-                    break;
-                }
-            }
+            axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
         }
     }
 
@@ -51,14 +57,8 @@ export const handleAxiosCreate = (
                 if (callPath.node.callee.type === "Identifier" && callPath.node.callee.name === axiosCreateVarName) {
                     const axiosCreateLineContent = chunkCode.split("\n")[callPath.node.loc.start.line - 1];
 
-                    let axiosCreateCallLineNumber = 0;
                     const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
-                    for (let i = 0; i < chunkFile.split("\n").length; i++) {
-                        if (chunkFile.split("\n")[i].trim() === axiosCreateLineContent.trim()) {
-                            axiosCreateCallLineNumber = i + 1;
-                            break;
-                        }
-                    }
+                    const axiosCreateCallLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
 
                     // if there are no arguments, return
                     if (callPath.node.arguments && callPath.node.arguments.length === 0) {
