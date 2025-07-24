@@ -354,14 +354,35 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                         ) {
                                             axiosCreateVarName =
                                                 varDeclarator.id.name;
-                                            
-                                            const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
-                                            
+
+                                            const axiosCreateLineContent =
+                                                chunkCode.split("\n")[
+                                                    varDeclarator.loc.start
+                                                        .line - 1
+                                                ];
+
                                             // iterate through the chunkCode, and find which line number it is
-                                            const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
-                                            for (let i = 0; i < chunkFile.split("\n").length; i++) {
-                                                if (chunkFile.split("\n")[i].trim() === axiosCreateLineContent.trim()) {
-                                                    axiosCreateLineNumber = i + 1;
+                                            const chunkFile = fs.readFileSync(
+                                                fsPath.join(
+                                                    directory,
+                                                    chunks[chunkName].file
+                                                ),
+                                                "utf-8"
+                                            );
+                                            for (
+                                                let i = 0;
+                                                i <
+                                                chunkFile.split("\n").length;
+                                                i++
+                                            ) {
+                                                if (
+                                                    chunkFile
+                                                        .split("\n")
+                                                        [i].trim() ===
+                                                    axiosCreateLineContent.trim()
+                                                ) {
+                                                    axiosCreateLineNumber =
+                                                        i + 1;
                                                     break;
                                                 }
                                             }
@@ -371,14 +392,169 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                                     if (axiosCreateVarName !== "") {
                                         console.log(
                                             chalk.magenta(
-                                                `[+] Create function assigned to '${axiosCreateVarName}' found at ${directory}/${chunks[chunkName].file}:${axiosCreateLineNumber}`
+                                                `[✓] Create function assigned to '${axiosCreateVarName}' found at ${directory}/${chunks[chunkName].file}:${axiosCreateLineNumber}`
                                             )
                                         );
+
+                                        // find all the places where this var is called like axiosCreateVarName({})
+                                        traverse(ast, {
+                                            CallExpression(path) {
+                                                if (
+                                                    path.node.callee.name ===
+                                                    axiosCreateVarName
+                                                ) {
+                                                    const axiosCreateLineContent =
+                                                        chunkCode.split("\n")[
+                                                            path.node.loc.start
+                                                                .line - 1
+                                                        ];
+
+                                                    // iterate through the chunkCode, and find which line number it is
+                                                    let axiosCreateCallLineNumber = 0;
+                                                    const chunkFile =
+                                                        fs.readFileSync(
+                                                            fsPath.join(
+                                                                directory,
+                                                                chunks[
+                                                                    chunkName
+                                                                ].file
+                                                            ),
+                                                            "utf-8"
+                                                        );
+                                                    for (
+                                                        let i = 0;
+                                                        i <
+                                                        chunkFile.split("\n")
+                                                            .length;
+                                                        i++
+                                                    ) {
+                                                        if (
+                                                            chunkFile
+                                                                .split("\n")
+                                                                [i].trim() ===
+                                                            axiosCreateLineContent.trim()
+                                                        ) {
+                                                            axiosCreateCallLineNumber =
+                                                                i + 1;
+                                                            break;
+                                                        }
+                                                    }
+
+                                                    console.log(
+                                                        chalk.magenta(
+                                                            `[+] Found axios.create() call in chunk ${chunkName} at ${directory}/${chunks[chunkName].file}:${axiosCreateCallLineNumber}`
+                                                        )
+                                                    );
+
+                                                    // get the first arg of this, and check if it an {}
+                                                    const firstArg =
+                                                        path.node.arguments[0];
+                                                    let axiosCreateCallUrl: string;
+                                                    let axiosCreateCallMethod: string;
+                                                    let axiosCreateCallParams: any;
+                                                    let axiosCreateCallHeaders: any;
+                                                    if (
+                                                        firstArg.type ===
+                                                        "ObjectExpression"
+                                                    ) {
+                                                        // get the properties of this object
+                                                        for (
+                                                            let i = 0;
+                                                            i <
+                                                            firstArg.properties
+                                                                .length;
+                                                            i++
+                                                        ) {
+                                                            const property =
+                                                                firstArg
+                                                                    .properties[
+                                                                    i
+                                                                ];
+                                                            if (
+                                                                property.key
+                                                                    .name ===
+                                                                "url"
+                                                            ) {
+                                                                axiosCreateCallUrl =
+                                                                    property
+                                                                        .value
+                                                                        .value;
+                                                            } else if (
+                                                                property.key
+                                                                    .name ===
+                                                                "method"
+                                                            ) {
+                                                                axiosCreateCallMethod =
+                                                                    property
+                                                                        .value
+                                                                        .value;
+                                                            } else if (
+                                                                property.key
+                                                                    .name ===
+                                                                "params"
+                                                            ) {
+                                                                axiosCreateCallParams =
+                                                                    property
+                                                                        .value
+                                                                        .value;
+                                                            } else if (
+                                                                property.key
+                                                                    .name ===
+                                                                "headers"
+                                                            ) {
+                                                                axiosCreateCallHeaders =
+                                                                    property
+                                                                        .value
+                                                                        .value;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    if (axiosCreateCallUrl) {
+                                                        console.log(
+                                                            chalk.magenta(
+                                                                `    URL: ${axiosCreateCallUrl}`
+                                                            )
+                                                        );
+                                                    }
+
+                                                    if (axiosCreateCallMethod) {
+                                                        console.log(
+                                                            chalk.magenta(
+                                                                `    Method: ${axiosCreateCallMethod}`
+                                                            )
+                                                        );
+                                                    }
+
+                                                    if (axiosCreateCallParams) {
+                                                        console.log(
+                                                            chalk.magenta(
+                                                                `    Params: ${axiosCreateCallParams}`
+                                                            )
+                                                        );
+                                                    }
+
+                                                    if (
+                                                        axiosCreateCallHeaders
+                                                    ) {
+                                                        console.log(
+                                                            chalk.magenta(
+                                                                `    Headers: ${axiosCreateCallHeaders}`
+                                                            )
+                                                        );
+                                                    }
+                                                }
+                                            },
+                                        });
                                         return;
                                     }
                                 } else {
                                     callMethod = "UNKNOWN";
-                                    if (globalConfig.axiosNonHttpMethods.includes(secondProp)) {
+                                    if (
+                                        globalConfig.axiosNonHttpMethods.includes(
+                                            secondProp
+                                        )
+                                    ) {
                                         return;
                                     }
                                 }
