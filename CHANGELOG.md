@@ -8,6 +8,8 @@
 
 ### Changed
 
+- Prepend the baseUrl when printing the URL of axios.create() calls in next.js
+
 ### Fixed
 
 ## 1.1.3-beta.1 - 2025.07.24
