@@ -8,7 +8,9 @@
   </a>
 </p>
 
-A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application running supported frameworks
+A powerful tool for JavaScript reconnaissance. `js-recon` helps you discover, download, and analyze JavaScript files to uncover endpoints, secrets, and other valuable information from any web application running supported frameworks.
+
+It can also reconstruct HTTP requests that the app makes to the server, and output them to the OpenAPI spec.
 
 ## Installation
 
@@ -63,7 +65,8 @@ js-recon run -u https://app.example.com
 - Use API gateway to rotate IP addresses to bypass firewall
 - Extract strings from the discovered JS files, and extract potential secrets, endpoints, etc. from them
 - Endpoints modules extracts client-side paths from the app
-- Map feature analyzes the JS files, and outputs it to a JSON file. An interactive mode can be then used to analyze it
+- Map feature analyzes the JS files and outputs it to a JSON file. An interactive mode can be then used to analyze it
+- Reconstruct HTTP requests that the app makes to the server, and output them to the OpenAPI spec
 
 ## Example Scenario
 
