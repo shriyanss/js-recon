@@ -53,7 +53,7 @@ export const handleAxiosCreate = (
         );
 
         // get the arguments of this axios create. Like .create({})
-        let axiosCreateBaseURL:string;
+        let axiosCreateBaseURL: string;
         const axiosCreateArgs = path.parentPath.node.arguments;
 
         // iterate through it, and check if the first arg is an object
@@ -117,7 +117,8 @@ export const handleAxiosCreate = (
                         }
                     }
 
-                    if (axiosCreateCallUrl) console.log(chalk.green(`    URL: ${axiosCreateBaseURL}${axiosCreateCallUrl}`));
+                    if (axiosCreateCallUrl)
+                        console.log(chalk.green(`    URL: ${axiosCreateBaseURL}${axiosCreateCallUrl}`));
                     if (axiosCreateCallMethod)
                         console.log(chalk.green(`    Method: ${axiosCreateCallMethod.toUpperCase()}`));
                     if (axiosCreateCallParams) console.log(chalk.green(`    Params: ${axiosCreateCallParams}`));
