@@ -52,6 +52,22 @@ export const handleAxiosCreate = (
             )
         );
 
+        // get the arguments of this axios create. Like .create({})
+        let axiosCreateBaseURL:string;
+        const axiosCreateArgs = path.parentPath.node.arguments;
+
+        // iterate through it, and check if the first arg is an object
+        if (axiosCreateArgs.length > 0 && axiosCreateArgs[0].type === "ObjectExpression") {
+            const axiosCreateArgsObj = axiosCreateArgs[0];
+            for (const property of axiosCreateArgsObj.properties) {
+                if (property.type === "ObjectProperty" && property.key.type === "Identifier") {
+                    if (property.key.name === "baseURL") {
+                        axiosCreateBaseURL = property.value.type === "StringLiteral" ? property.value.value : "";
+                    }
+                }
+            }
+        }
+
         traverse(ast, {
             CallExpression(callPath) {
                 if (callPath.node.callee.type === "Identifier" && callPath.node.callee.name === axiosCreateVarName) {
@@ -101,7 +117,7 @@ export const handleAxiosCreate = (
                         }
                     }
 
-                    if (axiosCreateCallUrl) console.log(chalk.green(`    URL: ${axiosCreateCallUrl}`));
+                    if (axiosCreateCallUrl) console.log(chalk.green(`    URL: ${axiosCreateBaseURL}${axiosCreateCallUrl}`));
                     if (axiosCreateCallMethod)
                         console.log(chalk.green(`    Method: ${axiosCreateCallMethod.toUpperCase()}`));
                     if (axiosCreateCallParams) console.log(chalk.green(`    Params: ${axiosCreateCallParams}`));
