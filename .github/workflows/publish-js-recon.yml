@@ -132,3 +132,19 @@ jobs:
           
         env:
           VERSION: ${{ github.event.release.tag_name }}
+  
+  merge_main_and_dev:
+    needs:
+      - publish-npm
+      - publish-docker
+      - publish-ghcr
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Merge main and dev
+        run: |
+          echo "Merging main into dev"
+          git checkout dev
+          git merge main
+          git push origin dev
+        
