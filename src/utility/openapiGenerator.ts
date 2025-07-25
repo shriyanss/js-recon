@@ -61,7 +61,8 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     };
 
     for (const item of items) {
-        const pathKey = replacePlaceholders(item.path.startsWith("/") ? item.path : `/${item.path}`);
+        const pathKeyBeforeQuery = item.path.split("?")[0];
+        const pathKey = replacePlaceholders(pathKeyBeforeQuery.startsWith("/") ? pathKeyBeforeQuery : `/${pathKeyBeforeQuery}`);
         const method = item.method.toLowerCase();
 
         if (!spec.paths[pathKey]) {
@@ -79,6 +80,33 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             required: true,
             schema: { type: "string", example: value },
         }));
+
+        // Extract path parameters
+        const pathParams = pathKey.match(/\{([^}]+)\}/g);
+        if (pathParams) {
+            for (const p of pathParams) {
+                const paramName = p.slice(1, -1);
+                parameters.push({
+                    name: paramName,
+                    in: "path",
+                    required: true,
+                    schema: { type: "string", example: "any" },
+                });
+            }
+        }
+
+        // Extract query parameters
+        const url = new URL(item.path, "http://dummybase");
+        const queryParams = url.searchParams;
+
+        queryParams.forEach((value, name) => {
+            parameters.push({
+                name: name,
+                in: "query",
+                required: false, // Or determine based on logic
+                schema: { type: "string", example: value },
+            });
+        });
 
         const operationObject: any = {
             summary: `${pathKey}`,
