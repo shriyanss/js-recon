@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.1.3-beta.2 - (unreleased)
+
+### Added
+
+- Added flags for generating OpenAPI config 
+
+### Changed
+
+### Fixed
+
+
 ## 1.1.3-beta.1 - 2025.07.24
 
 ### Added
