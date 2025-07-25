@@ -141,10 +141,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Merge main and dev
         run: |
-          echo "Merging main into dev"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          echo "chore: merge changes after release $VERSION"
+          git fetch origin main:main
+          git fetch origin dev:dev
           git checkout dev
-          git merge main
+          git merge --no-ff -m "chore: merge changes after release $VERSION" main -X theirs || (git status && git diff && exit 0)
           git push origin dev
-        
+        env:
+          VERSION: ${{ github.event.release.tag_name }}
