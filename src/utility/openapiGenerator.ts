@@ -1,6 +1,7 @@
 import { OpenapiOutputItem } from "./globals.js";
 import { Chunks } from "./interfaces.js";
 import * as globalsUtil from "./globals.js";
+import replacePlaceholders from "./replaceUrlPlaceholders.js";
 
 export interface OpenAPISpec {
     openapi: string;
@@ -60,7 +61,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     };
 
     for (const item of items) {
-        const pathKey = item.path.startsWith("/") ? item.path : `/${item.path}`;
+        const pathKey = replacePlaceholders(item.path.startsWith("/") ? item.path : `/${item.path}`);
         const method = item.method.toLowerCase();
 
         if (!spec.paths[pathKey]) {
