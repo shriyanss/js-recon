@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.3-beta.3 - 2025.07.26
+
+### Added
+
+- Added path and query parameter extraction to OpenAPI spec generation
+
+### Changed
+
+### Fixed
+
 ## 1.1.3-beta.2 - 2025.07.25
 
 ### Added
