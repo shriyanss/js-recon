@@ -58,8 +58,8 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config user.name "prettier-action[bot]"
-          git config user.email "prettier-action[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "chore: prettify code" || echo "No changes to commit"
           git push
