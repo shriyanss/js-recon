@@ -1,10 +1,10 @@
 # Change Log
 
-## 1.1.3-beta.3 - 2025.07.25
+## 1.1.3-beta.3 - 2025.07.26
 
 ### Added
 
-- Added support for placeholders in OpenAPI spec generation
+- Added path and query parameter extraction to OpenAPI spec generation
 
 ### Changed
 
