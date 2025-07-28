@@ -14,7 +14,6 @@ const getExports = (chunks: Chunks): Chunks => {
     for (const chunk of Object.values(chunks)) {
         // get the chunk code
         const chunkCode = chunk.code;
-        console.log(chunk.id);
 
         // parse it with ast
         const ast = parser.parse(chunkCode, {
