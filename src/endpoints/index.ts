@@ -5,14 +5,12 @@ import fs from "fs";
 import client_subsequentRequests from "./next_js/client_subsequentRequests.js";
 import client_jsFilesHref from "./next_js/client_jsFilesHref.js";
 import client_jsonParse from "./next_js/client_jsonParse.js";
-import getWebpacks from "./next_js/getWebpacks.js";
 
 // Report Generation
-import gen_markdown from "./gen_report/gen_markdown.js";
 import gen_json from "./gen_report/gen_json.js";
 
 const techs = ["Next.JS (next)"];
-const outputFormats = ["md", "json"];
+const outputFormats = ["json"];
 
 const endpoints = async (url, directory, output, outputFormat, tech, list, subsequentRequestsDir) => {
     console.log(chalk.cyan("[i] Loading endpoints module"));
@@ -90,9 +88,6 @@ const endpoints = async (url, directory, output, outputFormat, tech, list, subse
         const client_jsonParseResult = await client_jsonParse(directory);
         final_client_side.push(...client_jsonParseResult);
 
-        if (outputFormat.includes("md")) {
-            const gen_markdownResult = await gen_markdown(url, final_client_side, output);
-        }
         if (outputFormat.includes("json")) {
             const gen_jsonResult = await gen_json(url, final_client_side, output);
         }

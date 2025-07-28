@@ -10,6 +10,7 @@
 ### Changed
 
 - Type for `exports` is now `string[]` rather than `string` in `mapped.json`
+- Remove `md` output format for endpoints module
 
 ### Fixed
 
