@@ -76,6 +76,9 @@ const map = async (
             // skip regeneration if output file already exists
             chunks = await getWebpackConnections(directory, output, formats);
 
+            // get the exports
+            await getExports(chunks);
+
             // now, iterate through them, and check fetch instances
             chunks = await getFetchInstances(chunks, output, formats);
 
@@ -91,9 +94,6 @@ const map = async (
 
         // also, the axios instances
         await resolveAxios(chunks, directory);
-
-        // get the exports
-        await getExports(chunks);
 
         if (interactive_mode) {
             await interactive(chunks, `${output}.json`);

@@ -5,7 +5,7 @@ import _traverse from "@babel/traverse";
 import { ArrowFunctionExpression, FunctionDeclaration } from "@babel/types";
 const traverse = _traverse.default;
 
-const getExports = (chunks: Chunks): Chunks => {
+const getExports = async (chunks: Chunks): Promise<Chunks> => {
     console.log(chalk.cyan("[i] Getting exports"));
 
     let chunkCopy = chunks;
