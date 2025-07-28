@@ -50,8 +50,6 @@ export default async (cmd) => {
     await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "");
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
-    // globals.setTech("next");
-
     // if tech is undefined, i.e. it can't be detected, quit. Nothing to be done :(
     if (globalsUtil.getTech() === "") {
         console.log(chalk.bgRed("[!] Technology not detected. Quitting."));
@@ -91,28 +89,20 @@ export default async (cmd) => {
     await strings(cmd.output, "strings.json", true, "extracted_urls", cmd.secrets, true, true);
     console.log(chalk.bgGreen("[+] Strings complete."));
 
-    // now, run endpoints
-    console.log(chalk.bgCyan("[5/6] Running endpoints to extract endpoints..."));
-    // check if the subsequent requests directory exists
-    if (fs.existsSync(`output/${targetHost}/___subsequent_requests`)) {
-        await endpoints(
-            cmd.url,
-            cmd.output,
-            "strings",
-            ["json"],
-            globalsUtil.getTech(),
-            false,
-            `output/${targetHost}/___subsequent_requests`
-        );
-        console.log(chalk.bgGreen("[+] Endpoints complete."));
-    } else {
-        console.log(chalk.bgYellow("[!] Subsequent requests directory does not exist. Skipping endpoints."));
-    }
-
     // now, run map
-    console.log(chalk.bgCyan("[6/6] Running map to find functions..."));
+    console.log(chalk.bgCyan("[5/6] Running map to find functions..."));
     await map(cmd.output + "/" + targetHost, "mapped", ["json"], globalsUtil.getTech(), false, false);
     console.log(chalk.bgGreen("[+] Map complete."));
+
+    // now, run endpoints
+    console.log(chalk.bgCyan("[6/6] Running endpoints to extract endpoints..."));
+    // check if the subsequent requests directory exists
+    if (fs.existsSync(`${cmd.output}/${targetHost}/___subsequent_requests`)) {
+        await endpoints(cmd.url, `${cmd.output}/${targetHost}/`, "endpoints", ["json"], "next", false, "mapped.json");
+    } else {
+        await endpoints(cmd.url, undefined, "endpoints", ["json"], "next", false, "mapped.json");
+    }
+    console.log(chalk.bgGreen("[+] Endpoints complete."));
 
     console.log(chalk.bgGreenBright("[+] Analysis complete."));
 };

@@ -13,7 +13,7 @@ import gen_json from "./gen_report/gen_json.js";
 const techs = ["Next.JS (next)"];
 const outputFormats = ["json"];
 
-const endpoints = async (url, directory, output, outputFormat, tech, list, mappedJsonFile) => {
+const endpoints = async (url:string|undefined, directory:string|undefined, output:string|undefined, outputFormat:string[]|undefined, tech:string|undefined, list:boolean|undefined, mappedJsonFile:string|undefined) => {
     console.log(chalk.cyan("[i] Loading endpoints module"));
 
     // list available technologies
