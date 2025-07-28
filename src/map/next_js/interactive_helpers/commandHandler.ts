@@ -59,6 +59,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
             } else if (option === "all") {
                 outputBox.log(commandHelpers.listAllFunctions(state.chunks));
                 state.lastCommandStatus = true;
+            } else if (option === "desc") {
+                outputBox.log(commandHelpers.listNonEmptyDescriptionFunctions(state.chunks));
+                state.lastCommandStatus = true;
             } else if (option === "nav") {
                 outputBox.log(commandHelpers.navHistory(state.chunks, state.functionNavHistory));
                 state.lastCommandStatus = true;
