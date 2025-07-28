@@ -5,6 +5,7 @@
 ### Added
 
 - Add description to chunks in mapped.json by default when using `map` module (an axios lib is detected) or when using the `endpoints` module (when a client-side path is detected)
+- Add `list desc` command to show functions with non-empty descriptions in interactive mode
 
 ### Changed
 
