@@ -6,7 +6,7 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { Chunks } from "../../utility/interfaces.js";
 
-const client_mappedJsonFile = async (filePath: string) => {
+const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
     console.log(chalk.cyan("[i] Checking for client-side paths from mapped JSON file"));
 
     // open the file and load the chunks
@@ -25,10 +25,55 @@ const client_mappedJsonFile = async (filePath: string) => {
             });
 
             traverse(ast, {
-                
+                CallExpression(path) {
+                    const callee = path.node.callee;
+
+                    // Check if it's a .push() call
+                    if (callee.type === "MemberExpression" && callee.property.type === "Identifier" && callee.property.name === "push") {
+                        const obj = callee.object;
+
+                        // Check if the object of the push call is an assignment expression
+                        if (obj.type === "AssignmentExpression" && obj.left.type === "MemberExpression") {
+                            const assignment = obj;
+                            const memberExpr = assignment.left;
+
+                            // Check for window.__NEXT_P
+                            if (memberExpr.object.type === "Identifier" && memberExpr.object.name === "window" &&
+                                memberExpr.property.type === "Identifier" && memberExpr.property.name === "__NEXT_P") {
+
+                                // Check for the logical expression on the right side of the assignment
+                                if (assignment.right.type === "LogicalExpression" && assignment.right.operator === "||") {
+                                    const logicalExpr = assignment.right;
+
+                                    // Check that the logical expression is `window.__NEXT_P || []`
+                                    if (logicalExpr.left.type === "MemberExpression" &&
+                                        logicalExpr.left.object.type === "Identifier" && logicalExpr.left.object.name === "window" &&
+                                        logicalExpr.left.property.type === "Identifier" && logicalExpr.left.property.name === "__NEXT_P" &&
+                                        logicalExpr.right.type === "ArrayExpression" && logicalExpr.right.elements.length === 0) {
+
+                                        // Now, get the arguments of the .push() call
+                                        const pushArgs = path.node.arguments;
+                                        if (pushArgs.length > 0 && pushArgs[0].type === "ArrayExpression") {
+                                            const firstArg = pushArgs[0];
+                                            if (firstArg.elements.length > 0) {
+                                                const element = firstArg.elements[0];
+                                                if (element.type === "StringLiteral") {
+                                                    console.log(chalk.green(`[+] Found client-side path: ${element.value}`));
+                                                    foundPaths.push(element.value);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             });
         }
     }
+
+    return foundPaths;
 };
 
 export default client_mappedJsonFile;
