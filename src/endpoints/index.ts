@@ -5,6 +5,7 @@ import fs from "fs";
 import client_subsequentRequests from "./next_js/client_subsequentRequests.js";
 import client_jsFilesHref from "./next_js/client_jsFilesHref.js";
 import client_jsonParse from "./next_js/client_jsonParse.js";
+import client_mappedJsonFile from "./next_js/client_mappedJsonFile.js";
 
 // Report Generation
 import gen_json from "./gen_report/gen_json.js";
@@ -12,7 +13,7 @@ import gen_json from "./gen_report/gen_json.js";
 const techs = ["Next.JS (next)"];
 const outputFormats = ["json"];
 
-const endpoints = async (url, directory, output, outputFormat, tech, list, subsequentRequestsDir) => {
+const endpoints = async (url, directory, output, outputFormat, tech, list, mappedJsonFile) => {
     console.log(chalk.cyan("[i] Loading endpoints module"));
 
     // list available technologies
@@ -30,12 +31,6 @@ const endpoints = async (url, directory, output, outputFormat, tech, list, subse
             console.log(chalk.red("[!] Invalid output format"));
             return;
         }
-    }
-
-    // check if the directory is present
-    if (!directory) {
-        console.log(chalk.red("[!] Please provide a directory"));
-        return;
     }
 
     // check if the technology is present
@@ -59,34 +54,35 @@ const endpoints = async (url, directory, output, outputFormat, tech, list, subse
     console.log(chalk.cyan("[i] Extracting endpoints"));
 
     if (tech === "next") {
+
         console.log(chalk.cyan("[i] Checking for client-side paths for Next.JS"));
 
-        // check if the subsequent requests directory is present
-        if (!subsequentRequestsDir) {
-            console.log(
-                chalk.red("[!] Please provide a directory containing subsequent requests (--subsequent-requests-dir)")
-            );
-            return;
-        }
-
-        // check if the subsequent requests directory exists
-        if (!fs.existsSync(subsequentRequestsDir)) {
-            console.log(chalk.red("[!] Directory containing subsequent requests does not exist"));
-            return;
-        }
-
+        // var to store all the paths found
         let final_client_side: string[] = [];
-        const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
-        final_client_side.push(...client_subsequentRequestsResult);
 
-        // first, get all the webpacks
-        // const webpacksFound = await getWebpacks(directory);
+        if (directory) {
+            const subsequentRequestsDir = directory + "/___subsequent_requests";
+            // check if the subsequent requests directory exists
+            if (!fs.existsSync(subsequentRequestsDir)) {
+                console.log(chalk.red("[!] Directory containing subsequent requests does not exist"));
+                return;
+            }
 
-        const client_jsFilesHrefResult = await client_jsFilesHref(directory);
-        final_client_side.push(...client_jsFilesHrefResult);
+            const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
+            final_client_side.push(...client_subsequentRequestsResult);
 
-        const client_jsonParseResult = await client_jsonParse(directory);
-        final_client_side.push(...client_jsonParseResult);
+            const client_jsFilesHrefResult = await client_jsFilesHref(directory);
+            final_client_side.push(...client_jsFilesHrefResult);
+
+            const client_jsonParseResult = await client_jsonParse(directory);
+            final_client_side.push(...client_jsonParseResult);
+        }
+
+        // now, use the mapped JSON file to find more paths
+        if (mappedJsonFile) {
+            const client_mappedJsonFileResult = await client_mappedJsonFile(mappedJsonFile);
+            final_client_side.push(...client_mappedJsonFileResult);
+        }
 
         if (outputFormat.includes("json")) {
             const gen_jsonResult = await gen_json(url, final_client_side, output);
