@@ -47,7 +47,7 @@ program
 
 program
     .command("endpoints")
-    .description("Extract API endpoints")
+    .description("Extract client-side endpoints")
     .option("-u, --url <url>", "Target Base URL (will be used to resolve relative paths)")
     .option("-d, --directory <directory>", "Directory containing JS files")
     .option("-o, --output <filename>", "Output filename (without file extension)", "endpoints")
