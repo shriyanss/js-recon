@@ -9,6 +9,8 @@
 
 ### Changed
 
+- Type for `exports` is now `string[]` rather than `string` in `mapped.json`
+
 ### Fixed
 
 ## 1.1.3 - 2025.07.28
