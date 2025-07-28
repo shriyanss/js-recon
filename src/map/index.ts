@@ -12,6 +12,7 @@ import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
 import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
+import getExports from "./next_js/getExports.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -74,6 +75,9 @@ const map = async (
         if (!allOutputFilesAvailable) {
             // skip regeneration if output file already exists
             chunks = await getWebpackConnections(directory, output, formats);
+
+            // get the exports
+            chunks = await getExports(chunks);
 
             // now, iterate through them, and check fetch instances
             chunks = await getFetchInstances(chunks, output, formats);

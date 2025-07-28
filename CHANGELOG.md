@@ -1,5 +1,21 @@
 # Change Log
 
+## 1.1.4-alpha.1 - 2025.07.28
+
+### Added
+
+- Get the exports of the chunks in next.js
+- Added command to get the exports of a chunk in next.js - `list exportnames`
+- Added `--mapped-json` flag to endpoints module
+
+### Changed
+
+- Type for `exports` is now `string[]` rather than `string` in `mapped.json`
+- Remove `md` output format for endpoints module
+- Removed `--subsequent-requests-dir` option from endpoints module (now use `-d` only)
+
+### Fixed
+
 ## 1.1.3 - 2025.07.28
 
 ### Added
