@@ -137,7 +137,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                                         loadedOn: [],
                                         containsFetch: false,
                                         isAxiosClient: false,
-                                        exports: "string",
+                                        exports: [],
                                         callStack: [],
                                         code: function_code,
                                         imports: [],

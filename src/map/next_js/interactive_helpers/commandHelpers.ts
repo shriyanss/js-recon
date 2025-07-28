@@ -119,6 +119,46 @@ const commandHelpers = {
         }
         return returnText;
     },
+    getExportNames: (chunks: Chunks, chunkId: string): string => {
+        // check if the chunk exists
+        if (!chunks[chunkId] && chunkId !== "all" && chunkId !== "nonempty") {
+            return chalk.red(`Chunk ${chunkId} not found`);
+        }
+
+        let returnText = chalk.cyan("List of export names\n");
+
+        if (chunkId === "all") {
+            returnText += "\n";
+            returnText += chalk.magenta("Listing all chunks:\n");
+            for (const chunk of Object.keys(chunks)) {
+                returnText += chalk.green(`- ${chunk}: ${chunks[chunk].description}\n`);
+                for (const exportName of chunks[chunk].exports) {
+                    returnText += chalk.green(`  - ${exportName}\n`);
+                }
+            }
+        } else if (chunkId === "nonempty") {
+            returnText += "\n";
+            returnText += chalk.magenta("Listing all chunks:\n");
+            for (const chunk of Object.keys(chunks)) {
+                if (chunks[chunk].exports.length > 0) {
+                    returnText += chalk.green(`- ${chunk}: ${chunks[chunk].description}\n`);
+                    for (const exportName of chunks[chunk].exports) {
+                        returnText += chalk.green(`  - ${exportName}\n`);
+                    }
+                }
+            }
+        } else {
+            // check if it is empty
+            if (chunks[chunkId].exports.length === 0) {
+                returnText += chalk.yellow("- No exports");
+            } else {
+                for (const exportName of chunks[chunkId].exports) {
+                    returnText += chalk.green(`- ${exportName}\n`);
+                }
+            }
+        }
+        return returnText;
+    },
 };
 
 export default commandHelpers;

@@ -62,6 +62,17 @@ async function handleCommand(text: string, state: State, ui: Screen) {
             } else if (option === "nav") {
                 outputBox.log(commandHelpers.navHistory(state.chunks, state.functionNavHistory));
                 state.lastCommandStatus = true;
+            } else if (option === "exportnames") {
+                // get the chunk id
+                const chunkId = text.split(" ")[2];
+                if (chunkId === "") {
+                    outputBox.log(chalk.magenta(usage));
+                    state.lastCommandStatus = false;
+                } else {
+                    const exportNames = commandHelpers.getExportNames(state.chunks, chunkId);
+                    outputBox.log(exportNames);
+                    state.lastCommandStatus = true;
+                }
             } else {
                 outputBox.log(chalk.red(option) + " is not a valid option");
                 state.lastCommandStatus = false;
