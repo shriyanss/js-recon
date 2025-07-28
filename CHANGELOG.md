@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.1.3 - 2025.07.28
+
+### Added
+
+### Changed
+
+### Fixed
+
 ## 1.1.3-beta.3 - 2025.07.26
 
 ### Added
