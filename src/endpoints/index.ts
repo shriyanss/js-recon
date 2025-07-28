@@ -13,7 +13,15 @@ import gen_json from "./gen_report/gen_json.js";
 const techs = ["Next.JS (next)"];
 const outputFormats = ["json"];
 
-const endpoints = async (url:string|undefined, directory:string|undefined, output:string|undefined, outputFormat:string[]|undefined, tech:string|undefined, list:boolean|undefined, mappedJsonFile:string|undefined) => {
+const endpoints = async (
+    url: string | undefined,
+    directory: string | undefined,
+    output: string | undefined,
+    outputFormat: string[] | undefined,
+    tech: string | undefined,
+    list: boolean | undefined,
+    mappedJsonFile: string | undefined
+) => {
     console.log(chalk.cyan("[i] Loading endpoints module"));
 
     // list available technologies
@@ -54,7 +62,6 @@ const endpoints = async (url:string|undefined, directory:string|undefined, outpu
     console.log(chalk.cyan("[i] Extracting endpoints"));
 
     if (tech === "next") {
-
         console.log(chalk.cyan("[i] Checking for client-side paths for Next.JS"));
 
         // var to store all the paths found
