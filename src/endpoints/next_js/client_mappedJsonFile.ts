@@ -29,7 +29,11 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                     const callee = path.node.callee;
 
                     // Check if it's a .push() call
-                    if (callee.type === "MemberExpression" && callee.property.type === "Identifier" && callee.property.name === "push") {
+                    if (
+                        callee.type === "MemberExpression" &&
+                        callee.property.type === "Identifier" &&
+                        callee.property.name === "push"
+                    ) {
                         const obj = callee.object;
 
                         // Check if the object of the push call is an assignment expression
@@ -38,19 +42,29 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                             const memberExpr = assignment.left;
 
                             // Check for window.__NEXT_P
-                            if (memberExpr.object.type === "Identifier" && memberExpr.object.name === "window" &&
-                                memberExpr.property.type === "Identifier" && memberExpr.property.name === "__NEXT_P") {
-
+                            if (
+                                memberExpr.object.type === "Identifier" &&
+                                memberExpr.object.name === "window" &&
+                                memberExpr.property.type === "Identifier" &&
+                                memberExpr.property.name === "__NEXT_P"
+                            ) {
                                 // Check for the logical expression on the right side of the assignment
-                                if (assignment.right.type === "LogicalExpression" && assignment.right.operator === "||") {
+                                if (
+                                    assignment.right.type === "LogicalExpression" &&
+                                    assignment.right.operator === "||"
+                                ) {
                                     const logicalExpr = assignment.right;
 
                                     // Check that the logical expression is `window.__NEXT_P || []`
-                                    if (logicalExpr.left.type === "MemberExpression" &&
-                                        logicalExpr.left.object.type === "Identifier" && logicalExpr.left.object.name === "window" &&
-                                        logicalExpr.left.property.type === "Identifier" && logicalExpr.left.property.name === "__NEXT_P" &&
-                                        logicalExpr.right.type === "ArrayExpression" && logicalExpr.right.elements.length === 0) {
-
+                                    if (
+                                        logicalExpr.left.type === "MemberExpression" &&
+                                        logicalExpr.left.object.type === "Identifier" &&
+                                        logicalExpr.left.object.name === "window" &&
+                                        logicalExpr.left.property.type === "Identifier" &&
+                                        logicalExpr.left.property.name === "__NEXT_P" &&
+                                        logicalExpr.right.type === "ArrayExpression" &&
+                                        logicalExpr.right.elements.length === 0
+                                    ) {
                                         // Now, get the arguments of the .push() call
                                         const pushArgs = path.node.arguments;
                                         if (pushArgs.length > 0 && pushArgs[0].type === "ArrayExpression") {
@@ -58,7 +72,9 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                                             if (firstArg.elements.length > 0) {
                                                 const element = firstArg.elements[0];
                                                 if (element.type === "StringLiteral") {
-                                                    console.log(chalk.green(`[+] Found client-side path: ${element.value}`));
+                                                    console.log(
+                                                        chalk.green(`[+] Found client-side path: ${element.value}`)
+                                                    );
                                                     foundPaths.push(element.value);
                                                 }
                                             }
@@ -68,7 +84,7 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                             }
                         }
                     }
-                }
+                },
             });
         }
     }
