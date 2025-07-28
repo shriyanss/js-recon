@@ -119,6 +119,24 @@ const commandHelpers = {
         }
         return returnText;
     },
+    getExportNames: (chunks: Chunks, chunkId: string): string => {
+        // check if the chunk exists
+        if (!chunks[chunkId]) {
+            return chalk.red(`Chunk ${chunkId} not found`);
+        }
+
+        let returnText = chalk.cyan("List of export names\n");
+
+        // check if it is empty
+        if (chunks[chunkId].exports.length === 0) {
+            returnText += chalk.yellow("- No exports");
+        } else {
+            for (const exportName of chunks[chunkId].exports) {
+                returnText += chalk.green(`- ${exportName}\n`);
+            }
+        }
+        return returnText;
+    },
 };
 
 export default commandHelpers;

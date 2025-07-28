@@ -5,6 +5,7 @@
 ### Added
 
 - Get the exports of the chunks in next.js
+- Added command to get the exports of a chunk in next.js - `list exportnames`
 
 ### Changed
 
