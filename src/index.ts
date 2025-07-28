@@ -51,7 +51,7 @@ program
     .option("-u, --url <url>", "Target Base URL (will be used to resolve relative paths)")
     .option("-d, --directory <directory>", "Directory containing JS files")
     .option("-o, --output <filename>", "Output filename (without file extension)", "endpoints")
-    .option("--output-format <format>", "Output format for the results comma-separated (available: json, md)", "json")
+    .option("--output-format <format>", "Output format for the results comma-separated (available: json)", "json")
     .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
     .option("-l, --list", "List available technologies", false)
     .option("--subsequent-requests-dir <directory>", "Directory containing subsequent requests (for Next.JS)")
