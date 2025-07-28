@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.4-alpha.1 - (unreleased)
+
+### Added
+
+- Get the exports of the chunks in next.js
+
+### Changed
+
+### Fixed
+
 ## 1.1.3 - 2025.07.28
 
 ### Added

@@ -12,6 +12,7 @@ import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
 import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
+import getExports from "./next_js/getExports.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -90,6 +91,9 @@ const map = async (
 
         // also, the axios instances
         await resolveAxios(chunks, directory);
+
+        // get the exports
+        await getExports(chunks);
 
         if (interactive_mode) {
             await interactive(chunks, `${output}.json`);
