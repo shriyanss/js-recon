@@ -77,7 +77,7 @@ const map = async (
             chunks = await getWebpackConnections(directory, output, formats);
 
             // get the exports
-            await getExports(chunks);
+            chunks = await getExports(chunks);
 
             // now, iterate through them, and check fetch instances
             chunks = await getFetchInstances(chunks, output, formats);

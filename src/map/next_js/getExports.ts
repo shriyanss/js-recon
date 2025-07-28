@@ -85,6 +85,9 @@ const getExports = async (chunks: Chunks): Promise<Chunks> => {
             },
         });
 
+        // now, iterate again, and find the different instance
+        // it should be something like Object.defineProperty
+
         chunkCopy[chunk.id].exports = chunkExports;
     }
 
