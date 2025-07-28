@@ -36,24 +36,22 @@ const getExports = (chunks: Chunks): Chunks => {
                     funcNode = path.node.right;
                 }
 
-                if (funcNode && funcNode.params.length === 2) {
+                if (funcNode && funcNode.params.length >= 2) {
                     const secondParam = funcNode.params[1];
                     if (secondParam.type === "Identifier") {
                         chunkSecondArg = secondParam.name;
-                        if (chunkSecondArg && chunkThirdArg) {
-                            path.stop();
-                        }
                     }
                 }
 
-                if (funcNode && funcNode.params.length === 3) {
+                if (funcNode && funcNode.params.length >= 3) {
                     const thirdParam = funcNode.params[2];
                     if (thirdParam.type === "Identifier") {
                         chunkThirdArg = thirdParam.name;
-                        if (chunkSecondArg && chunkThirdArg) {
-                            path.stop();
-                        }
                     }
+                }
+
+                if (chunkSecondArg && chunkThirdArg) {
+                    path.stop();
                 }
             },
         });
