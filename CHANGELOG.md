@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.1.4-alpha.2 - (unreleased)
+
+### Added
+
+- Add description to chunks in mapped.json by default when using `map` module (an axios lib is detected) or when using the `endpoints` module (when a client-side path is detected)
+
+### Changed
+
+### Fixed
+
+
 ## 1.1.4-alpha.1 - 2025.07.28
 
 ### Added
