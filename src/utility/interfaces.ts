@@ -4,7 +4,7 @@ export interface Chunk {
     loadedOn: [];
     containsFetch: boolean;
     isAxiosClient: boolean;
-    exports: string;
+    exports: string[];
     callStack: [];
     code: string;
     imports: string[];
