@@ -13,20 +13,12 @@ const requestStepSchema = z.union([
     }),
 ]);
 
-const stepSchema = z.union([
-    z.object({
-        name: z.string(),
-        message: z.string(),
-        requires: z.array(z.string()).optional(),
-        request: requestStepSchema,
-    }),
-    z.object({
-        name: z.string(),
-        message: z.string(),
-        requires: z.array(z.string()).optional(),
-        esquery: z.string(),
-    }),
-]);
+const stepSchema = z.object({
+    name: z.string(),
+    message: z.string(),
+    requires: z.array(z.string()).optional(),
+    request: requestStepSchema,
+});
 
 export const ruleSchema = z.object({
     id: z.string(),

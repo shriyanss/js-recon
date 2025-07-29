@@ -2,6 +2,11 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import validateRules from "./helpers/validate.js";
+import { Rule } from "./types/index.js";
+import engine from "./engine/index.js";
+import yaml from "yaml";
+import { Chunks } from "../utility/interfaces.js";
+import { OpenAPISpec } from "../utility/openapiGenerator.js";
 
 const availableTechs = {
     next: "Next.js",
@@ -95,8 +100,8 @@ const analyze = async (
     }
 
     // load the mapped json and openapi in memory
-    let mappedJsonData: any;
-    let openapiData: any;
+    let mappedJsonData: Chunks | undefined;
+    let openapiData: OpenAPISpec | undefined;
     if (mappedJson) {
         mappedJsonData = JSON.parse(fs.readFileSync(mappedJson, "utf8"));
         console.log(chalk.green(`[i] Mapped JSON loaded successfully`));
@@ -104,6 +109,15 @@ const analyze = async (
     if (openapi) {
         openapiData = JSON.parse(fs.readFileSync(openapi, "utf8"));
         console.log(chalk.green(`[i] OpenAPI spec loaded successfully`));
+    }
+
+    // iterate over the ruleFiles
+    for (const ruleFile of ruleFiles) {
+        // load the rule
+        const rule: Rule = yaml.parse(fs.readFileSync(ruleFile, "utf8"));
+
+        // run the rule
+        await engine(rule, mappedJsonData, openapiData);
     }
 };
 
