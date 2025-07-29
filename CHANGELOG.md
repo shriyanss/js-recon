@@ -5,6 +5,7 @@
 ### Added
 
 - Added `analyze` module
+- Added analysis of OpenAPI spec file
 
 ### Changed
 
