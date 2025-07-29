@@ -3,6 +3,54 @@ import { Chunks } from "./interfaces.js";
 import * as globalsUtil from "./globals.js";
 import replacePlaceholders from "./replaceUrlPlaceholders.js";
 
+export interface Parameter {
+    name: string;
+    in: "query" | "header" | "path" | "cookie";
+    description?: string;
+    required?: boolean;
+    schema: {
+        type: string;
+        example?: any;
+        nullable?: boolean;
+    };
+}
+
+export interface RequestBody {
+    content: {
+        [mediaType: string]: {
+            schema: {
+                type: string;
+                properties?: {
+                    [key: string]: {
+                        type: string;
+                        example: any;
+                        nullable?: boolean;
+                    };
+                };
+            };
+            example?: any;
+        };
+    };
+}
+
+export interface Response {
+    description: string;
+}
+
+export interface OperationObject {
+    summary: string;
+    responses: {
+        [statusCode: string]: Response;
+    };
+    parameters?: Parameter[];
+    requestBody?: RequestBody;
+    tags?: string[];
+}
+
+export interface PathItemObject {
+    [method: string]: OperationObject;
+}
+
 export interface OpenAPISpec {
     openapi: string;
     info: {
@@ -15,7 +63,7 @@ export interface OpenAPISpec {
         description: string;
     }>;
     paths: {
-        [key: string]: any;
+        [path: string]: PathItemObject;
     };
 }
 
@@ -76,21 +124,23 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             continue;
         }
 
-        const parameters = Object.entries(item.headers || {}).map(([name, value]) => {
-            const schema: any = {
-                type: getOpenApiType(value),
-                example: value,
-            };
-            if (value === null) {
-                schema.nullable = true;
+        const parameters: Parameter[] = Object.entries(item.headers || {}).map(
+            ([name, value]): Parameter => {
+                const schema: Parameter["schema"] = {
+                    type: getOpenApiType(value),
+                    example: value,
+                };
+                if (value === null) {
+                    schema.nullable = true;
+                }
+                return {
+                    name,
+                    in: "header",
+                    required: true, // Assuming headers found are required for the call to succeed as intended
+                    schema,
+                };
             }
-            return {
-                name,
-                in: "header",
-                required: true, // Assuming headers found are required for the call to succeed as intended
-                schema,
-            };
-        });
+        );
 
         // Extract path parameters
         const pathParams = pathKey.match(/\{([^}]+)\}/g);
@@ -119,10 +169,10 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             });
         });
 
-        const operationObject: any = {
+        const operationObject: OperationObject = {
             summary: `${pathKey}`,
             responses: {
-                200: {
+                "200": {
                     description: "Successful response. The actual response will vary.",
                 },
             },
@@ -134,11 +184,11 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
         }
 
         if (item.body) {
-            let requestBody;
+            let requestBody: RequestBody;
             try {
                 const body = JSON.parse(item.body);
                 if (typeof body === "object" && body !== null) {
-                    const properties = {};
+                    const properties: RequestBody["content"]["application/json"]["schema"]["properties"] = {};
                     for (const key in body) {
                         const value = body[key];
                         const type = getOpenApiType(value);
