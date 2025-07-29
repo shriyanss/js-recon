@@ -83,7 +83,11 @@ export const processAxiosCall = (
                     (p) => p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "data"
                 );
 
-                if (headersProp && headersProp.type === "ObjectProperty" && headersProp.value.type === "ObjectExpression") {
+                if (
+                    headersProp &&
+                    headersProp.type === "ObjectProperty" &&
+                    headersProp.value.type === "ObjectExpression"
+                ) {
                     const newHeaders = {};
                     for (const header of headersProp.value.properties) {
                         if (header.type === "ObjectProperty") {
@@ -93,7 +97,7 @@ export const processAxiosCall = (
                             } else if (header.key.type === "StringLiteral") {
                                 key = header.key.value;
                             } else {
-                                key = `[unresolved key]`
+                                key = `[unresolved key]`;
                             }
                             const value = astNodeToJsonString(header.value, chunkCode);
                             newHeaders[key] = value;
@@ -106,8 +110,7 @@ export const processAxiosCall = (
                     callBody = astNodeToJsonString(dataProp.value, chunkCode);
                 } else if (!dataProp) {
                     const otherProps = axiosSecondArg.properties.filter(
-                        (p) =>
-                            !(p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "headers")
+                        (p) => !(p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "headers")
                     );
                     if (otherProps.length > 0) {
                         const bodyObject = { ...axiosSecondArg, properties: otherProps };
