@@ -9,19 +9,12 @@ export interface Rule {
     steps: Step[];
 }
 
-export type Step =
-    | {
-          name: string;
-          message: string;
-          requires?: string[];
-          request: RequestStep;
-      }
-    | {
-          name: string;
-          message: string;
-          requires?: string[];
-          esquery: string;
-      };
+export type Step = {
+    name: string;
+    message: string;
+    requires?: string[];
+    request: RequestStep;
+};
 
 export type RequestStep =
     | {

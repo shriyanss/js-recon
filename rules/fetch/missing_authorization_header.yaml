@@ -7,7 +7,7 @@ severity: medium
 type: request
 
 steps:
-    - name: Check if the authorization header is present or not
+    - name: check_auth_header
       message: Authorization header is not present
       request:
           type: headers
