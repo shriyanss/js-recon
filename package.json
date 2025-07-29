@@ -38,7 +38,8 @@
         "prettier": "^3.5.3",
         "puppeteer": "^24.11.2",
         "ses": "^1.13.0",
-        "yaml": "^2.8.0"
+        "yaml": "^2.8.0",
+        "zod": "^3.23.8"
     },
     "repository": {
         "type": "git",

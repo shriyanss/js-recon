@@ -1,11 +1,27 @@
 import chalk from "chalk";
-import yaml from "yaml";
 import fs from "fs";
 import path from "path";
-import { Rule } from "./types/index.js";
+import validateRules from "./helpers/validate.js";
 
 const availableTechs = {
     next: "Next.js",
+};
+
+const getRuleFilesRecursive = (dir: string): string[] => {
+    let results: string[] = [];
+    const list = fs.readdirSync(dir);
+    list.forEach(function (file) {
+        file = path.join(dir, file);
+        const stat = fs.statSync(file);
+        if (stat && stat.isDirectory()) {
+            results = results.concat(getRuleFilesRecursive(file));
+        } else {
+            if (file.endsWith(".yml") || file.endsWith(".yaml")) {
+                results.push(file);
+            }
+        }
+    });
+    return results;
 };
 
 const analyze = async (
@@ -26,15 +42,23 @@ const analyze = async (
 
     // now that the rule thing exist, check if it is a direcotory or a file
     let ruleFiles: string[] = [];
+
     if (fs.lstatSync(rulesPath).isDirectory()) {
-        ruleFiles = fs.readdirSync(rulesPath).filter((file) => file.endsWith(".yaml"));
+        ruleFiles = getRuleFilesRecursive(rulesPath);
     } else {
         ruleFiles = [rulesPath];
     }
 
-    // check if the validate flag is passed. If so, validate the rules and return
+    // now, validate all those files
+    const allValidated = await validateRules(ruleFiles);
+
+    if (!allValidated) {
+        console.log(chalk.red("[!] Some rules are invalid"));
+        return;
+    }
+
     if (validate) {
-        console.log(chalk.green("[i] Validating rules..."));
+        console.log(chalk.green("[✓] All rules are valid"));
         return;
     }
 
