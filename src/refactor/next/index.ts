@@ -20,19 +20,21 @@ const refactorNext = async (chunk: Chunk): Promise<string> => {
     });
 
     // first of all, find the name of third argument of the function
-    let thirdParamName: string;
+    let thirdParamName: string | undefined;
     traverse(ast, {
         FunctionDeclaration(path) {
             if (path.node.params.length < 3) return;
             const thirdParam = path.node.params[2];
             if (thirdParam.type !== "Identifier") return;
             thirdParamName = thirdParam.name;
+            path.stop();
         },
         ArrowFunctionExpression(path) {
             if (path.node.params.length < 3) return;
             const thirdParam = path.node.params[2];
             if (thirdParam.type !== "Identifier") return;
             thirdParamName = thirdParam.name;
+            path.stop();
         },
     });
 
