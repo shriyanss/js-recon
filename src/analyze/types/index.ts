@@ -18,6 +18,7 @@ export type Step = {
 
 export type RequestStep =
     | {
+          method: any;
           type: "headers";
           condition: "contains" | "absent";
           name: string;
