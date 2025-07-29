@@ -9,6 +9,6 @@ type: request
 steps:
     - name: Check if the authorization header is present or not
       request:
-        type: headers
-        condition: absent
-        name: Authorization
+          type: headers
+          condition: absent
+          name: Authorization

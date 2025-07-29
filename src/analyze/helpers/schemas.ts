@@ -1,14 +1,14 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 const requestStepSchema = z.union([
     z.object({
-        type: z.literal('headers'),
-        condition: z.enum(['contains', 'absent']),
+        type: z.literal("headers"),
+        condition: z.enum(["contains", "absent"]),
         name: z.string(),
     }),
     z.object({
-        type: z.literal('url'),
-        condition: z.literal('contains'),
+        type: z.literal("url"),
+        condition: z.literal("contains"),
         name: z.string(),
     }),
 ]);
@@ -33,8 +33,8 @@ export const ruleSchema = z.object({
     name: z.string(),
     author: z.string(),
     description: z.string(),
-    tech: z.literal('next'),
-    severity: z.enum(['info', 'low', 'medium', 'high']),
-    type: z.literal('request'),
+    tech: z.literal("next"),
+    severity: z.enum(["info", "low", "medium", "high"]),
+    type: z.literal("request"),
     steps: z.array(stepSchema),
 });
