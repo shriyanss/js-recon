@@ -1,5 +1,18 @@
 # Change Log
 
+## 1.1.4-alpha.2 - 2025.07.29
+
+### Added
+
+- Add description to chunks in mapped.json by default when using `map` module (an axios lib is detected) or when using the `endpoints` module (when a client-side path is detected)
+- Add `list desc` command to show functions with non-empty descriptions in interactive mode
+- Add `refactor` module
+- Iterate through all the chunks, and write it to a separate file, and add export statements
+
+### Changed
+
+### Fixed
+
 ## 1.1.4-alpha.1 - 2025.07.28
 
 ### Added

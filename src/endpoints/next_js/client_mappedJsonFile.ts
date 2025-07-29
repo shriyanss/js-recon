@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import fs from "fs";
-import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
@@ -11,6 +10,8 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
 
     // open the file and load the chunks
     const chunks: Chunks = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+
+    let chunksCopy = chunks;
 
     let foundPaths: string[] = [];
 
@@ -75,6 +76,10 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                                                     console.log(
                                                         chalk.green(`[+] Found client-side path: ${element.value}`)
                                                     );
+                                                    if (chunksCopy[key].description === "none") {
+                                                        chunksCopy[key].description =
+                                                            "Client-side path definition: " + element.value;
+                                                    }
                                                     foundPaths.push(element.value);
                                                 }
                                             }
@@ -88,6 +93,10 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
             });
         }
     }
+
+    // write the chunk to the output file
+    const chunks_json = JSON.stringify(chunksCopy, null, 2);
+    fs.writeFileSync(filePath, chunks_json);
 
     return foundPaths;
 };
