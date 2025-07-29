@@ -8,6 +8,7 @@ type: request
 
 steps:
     - name: Check if the authorization header is present or not
+      message: Authorization header is not present
       request:
           type: headers
           condition: absent
