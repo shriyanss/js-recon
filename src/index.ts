@@ -7,6 +7,7 @@ import strings from "./strings/index.js";
 import apiGateway from "./api_gateway/index.js";
 import map from "./map/index.js";
 import * as globalsUtil from "./utility/globals.js";
+import refactor from "./refactor/index.js";
 import run from "./run/index.js";
 import chalk from "chalk";
 
@@ -168,6 +169,15 @@ program
             }
         }
         await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
+    });
+
+program
+    .command("refactor")
+    .description("Refactor the code")
+    .option("-m, --mapped-json <file>", "Mapped JSON file", "mapped.json")
+    .option("-o, --output <directory>", "Output directory", "output_refactored")
+    .action(async (cmd) => {
+        await refactor(cmd.mappedJson, cmd.output);
     });
 
 program
