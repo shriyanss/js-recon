@@ -67,16 +67,9 @@ const refactorNext = async (chunk: Chunk): Promise<string> => {
         codeCopy = generate(ast).code;
     }
 
-    // parse the codeCopy, and get append something like `export default <functionName>` to it
-    const ast2 = parser.parse(codeCopy, {
-        sourceType: "unambiguous",
-        plugins: ["jsx", "typescript"],
-        errorRecovery: true,
-    });
-
     let functionName: string | null = null;
 
-    traverse(ast2, {
+    traverse(ast, {
         FunctionDeclaration(path) {
             if (path.parent.type === "Program") {
                 if (path.node.id) {
