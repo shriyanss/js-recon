@@ -2,9 +2,6 @@ import chalk from "chalk";
 import fs from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import prettier from "prettier";
-import parser from "@babel/parser";
-import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
 
 // Next.js
 import refactorNext from "./next/index.js";
