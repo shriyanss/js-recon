@@ -4,7 +4,7 @@ import yaml from "yaml";
 import { ruleSchema } from "./schemas.js";
 
 const validateRules = async (ruleFiles: string[]): Promise<boolean> => {
-    console.log(chalk.green("[i] Validating rules..."));
+    console.log(chalk.cyan("[i] Validating rules..."));
     let allValid = true;
 
     // iterate over the ruleFiles
