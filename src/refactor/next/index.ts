@@ -39,10 +39,10 @@ const refactorNext = async (chunk: Chunk): Promise<string> => {
     // if third argument is there, then process further
 
     if (thirdParamName) {
-        // now, I want to traverse through the code, and find the call expressions
+        // now, traverse through the code, and find the call expressions
         // it would be like thirdParamName(<some_number>)
-        // I want to replace it with `require("./<some_number>.js")`
-        // then, I want to write it in the codeCopy variable
+        // Then replace it with `require("./<some_number>.js")`
+        // then, write it in the codeCopy variable
 
         traverse(ast, {
             CallExpression(path) {
@@ -63,6 +63,41 @@ const refactorNext = async (chunk: Chunk): Promise<string> => {
         });
 
         codeCopy = generate(ast).code;
+    }
+
+    // parse the codeCopy, and get append something like `export default <functionName>` to it
+    const ast2 = parser.parse(codeCopy, {
+        sourceType: "unambiguous",
+        plugins: ["jsx", "typescript"],
+        errorRecovery: true,
+    });
+
+    let functionName: string | null = null;
+
+    traverse(ast2, {
+        FunctionDeclaration(path) {
+            if (path.parent.type === "Program") {
+                if (path.node.id) {
+                    functionName = path.node.id.name;
+                    path.stop();
+                }
+            }
+        },
+        VariableDeclarator(path) {
+            if (
+                path.parentPath.parent.type === "Program" &&
+                path.node.init &&
+                path.node.init.type === "ArrowFunctionExpression" &&
+                path.node.id.type === "Identifier"
+            ) {
+                functionName = path.node.id.name;
+                path.stop();
+            }
+        },
+    });
+
+    if (functionName) {
+        codeCopy += `\n\nexport default ${functionName};`;
     }
 
     return codeCopy;
