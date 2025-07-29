@@ -3,11 +3,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import chalk from "chalk";
 
-export const engine = async (
-    rule: Rule,
-    mappedJsonData: Chunks | undefined,
-    openapiData: OpenAPISpec | undefined
-) => {
+export const engine = async (rule: Rule, mappedJsonData: Chunks | undefined, openapiData: OpenAPISpec | undefined) => {
     // first of all check what is rule type, and then check if the data for that is available or is undefined
 
     if (rule.type === "request") {
@@ -34,8 +30,6 @@ export const engine = async (
         if (step.request.type === "headers") {
         }
     }
-
-    
 };
 
 export default engine;
