@@ -34,9 +34,7 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
                         }
                     }
                 } else if (step.request.type === "headers") {
-                    const headers = operation.parameters?.filter(
-                        (param) => param.in === "header"
-                    );
+                    const headers = operation.parameters?.filter((param) => param.in === "header");
 
                     if (step.request.condition === "contains") {
                         if (headers?.some((h) => h.name === step.request.name)) {
@@ -54,10 +52,17 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
                 }
             }
 
-            if (successfulSteps === rule.steps.length) {
-                console.log(
-                    chalk.green(`Rule ${rule.name} passed for ${path} [${method.toUpperCase()}]`)
-                );
+            if (successfulSteps !== rule.steps.length) {
+                // get the severity of the rule
+                if (rule.severity === "info") {
+                    console.log(chalk.green(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                } else if (rule.severity === "low") {
+                    console.log(chalk.yellow(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                } else if (rule.severity === "medium") {
+                    console.log(chalk.red(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                } else if (rule.severity === "high") {
+                    console.log(chalk.red(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                }
             }
         }
     }
