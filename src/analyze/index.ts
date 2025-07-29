@@ -37,7 +37,7 @@ const analyze = async (
     openapi: string,
     validate: boolean
 ) => {
-    console.log(chalk.green(`[i] Loading analyze module...`));
+    console.log(chalk.cyan(`[i] Loading analyze module...`));
 
     // check if `rules` exists
     if (!fs.existsSync(rulesPath)) {
@@ -104,11 +104,11 @@ const analyze = async (
     let openapiData: OpenAPISpec | undefined;
     if (mappedJson) {
         mappedJsonData = JSON.parse(fs.readFileSync(mappedJson, "utf8"));
-        console.log(chalk.green(`[i] Mapped JSON loaded successfully`));
+        console.log(chalk.green(`[✓] Mapped JSON loaded successfully`));
     }
     if (openapi) {
         openapiData = JSON.parse(fs.readFileSync(openapi, "utf8"));
-        console.log(chalk.green(`[i] OpenAPI spec loaded successfully`));
+        console.log(chalk.green(`[✓] OpenAPI spec loaded successfully`));
     }
 
     // iterate over the ruleFiles
