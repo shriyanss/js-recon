@@ -20,7 +20,19 @@ export const engine = async (
 
     // iterate through the steps
     for (const step of rule.steps) {
-        
+        // check if there are any requirements
+        if (step.requires) {
+            // check if all the requirements are met
+            for (const requirement of step.requires) {
+                if (!stepsSuccess.includes(requirement)) {
+                    return;
+                }
+            }
+        }
+
+        // now check what request it is trying to get
+        if (step.request.type === "headers") {
+        }
     }
 
     
