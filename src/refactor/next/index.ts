@@ -54,10 +54,9 @@ const refactorNext = async (chunk: Chunk): Promise<string> => {
                     t.isNumericLiteral(path.node.arguments[0])
                 ) {
                     const argument = path.node.arguments[0];
-                    const newRequire = t.callExpression(
-                        t.identifier("require"),
-                        [t.stringLiteral(`./${argument.value}.js`)]
-                    );
+                    const newRequire = t.callExpression(t.identifier("require"), [
+                        t.stringLiteral(`./${argument.value}.js`),
+                    ]);
                     path.replaceWith(newRequire);
                 }
             },
