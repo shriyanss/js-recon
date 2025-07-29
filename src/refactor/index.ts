@@ -2,13 +2,37 @@ import chalk from "chalk";
 import fs from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import prettier from "prettier";
+import parser from "@babel/parser";
+import _traverse from "@babel/traverse";
+const traverse = _traverse.default;
 
-const refactor = async (mappedJson: string, outputDir: string) => {
+// Next.js
+import refactorNext from "./next/index.js";
+
+const availableTechs = {
+    next: "Next.js",
+};
+
+const refactor = async (mappedJson: string, outputDir: string, tech: string, list: boolean) => {
     console.log(chalk.cyan("[i] Loading refactor module..."));
 
     // check if the file exists
     if (!fs.existsSync(mappedJson)) {
         console.log(chalk.red("[!] Mapped JSON file does not exist"));
+        process.exit(1);
+    }
+
+    if (list) {
+        console.log(chalk.cyan("[i] Listing available technologies"));
+        for (const tech of Object.keys(availableTechs)) {
+            console.log(chalk.green(`- ${tech}: ${availableTechs[tech]}`));
+        }
+        return;
+    }
+
+    // verify if the tech provided is valid
+    if (!Object.keys(availableTechs).includes(tech)) {
+        console.log(chalk.red("[!] Invalid technology provided"));
         process.exit(1);
     }
 
@@ -25,8 +49,11 @@ const refactor = async (mappedJson: string, outputDir: string) => {
 
     // iterate through the chunks
     for (const [key, value] of Object.entries(chunks)) {
-        // prettify the code
-        const code = await prettier.format(value.code, { parser: "babel" });
+        let code: string;
+
+        if (tech === "next") {
+            code = await refactorNext(value);
+        }
 
         // write the code to a file
         fs.writeFileSync(`${outputDir}/${key}.js`, code);

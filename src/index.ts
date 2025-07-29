@@ -176,8 +176,10 @@ program
     .description("Refactor the code")
     .option("-m, --mapped-json <file>", "Mapped JSON file", "mapped.json")
     .option("-o, --output <directory>", "Output directory", "output_refactored")
+    .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
+    .option("-l, --list", "List available technologies", false)
     .action(async (cmd) => {
-        await refactor(cmd.mappedJson, cmd.output);
+        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list);
     });
 
 program
