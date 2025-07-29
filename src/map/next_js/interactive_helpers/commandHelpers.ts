@@ -159,6 +159,20 @@ const commandHelpers = {
         }
         return returnText;
     },
+    listNonEmptyDescriptionFunctions: (chunks: Chunks) => {
+        let returnText = chalk.cyan("List of functions with non-empty descriptions\n");
+        let count = 0;
+        for (const chunk of Object.values(chunks)) {
+            if (chunk.description !== "none") {
+                returnText += chalk.green(`- ${chunk.id}: ${chunk.description}\n`);
+                count++;
+            }
+        }
+        if (count === 0) {
+            returnText += chalk.yellow("- No functions with non-empty descriptions");
+        }
+        return returnText;
+    },
 };
 
 export default commandHelpers;
