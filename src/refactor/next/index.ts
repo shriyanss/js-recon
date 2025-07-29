@@ -1,8 +1,11 @@
 import chalk from "chalk";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import _generator from "@babel/generator";
+import * as t from "@babel/types";
 import { Chunk } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
+const generate = _generator.default;
 
 const refactorNext = async (chunk: Chunk): Promise<string> => {
     console.log(chalk.cyan(`[i] Refactoring Next.js chunk: ${chunk.id}`));
@@ -41,7 +44,26 @@ const refactorNext = async (chunk: Chunk): Promise<string> => {
         // I want to replace it with `require("./<some_number>.js")`
         // then, I want to write it in the codeCopy variable
 
-        traverse(ast, {});
+        traverse(ast, {
+            CallExpression(path) {
+                if (
+                    t.isIdentifier(path.node.callee, {
+                        name: thirdParamName,
+                    }) &&
+                    path.node.arguments.length === 1 &&
+                    t.isNumericLiteral(path.node.arguments[0])
+                ) {
+                    const argument = path.node.arguments[0];
+                    const newRequire = t.callExpression(
+                        t.identifier("require"),
+                        [t.stringLiteral(`./${argument.value}.js`)]
+                    );
+                    path.replaceWith(newRequire);
+                }
+            },
+        });
+
+        codeCopy = generate(ast).code;
     }
 
     return codeCopy;
