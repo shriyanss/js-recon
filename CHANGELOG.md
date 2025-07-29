@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.1.4-alpha.3 - (unreleased)
+
+### Added
+
+- Added `analyze` module
+
+### Changed
+
+### Fixed
+
 ## 1.1.4-alpha.2 - 2025.07.29
 
 ### Added
