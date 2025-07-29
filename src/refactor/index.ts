@@ -55,6 +55,13 @@ const refactor = async (mappedJson: string, outputDir: string, tech: string, lis
             code = await refactorNext(value);
         }
 
+        // prettify the code before writing
+        code = await prettier.format(code, {
+            parser: "babel",
+            singleQuote: true,
+            trailingComma: "none",
+        });
+
         // write the code to a file
         fs.writeFileSync(`${outputDir}/${key}.js`, code);
 
