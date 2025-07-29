@@ -2,8 +2,8 @@ name: Build & Prettify Code
 
 on:
   push:
-    branches:
-      - dev
+    branches-ignore:
+      - main
 
 jobs:
   version_check:
