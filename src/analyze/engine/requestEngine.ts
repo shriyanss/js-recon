@@ -55,13 +55,13 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
             if (successfulSteps !== rule.steps.length) {
                 // get the severity of the rule
                 if (rule.severity === "info") {
-                    console.log(chalk.green(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.cyan(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
                 } else if (rule.severity === "low") {
-                    console.log(chalk.yellow(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.yellow(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
                 } else if (rule.severity === "medium") {
-                    console.log(chalk.red(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.magenta(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
                 } else if (rule.severity === "high") {
-                    console.log(chalk.red(`Rule ${rule.name} failed for ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.red(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
                 }
             }
         }
