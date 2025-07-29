@@ -76,12 +76,21 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             continue;
         }
 
-        const parameters = Object.entries(item.headers || {}).map(([name, value]) => ({
-            name,
-            in: "header",
-            required: true,
-            schema: { type: "string", example: value },
-        }));
+        const parameters = Object.entries(item.headers || {}).map(([name, value]) => {
+            const schema: any = {
+                type: getOpenApiType(value),
+                example: value,
+            };
+            if (value === null) {
+                schema.nullable = true;
+            }
+            return {
+                name,
+                in: "header",
+                required: true, // Assuming headers found are required for the call to succeed as intended
+                schema,
+            };
+        });
 
         // Extract path parameters
         const pathParams = pathKey.match(/\{([^}]+)\}/g);
