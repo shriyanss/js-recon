@@ -2,54 +2,63 @@ import { Rule } from "../types/index.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import chalk from "chalk";
 
-export const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
-    // iterate through all the requests in the openapidata
+const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
     for (const path in openapiData.paths) {
-        let stepsSuccess: string[] = [];
+        const methods = openapiData.paths[path];
+        for (const method in methods) {
+            const operation = methods[method];
+            if (!operation) continue;
 
-        // iterate through the steps
-        for (const step of rule.steps) {
-            // check what this step if about. Like url or headers
-            if (step.request.type === "headers") {
-                // since this is about headers, then get the headers for this
-                const headers = openapiData.paths[path][step.request.method].parameters?.filter(
-                    (param) => param.in === "header"
-                );
+            let successfulSteps = 0;
 
-                // now, get the condition and check those
-                if (step.request.condition === "contains") {
-                    // now, check if the header exists
-                    for (const header of headers) {
-                        if (header.name === step.request.name) {
-                            stepsSuccess.push(step.name);
+            for (const step of rule.steps) {
+                let stepSuccess = false;
+
+                // Skip header checks that don't match the current method
+                if (
+                    step.request.type === "headers" &&
+                    step.request.method &&
+                    step.request.method.toLowerCase() !== method.toLowerCase()
+                ) {
+                    continue;
+                }
+
+                if (step.request.type === "url") {
+                    if (step.request.condition === "contains") {
+                        if (path.includes(step.request.name)) {
+                            stepSuccess = true;
+                        }
+                    } else if (step.request.condition === "absent") {
+                        if (!path.includes(step.request.name)) {
+                            stepSuccess = true;
                         }
                     }
-                } else if (step.request.condition === "absent") {
-                    // now, check if the header does not exist
-                    let headerExists = false;
-                    for (const header of headers) {
-                        if (header.name === step.request.name) {
-                            headerExists = true;
+                } else if (step.request.type === "headers") {
+                    const headers = operation.parameters?.filter(
+                        (param) => param.in === "header"
+                    );
+
+                    if (step.request.condition === "contains") {
+                        if (headers?.some((h) => h.name === step.request.name)) {
+                            stepSuccess = true;
                         }
-                    }
-                    if (!headerExists) {
-                        stepsSuccess.push(step.name);
+                    } else if (step.request.condition === "absent") {
+                        if (!headers?.some((h) => h.name === step.request.name)) {
+                            stepSuccess = true;
+                        }
                     }
                 }
-            } else if (step.request.type === "url") {
-                // now, get the condition and check those
-                if (step.request.condition === "contains") {
-                    // now, check if the url contains the name
-                    if (path.includes(step.request.name)) {
-                        stepsSuccess.push(step.name);
-                    }
+
+                if (stepSuccess) {
+                    successfulSteps++;
                 }
             }
-        }
 
-        // check if all steps are successful
-        if (stepsSuccess.length === rule.steps.length) {
-            console.log(chalk.green(`Rule ${rule.name} passed for ${path}`));
+            if (successfulSteps === rule.steps.length) {
+                console.log(
+                    chalk.green(`Rule ${rule.name} passed for ${path} [${method.toUpperCase()}]`)
+                );
+            }
         }
     }
 };

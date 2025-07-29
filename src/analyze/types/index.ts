@@ -18,13 +18,13 @@ export type Step = {
 
 export type RequestStep =
     | {
-          method: any;
+          method: string;
           type: "headers";
           condition: "contains" | "absent";
           name: string;
       }
     | {
           type: "url";
-          condition: "contains";
+          condition: "contains" | "absent";
           name: string;
       };
