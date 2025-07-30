@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.1.4-beta.1 - (unreleased)
+
+### Added
+
+- Added HTTP method condition support in request analysis engine
+- Added esquery engine for static code analysis with AST queries
+
+### Changed
+
+### Fixed
+
+
 ## 1.1.4-alpha.3 - 2025.07.30
 
 ### Added
