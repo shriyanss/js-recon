@@ -1,0 +1,15 @@
+id: api_path
+name: API Path
+author: shriyanss
+description: Check if the URL is a common API path
+tech: next
+severity: info
+type: request
+
+steps:
+    - name: check_api_path
+      message: URL is a common API path
+      request:
+          type: url
+          condition: contains
+          name: "/api/"
