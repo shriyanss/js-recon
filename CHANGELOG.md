@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.1.4-alpha.3 - 2025.07.30
+
+### Added
+
+- Added `analyze` module
+- Added analysis of OpenAPI spec file (requestEngine)
+- Use the repo https://github.com/shriyanss/js-recon-rules to remotely store and download rules
+
+### Changed
+
+### Fixed
+
 ## 1.1.4-alpha.2 - 2025.07.29
 
 ### Added
