@@ -5,7 +5,8 @@
 ### Added
 
 - Added `analyze` module
-- Added analysis of OpenAPI spec file
+- Added analysis of OpenAPI spec file (requestEngine)
+- Added basic templates for requestsEngine
 
 ### Changed
 
