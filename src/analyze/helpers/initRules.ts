@@ -60,7 +60,7 @@ const initRules = async () => {
     // now that this rule exists, check if the version.txt exists
     const versionPath = path.join(homeDir, "/.js-recon/rules/version.txt");
     if (!fs.existsSync(versionPath)) {
-        console.log(chalk.yellow("[!] Rules directory is corrupted. Downloading again..."))
+        console.log(chalk.yellow("[!] Rules directory is corrupted. Downloading again..."));
         // remove the rules directory
         fs.rmSync(path.join(homeDir, "/.js-recon/rules"), { recursive: true });
         await downloadRules(homeDir);
