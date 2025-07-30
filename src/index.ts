@@ -10,6 +10,7 @@ import * as globalsUtil from "./utility/globals.js";
 import refactor from "./refactor/index.js";
 import run from "./run/index.js";
 import chalk from "chalk";
+import analyze from "./analyze/index.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 const validAiOptions = ["description"];
@@ -180,6 +181,19 @@ program
     .option("-l, --list", "List available technologies", false)
     .action(async (cmd) => {
         await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list);
+    });
+
+program
+    .command("analyze")
+    .description("Analyze the code")
+    .option("-r, --rules <file/dir>", "Rules file or directory")
+    .option("-m, --mapped-json <file>", "Mapped JSON file", "mapped.json")
+    .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
+    .option("--openapi <file>", "Path to OpenAPI spec file")
+    .option("-l, --list", "List available technologies", false)
+    .option("--validate", "Validate the rules", false)
+    .action(async (cmd) => {
+        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate);
     });
 
 program
