@@ -18,11 +18,17 @@ const requestStepSchema = z.union([
     }),
 ]);
 
+const esqueryStepSchema = z.object({
+    type: z.literal("esquery"),
+    query: z.string(),
+});
+
 const stepSchema = z.object({
     name: z.string(),
     message: z.string(),
     requires: z.array(z.string()).optional(),
-    request: requestStepSchema,
+    request: requestStepSchema.optional(),
+    esquery: esqueryStepSchema.optional(),
 });
 
 export const ruleSchema = z.object({
@@ -32,6 +38,6 @@ export const ruleSchema = z.object({
     description: z.string(),
     tech: z.literal("next"),
     severity: z.enum(["info", "low", "medium", "high"]),
-    type: z.literal("request"),
+    type: z.enum(["request", "esquery"]),
     steps: z.array(stepSchema),
 });

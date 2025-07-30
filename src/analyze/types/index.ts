@@ -5,7 +5,7 @@ export interface Rule {
     description: string;
     tech: "next";
     severity: "info" | "low" | "medium" | "high";
-    type: "request";
+    type: "request" | "esquery";
     steps: Step[];
 }
 
@@ -13,7 +13,8 @@ export type Step = {
     name: string;
     message: string;
     requires?: string[];
-    request: RequestStep;
+    request?: RequestStep;
+    esquery?: EsqueryStep;
 };
 
 export type RequestStep =
@@ -32,3 +33,8 @@ export type RequestStep =
           condition: "is" | "is_not";
           name: string;
       };
+
+export type EsqueryStep = {
+    type: "esquery";
+    query: string;
+};
