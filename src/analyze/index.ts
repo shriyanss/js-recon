@@ -59,7 +59,7 @@ const analyze = async (
 
     if (!allValidated) {
         console.log(chalk.red("[!] Some rules are invalid"));
-        return;
+        process.exit(1);
     }
 
     if (validate) {
