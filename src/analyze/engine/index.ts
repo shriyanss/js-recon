@@ -3,6 +3,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import chalk from "chalk";
 import requestEngine from "./requestEngine.js";
+import esqueryEngine from "./esqueryEngine.js";
 
 export const engine = async (rule: Rule, mappedJsonData: Chunks | undefined, openapiData: OpenAPISpec | undefined) => {
     // first of all check what is rule type, and then check if the data for that is available or is undefined
@@ -12,6 +13,11 @@ export const engine = async (rule: Rule, mappedJsonData: Chunks | undefined, ope
             return;
         }
         requestEngine(rule, openapiData);
+    } else if (rule.type === "esquery") {
+        if (!mappedJsonData) {
+            return;
+        }
+        esqueryEngine(rule, mappedJsonData);
     }
 };
 
