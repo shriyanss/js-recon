@@ -7,6 +7,7 @@ import engine from "./engine/index.js";
 import yaml from "yaml";
 import { Chunks } from "../utility/interfaces.js";
 import { OpenAPISpec } from "../utility/openapiGenerator.js";
+import initRules from "./helpers/initRules.js";
 
 const availableTechs = {
     next: "Next.js",
@@ -38,6 +39,13 @@ const analyze = async (
     validate: boolean
 ) => {
     console.log(chalk.cyan(`[i] Loading analyze module...`));
+
+    await initRules();
+
+    // check if `-r` flag is there. If not, default to `~/.js-recon/rules`
+    if (!rulesPath) {
+        rulesPath = path.join(process.env.HOME, "/.js-recon/rules");
+    }
 
     // check if `rules` exists
     if (!fs.existsSync(rulesPath)) {

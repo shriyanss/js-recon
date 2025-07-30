@@ -6,7 +6,7 @@
 
 - Added `analyze` module
 - Added analysis of OpenAPI spec file (requestEngine)
-- Added basic templates for requestsEngine
+- Use the repo https://github.com/shriyanss/js-recon-rules to remotely store and download rules
 
 ### Changed
 
