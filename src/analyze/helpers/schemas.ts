@@ -11,6 +11,11 @@ const requestStepSchema = z.union([
         condition: z.enum(["contains", "absent"]),
         name: z.string(),
     }),
+    z.object({
+        type: z.literal("method"),
+        condition: z.enum(["is", "is_not"]),
+        name: z.string(),
+    }),
 ]);
 
 const stepSchema = z.object({

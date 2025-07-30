@@ -26,4 +26,9 @@ export type RequestStep =
           type: "url";
           condition: "contains" | "absent";
           name: string;
+      }
+    | {
+          type: "method";
+          condition: "is" | "is_not";
+          name: string;
       };
