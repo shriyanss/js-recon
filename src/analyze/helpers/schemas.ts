@@ -8,7 +8,7 @@ const requestStepSchema = z.union([
     }),
     z.object({
         type: z.literal("url"),
-        condition: z.literal("contains"),
+        condition: z.enum(["contains", "absent"]),
         name: z.string(),
     }),
 ]);
