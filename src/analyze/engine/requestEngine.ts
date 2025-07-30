@@ -14,15 +14,6 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
             for (const step of rule.steps) {
                 let stepSuccess = false;
 
-                // Skip header checks that don't match the current method
-                if (
-                    step.request.type === "headers" &&
-                    step.request.method &&
-                    step.request.method.toLowerCase() !== method.toLowerCase()
-                ) {
-                    continue;
-                }
-
                 if (step.request.type === "url") {
                     if (step.request.condition === "contains") {
                         if (path.includes(step.request.name)) {
