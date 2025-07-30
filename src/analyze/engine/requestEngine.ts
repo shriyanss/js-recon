@@ -15,14 +15,11 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
                 let stepSuccess = false;
 
                 if (step.request.type === "url") {
+                    const urlContainsName = path.includes(step.request.name);
                     if (step.request.condition === "contains") {
-                        if (path.includes(step.request.name)) {
-                            stepSuccess = true;
-                        }
+                        stepSuccess = urlContainsName;
                     } else if (step.request.condition === "absent") {
-                        if (!path.includes(step.request.name)) {
-                            stepSuccess = true;
-                        }
+                        stepSuccess = !urlContainsName;
                     }
                 } else if (step.request.type === "headers") {
                     const headers = operation.parameters?.filter((param) => param.in === "header");
