@@ -52,7 +52,7 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
                 }
             }
 
-            if (successfulSteps !== rule.steps.length) {
+            if (successfulSteps === rule.steps.length) {
                 // get the severity of the rule
                 if (rule.severity === "info") {
                     console.log(chalk.cyan(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
