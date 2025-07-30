@@ -1,7 +1,7 @@
 id: missing_authorization_header
 name: Missing Authorization Header
 author: shriyanss
-description: This rule checks if the "Authorization" header is present in the request or not
+description: Check if the "Authorization" header is present in the request
 tech: next
 severity: medium
 type: request
