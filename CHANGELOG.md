@@ -6,10 +6,13 @@
 
 - Added HTTP method condition support in request analysis engine
 - Added esquery engine for static code analysis with AST queries
+- Added support for multiple technologies in esquery engine
 
 ### Changed
 
 ### Fixed
+
+- Fix the issue when tech wasn't checked before running a rule
 
 ## 1.1.4-alpha.3 - 2025.07.30
 

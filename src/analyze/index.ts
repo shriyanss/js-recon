@@ -125,7 +125,7 @@ const analyze = async (
         const rule: Rule = yaml.parse(fs.readFileSync(ruleFile, "utf8"));
 
         // run the rule
-        await engine(rule, mappedJsonData, openapiData);
+        await engine(rule, mappedJsonData, openapiData, tech);
     }
 };
 
