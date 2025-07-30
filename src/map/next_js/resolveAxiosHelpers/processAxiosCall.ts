@@ -76,16 +76,46 @@ export const processAxiosCall = (
         if (args.length > 1) {
             const axiosSecondArg = args[1];
             if (axiosSecondArg.type === "ObjectExpression") {
-                let dataFound = false;
-                for (const prop of axiosSecondArg.properties) {
-                    if (prop.type === "ObjectProperty" && prop.key.type === "Identifier" && prop.key.name === "data") {
-                        callBody = astNodeToJsonString(prop.value, chunkCode);
-                        dataFound = true;
-                        break;
+                const headersProp = axiosSecondArg.properties.find(
+                    (p) => p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "headers"
+                );
+                const dataProp = axiosSecondArg.properties.find(
+                    (p) => p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "data"
+                );
+
+                if (
+                    headersProp &&
+                    headersProp.type === "ObjectProperty" &&
+                    headersProp.value.type === "ObjectExpression"
+                ) {
+                    const newHeaders = {};
+                    for (const header of headersProp.value.properties) {
+                        if (header.type === "ObjectProperty") {
+                            let key: string;
+                            if (header.key.type === "Identifier") {
+                                key = header.key.name;
+                            } else if (header.key.type === "StringLiteral") {
+                                key = header.key.value;
+                            } else {
+                                key = `[unresolved key]`;
+                            }
+                            const value = astNodeToJsonString(header.value, chunkCode);
+                            newHeaders[key] = value;
+                        }
                     }
+                    callHeaders = newHeaders;
                 }
-                if (!dataFound) {
-                    callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
+
+                if (dataProp && dataProp.type === "ObjectProperty") {
+                    callBody = astNodeToJsonString(dataProp.value, chunkCode);
+                } else if (!dataProp) {
+                    const otherProps = axiosSecondArg.properties.filter(
+                        (p) => !(p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "headers")
+                    );
+                    if (otherProps.length > 0) {
+                        const bodyObject = { ...axiosSecondArg, properties: otherProps };
+                        callBody = astNodeToJsonString(bodyObject, chunkCode);
+                    }
                 }
             } else {
                 callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
@@ -109,6 +139,9 @@ export const processAxiosCall = (
     console.log(chalk.green(`    Method: ${callMethod}`));
     if (callBody) {
         console.log(chalk.green(`    Body: ${callBody}`));
+    }
+    if (Object.keys(callHeaders).length > 0) {
+        console.log(chalk.green(`    Headers: ${JSON.stringify(callHeaders)}`));
     }
 
     globals.addOpenapiOutput({

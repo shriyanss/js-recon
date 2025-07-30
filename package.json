@@ -1,6 +1,6 @@
 {
     "name": "@shriyanss/js-recon",
-    "version": "1.1.4-alpha.2",
+    "version": "1.1.4-alpha.3",
     "description": "JS Recon Tool",
     "main": "build/index.js",
     "type": "module",
@@ -28,6 +28,7 @@
         "cheerio": "^1.0.0",
         "cli-highlight": "^2.1.11",
         "commander": "^14.0.0",
+        "esquery": "^1.6.0",
         "fs": "^0.0.2",
         "inquirer": "^12.6.3",
         "md5": "^2.3.0",
@@ -36,7 +37,9 @@
         "path": "^0.12.7",
         "prettier": "^3.5.3",
         "puppeteer": "^24.11.2",
-        "ses": "^1.13.0"
+        "ses": "^1.13.0",
+        "yaml": "^2.8.0",
+        "zod": "^3.23.8"
     },
     "repository": {
         "type": "git",
