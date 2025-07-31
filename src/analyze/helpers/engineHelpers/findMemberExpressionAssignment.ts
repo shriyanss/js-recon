@@ -10,7 +10,7 @@ import { highlight } from "cli-highlight";
  * @param node The AST node to traverse.
  * @param toMatch The name of the property to match on the left side of the assignment.
  */
-export const findMemberExpressionAssignment = (node: Node, toMatch: string) => {
+export const findMemberExpressionAssignment = (node: Node, toMatch: string, scope: Node) => {
     traverse(node, {
         AssignmentExpression(path) {
             const assignmentNode = path.node;
@@ -31,5 +31,5 @@ export const findMemberExpressionAssignment = (node: Node, toMatch: string) => {
                 );
             }
         },
-    });
+    }, scope);
 };

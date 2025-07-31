@@ -25,7 +25,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
         });
 
         let matchCount = 0;
-        let matchList: { [key: string]: Node } = {};
+        let matchList: { [key: string]: {node: Node, scope: Node} } = {};
         const completedSteps: string[] = [];
 
         // iterate through the steps in the rule
@@ -39,14 +39,14 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
 
                 for (const node of matches) {
                     // now that a match is found, push that node to the matchList
-                    matchList[step.name] = node;
+                    matchList[step.name] = {node, scope: ast};
                     matchCount++;
                 }
                 completedSteps.push(step.name);
             } else if (step.postMessageFuncResolve) {
                 // since this is asking to resolve to a function declaration, we'll first get the node for it
 
-                const selectedNode: Node = matchList[step.postMessageFuncResolve.name];
+                const selectedNode: Node = matchList[step.postMessageFuncResolve.name]?.node;
 
                 if (selectedNode) {
                     // check if it a function declaration or a call expression
@@ -73,7 +73,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                                         //     )
                                         // );
                                         // const { code } = generator(resolvedFunction);
-                                        matchList[step.name] = resolvedFunction;
+                                        matchList[step.name] = {node: resolvedFunction, scope: ast};
                                         matchCount++;
                                         completedSteps.push(step.name);
                                     }
@@ -83,12 +83,12 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                     }
                 }
             } else if (step.checkAssignmentExist) {
-                const selectedNode: Node = matchList[step.checkAssignmentExist.name];
+                const selectedNode: Node = matchList[step.checkAssignmentExist.name]?.node;
                 const toMatch = step.checkAssignmentExist.type;
                 const memberExpression = step.checkAssignmentExist.memberExpression;
 
                 if (selectedNode && memberExpression) {
-                    findMemberExpressionAssignment(selectedNode, toMatch);
+                    findMemberExpressionAssignment(selectedNode, toMatch, matchList[step.checkAssignmentExist.name].scope);
                 }
             }
         }
