@@ -81,6 +81,14 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                         }
                     }
                 }
+            } else if (step.checkAssignmentExist) {
+                const selectedNode: Node = matchList[step.checkAssignmentExist.name];
+                const toMatch = step.checkAssignmentExist.type;
+                const memberExpression = step.checkAssignmentExist.memberExpression;
+
+                if (selectedNode) {
+                    
+                }
             }
         }
 
