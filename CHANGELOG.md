@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.1.4-alpha.4 - (unreleased)
+## 1.1.4-alpha.4 - 2025.07.31
 
 ### Added
 
