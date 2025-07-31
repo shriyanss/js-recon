@@ -1,7 +1,6 @@
 import { Rule } from "../types/index.js";
 import { Chunks } from "../../utility/interfaces.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
-import chalk from "chalk";
 import requestEngine from "./requestEngine.js";
 import esqueryEngine from "./esqueryEngine.js";
 

@@ -1,16 +1,19 @@
 import { Node } from "@babel/types";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
-import _generator from "@babel/generator";
-const generator = _generator.default;
-import { highlight } from "cli-highlight";
 
 /**
  * Traverses a given AST node to find and log assignments between two member expressions.
  * @param node The AST node to traverse.
  * @param toMatch The name of the property to match on the left side of the assignment.
  */
-export const findMemberExpressionAssignment = (node: Node, toMatch: string, scope: Node) => {
+export const findMemberExpressionAssignment = (
+    node: Node,
+    toMatch: string,
+    scope: Node
+): Node | undefined => {
+    let foundNode: Node | undefined;
+
     traverse(
         node,
         {
@@ -23,17 +26,14 @@ export const findMemberExpressionAssignment = (node: Node, toMatch: string, scop
                     (assignmentNode.left as any).property?.type === "Identifier" &&
                     (assignmentNode.left as any).property?.name === toMatch
                 ) {
-                    const { code } = generator(assignmentNode);
-                    console.log(
-                        highlight(code, {
-                            language: "javascript",
-                            ignoreIllegals: true,
-                            theme: undefined,
-                        })
-                    );
+                    foundNode = assignmentNode;
+                    // Stop further traversal once a match is found
+                    path.stop();
                 }
             },
         },
         scope
     );
+
+    return foundNode;
 };
