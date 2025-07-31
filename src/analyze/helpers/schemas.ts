@@ -23,8 +23,7 @@ const esqueryStepSchema = z.object({
     query: z.string(),
 });
 
-const nodeResolverStepSchema = z.object({
-    type: z.literal("function"),
+const PostMessageFuncResolverStepSchema = z.object({
     name: z.string(),
 });
 
@@ -34,7 +33,7 @@ const stepSchema = z.object({
     requires: z.array(z.string()).optional(),
     request: requestStepSchema.optional(),
     esquery: esqueryStepSchema.optional(),
-    nodeReoslve: nodeResolverStepSchema.optional(),
+    postMessageFuncResolve: PostMessageFuncResolverStepSchema.optional(),
 });
 
 export const ruleSchema = z.object({
