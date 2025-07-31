@@ -8,7 +8,7 @@ export const engine = async (
     rule: Rule,
     mappedJsonData: Chunks | undefined,
     openapiData: OpenAPISpec | undefined,
-    tech: "next" | "all"
+    tech: "next"|"all"
 ) => {
     // first of all check what is rule type, and then check if the data for that is available or is undefined
 
@@ -19,7 +19,6 @@ export const engine = async (
 
         let techValid = true;
         for (const t of rule.tech) {
-            // @ts-ignore
             if (!rule.tech.includes(tech)) {
                 techValid = false;
             }
@@ -35,7 +34,6 @@ export const engine = async (
 
         let techValid = true;
         for (const t of rule.tech) {
-            // @ts-ignore
             if (!rule.tech.includes(tech)) {
                 techValid = false;
             }
