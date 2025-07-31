@@ -4,7 +4,6 @@ import { Rule } from "../types/index.js";
 
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
 import _generator from "@babel/generator";
 const generator = _generator.default;
 import esquery from "esquery";
@@ -14,8 +13,6 @@ import { resolveFunctionIdentifier } from "../helpers/engineHelpers/resolveFunct
 import { findMemberExpressionAssignment } from "../helpers/engineHelpers/findMemberExpressionAssignment.js";
 
 const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
-    console.log(chalk.cyan("[i] Loading esquery engine..."));
-
     for (const chunk of Object.values(mappedJsonData)) {
         // first of all, load the code in ast
         const ast = parser.parse(chunk.code, {
@@ -88,19 +85,27 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                 const memberExpression = step.checkAssignmentExist.memberExpression;
 
                 if (selectedNode && memberExpression) {
-                    findMemberExpressionAssignment(
+                    const assignmentNode = findMemberExpressionAssignment(
                         selectedNode,
                         toMatch,
                         matchList[step.checkAssignmentExist.name].scope
                     );
+
+                    if (assignmentNode) {
+                        // store the matched assignment in matchList similar to earlier steps
+                        matchList[step.name] = { node: assignmentNode, scope: ast };
+                        matchCount++;
+                        completedSteps.push(step.name);
+                    }
                 }
             }
         }
 
         // now, check if the matchCount is equal to the length of the rule.steps
         if (matchCount === rule.steps.length) {
-            const message = `[✓] "${rule.name}" found in chunk ${chunk.id}`;
-            const code = generator(Object.values(matchList)[Object.keys(matchList).length - 1]).code;
+            const message = `[+] "${rule.name}" found in chunk ${chunk.id}`;
+            const lastMatch = Object.values(matchList)[Object.keys(matchList).length - 1];
+            const code = generator(lastMatch.node).code;
 
             // print the message based on the severity of the rule
             if (rule.severity === "info") {
