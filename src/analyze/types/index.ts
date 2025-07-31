@@ -3,7 +3,7 @@ export interface Rule {
     name: string;
     author: string;
     description: string;
-    tech: ("next"|"all")[];
+    tech: ("next" | "all")[];
     severity: "info" | "low" | "medium" | "high";
     type: "request" | "esquery";
     steps: Step[];
