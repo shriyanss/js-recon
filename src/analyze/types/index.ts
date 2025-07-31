@@ -13,9 +13,10 @@ export type Step = {
     name: string;
     message: string;
     requires?: string[];
-    request?: RequestStep;
-    esquery?: EsqueryStep;
-    postMessageFuncResolve?: PostMessageFuncResolverStep;
+    request?: RequestStep; // used for openapi
+    esquery?: EsqueryStep; // parse an esquery string
+    postMessageFuncResolve?: PostMessageFuncResolverStep; // get the second argument of the addEventListener("message", ...) call expression
+    checkAssignmentExist?: CheckAssignmentExistStep; // check if a function exists in the node
 };
 
 export type RequestStep =
@@ -42,4 +43,10 @@ export type EsqueryStep = {
 
 export type PostMessageFuncResolverStep = {
     name: string;
+};
+
+export type CheckAssignmentExistStep = {
+    name: string;
+    type: "innerHTML";
+    memberExpression?: boolean;
 };
