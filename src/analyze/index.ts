@@ -33,7 +33,7 @@ const getRuleFilesRecursive = (dir: string): string[] => {
 const analyze = async (
     rulesPath: string,
     mappedJson: string,
-    tech: string,
+    tech: "next",
     list: boolean,
     openapi: string,
     validate: boolean
