@@ -25,7 +25,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
         });
 
         let matchCount = 0;
-        let matchList: { [key: string]: {node: Node, scope: Node} } = {};
+        let matchList: { [key: string]: { node: Node; scope: Node } } = {};
         const completedSteps: string[] = [];
 
         // iterate through the steps in the rule
@@ -39,7 +39,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
 
                 for (const node of matches) {
                     // now that a match is found, push that node to the matchList
-                    matchList[step.name] = {node, scope: ast};
+                    matchList[step.name] = { node, scope: ast };
                     matchCount++;
                 }
                 completedSteps.push(step.name);
@@ -73,7 +73,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                                         //     )
                                         // );
                                         // const { code } = generator(resolvedFunction);
-                                        matchList[step.name] = {node: resolvedFunction, scope: ast};
+                                        matchList[step.name] = { node: resolvedFunction, scope: ast };
                                         matchCount++;
                                         completedSteps.push(step.name);
                                     }
@@ -88,7 +88,11 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                 const memberExpression = step.checkAssignmentExist.memberExpression;
 
                 if (selectedNode && memberExpression) {
-                    findMemberExpressionAssignment(selectedNode, toMatch, matchList[step.checkAssignmentExist.name].scope);
+                    findMemberExpressionAssignment(
+                        selectedNode,
+                        toMatch,
+                        matchList[step.checkAssignmentExist.name].scope
+                    );
                 }
             }
         }
