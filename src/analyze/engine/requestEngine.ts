@@ -33,6 +33,12 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
                             stepSuccess = true;
                         }
                     }
+                } else if (step.request.type === "method") {
+                    if (step.request.condition === "is") {
+                        stepSuccess = method.toLowerCase() === step.request.name.toLowerCase();
+                    } else if (step.request.condition === "is_not") {
+                        stepSuccess = method.toLowerCase() !== step.request.name.toLowerCase();
+                    }
                 }
 
                 if (stepSuccess) {

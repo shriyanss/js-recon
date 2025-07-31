@@ -1,5 +1,21 @@
 # Change Log
 
+## 1.1.4-alpha.4 - 2025.07.31
+
+### Added
+
+- Added HTTP method condition support in request analysis engine
+- Added esquery engine for static code analysis with AST queries
+- Added support for multiple technologies in esquery engine
+
+### Changed
+
+### Fixed
+
+- Fix the issue when tech wasn't checked before running a rule
+- Fix the issue with next.js lazy loading (support URLs starting with http, or CDN URLs)
+- Fixed broken logic in next_GetLazyResourcesWebpackJs.ts when re-building JS URLs
+
 ## 1.1.4-alpha.3 - 2025.07.30
 
 ### Added

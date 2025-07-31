@@ -3,9 +3,9 @@ export interface Rule {
     name: string;
     author: string;
     description: string;
-    tech: "next";
+    tech: ("next" | "all")[];
     severity: "info" | "low" | "medium" | "high";
-    type: "request";
+    type: "request" | "esquery";
     steps: Step[];
 }
 
@@ -13,7 +13,10 @@ export type Step = {
     name: string;
     message: string;
     requires?: string[];
-    request: RequestStep;
+    request?: RequestStep; // used for openapi
+    esquery?: EsqueryStep; // parse an esquery string
+    postMessageFuncResolve?: PostMessageFuncResolverStep; // get the second argument of the addEventListener("message", ...) call expression
+    checkAssignmentExist?: CheckAssignmentExistStep; // check if a function exists in the node
 };
 
 export type RequestStep =
@@ -26,4 +29,24 @@ export type RequestStep =
           type: "url";
           condition: "contains" | "absent";
           name: string;
+      }
+    | {
+          type: "method";
+          condition: "is" | "is_not";
+          name: string;
       };
+
+export type EsqueryStep = {
+    type: "esquery";
+    query: string;
+};
+
+export type PostMessageFuncResolverStep = {
+    name: string;
+};
+
+export type CheckAssignmentExistStep = {
+    name: string;
+    type: "innerHTML";
+    memberExpression?: boolean;
+};

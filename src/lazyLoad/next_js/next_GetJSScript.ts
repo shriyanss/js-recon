@@ -37,6 +37,14 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
                 if (!getJsUrls().includes(absoluteUrl)) {
                     pushToJsUrls(absoluteUrl);
                 }
+            } else if (src.startsWith("http")) {
+                const urlObj = new URL(src);
+                const ext = urlObj.pathname.split(".").pop();
+                if (ext === "js") {
+                    if (!getJsUrls().includes(src)) {
+                        pushToJsUrls(src);
+                    }
+                }
             } else if (src.match(/^[^/]/)) {
                 // if the src is a relative URL, like `static/js/a.js` find the absolute URL
                 // Get directory URL (origin + path without filename)

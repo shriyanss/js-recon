@@ -38,6 +38,8 @@ const downloadRules = async (homeDir: string) => {
     }
 
     fs.unlinkSync(zipPath); // Clean up the zip file
+    // remove the directory .js-recon/rules/.github
+    fs.rmSync(path.join(homeDir, "/.js-recon/rules/.github"), { recursive: true });
     console.log(chalk.green("[✓] Rules initialized successfully."));
 };
 
