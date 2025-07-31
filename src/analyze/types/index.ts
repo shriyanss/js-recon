@@ -14,7 +14,7 @@ export type Step = {
     message: string;
     requires?: string[];
     request?: RequestStep;
-    esquery?: EsqueryStep
+    esquery?: EsqueryStep;
     postMessageFuncResolve?: PostMessageFuncResolverStep;
 };
 

@@ -8,10 +8,7 @@ const traverse = _traverse.default;
  * @param ast The root of the AST to search within.
  * @returns The declaration node if found, otherwise undefined.
  */
-export function resolveFunctionIdentifier(
-    identifier: Node,
-    ast: Node
-): Node | undefined {
+export function resolveFunctionIdentifier(identifier: Node, ast: Node): Node | undefined {
     let declarationNode: Node | undefined;
 
     if (identifier.type !== "Identifier") {
@@ -26,14 +23,10 @@ export function resolveFunctionIdentifier(
             }
         },
         VariableDeclarator(path) {
-            if (
-                path.node.id.type === "Identifier" &&
-                path.node.id.name === identifier.name
-            ) {
+            if (path.node.id.type === "Identifier" && path.node.id.name === identifier.name) {
                 if (
                     path.node.init &&
-                    (path.node.init.type === "ArrowFunctionExpression" ||
-                        path.node.init.type === "FunctionExpression")
+                    (path.node.init.type === "ArrowFunctionExpression" || path.node.init.type === "FunctionExpression")
                 ) {
                     declarationNode = path.node.init;
                     path.stop();

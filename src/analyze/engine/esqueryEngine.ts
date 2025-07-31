@@ -50,21 +50,20 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                 if (selectedNode) {
                     // check if it a function declaration or a call expression
                     if (selectedNode.type === "CallExpression") {
-                        if (selectedNode.callee.type === "MemberExpression" &&
+                        if (
+                            selectedNode.callee.type === "MemberExpression" &&
                             selectedNode.callee.property.type === "Identifier" &&
                             selectedNode.callee.property.name === "addEventListener" &&
                             selectedNode.arguments[0].type === "StringLiteral" &&
-                            selectedNode.arguments[0].value === "message") {
+                            selectedNode.arguments[0].value === "message"
+                        ) {
                             if (selectedNode.arguments.length === 2) {
                                 // console.log(selectedNode.arguments[1].type);
                                 // if the type is identifier
                                 if (selectedNode.arguments[1].type === "Identifier") {
                                     // resolve where it is being assigned
                                     const functionIdentifier = selectedNode.arguments[1];
-                                    const resolvedFunction = resolveFunctionIdentifier(
-                                        functionIdentifier,
-                                        ast
-                                    );
+                                    const resolvedFunction = resolveFunctionIdentifier(functionIdentifier, ast);
 
                                     if (resolvedFunction) {
                                         // console.log(
