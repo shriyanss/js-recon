@@ -15,7 +15,7 @@ export type Step = {
     requires?: string[];
     request?: RequestStep;
     esquery?: EsqueryStep
-    nodeReoslve?: NodeResolverStep;
+    postMessageFuncResolve?: PostMessageFuncResolverStep;
 };
 
 export type RequestStep =
@@ -40,7 +40,6 @@ export type EsqueryStep = {
     query: string;
 };
 
-export type NodeResolverStep = {
-    type: "function";
+export type PostMessageFuncResolverStep = {
     name: string;
 };

@@ -41,16 +41,26 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                     matchCount++;
                 }
                 completedSteps.push(step.name);
-            } else if (step.nodeReoslve) {
-                if (step.nodeReoslve.type === "function") {
-                    // since this is asking to resolve to a function declaration, we'll first get the node for it
+            } else if (step.postMessageFuncResolve) {
+                // since this is asking to resolve to a function declaration, we'll first get the node for it
 
-                    const selectedNode: Node = matchList[step.nodeReoslve.name];
+                const selectedNode: Node = matchList[step.postMessageFuncResolve.name];
 
-                    if (selectedNode) {
-                        // check if it a function declaration or a call expression
-                        if (selectedNode.type === "CallExpression") {
-                            // since this is a call expression, need to get to the function declaration
+                if (selectedNode) {
+                    // check if it a function declaration or a call expression
+                    if (selectedNode.type === "CallExpression") {
+                        if (selectedNode.callee.type === "MemberExpression" &&
+                            selectedNode.callee.property.type === "Identifier" &&
+                            selectedNode.callee.property.name === "addEventListener" &&
+                            selectedNode.arguments[0].type === "StringLiteral" &&
+                            selectedNode.arguments[0].value === "message") {
+                            if (selectedNode.arguments.length === 2) {
+                                // console.log(selectedNode.arguments[1].type);
+                                // if the type is identifier
+                                if (selectedNode.arguments[1].type === "Identifier") {
+                                    // resolve where it is being assigned
+                                }
+                            }
                         }
                     }
                 }
