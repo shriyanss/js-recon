@@ -13,6 +13,8 @@
 ### Fixed
 
 - Fix the issue when tech wasn't checked before running a rule
+- Fix the issue with next.js lazy loading (support URLs starting with http, or CDN URLs)
+- Fixed broken logic in next_GetLazyResourcesWebpackJs.ts when re-building JS URLs
 
 ## 1.1.4-alpha.3 - 2025.07.30
 

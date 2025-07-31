@@ -197,12 +197,19 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | a
     // build final URL
     let final_urls = [];
     for (let i = 0; i < js_paths.length; i++) {
+        // following is a broken logic
+
         // get the directory of webpack file
-        const webpack_dir = webpack_js.split("/").slice(0, -1).join("/");
-        // replace the filename from the js path
-        const js_path_dir = js_paths[i].replace(/\/[a-zA-Z0-9\.]+\.js.*$/, "");
-        const final_url = webpack_dir.replace(js_path_dir, js_paths[i]);
-        final_urls.push(final_url);
+        // const webpack_dir = webpack_js.split("/").slice(0, -1).join("/");
+        // // replace the filename from the js path
+        // const js_path_dir = js_paths[i].replace(/\/[a-zA-Z0-9\.]+\.js.*$/, "");
+        // const final_url = webpack_dir.replace(js_path_dir, js_paths[i]);
+        // final_urls.push(final_url);
+
+        // logic that works:
+        const webpack_dir = webpack_js.split("/").slice(0, -2).join("/");
+        const js_path_dir = new URL(js_paths[i], webpack_dir).href;
+        final_urls.push(js_path_dir);
     }
 
     return final_urls;
