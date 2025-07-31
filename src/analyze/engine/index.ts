@@ -17,7 +17,14 @@ export const engine = async (
             return;
         }
 
-        if (tech.split(",").includes(rule.tech) || tech === "all") {
+        let techValid = true;
+        for (const t of rule.tech) {
+            if (!(t in rule.tech)) {
+                techValid = false;
+            }
+        }
+
+        if (techValid || tech === "all") {
             requestEngine(rule, openapiData);
         }
     } else if (rule.type === "esquery") {
@@ -25,7 +32,14 @@ export const engine = async (
             return;
         }
 
-        if (tech.split(",").includes(rule.tech) || tech === "all") {
+        let techValid = true;
+        for (const t of rule.tech) {
+            if (!(t in rule.tech)) {
+                techValid = false;
+            }
+        }
+
+        if (techValid || tech === "all") {
             esqueryEngine(rule, mappedJsonData);
         }
     }
