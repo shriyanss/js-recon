@@ -7,11 +7,7 @@ const traverse = _traverse.default;
  * @param node The AST node to traverse.
  * @param toMatch The name of the property to match on the left side of the assignment.
  */
-export const findMemberExpressionAssignment = (
-    node: Node,
-    toMatch: string,
-    scope: Node
-): Node | undefined => {
+export const findMemberExpressionAssignment = (node: Node, toMatch: string, scope: Node): Node | undefined => {
     let foundNode: Node | undefined;
 
     traverse(
