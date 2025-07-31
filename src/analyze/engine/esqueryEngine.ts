@@ -11,6 +11,7 @@ import esquery from "esquery";
 import { Node } from "@babel/types";
 import { highlight } from "cli-highlight";
 import { resolveFunctionIdentifier } from "../helpers/engineHelpers/resolveFunctionIdentifier.js";
+import { findMemberExpressionAssignment } from "../helpers/engineHelpers/findMemberExpressionAssignment.js";
 
 const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
     console.log(chalk.cyan("[i] Loading esquery engine..."));
@@ -86,8 +87,8 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                 const toMatch = step.checkAssignmentExist.type;
                 const memberExpression = step.checkAssignmentExist.memberExpression;
 
-                if (selectedNode) {
-                    
+                if (selectedNode && memberExpression) {
+                    findMemberExpressionAssignment(selectedNode, toMatch);
                 }
             }
         }
