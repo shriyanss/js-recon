@@ -7,6 +7,7 @@
 ### Changed
 
 - Replace `:` with `_` when creating host directories in `output/`
+- Rename `esquery` engine to `ast` engine
 
 ### Fixed
 
