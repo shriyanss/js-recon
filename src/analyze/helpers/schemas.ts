@@ -29,7 +29,7 @@ const PostMessageFuncResolverStepSchema = z.object({
 
 const checkAssignmentExistStepSchema = z.object({
     name: z.string(),
-    type: z.literal("innerHTML"),
+    type: z.string(),
     memberExpression: z.boolean().optional(),
 });
 

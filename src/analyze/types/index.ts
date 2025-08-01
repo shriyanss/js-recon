@@ -47,6 +47,6 @@ export type PostMessageFuncResolverStep = {
 
 export type CheckAssignmentExistStep = {
     name: string;
-    type: "innerHTML";
+    type: string;
     memberExpression?: boolean;
 };
