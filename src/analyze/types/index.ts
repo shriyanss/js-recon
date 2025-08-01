@@ -5,7 +5,7 @@ export interface Rule {
     description: string;
     tech: ("next" | "all")[];
     severity: "info" | "low" | "medium" | "high";
-    type: "request" | "esquery";
+    type: "request" | "ast";
     steps: Step[];
 }
 
