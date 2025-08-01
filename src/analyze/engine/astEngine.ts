@@ -75,7 +75,10 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                                         matchCount++;
                                         completedSteps.push(step.name);
                                     }
-                                } else if (selectedNode.arguments[1].type === "FunctionExpression") {
+                                } else if (
+                                    selectedNode.arguments[1].type === "FunctionExpression" ||
+                                    selectedNode.arguments[1].type === "ArrowFunctionExpression"
+                                ) {
                                     const functionExpression = selectedNode.arguments[1];
                                     matchList[step.name] = { node: functionExpression, scope: ast };
                                     matchCount++;
