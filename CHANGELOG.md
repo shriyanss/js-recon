@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- Fix the issue in ast engine to handle direct assignments in `checkAssignmentExist`
+
 ## 1.1.4-alpha.4 - 2025.07.31
 
 ### Added

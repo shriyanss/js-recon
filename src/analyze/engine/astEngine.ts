@@ -11,6 +11,7 @@ import { Node } from "@babel/types";
 import { highlight } from "cli-highlight";
 import { resolveFunctionIdentifier } from "../helpers/engineHelpers/resolveFunctionIdentifier.js";
 import { findMemberExpressionAssignment } from "../helpers/engineHelpers/findMemberExpressionAssignment.js";
+import { findDirectAssignment } from "../helpers/engineHelpers/findDirectAssignment.js";
 
 const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
     for (const chunk of Object.values(mappedJsonData)) {
@@ -88,6 +89,18 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                     const assignmentNode = findMemberExpressionAssignment(
                         selectedNode,
                         toMatch,
+                        matchList[step.checkAssignmentExist.name].scope
+                    );
+
+                    if (assignmentNode) {
+                        // store the matched assignment in matchList similar to earlier steps
+                        matchList[step.name] = { node: assignmentNode, scope: ast };
+                        matchCount++;
+                        completedSteps.push(step.name);
+                    }
+                } else if (selectedNode) {
+                    const assignmentNode = findDirectAssignment(
+                        selectedNode,
                         matchList[step.checkAssignmentExist.name].scope
                     );
 
