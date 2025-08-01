@@ -8,6 +8,7 @@
 
 - Replace `:` with `_` when creating host directories in `output/`
 - Rename `esquery` engine to `ast` engine
+- Allow any string type for `CheckAssignmentExistStep`
 
 ### Fixed
 
