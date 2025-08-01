@@ -2,7 +2,7 @@ import { Rule } from "../types/index.js";
 import { Chunks } from "../../utility/interfaces.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import requestEngine from "./requestEngine.js";
-import esqueryEngine from "./esqueryEngine.js";
+import astEngine from "./astEngine.js";
 
 export const engine = async (
     rule: Rule,
@@ -27,7 +27,7 @@ export const engine = async (
         if (techValid || tech === "all") {
             requestEngine(rule, openapiData);
         }
-    } else if (rule.type === "esquery") {
+    } else if (rule.type === "ast") {
         if (!mappedJsonData) {
             return;
         }
@@ -40,7 +40,7 @@ export const engine = async (
         }
 
         if (techValid || tech === "all") {
-            esqueryEngine(rule, mappedJsonData);
+            astEngine(rule, mappedJsonData);
         }
     }
 };

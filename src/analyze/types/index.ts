@@ -5,7 +5,7 @@ export interface Rule {
     description: string;
     tech: ("next" | "all")[];
     severity: "info" | "low" | "medium" | "high";
-    type: "request" | "esquery";
+    type: "request" | "ast";
     steps: Step[];
 }
 
@@ -47,6 +47,6 @@ export type PostMessageFuncResolverStep = {
 
 export type CheckAssignmentExistStep = {
     name: string;
-    type: "innerHTML";
+    type: string;
     memberExpression?: boolean;
 };
