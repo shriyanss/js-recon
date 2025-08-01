@@ -7,6 +7,7 @@
 ### Changed
 
 - Updated the `postMessageFunctionResolve` step to resolve function expressions
+- Updated the `postMessageFunctionResolve` step to resolve arrow function expressions
 
 ### Fixed
 
