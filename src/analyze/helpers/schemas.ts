@@ -29,7 +29,7 @@ const PostMessageFuncResolverStepSchema = z.object({
 
 const checkAssignmentExistStepSchema = z.object({
     name: z.string(),
-    type: z.literal("innerHTML"),
+    type: z.string(),
     memberExpression: z.boolean().optional(),
 });
 
@@ -50,6 +50,6 @@ export const ruleSchema = z.object({
     description: z.string(),
     tech: z.array(z.literal("next")),
     severity: z.enum(["info", "low", "medium", "high"]),
-    type: z.enum(["request", "esquery"]),
+    type: z.enum(["request", "ast"]),
     steps: z.array(stepSchema),
 });

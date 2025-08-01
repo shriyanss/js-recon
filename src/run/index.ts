@@ -42,7 +42,7 @@ export default async (cmd) => {
         return;
     }
 
-    const targetHost = new URL(cmd.url).host;
+    const targetHost = new URL(cmd.url).host.replace(":", "_");
 
     console.log(chalk.bgGreenBright("[+] Starting analysis..."));
 
