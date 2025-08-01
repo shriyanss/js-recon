@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.1-alpha.1 - (unreleased)
+
+### Added
+
+### Changed
+
+- Updated the `postMessageFunctionResolve` step to resolve function expressions
+
+### Fixed
+
 ## 1.1.4 - 2025.08.01
 
 ### Added
