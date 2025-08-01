@@ -6,7 +6,7 @@
  *   - host: The hostname of the URL (e.g., "vercel.com" or "localhost:3000").
  *   - directory: The directory path, excluding the filename if present (e.g., "/static/js").
  */
-const getURLDirectory = (url) => {
+const getURLDirectory = (url:string) => {
     const u = new URL(url);
     const pathname = u.pathname;
 
@@ -14,7 +14,7 @@ const getURLDirectory = (url) => {
     const dir = pathname.replace(/\/[^\/?#]+\.[^\/?#]+$/, "");
 
     return {
-        host: u.host, // e.g., "vercel.com" or "localhost:3000"
+        host: u.host.replace(":", "_"), // e.g., "vercel.com" or "localhost_3000"
         directory: dir, // e.g., "/static/js"
     };
 };
