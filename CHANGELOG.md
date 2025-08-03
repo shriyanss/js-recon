@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added `-k/--insecure` flag to disable SSL certificate verification
+
 ### Changed
 
 - Updated the `postMessageFunctionResolve` step to resolve function expressions

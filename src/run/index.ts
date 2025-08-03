@@ -47,7 +47,7 @@ export default async (cmd) => {
     console.log(chalk.bgGreenBright("[+] Starting analysis..."));
 
     console.log(chalk.bgCyan("[1/6] Running lazyload to download JavaScript files..."));
-    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "");
+    await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "", cmd.insecure);
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
     // if tech is undefined, i.e. it can't be detected, quit. Nothing to be done :(
@@ -80,7 +80,8 @@ export default async (cmd) => {
         cmd.scope.split(","),
         cmd.threads,
         true,
-        "extracted_urls.json"
+        "extracted_urls.json",
+        cmd.insecure
     );
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 

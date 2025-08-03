@@ -52,12 +52,18 @@ const lazyLoad = async (
     inputScope: [],
     threads: number,
     subsequentRequestsFlag: boolean,
-    urlsFile: string
+    urlsFile: string,
+    insecure: boolean
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
     if (process.env.IS_DOCKER === "true") {
         console.log(chalk.yellow("[!] Running in Docker. Browser sandbox disabled"));
+    }
+
+    if (insecure) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+        console.log(chalk.yellow("[!] Running in insecure mode. SSL certificate verification disabled"));
     }
 
     // if cache enabled, check if the cache file exists or not. If no, then create a new one
