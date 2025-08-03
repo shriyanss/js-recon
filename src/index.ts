@@ -30,6 +30,7 @@ program
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
+    .option("-k, --insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -43,7 +44,8 @@ program
             cmd.scope.split(","),
             Number(cmd.threads),
             cmd.subsequentRequests,
-            cmd.urlsFile
+            cmd.urlsFile,
+            cmd.insecure
         );
     });
 
@@ -219,6 +221,7 @@ program
     .option("--map-openapi", "Generate OpenAPI spec from the code (map module)", false)
     .option("--map-openapi-output <file>", "Output file for OpenAPI spec (map module)", "mapped-openapi.json")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
+    .option("--insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
