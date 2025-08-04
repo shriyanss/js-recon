@@ -74,7 +74,11 @@ const html = async (markdown: string) => {
   </nav>
   <div id="content"></div>
   <script id="page-data" type="application/json">
-    ${JSON.stringify({ home: markdown, hello: "## Hello Page\n\nThis is the hello page content.", test: "## Test Page\n\nThis is the test page content." })}
+    ${JSON.stringify({
+        home: markdown,
+        hello: "## Hello Page\n\nThis is the hello page content.",
+        test: "## Test Page\n\nThis is the test page content.",
+    })}
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
