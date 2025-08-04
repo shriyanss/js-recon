@@ -1,0 +1,31 @@
+import chalk from "chalk";
+import { EngineOutput } from "../../../analyze/helpers/outputHelper.js";
+import Database from "better-sqlite3";
+
+export const populateAnalysisFindings = async (db: Database.Database, findings: EngineOutput[]) => {
+    // Clear the table before inserting new data
+    db.prepare(`DELETE FROM analysis_findings`).run();
+
+    const insert = db.prepare(
+        `INSERT INTO analysis_findings (ruleId, ruleName, ruleType, ruleDescription, ruleAuthor, ruleTech, severity, message, findingLocation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    const insertMany = db.transaction((items) => {
+        for (const item of items) {
+            insert.run(
+                item.ruleId,
+                item.ruleName,
+                item.ruleType,
+                item.ruleDescription,
+                item.ruleAuthor,
+                item.ruleTech,
+                item.severity,
+                item.message,
+                item.findingLocation
+            );
+        }
+    });
+
+    insertMany(findings);
+    console.log(chalk.green("[✓] Populated analysis findings into the database..."));
+};
