@@ -6,11 +6,13 @@ import { populateMappedJson } from "./utility/populateDb/populateMappedJson.js";
 import Database from "better-sqlite3";
 import { EngineOutput } from "../analyze/helpers/outputHelper.js";
 import { populateAnalysisFindings } from "./utility/populateDb/populateAnalysisFindings.js";
+import populateEndpoints from "./utility/populateDb/populateEndpoints.js";
 
 const report = async (
     sqliteDbPath: string,
     mappedJsonFilePath: string | undefined,
-    analyzeJsonFilePath: string | undefined
+    analyzeJsonFilePath: string | undefined,
+    endpointsJsonFilePath: string | undefined
 ) => {
     console.log(chalk.cyan("[i] Running 'report' module"));
 
@@ -32,6 +34,12 @@ const report = async (
     if (analyzeJsonFilePath) {
         const findings: EngineOutput[] = JSON.parse(fs.readFileSync(analyzeJsonFilePath, "utf8"));
         await populateAnalysisFindings(db, findings);
+    }
+
+    // populate the endpoints
+    if (endpointsJsonFilePath) {
+        const endpoints = JSON.parse(fs.readFileSync(endpointsJsonFilePath, "utf8"));
+        await populateEndpoints(db, endpoints);
     }
 };
 
