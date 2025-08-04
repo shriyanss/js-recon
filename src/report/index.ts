@@ -8,13 +8,15 @@ import { EngineOutput } from "../analyze/helpers/outputHelper.js";
 import { populateAnalysisFindings } from "./utility/populateDb/populateAnalysisFindings.js";
 import populateEndpoints from "./utility/populateDb/populateEndpoints.js";
 import populateMappedOpenapi from "./utility/populateDb/populateMappedOpenapi.js";
+import genHtml from "./utility/genHtml.js";
 
 const report = async (
     sqliteDbPath: string,
     mappedJsonFilePath: string | undefined,
     analyzeJsonFilePath: string | undefined,
     endpointsJsonFilePath: string | undefined,
-    mappedOpenapiJsonFilePath: string | undefined
+    mappedOpenapiJsonFilePath: string | undefined,
+    reportFileName: string | undefined
 ) => {
     console.log(chalk.cyan("[i] Running 'report' module"));
 
@@ -48,6 +50,11 @@ const report = async (
     if (mappedOpenapiJsonFilePath) {
         const openapi = JSON.parse(fs.readFileSync(mappedOpenapiJsonFilePath, "utf8"));
         await populateMappedOpenapi(db, openapi);
+    }
+
+    // finally, generate HTML report
+    if (reportFileName) {
+        await genHtml(`${reportFileName}.html`, db);
     }
 };
 
