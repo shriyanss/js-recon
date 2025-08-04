@@ -10,7 +10,7 @@ const html = async (markdown: string) => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Markdown Report</title>
+  <title>JS Recon Report</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.css">
   <style>
     h2, h3, h4 {
@@ -27,9 +27,42 @@ const html = async (markdown: string) => {
     .collapsed::before {
         transform: rotate(-90deg);
     }
+    body {
+      padding-top: 80px; /* Height of the navbar */
+    }
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #ffffff;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .navbar-logo img {
+      height: 40px;
+    }
+    .navbar-links {
+      list-style: none;
+      margin: 0 0 0 20px;
+      padding: 0;
+      display: flex;
+    }
   </style>
 </head>
 <body>
+  <nav class="navbar">
+    <div class="navbar-logo">
+      <img src="https://js-recon.io/img/js-recon-logo.png" alt="JS Recon Logo">
+    </div>
+    <ul class="navbar-links">
+      <li><a href="#">Home</a></li>
+    </ul>
+  </nav>
   ${await marked(markdown)}
   <script>
     document.addEventListener('DOMContentLoaded', () => {
