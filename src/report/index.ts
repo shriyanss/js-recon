@@ -7,7 +7,11 @@ import Database from "better-sqlite3";
 import { EngineOutput } from "../analyze/helpers/outputHelper.js";
 import { populateAnalysisFindings } from "./utility/populateDb/populateAnalysisFindings.js";
 
-const report = async (sqliteDbPath: string, mappedJsonFilePath: string | undefined, analyzeJsonFilePath: string | undefined) => {
+const report = async (
+    sqliteDbPath: string,
+    mappedJsonFilePath: string | undefined,
+    analyzeJsonFilePath: string | undefined
+) => {
     console.log(chalk.cyan("[i] Running 'report' module"));
 
     // check if db exists. if not, init
