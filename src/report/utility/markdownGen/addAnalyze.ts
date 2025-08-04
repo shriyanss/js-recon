@@ -17,24 +17,24 @@ const addAnalyze = async (markdown: string, db: Database.Database): Promise<stri
     let toReturn = markdown;
     toReturn += `\n## Analyze Results\n`;
     const findings = db.prepare(`SELECT * FROM analysis_findings`).all() as AnalysisFinding[];
-    if(findings.length > 0) {
-        const groupedFindings: {[key: string]: AnalysisFinding[]} = {};
-        for(const finding of findings) {
-            if(!groupedFindings[finding.ruleType]) {
+    if (findings.length > 0) {
+        const groupedFindings: { [key: string]: AnalysisFinding[] } = {};
+        for (const finding of findings) {
+            if (!groupedFindings[finding.ruleType]) {
                 groupedFindings[finding.ruleType] = [];
             }
             groupedFindings[finding.ruleType].push(finding);
         }
 
-        for(const ruleType in groupedFindings) {
+        for (const ruleType in groupedFindings) {
             toReturn += `### ${ruleType}\n`;
-            for(const finding of groupedFindings[ruleType]) {
+            for (const finding of groupedFindings[ruleType]) {
                 toReturn += `#### ${finding.ruleName}, ${finding.ruleDescription}\n`;
-                let findingLocationBlock = '';
-                if(ruleType.toLowerCase() === 'ast') {
-                    findingLocationBlock = '```js\n' + finding.findingLocation + '\n```';
+                let findingLocationBlock = "";
+                if (ruleType.toLowerCase() === "ast") {
+                    findingLocationBlock = "```js\n" + finding.findingLocation + "\n```";
                 } else {
-                    findingLocationBlock = '```\n' + finding.findingLocation + '\n```';
+                    findingLocationBlock = "```\n" + finding.findingLocation + "\n```";
                 }
                 toReturn += `${findingLocationBlock}\n`;
                 toReturn += `- **Rule ID:** ${finding.ruleId}\n`;
