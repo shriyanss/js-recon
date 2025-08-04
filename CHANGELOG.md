@@ -13,6 +13,8 @@
 
 - Updated the `postMessageFunctionResolve` step to resolve function expressions
 - Updated the `postMessageFunctionResolve` step to resolve arrow function expressions
+- Remove `--map-openapi` flag from run module (enabled by default)
+- Remove `--map-openapi-output` flag from run module
 
 ### Fixed
 
