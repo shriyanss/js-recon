@@ -117,7 +117,7 @@ export default async (cmd) => {
 
     // run the report module now
     console.log(chalk.bgCyan("[8/8] Running report module..."));
-    await report("js-recon.db", "mapped.json", "analyze.json", "endpoints.json", "mapped-openapi.json");
+    await report("js-recon.db", "mapped.json", "analyze.json", "endpoints.json", "mapped-openapi.json", "report");
     console.log(chalk.bgGreen("[+] Report complete."));
 
     console.log(chalk.bgGreenBright("[+] Analysis complete."));

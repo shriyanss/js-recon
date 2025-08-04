@@ -208,8 +208,16 @@ program
     .option("-a, --analyze-json <file>", "Analyze JSON file")
     .option("-e, --endpoints-json <file>", "Endpoints JSON file")
     .option("--map-openapi, --mapped-openapi-json <file>", "Mapped OpenAPI JSON file")
+    .option("-o, --output <file>", "Output file name (without the extension)", "report")
     .action(async (cmd) => {
-        await report(cmd.sqliteDb, cmd.mappedJson, cmd.analyzeJson, cmd.endpointsJson, cmd.mappedOpenapiJson);
+        await report(
+            cmd.sqliteDb,
+            cmd.mappedJson,
+            cmd.analyzeJson,
+            cmd.endpointsJson,
+            cmd.mappedOpenapiJson,
+            cmd.output
+        );
     });
 
 program
