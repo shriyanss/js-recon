@@ -1,8 +1,11 @@
 import { Rule } from "../types/index.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import chalk from "chalk";
+import { EngineOutput } from "../helpers/outputHelper.js";
 
-const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
+const engine = async (rule: Rule, openapiData: OpenAPISpec): Promise<EngineOutput[]> => {
+    let findings: EngineOutput[] = [];
+
     for (const path in openapiData.paths) {
         const methods = openapiData.paths[path];
         for (const method in methods) {
@@ -48,18 +51,33 @@ const engine = async (rule: Rule, openapiData: OpenAPISpec) => {
 
             if (successfulSteps === rule.steps.length) {
                 // get the severity of the rule
+                const message = `[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`;
                 if (rule.severity === "info") {
-                    console.log(chalk.cyan(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.cyan(message));
                 } else if (rule.severity === "low") {
-                    console.log(chalk.yellow(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.yellow(message));
                 } else if (rule.severity === "medium") {
-                    console.log(chalk.magenta(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.magenta(message));
                 } else if (rule.severity === "high") {
-                    console.log(chalk.red(`[+] "${rule.name}" found in ${path} [${method.toUpperCase()}]`));
+                    console.log(chalk.red(message));
                 }
+
+                findings.push({
+                    ruleId: rule.id,
+                    ruleName: rule.name,
+                    ruleType: rule.type,
+                    ruleDescription: rule.description,
+                    ruleAuthor: rule.author,
+                    ruleTech: rule.tech,
+                    severity: rule.severity,
+                    message: message,
+                    findingLocation: `${path} [${method.toUpperCase()}]`,
+                });
             }
         }
     }
+
+    return findings;
 };
 
 export default engine;

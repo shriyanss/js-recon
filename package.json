@@ -1,6 +1,6 @@
 {
     "name": "@shriyanss/js-recon",
-    "version": "1.1.4",
+    "version": "1.2.1-alpha.1",
     "description": "JS Recon Tool",
     "main": "build/index.js",
     "type": "module",
@@ -12,7 +12,7 @@
         "build": "rm -rf build/ && tsc",
         "start": "node build/index.js",
         "test": "node build/index.js -h",
-        "cleanup": "rm -rf build output .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped.json test{.yaml,.js} shriyanss-js-recon-*.tgz && tsc"
+        "cleanup": "rm -rf build output .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json} analyze.json test{.yaml,.js} shriyanss-js-recon-*.tgz js-recon.db report.{html,md} && tsc"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
@@ -23,6 +23,7 @@
         "@babel/traverse": "^7.27.4",
         "@babel/types": "^7.27.6",
         "@types/chalk": "^0.4.31",
+        "better-sqlite3": "^12.2.0",
         "blessed": "^0.1.81",
         "chalk": "^5.4.1",
         "cheerio": "^1.0.0",
@@ -30,7 +31,9 @@
         "commander": "^14.0.0",
         "esquery": "^1.6.0",
         "fs": "^0.0.2",
+        "highlight.js": "^11.11.1",
         "inquirer": "^12.6.3",
+        "marked": "^16.1.2",
         "md5": "^2.3.0",
         "ollama": "^0.5.16",
         "openai": "^5.8.2",
@@ -50,6 +53,7 @@
     },
     "homepage": "https://github.com/shriyanss/js-recon#readme",
     "devDependencies": {
+        "@types/better-sqlite3": "^7.6.13",
         "@types/blessed": "^0.1.25",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0"

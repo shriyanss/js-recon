@@ -12,8 +12,11 @@ import { highlight } from "cli-highlight";
 import { resolveFunctionIdentifier } from "../helpers/engineHelpers/resolveFunctionIdentifier.js";
 import { findMemberExpressionAssignment } from "../helpers/engineHelpers/findMemberExpressionAssignment.js";
 import { findDirectAssignment } from "../helpers/engineHelpers/findDirectAssignment.js";
+import { EngineOutput } from "../helpers/outputHelper.js";
 
-const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
+const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<EngineOutput[]> => {
+    let findings: EngineOutput[] = [];
+
     for (const chunk of Object.values(mappedJsonData)) {
         // first of all, load the code in ast
         const ast = parser.parse(chunk.code, {
@@ -75,6 +78,14 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                                         matchCount++;
                                         completedSteps.push(step.name);
                                     }
+                                } else if (
+                                    selectedNode.arguments[1].type === "FunctionExpression" ||
+                                    selectedNode.arguments[1].type === "ArrowFunctionExpression"
+                                ) {
+                                    const functionExpression = selectedNode.arguments[1];
+                                    matchList[step.name] = { node: functionExpression, scope: ast };
+                                    matchCount++;
+                                    completedSteps.push(step.name);
                                 }
                             }
                         }
@@ -138,8 +149,22 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks) => {
                     theme: undefined,
                 })
             );
+
+            findings.push({
+                ruleId: rule.id,
+                ruleName: rule.name,
+                ruleType: rule.type,
+                ruleDescription: rule.description,
+                ruleAuthor: rule.author,
+                ruleTech: rule.tech,
+                severity: rule.severity,
+                message: message,
+                findingLocation: `// ${chunk.id}\n\n${code}`,
+            });
         }
     }
+
+    return findings;
 };
 
 export default esqueryEngine;
