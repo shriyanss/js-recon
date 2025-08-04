@@ -6,8 +6,6 @@ export const populateMappedJson = async (
     db: Database.Database,
     chunks: Chunks
 ) => {
-    console.log(chalk.green("Populating mapped data into the database..."));
-
     // Clear the table before inserting new data
     db.prepare(`DELETE FROM mapped`).run();
 
@@ -33,4 +31,5 @@ export const populateMappedJson = async (
     });
 
     insertMany(Object.values(chunks));
+    console.log(chalk.green("[✓] Populated mapped data into the database..."));
 };
