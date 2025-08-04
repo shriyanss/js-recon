@@ -11,6 +11,7 @@ import refactor from "./refactor/index.js";
 import run from "./run/index.js";
 import chalk from "chalk";
 import analyze from "./analyze/index.js";
+import report from "./report/index.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 const validAiOptions = ["description"];
@@ -30,6 +31,7 @@ program
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
+    .option("-k, --insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -43,7 +45,8 @@ program
             cmd.scope.split(","),
             Number(cmd.threads),
             cmd.subsequentRequests,
-            cmd.urlsFile
+            cmd.urlsFile,
+            cmd.insecure
         );
     });
 
@@ -192,8 +195,29 @@ program
     .option("--openapi <file>", "Path to OpenAPI spec file")
     .option("-l, --list", "List available technologies", false)
     .option("--validate", "Validate the rules", false)
+    .option("-o, --output <file>", "Output JSON file name", "analyze.json")
     .action(async (cmd) => {
-        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate);
+        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate, cmd.output);
+    });
+
+program
+    .command("report")
+    .description("Generate a report")
+    .option("-s, --sqlite-db <file>", "SQLite database file", "js-recon.db")
+    .option("-m, --mapped-json <file>", "Mapped JSON file")
+    .option("-a, --analyze-json <file>", "Analyze JSON file")
+    .option("-e, --endpoints-json <file>", "Endpoints JSON file")
+    .option("--map-openapi, --mapped-openapi-json <file>", "Mapped OpenAPI JSON file")
+    .option("-o, --output <file>", "Output file name (without the extension)", "report")
+    .action(async (cmd) => {
+        await report(
+            cmd.sqliteDb,
+            cmd.mappedJson,
+            cmd.analyzeJson,
+            cmd.endpointsJson,
+            cmd.mappedOpenapiJson,
+            cmd.output
+        );
     });
 
 program
@@ -216,9 +240,8 @@ program
     .option("--ai-endpoint <endpoint>", "Endpoint to use for AI service (for Ollama, etc)")
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
-    .option("--map-openapi", "Generate OpenAPI spec from the code (map module)", false)
-    .option("--map-openapi-output <file>", "Output file for OpenAPI spec (map module)", "mapped-openapi.json")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
+    .option("--insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
@@ -226,8 +249,6 @@ program
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
-        globalsUtil.setOpenapi(cmd.mapOpenapi);
-        globalsUtil.setOpenapiOutputFile(cmd.mapOpenapiOutput);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
 
         // validate AI options

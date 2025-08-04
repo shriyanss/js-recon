@@ -1,5 +1,23 @@
 # Change Log
 
+## 1.2.1-alpha.1 - 2025.08.04
+
+### Added
+
+- Added `-k/--insecure` flag to disable SSL certificate verification
+- Added `json` output feature to analyze module
+- Added `analyze` module auto-run to `run` module
+- Added `report` module
+
+### Changed
+
+- Updated the `postMessageFunctionResolve` step to resolve function expressions
+- Updated the `postMessageFunctionResolve` step to resolve arrow function expressions
+- Remove `--map-openapi` flag from run module (enabled by default)
+- Remove `--map-openapi-output` flag from run module
+
+### Fixed
+
 ## 1.1.4 - 2025.08.01
 
 ### Added

@@ -1,0 +1,77 @@
+import Database from "better-sqlite3";
+
+const createMappedTable = (db: Database.Database) => {
+    db.prepare(
+        `
+        CREATE TABLE IF NOT EXISTS mapped (
+            id TEXT PRIMARY KEY,
+            description TEXT,
+            loadedOn TEXT,
+            containsFetch BOOLEAN,
+            isAxiosClient BOOLEAN,
+            exports TEXT,
+            callStack TEXT,
+            code TEXT,
+            imports TEXT,
+            file TEXT
+        )
+    `
+    ).run();
+};
+
+const createMappedOpenapiTable = (db: Database.Database) => {
+    db.prepare(
+        `
+        CREATE TABLE IF NOT EXISTS mapped_openapi (
+            path TEXT,
+            method TEXT,
+            summary TEXT,
+            parameters TEXT,
+            requestBody TEXT,
+            tags TEXT,
+            PRIMARY KEY (path, method)
+        )
+    `
+    ).run();
+};
+
+const createEndpointsTable = (db: Database.Database) => {
+    db.prepare(
+        `
+        CREATE TABLE IF NOT EXISTS endpoints (
+            url TEXT PRIMARY KEY
+        )
+    `
+    ).run();
+};
+
+const createAnalysisFindingsTable = (db: Database.Database) => {
+    db.prepare(
+        `
+        CREATE TABLE IF NOT EXISTS analysis_findings (
+            ruleId TEXT,
+            ruleName TEXT,
+            ruleType TEXT,
+            ruleDescription TEXT,
+            ruleAuthor TEXT,
+            ruleTech TEXT,
+            severity TEXT,
+            message TEXT,
+            findingLocation TEXT
+        )
+    `
+    ).run();
+};
+
+const initReportDb = async (sqliteDbPath: string) => {
+    const db = new Database(sqliteDbPath);
+
+    createMappedTable(db);
+    createMappedOpenapiTable(db);
+    createEndpointsTable(db);
+    createAnalysisFindingsTable(db);
+
+    db.close();
+};
+
+export default initReportDb;
