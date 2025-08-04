@@ -27,7 +27,7 @@ const addAnalyze = async (markdown: string, db: Database.Database): Promise<stri
         }
 
         for (const ruleType in groupedFindings) {
-            toReturn += `### ${ruleType}\n`;
+            toReturn += `### ${ruleType.toUpperCase()}\n`;
             for (const finding of groupedFindings[ruleType]) {
                 toReturn += `#### ${finding.ruleName}, ${finding.ruleDescription}\n`;
                 let findingLocationBlock = "";

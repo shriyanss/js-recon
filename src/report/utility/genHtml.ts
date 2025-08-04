@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import fs from "fs";
 import { marked } from "marked";
+import hljs from 'highlight.js';
 import Database from "better-sqlite3";
 import addAnalyze from "./markdownGen/addAnalyze.js";
 
@@ -25,7 +26,15 @@ const genHtml = async (outputReportFile: string, db: Database.Database) => {
 
     markdown = await addAnalyze(markdown, db);
 
-    marked.use({
+    const renderer = new marked.Renderer();
+    renderer.code = ({ text, lang }) => {
+        const language = hljs.getLanguage(lang as string) ? lang as string : 'plaintext';
+        const highlightedCode = hljs.highlight(text, { language, ignoreIllegals: true }).value;
+        return `<pre><code class="hljs ${language}">${highlightedCode}</code></pre>`;
+    };
+
+    marked.setOptions({
+        renderer,
         async: true,
         pedantic: false,
         gfm: true,
