@@ -16,7 +16,7 @@ import { EngineOutput } from "../helpers/outputHelper.js";
 
 const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<EngineOutput[]> => {
     let findings: EngineOutput[] = [];
-    
+
     for (const chunk of Object.values(mappedJsonData)) {
         // first of all, load the code in ast
         const ast = parser.parse(chunk.code, {
