@@ -12,9 +12,79 @@ const html = async (markdown: string) => {
   <meta charset="UTF-8">
   <title>Markdown Report</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.css">
+  <style>
+    h2, h3, h4 {
+        cursor: pointer;
+        position: relative;
+        padding-left: 20px;
+    }
+    h2::before, h3::before, h4::before {
+        content: '▼';
+        position: absolute;
+        left: 0;
+        transition: transform 0.2s;
+    }
+    .collapsed::before {
+        transform: rotate(-90deg);
+    }
+  </style>
 </head>
 <body>
   ${await marked(markdown)}
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const headers = document.querySelectorAll('h2, h3, h4');
+
+        const getHeaderLevel = (header) => parseInt(header.tagName.substring(1));
+
+        headers.forEach((header, index) => {
+            const level = getHeaderLevel(header);
+
+            // Set initial state for H3 headers
+            if (header.tagName.toLowerCase() === 'h3') {
+                header.classList.add('collapsed');
+            }
+
+            header.addEventListener('click', () => {
+                header.classList.toggle('collapsed');
+                updateVisibility();
+            });
+        });
+
+        const updateVisibility = () => {
+            let parentCollapsedLevels = [];
+
+            headers.forEach(header => {
+                const level = getHeaderLevel(header);
+
+                // Remove deeper or same-level collapsed states
+                parentCollapsedLevels = parentCollapsedLevels.filter(l => l < level);
+
+                if (parentCollapsedLevels.length > 0) {
+                    header.style.display = 'none';
+                } else {
+                    header.style.display = '';
+                }
+
+                if (header.classList.contains('collapsed')) {
+                    parentCollapsedLevels.push(level);
+                }
+
+                let nextEl = header.nextElementSibling;
+                while (nextEl && !nextEl.tagName.match(/^H[1-4]$/)) {
+                    if (parentCollapsedLevels.length > 0) {
+                        nextEl.style.display = 'none';
+                    } else {
+                        nextEl.style.display = '';
+                    }
+                    nextEl = nextEl.nextElementSibling;
+                }
+            });
+        };
+
+        updateVisibility(); // Initial run to set the correct state on load
+    });
+  </script>
 </body>
 </html>`;
 };
