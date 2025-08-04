@@ -4,6 +4,7 @@ import { marked } from "marked";
 import hljs from "highlight.js";
 import Database from "better-sqlite3";
 import addAnalyze from "./markdownGen/addAnalyze.js";
+import CONFIG from "../../globalConfig.js";
 
 declare global {
     interface Window {
@@ -68,16 +69,14 @@ const html = async (markdown: string) => {
     </div>
     <ul class="navbar-links" id="navbar-links">
       <li><a href="#home">Home</a></li>
-      <li><a href="#hello">Hello</a></li>
-      <li><a href="#test">Test</a></li>
+      <li><a href="#about">About</a></li>
     </ul>
   </nav>
   <div id="content"></div>
   <script id="page-data" type="application/json">
     ${JSON.stringify({
-        home: markdown,
-        hello: "## Hello Page\n\nThis is the hello page content.",
-        test: "## Test Page\n\nThis is the test page content.",
+        home: await marked.parse(markdown),
+        about: `# About\n\n The documentation for this tool is available at [JS Recon Docs](https://js-recon.io/).\n\n## Version\n\nThis report is generated with JS Recon [v${CONFIG.version}](https://github.com/shriyanss/js-recon/releases/tag/v${CONFIG.version}).`,
     })}
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -129,7 +128,7 @@ const html = async (markdown: string) => {
 
       const renderPage = (pageName) => {
         const markdownContent = pages[pageName] || '<h2>Page Not Found: ' + pageName + '</h2>';
-        contentDiv.innerHTML = window.marked.parse(markdownContent);
+        contentDiv.innerHTML = pageName === 'home' ? markdownContent : window.marked.parse(markdownContent);
         initializeCollapsibleHeaders();
       };
 
