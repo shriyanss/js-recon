@@ -2,6 +2,36 @@ import chalk from "chalk";
 import Database from "better-sqlite3";
 
 const populateMappedOpenapi = async (db: Database.Database, openapi: any) => {
+    const insert = db.prepare(
+        `INSERT OR REPLACE INTO mapped_openapi (path, method, summary, parameters, requestBody, tags)
+         VALUES (@path, @method, @summary, @parameters, @requestBody, @tags)`
+    );
+
+    db.transaction(() => {
+        if (!openapi.paths) {
+            return;
+        }
+
+        for (const path in openapi.paths) {
+            const methods = openapi.paths[path];
+            for (const method in methods) {
+                const details = methods[method];
+                try {
+                    insert.run({
+                        path: path,
+                        method: method,
+                        summary: details.summary || null,
+                        parameters: details.parameters ? JSON.stringify(details.parameters) : null,
+                        requestBody: details.requestBody ? JSON.stringify(details.requestBody) : null,
+                        tags: details.tags ? JSON.stringify(details.tags) : null,
+                    });
+                } catch (error) {
+                    console.error(`Error inserting OpenAPI path: ${path} [${method}]`, error);
+                }
+            }
+        }
+    })();
+
     console.log(chalk.green("[✓] Populated mapped openapi into the database..."));
 };
 
