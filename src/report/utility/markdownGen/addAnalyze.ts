@@ -1,5 +1,4 @@
-import chalk from "chalk";
-import * as Database from "better-sqlite3";
+import Database from "better-sqlite3";
 
 interface AnalysisFinding {
     ruleId: string;

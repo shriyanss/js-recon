@@ -5,6 +5,7 @@ import hljs from "highlight.js";
 import Database from "better-sqlite3";
 import addAnalyze from "./markdownGen/addAnalyze.js";
 import CONFIG from "../../globalConfig.js";
+import addMappedJson from "./markdownGen/addMappedJson.js";
 
 declare global {
     interface Window {
@@ -12,7 +13,7 @@ declare global {
     }
 }
 
-const html = async (markdown: string) => {
+const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -69,13 +70,15 @@ const html = async (markdown: string) => {
     </div>
     <ul class="navbar-links" id="navbar-links">
       <li><a href="#home">Home</a></li>
+      <li><a href="#mappedJson">Mapped JSON</a></li>
       <li><a href="#about">About</a></li>
     </ul>
   </nav>
   <div id="content"></div>
   <script id="page-data" type="application/json">
     ${JSON.stringify({
-        home: await marked.parse(markdown),
+        home: await marked.parse(analyzeMarkdown),
+        mappedJson: await marked.parse(mappedJsonMarkdown),
         about: `# About\n\n The documentation for this tool is available at [JS Recon Docs](https://js-recon.io/).\n\n## Version\n\nThis report is generated with JS Recon [v${CONFIG.version}](https://github.com/shriyanss/js-recon/releases/tag/v${CONFIG.version}).`,
     })}
   </script>
@@ -158,9 +161,11 @@ const html = async (markdown: string) => {
 const genHtml = async (outputReportFile: string, db: Database.Database) => {
     console.log(chalk.cyan("[i] Generating HTML report..."));
 
-    let markdown = `# JS Recon Report generated at ${new Date().toISOString()}\n\n`;
+    let analyzeMarkdown = `# JS Recon Report generated at ${new Date().toISOString()}\n\n`;
+    let mappedJsonMarkdown = analyzeMarkdown;
 
-    markdown = await addAnalyze(markdown, db);
+    analyzeMarkdown = await addAnalyze(analyzeMarkdown, db);
+    mappedJsonMarkdown = await addMappedJson(mappedJsonMarkdown, db);
 
     const renderer = new marked.Renderer();
     renderer.code = ({ text, lang }) => {
@@ -175,7 +180,7 @@ const genHtml = async (outputReportFile: string, db: Database.Database) => {
         pedantic: false,
         gfm: true,
     });
-    const renderedHtml = await html(markdown);
+    const renderedHtml = await html(analyzeMarkdown, mappedJsonMarkdown);
     fs.writeFileSync(outputReportFile, renderedHtml);
 
     console.log(chalk.green("[✓] HTML report generated successfully"));
