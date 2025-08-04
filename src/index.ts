@@ -209,7 +209,7 @@ program
     .option("-e, --endpoints-json <file>", "Endpoints JSON file")
     .option("--map-openapi, --mapped-openapi-json <file>", "Mapped OpenAPI JSON file")
     .action(async (cmd) => {
-        await report(cmd.sqliteDb, cmd.mappedJson, cmd.analyzeJson, cmd.endpointsJson, cmd.mapOpenapiJson);
+        await report(cmd.sqliteDb, cmd.mappedJson, cmd.analyzeJson, cmd.endpointsJson, cmd.mappedOpenapiJson);
     });
 
 program
