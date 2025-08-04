@@ -194,8 +194,9 @@ program
     .option("--openapi <file>", "Path to OpenAPI spec file")
     .option("-l, --list", "List available technologies", false)
     .option("--validate", "Validate the rules", false)
+    .option("-o, --output <file>", "Output JSON file name", "analyze.json")
     .action(async (cmd) => {
-        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate);
+        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate, cmd.output);
     });
 
 program
