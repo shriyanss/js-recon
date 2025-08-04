@@ -7,6 +7,7 @@
 - Added `-k/--insecure` flag to disable SSL certificate verification
 - Added `json` output feature to analyze module
 - Added `analyze` module auto-run to `run` module
+- Added `report` module
 
 ### Changed
 
