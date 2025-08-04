@@ -11,6 +11,7 @@ import refactor from "./refactor/index.js";
 import run from "./run/index.js";
 import chalk from "chalk";
 import analyze from "./analyze/index.js";
+import report from "./report/index.js";
 
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 const validAiOptions = ["description"];
@@ -197,6 +198,15 @@ program
     .option("-o, --output <file>", "Output JSON file name", "analyze.json")
     .action(async (cmd) => {
         await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate, cmd.output);
+    });
+
+program
+    .command("report")
+    .description("Generate a report")
+    .option("-s, --sqlite-db <file>", "SQLite database file", "js-recon.db")
+    .option("-m, --mapped-json <file>", "Mapped JSON file")
+    .action(async (cmd) => {
+        await report(cmd.sqliteDb, cmd.mappedJson);
     });
 
 program
