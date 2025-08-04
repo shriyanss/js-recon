@@ -8,6 +8,7 @@ import yaml from "yaml";
 import { Chunks } from "../utility/interfaces.js";
 import { OpenAPISpec } from "../utility/openapiGenerator.js";
 import initRules from "./helpers/initRules.js";
+import { EngineOutput, generateEngineOutput } from "./helpers/outputHelper.js";
 
 const availableTechs = {
     next: "Next.js",
@@ -36,7 +37,8 @@ const analyze = async (
     tech: "next",
     list: boolean,
     openapi: string,
-    validate: boolean
+    validate: boolean,
+    outputFile: string
 ) => {
     console.log(chalk.cyan(`[i] Loading analyze module...`));
 
@@ -120,13 +122,22 @@ const analyze = async (
     }
 
     // iterate over the ruleFiles
+    let ruleFindings: EngineOutput[] = [];
     for (const ruleFile of ruleFiles) {
         // load the rule
         const rule: Rule = yaml.parse(fs.readFileSync(ruleFile, "utf8"));
 
         // run the rule
-        await engine(rule, mappedJsonData, openapiData, tech);
+        const engineFindings: EngineOutput[] = await engine(rule, mappedJsonData, openapiData, tech);
+
+        // add findings to the global findings
+        if (engineFindings) {
+            ruleFindings.push(...engineFindings);
+        }
     }
+
+    // generate the engine output
+    generateEngineOutput(outputFile, ruleFindings);
 };
 
 export default analyze;
