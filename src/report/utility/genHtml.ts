@@ -5,6 +5,12 @@ import hljs from "highlight.js";
 import Database from "better-sqlite3";
 import addAnalyze from "./markdownGen/addAnalyze.js";
 
+declare global {
+    interface Window {
+        marked: any;
+    }
+}
+
 const html = async (markdown: string) => {
     return `<!DOCTYPE html>
 <html>
@@ -59,63 +65,86 @@ const html = async (markdown: string) => {
     <div class="navbar-logo">
       <img src="https://js-recon.io/img/js-recon-logo.png" alt="JS Recon Logo">
     </div>
-    <ul class="navbar-links">
-      <li><a href="#">Home</a></li>
+    <ul class="navbar-links" id="navbar-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#hello">Hello</a></li>
+      <li><a href="#test">Test</a></li>
     </ul>
   </nav>
-  ${await marked(markdown)}
+  <div id="content"></div>
+  <script id="page-data" type="application/json">
+    ${JSON.stringify({ home: markdown, hello: '## Hello Page\n\nThis is the hello page content.', test: '## Test Page\n\nThis is the test page content.' })}
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const headers = document.querySelectorAll('h2, h3, h4');
+      const contentDiv = document.getElementById('content');
+      const navbarLinks = document.getElementById('navbar-links');
+      const pages = JSON.parse(document.getElementById('page-data').textContent);
 
-        const getHeaderLevel = (header) => parseInt(header.tagName.substring(1));
-
-        headers.forEach((header, index) => {
-            const level = getHeaderLevel(header);
-
-            // Set initial state for H3 headers
-            if (header.tagName.toLowerCase() === 'h3') {
-                header.classList.add('collapsed');
+      const updateVisibility = () => {
+        const headers = contentDiv.querySelectorAll('h2, h3, h4');
+        let parentCollapsedLevels = [];
+        headers.forEach(header => {
+          const level = parseInt(header.tagName.substring(1));
+          parentCollapsedLevels = parentCollapsedLevels.filter(l => l < level);
+          if (parentCollapsedLevels.length > 0) {
+            header.style.display = 'none';
+          } else {
+            header.style.display = '';
+          }
+          if (header.classList.contains('collapsed')) {
+            parentCollapsedLevels.push(level);
+          }
+          let nextEl = header.nextElementSibling;
+          while (nextEl && !nextEl.tagName.match(/^H[1-4]$/)) {
+            if (parentCollapsedLevels.length > 0) {
+              nextEl.style.display = 'none';
+            } else {
+              nextEl.style.display = '';
             }
-
-            header.addEventListener('click', () => {
-                header.classList.toggle('collapsed');
-                updateVisibility();
-            });
+            nextEl = nextEl.nextElementSibling;
+          }
         });
+      };
 
-        const updateVisibility = () => {
-            let parentCollapsedLevels = [];
+      const initializeCollapsibleHeaders = () => {
+        const headers = contentDiv.querySelectorAll('h2, h3, h4');
+        headers.forEach((header) => {
+          if (header.tagName.toLowerCase() === 'h3') {
+            header.classList.add('collapsed');
+          }
+          header.addEventListener('click', () => {
+            header.classList.toggle('collapsed');
+            updateVisibility();
+          });
+        });
+        updateVisibility();
+      };
 
-            headers.forEach(header => {
-                const level = getHeaderLevel(header);
+      const renderPage = (pageName) => {
+        const markdownContent = pages[pageName] || '<h2>Page Not Found: ' + pageName + '</h2>';
+        contentDiv.innerHTML = window.marked.parse(markdownContent);
+        initializeCollapsibleHeaders();
+      };
 
-                // Remove deeper or same-level collapsed states
-                parentCollapsedLevels = parentCollapsedLevels.filter(l => l < level);
+      const handleHashChange = () => {
+        const pageName = window.location.hash.substring(1) || 'home';
+        renderPage(pageName);
+      };
 
-                if (parentCollapsedLevels.length > 0) {
-                    header.style.display = 'none';
-                } else {
-                    header.style.display = '';
-                }
+      navbarLinks.addEventListener('click', (event) => {
+        if (event.target.tagName === 'A') {
+          event.preventDefault();
+          const pageName = event.target.hash.substring(1);
+          window.location.hash = pageName;
+        }
+      });
 
-                if (header.classList.contains('collapsed')) {
-                    parentCollapsedLevels.push(level);
-                }
+      window.addEventListener('hashchange', handleHashChange);
 
-                let nextEl = header.nextElementSibling;
-                while (nextEl && !nextEl.tagName.match(/^H[1-4]$/)) {
-                    if (parentCollapsedLevels.length > 0) {
-                        nextEl.style.display = 'none';
-                    } else {
-                        nextEl.style.display = '';
-                    }
-                    nextEl = nextEl.nextElementSibling;
-                }
-            });
-        };
-
-        updateVisibility(); // Initial run to set the correct state on load
+      // Initial page load
+      handleHashChange();
     });
   </script>
 </body>
