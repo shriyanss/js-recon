@@ -57,6 +57,7 @@ const html = async (markdown: string) => {
       margin: 0 0 0 20px;
       padding: 0;
       display: flex;
+      gap: 15px;
     }
   </style>
 </head>
