@@ -141,7 +141,7 @@ extracted_urls*
 .resp_cache.json
 .vscode
 .vscode/*
-output*
+output*/
 mapped.json
 endpoints.json
 endpoints.txt
@@ -150,3 +150,6 @@ strings.md
 .DS_Store
 mapped-openapi.json
 test.yaml
+analyze.json
+js-recon.db
+report.html
