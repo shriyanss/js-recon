@@ -45,7 +45,7 @@ const analyze = async (
     await initRules();
 
     // check if `-r` flag is there. If not, default to `~/.js-recon/rules`
-    if (!rulesPath) {
+    if (!rulesPath || rulesPath === "") {
         rulesPath = path.join(process.env.HOME, "/.js-recon/rules");
     }
 

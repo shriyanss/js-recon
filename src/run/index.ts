@@ -6,6 +6,7 @@ import * as fs from "fs";
 import lazyLoad from "../lazyLoad/index.js";
 import chalk from "chalk";
 import CONFIG from "../globalConfig.js";
+import analyze from "../analyze/index.js";
 
 export default async (cmd) => {
     globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
@@ -46,7 +47,7 @@ export default async (cmd) => {
 
     console.log(chalk.bgGreenBright("[+] Starting analysis..."));
 
-    console.log(chalk.bgCyan("[1/6] Running lazyload to download JavaScript files..."));
+    console.log(chalk.bgCyan("[1/7] Running lazyload to download JavaScript files..."));
     await lazyLoad(cmd.url, cmd.output, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "", cmd.insecure);
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
@@ -67,12 +68,12 @@ export default async (cmd) => {
     }
 
     // run strings
-    console.log(chalk.bgCyan("[2/6] Running strings to extract endpoints..."));
+    console.log(chalk.bgCyan("[2/7] Running strings to extract endpoints..."));
     await strings(cmd.output, "strings.json", true, "extracted_urls", false, false, false);
     console.log(chalk.bgGreen("[+] Strings complete."));
 
     // run lazyload with subsequent requests
-    console.log(chalk.bgCyan("[3/6] Running lazyload with subsequent requests to download JavaScript files..."));
+    console.log(chalk.bgCyan("[3/7] Running lazyload with subsequent requests to download JavaScript files..."));
     await lazyLoad(
         cmd.url,
         cmd.output,
@@ -86,17 +87,18 @@ export default async (cmd) => {
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 
     // run strings again to extract endpoints from the files that are downloaded in the previous step
-    console.log(chalk.bgCyan("[4/6] Running strings again to extract endpoints..."));
+    console.log(chalk.bgCyan("[4/7] Running strings again to extract endpoints..."));
     await strings(cmd.output, "strings.json", true, "extracted_urls", cmd.secrets, true, true);
     console.log(chalk.bgGreen("[+] Strings complete."));
 
     // now, run map
-    console.log(chalk.bgCyan("[5/6] Running map to find functions..."));
+    console.log(chalk.bgCyan("[5/7] Running map to find functions..."));
+    globalsUtil.setOpenapi(true);
     await map(cmd.output + "/" + targetHost, "mapped", ["json"], globalsUtil.getTech(), false, false);
     console.log(chalk.bgGreen("[+] Map complete."));
 
     // now, run endpoints
-    console.log(chalk.bgCyan("[6/6] Running endpoints to extract endpoints..."));
+    console.log(chalk.bgCyan("[6/7] Running endpoints to extract endpoints..."));
     // check if the subsequent requests directory exists
     if (fs.existsSync(`${cmd.output}/${targetHost}/___subsequent_requests`)) {
         await endpoints(cmd.url, `${cmd.output}/${targetHost}/`, "endpoints", ["json"], "next", false, "mapped.json");
@@ -104,6 +106,13 @@ export default async (cmd) => {
         await endpoints(cmd.url, undefined, "endpoints", ["json"], "next", false, "mapped.json");
     }
     console.log(chalk.bgGreen("[+] Endpoints complete."));
+
+    // run the analyze module now
+    console.log(chalk.bgCyan("[7/7] Running analyze to extract endpoints..."));
+    // since the thirs argument is tech, and it can't be "all", so adding type ignore
+    // @ts-ignore
+    await analyze("", "mapped.json", globalsUtil.getTech(), false, "mapped-openapi.json", false, "analyze.json");
+    console.log(chalk.bgGreen("[+] Analyze complete."));
 
     console.log(chalk.bgGreenBright("[+] Analysis complete."));
 };
