@@ -58,6 +58,8 @@ js-recon run -u https://app.example.com
 | `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](https://js-recon.io/docs/docs/modules/map)         |
 | `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](https://js-recon.io/docs/docs/modules/api-gateway) |
 | `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](https://js-recon.io/docs/docs/modules/run)         |
+| `analyze`     | Analyzes the code.                                                            | [Read Docs](https://js-recon.io/docs/docs/modules/analyze)     |
+| `report`      | Generates a report from the analysis modules.                                 | [Read Docs](https://js-recon.io/docs/docs/modules/report)      |
 
 ## Key Features
 
@@ -67,6 +69,8 @@ js-recon run -u https://app.example.com
 - Endpoints modules extracts client-side paths from the app
 - Map feature analyzes the JS files and outputs it to a JSON file. An interactive mode can be then used to analyze it
 - Reconstruct HTTP requests that the app makes to the server, and output them to the OpenAPI spec
+- Run analyze to find potential issues in JS code and the HTTP requests the app makes
+- Generate a report from the analyze module
 
 ## Example Scenario
 
