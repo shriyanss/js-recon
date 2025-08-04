@@ -7,6 +7,10 @@ export const populateMappedJson = async (
     chunks: Chunks
 ) => {
     console.log(chalk.green("Populating mapped data into the database..."));
+
+    // Clear the table before inserting new data
+    db.prepare(`DELETE FROM mapped`).run();
+
     const insert = db.prepare(
         `INSERT INTO mapped (id, description, loadedOn, containsFetch, isAxiosClient, exports, callStack, code, imports, file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
@@ -17,8 +21,8 @@ export const populateMappedJson = async (
                 item.id,
                 item.description,
                 JSON.stringify(item.loadedOn),
-                item.containsFetch,
-                item.isAxiosClient,
+                item.containsFetch ? 1 : 0,
+                item.isAxiosClient ? 1 : 0,
                 JSON.stringify(item.exports),
                 JSON.stringify(item.callStack),
                 item.code,
