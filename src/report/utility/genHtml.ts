@@ -2,6 +2,7 @@ import chalk from "chalk";
 import fs from "fs";
 import { marked } from "marked";
 import Database from "better-sqlite3";
+import addAnalyze from "./markdownGen/addAnalyze.js";
 
 const html = async (markdown: string) => {
     return `<!DOCTYPE html>
@@ -21,6 +22,8 @@ const genHtml = async (outputReportFile: string, db: Database.Database) => {
     console.log(chalk.cyan("[i] Generating HTML report..."));
 
     let markdown = `# JS Recon Report generated at ${new Date().toISOString()}\n\n`;
+
+    markdown = await addAnalyze(markdown, db);
 
     marked.use({
         async: true,
