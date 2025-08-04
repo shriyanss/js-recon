@@ -3,6 +3,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import requestEngine from "./requestEngine.js";
 import astEngine from "./astEngine.js";
+import { EngineOutput } from "../helpers/outputHelper.js";
 
 export const engine = async (
     rule: Rule,
@@ -11,6 +12,8 @@ export const engine = async (
     tech: "next" | "all"
 ) => {
     // first of all check what is rule type, and then check if the data for that is available or is undefined
+
+    let findings: EngineOutput[] = [];
 
     if (rule.type === "request") {
         if (!openapiData) {
@@ -25,7 +28,7 @@ export const engine = async (
         }
 
         if (techValid || tech === "all") {
-            requestEngine(rule, openapiData);
+            findings.push(...(await requestEngine(rule, openapiData)));
         }
     } else if (rule.type === "ast") {
         if (!mappedJsonData) {
@@ -40,9 +43,11 @@ export const engine = async (
         }
 
         if (techValid || tech === "all") {
-            astEngine(rule, mappedJsonData);
+            findings.push(...(await astEngine(rule, mappedJsonData)));
         }
     }
+
+    return findings;
 };
 
 export default engine;
