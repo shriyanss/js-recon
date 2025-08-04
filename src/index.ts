@@ -206,8 +206,9 @@ program
     .option("-s, --sqlite-db <file>", "SQLite database file", "js-recon.db")
     .option("-m, --mapped-json <file>", "Mapped JSON file")
     .option("-a, --analyze-json <file>", "Analyze JSON file")
+    .option("-e, --endpoints-json <file>", "Endpoints JSON file")
     .action(async (cmd) => {
-        await report(cmd.sqliteDb, cmd.mappedJson, cmd.analyzeJson);
+        await report(cmd.sqliteDb, cmd.mappedJson, cmd.analyzeJson, cmd.endpointsJson);
     });
 
 program
