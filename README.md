@@ -82,7 +82,9 @@ For detailed guides, command options, and advanced usage examples, please check 
 
 ## Labs
 
-![JS Recon labs banner](https://github.com/shriyanss/js-recon-labs/blob/main/static/labs-banner.png?raw=true)
+<p align="center">
+  <img src="https://github.com/shriyanss/js-recon-labs/blob/main/static/labs-banner.png?raw=true" alt="JS Recon Labs" width="300"/>
+</p>
 
 Labs to test JS Recon tool are available [here](https://github.com/shriyanss/js-recon-labs). Walkthroughs are available [here](https://js-recon.io/labs).
 
