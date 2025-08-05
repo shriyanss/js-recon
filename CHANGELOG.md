@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.1-alpha.2 - 2025.08.05
+
+### Added
+
+- Added support for parsing URL list in the run module
+
+### Changed
+
+### Fixed
+
 ## 1.2.1-alpha.1 - 2025.08.04
 
 ### Added
