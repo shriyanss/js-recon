@@ -12,11 +12,17 @@ export const pushToScope = (item) => {
 };
 
 export const getJsUrls = () => js_urls;
+export const clearJsUrls = () => {
+    js_urls = [];
+};
 export const pushToJsUrls = (url) => {
     js_urls.push(url);
 };
 
 export const getJsonUrls = () => json_urls;
+export const clearJsonUrls = () => {
+    json_urls = [];
+};
 export const pushToJsonUrls = (url: string) => json_urls.push(url);
 
 export const getMaxReqQueue = () => max_req_queue;
