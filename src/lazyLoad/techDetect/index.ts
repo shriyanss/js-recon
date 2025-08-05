@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import * as cheerio from "cheerio";
-import makeRequest from "../utility/makeReq.js";
+import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "puppeteer";
 
 /**
