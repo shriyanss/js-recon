@@ -79,3 +79,17 @@ Refer to [this page](https://js-recon.io/docs/docs/example-scenarios/next-js) wh
 ## Documentation
 
 For detailed guides, command options, and advanced usage examples, please check out the JS Recon Site at https://js-recon.io
+
+## Labs
+
+![JS Recon labs banner](https://github.com/shriyanss/js-recon-labs/blob/main/static/labs-banner.png?raw=true)
+
+Labs to test JS Recon tool are available [here](https://github.com/shriyanss/js-recon-labs). Walkthroughs are available [here](https://js-recon.io/labs).
+
+## Contributing
+
+Please refer to the [Contributing](https://js-recon.io/contributing) page for detailed information on contributing to this project.
+
+## License
+
+JS Recon is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
