@@ -36,7 +36,13 @@ export default async (cmd) => {
             return;
         }
 
-        const targetHost = new URL(cmd.url).host.replace(":", "_");
+        let targetHost;
+        try {
+            targetHost = new URL(cmd.url).host.replace(":", "_");
+        } catch (e) {
+            console.log(chalk.red(`[!] Invalid URL: ${cmd.url}`));
+            process.exit(1);
+        }
 
         console.log(chalk.bgGreenBright("[+] Starting analysis..."));
 
