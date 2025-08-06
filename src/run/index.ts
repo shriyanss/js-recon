@@ -123,6 +123,12 @@ export default async (cmd) => {
             return;
         }
 
+        let urlTest = new URL(cmd.url);
+        if (!urlTest) {
+            console.log(chalk.red("[!] Invalid URL"));
+            return;
+        }
+
         await processUrl(cmd.url, cmd.output, ".", cmd, false);
     } else {
         // since this is a file, we need to first load the URLs in the memory remove empty strings
