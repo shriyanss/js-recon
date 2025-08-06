@@ -8,7 +8,24 @@ import chalk from "chalk";
 import CONFIG from "../globalConfig.js";
 import analyze from "../analyze/index.js";
 import report from "../report/index.js";
-import { clearJsUrls, clearJsonUrls } from "../lazyLoad/globals.js";
+import { clearJsUrls, clearJsonUrls, getJsUrls } from "../lazyLoad/globals.js";
+import path from "path";
+
+const getCdnDir = async (host: string, outputDir: string): Promise<string | undefined> => {
+    // get the JS URLs
+    let cdnDir: string | undefined;
+    for (const url of getJsUrls()) {
+        if (url.includes("_next/static/chunks")) {
+            // check if the host and url.host match
+            const urlHost = new URL(url).host.replace(":", "_");
+            if (urlHost !== host) {
+                cdnDir = path.join(outputDir, urlHost);
+                break;
+            }
+        }
+    }
+    return cdnDir;
+};
 
 const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
     const targetHost = new URL(url).host.replace(":", "_");
@@ -48,6 +65,12 @@ const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
     const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
     const reportFile = isBatch ? `${workingDir}/report` : "report";
 
+    // if the target is using a CDN, then just passing the outputDir/host won't work, and would throw an error. 
+    // So, if the target was found to be using a CDN, scan the CDN directory rather than the outputDir/host
+    // One IMPORTANT thing: this is only meant for modules that rely on just the code (map)
+    const cdnDir = await getCdnDir(url, outputDir);
+    const cdnOutputDir = cdnDir ? cdnDir : outputDir + "/" + targetHost;
+
     console.log(chalk.bgCyan("[2/8] Running strings to extract endpoints..."));
     await strings(outputDir, stringsFile, true, extractedUrlsFile, false, false, false);
     console.log(chalk.bgGreen("[+] Strings complete."));
@@ -74,7 +97,7 @@ const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
     if (isBatch) {
         globalsUtil.setOpenapiOutputFile(openapiFile);
     }
-    await map(outputDir + "/" + targetHost, mappedFile, ["json"], globalsUtil.getTech(), false, false);
+    await map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false);
     console.log(chalk.bgGreen("[+] Map complete."));
 
     console.log(chalk.bgCyan("[6/8] Running endpoints to extract endpoints..."));

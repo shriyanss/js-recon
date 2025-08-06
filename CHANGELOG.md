@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.1-beta.1 - (unreleased)
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix errors when the target is using a CDN
+
 ## 1.2.1-alpha.2 - 2025.08.06
 
 ### Added
