@@ -139,11 +139,10 @@ jobs:
       - publish-docker
       - publish-ghcr
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
           fetch-depth: 0
       - name: Merge main and dev
         run: |
