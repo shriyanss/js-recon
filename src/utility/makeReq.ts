@@ -3,6 +3,7 @@ import puppeteer from "puppeteer";
 import * as globals from "./globals.js";
 import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
+import { EventEmitter } from "events";
 
 // random user agents
 const UAs = [
@@ -193,12 +194,26 @@ const makeRequest = async (url: string, args: RequestInit) => {
         let counter = 0;
         while (true) {
             try {
+                EventEmitter.defaultMaxListeners = 20;
                 res = await fetch(url, args);
                 if (res) {
                     break;
                 }
             } catch (err) {
                 counter++;
+                // BUG: https://github.com/nodejs/node/issues/47246
+                // if the header content is too large, it will throw an error like
+                // code: `UND_ERR_HEADERS_OVERFLOW`
+                // so, if this error happens, tell the user to fix it using setting the environment variables
+                // if this is docker, this will be increased by default
+                if (err.cause && err.cause.code === "UND_ERR_HEADERS_OVERFLOW") {
+                    console.log(
+                        chalk.yellow(
+                            `[!] The tool detected a header overflow. Please increase the limit by setting environment variable \`NODE_OPTIONS="--max-http-header-size=99999999"\`. If the error still persists, please try again with a higher limit.`
+                        )
+                    );
+                    process.exit(21);
+                }
                 if (counter > 10) {
                     console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
                     return null;

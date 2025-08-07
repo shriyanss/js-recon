@@ -1,5 +1,21 @@
 # Change Log
 
+## 1.2.1-beta.1 - 2025.08.07
+
+### Added
+
+### Changed
+
+- Added `-k` as shorthand flag to the `run` module
+- Added standard exit codes to the application
+
+### Fixed
+
+- Fix errors when the target is using a CDN
+- Fix "possible EventEmitter memory leak detected" error
+- Fix "Maximum call stack size exceeded" error in resolveNodeValue
+- Fix "UND_ERR_HEADERS_OVERFLOW" error
+
 ## 1.2.1-alpha.2 - 2025.08.06
 
 ### Added

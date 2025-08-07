@@ -16,4 +16,5 @@ USER pptruser
 RUN npx puppeteer browsers install chrome
 
 ENV IS_DOCKER=true
+ENV NODE_OPTIONS="--max-http-header-size=99999999"
 ENTRYPOINT ["node", "build/index.js"]

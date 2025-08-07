@@ -11,11 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check version mismatch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "[i] Checking if the version in the CHANGELOG.md and package.json version matches"
           PACKAGE_JSON_VERSION=$(cat package.json | jq ".version" -r)
           CHANGELOG_VERSION=$(cat CHANGELOG.md | grep -E "^## [0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+)?)?" | head -n 1 | sed -E 's/^## ([0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)(\.[0-9]+)?)?).*/\1/')
-          GLOBALS_FILE_VERSION=$(grep -E '^const version =.+' src/globalConfig.ts | sed -E 's/^const version = "(.*)";/\1/')
+          GLOBALS_FILE_VERSION=$(grep -E '^const version =.+' src/globalConfig.ts | sed -E 's/^const version = \"(.*)\";/\1/')
           if [[ "$PACKAGE_JSON_VERSION" != "$CHANGELOG_VERSION" ]]; then
             echo "Version number mismatch between PACKAGE_JSON_VERSION and CHANGELOG_VERSION"
             exit 1
@@ -24,19 +26,25 @@ jobs:
             exit 1
           else
             echo "[✓] Version matches"
+            echo "[i] Checking if the version already exists on GitHub"
+            if gh release view "v$PACKAGE_JSON_VERSION" >/dev/null 2>&1; then
+              echo "Version v$PACKAGE_JSON_VERSION already exists on GitHub."
+              exit 1
+            else
+              echo "[✓] Version v$PACKAGE_JSON_VERSION does not exist on GitHub."
+            fi
           fi
 
   prettier:
     runs-on: ubuntu-latest
     needs: version_check
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           # Make sure the action checks out the repository to the pull request branch
           ref: ${{ github.ref_name }}
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -83,3 +91,14 @@ jobs:
         run: npm ci
       - name: Build code
         run: npm run build
+  build-docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Make sure the action checks out the repository to the pull request branch
+          ref: ${{ github.ref_name }}
+      - name: Build docker container
+        run: docker build -t shriyanss/js-recon .

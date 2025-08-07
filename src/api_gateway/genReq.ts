@@ -185,7 +185,7 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
 
     if (isFireWallBlocking) {
         console.log(chalk.magenta("[!] Please try again without API Gateway"));
-        process.exit(1);
+        process.exit(18);
     }
 
     return body;

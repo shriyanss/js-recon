@@ -168,7 +168,7 @@ program
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
                     console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
-                    return;
+                    process.exit(1);
                 }
             }
         }
@@ -241,7 +241,7 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
-    .option("--insecure", "Disable SSL certificate verification", false)
+    .option("-k, --insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
@@ -256,7 +256,7 @@ program
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
                     console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
-                    return;
+                    process.exit(2);
                 }
             }
         }
