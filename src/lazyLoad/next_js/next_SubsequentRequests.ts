@@ -51,7 +51,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
         console.log(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
         console.log(chalk.yellow(`[!] Please run strings module first with -e flag`));
         console.log(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
-        process.exit(1);
+        process.exit(17);
     }
     const endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
 
