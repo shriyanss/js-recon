@@ -9,6 +9,7 @@
 ### Fixed
 
 - Fix errors when the target is using a CDN
+- Fix "possible EventEmitter memory leak detected" error
 
 ## 1.2.1-alpha.2 - 2025.08.06
 
