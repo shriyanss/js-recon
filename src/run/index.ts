@@ -43,7 +43,7 @@ const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
 
     if (globalsUtil.getTech() === "") {
         console.log(chalk.bgRed("[!] Technology not detected. Quitting."));
-        return;
+        process.exit(10);
     }
 
     if (globalsUtil.getTech() !== "next") {
@@ -143,13 +143,13 @@ export default async (cmd) => {
                     `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
                 )
             );
-            return;
+            process.exit(11);
         }
 
         let urlTest = new URL(cmd.url);
         if (!urlTest) {
             console.log(chalk.red("[!] Invalid URL"));
-            return;
+            process.exit(12);
         }
 
         await processUrl(cmd.url, cmd.output, ".", cmd, false);
@@ -171,7 +171,7 @@ export default async (cmd) => {
             }
         }
         if (!allPassed) {
-            return;
+            process.exit(13);
         }
 
         // first of all, make a new directory for the tool output
@@ -187,7 +187,7 @@ export default async (cmd) => {
                     `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
                 )
             );
-            return;
+            process.exit(14);
         }
         fs.mkdirSync(toolOutputDir);
 
