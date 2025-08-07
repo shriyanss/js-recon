@@ -3,6 +3,7 @@ import puppeteer from "puppeteer";
 import * as globals from "./globals.js";
 import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
+import { EventEmitter } from 'events'
 
 // random user agents
 const UAs = [
@@ -193,6 +194,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
         let counter = 0;
         while (true) {
             try {
+                EventEmitter.defaultMaxListeners = 20;
                 res = await fetch(url, args);
                 if (res) {
                     break;
