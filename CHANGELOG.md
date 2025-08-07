@@ -7,6 +7,7 @@
 ### Changed
 
 - Added `-k` as shorthand flag to the `run` module
+- Added standard exit codes to the application
 
 ### Fixed
 
