@@ -1,0 +1,22 @@
+name: PR Branch Checker
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check source branch
+        if: github.head_ref != 'dev'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          gh pr comment $PR_URL --body "This merge is not possible. Create a PR for $BRANCH_NAME -> dev"
+          gh pr close $PR_URL

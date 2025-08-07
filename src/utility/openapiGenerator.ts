@@ -155,17 +155,21 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
         }
 
         // Extract query parameters
-        const url = new URL(item.path, "http://dummybase");
-        const queryParams = url.searchParams;
+        try {
+            const url = new URL(item.path, "http://dummybase");
+            const queryParams = url.searchParams;
 
-        queryParams.forEach((value, name) => {
-            parameters.push({
-                name: name,
-                in: "query",
-                required: false, // Or determine based on logic
-                schema: { type: "string", example: value },
+            queryParams.forEach((value, name) => {
+                parameters.push({
+                    name: name,
+                    in: "query",
+                    required: false, // Or determine based on logic
+                    schema: { type: "string", example: value },
+                });
             });
-        });
+        } catch (e) {
+            console.log(e);
+        }
 
         const operationObject: OperationObject = {
             summary: `${pathKey}`,

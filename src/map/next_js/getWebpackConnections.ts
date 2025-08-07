@@ -29,7 +29,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                         "[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."
                     )
                 );
-                process.exit(1);
+                process.exit(19);
             }
         }
         console.log(chalk.cyan(`[i] AI provider "${provider}" initialized.`));
