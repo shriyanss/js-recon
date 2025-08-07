@@ -65,7 +65,7 @@ const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
     const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
     const reportFile = isBatch ? `${workingDir}/report` : "report";
 
-    // if the target is using a CDN, then just passing the outputDir/host won't work, and would throw an error. 
+    // if the target is using a CDN, then just passing the outputDir/host won't work, and would throw an error.
     // So, if the target was found to be using a CDN, scan the CDN directory rather than the outputDir/host
     // One IMPORTANT thing: this is only meant for modules that rely on just the code (map)
     const cdnDir = await getCdnDir(url, outputDir);
