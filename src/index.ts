@@ -168,7 +168,7 @@ program
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
                     console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
-                    return;
+                    process.exit(1);
                 }
             }
         }
@@ -256,7 +256,7 @@ program
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
                     console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
-                    return;
+                    process.exit(2);
                 }
             }
         }

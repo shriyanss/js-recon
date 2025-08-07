@@ -16,7 +16,7 @@ const refactor = async (mappedJson: string, outputDir: string, tech: string, lis
     // check if the file exists
     if (!fs.existsSync(mappedJson)) {
         console.log(chalk.red("[!] Mapped JSON file does not exist"));
-        process.exit(1);
+        process.exit(7);
     }
 
     if (list) {
@@ -30,13 +30,13 @@ const refactor = async (mappedJson: string, outputDir: string, tech: string, lis
     // verify if the tech provided is valid
     if (!Object.keys(availableTechs).includes(tech)) {
         console.log(chalk.red("[!] Invalid technology provided"));
-        process.exit(1);
+        process.exit(8);
     }
 
     // check if the output directory already exists
     if (fs.existsSync(outputDir)) {
         console.log(chalk.red("[!] Output directory already exists"));
-        process.exit(1);
+        process.exit(9);
     } else {
         fs.mkdirSync(outputDir);
     }

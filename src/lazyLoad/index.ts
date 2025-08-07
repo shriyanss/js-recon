@@ -84,7 +84,7 @@ const lazyLoad = async (
         urls = [url];
     } else {
         console.log(chalk.red("[!] Invalid URL or file path"));
-        return;
+        process.exit(3);
     }
 
     for (const url of urls) {
