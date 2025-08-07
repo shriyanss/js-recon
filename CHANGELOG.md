@@ -6,6 +6,8 @@
 
 ### Changed
 
+- Added `-k` as shorthand flag to the `run` module
+
 ### Fixed
 
 - Fix errors when the target is using a CDN
