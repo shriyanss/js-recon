@@ -91,3 +91,14 @@ jobs:
         run: npm ci
       - name: Build code
         run: npm run build
+  build-docker:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Make sure the action checks out the repository to the pull request branch
+          ref: ${{ github.ref_name }}
+      - name: Build docker container
+        run: docker build -t shriyanss/js-recon .
