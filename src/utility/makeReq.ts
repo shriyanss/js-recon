@@ -3,7 +3,7 @@ import puppeteer from "puppeteer";
 import * as globals from "./globals.js";
 import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
-import { EventEmitter } from 'events'
+import { EventEmitter } from "events";
 
 // random user agents
 const UAs = [
