@@ -6,6 +6,8 @@
 
 ### Changed
 
+- The run module will skip the target if it is invalid, rather than exiting the program
+
 ### Fixed
 
 - Fix "Attempted to use detached Frame" error by adding try-catch block

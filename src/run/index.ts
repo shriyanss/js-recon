@@ -160,20 +160,6 @@ export default async (cmd) => {
             .split("\n")
             .filter((url) => url !== "");
 
-        // iterate through the URLs, and make sure they are valid URLs
-        let allPassed = true;
-        for (const url of urls) {
-            try {
-                let urlTest = new URL(url);
-            } catch (e) {
-                console.log(chalk.red(`[!] Invalid URL: ${url}`));
-                allPassed = false;
-            }
-        }
-        if (!allPassed) {
-            process.exit(13);
-        }
-
         // first of all, make a new directory for the tool output
         const toolOutputDir = "js_recon_run_output";
         if (fs.existsSync(toolOutputDir)) {
@@ -192,10 +178,15 @@ export default async (cmd) => {
         fs.mkdirSync(toolOutputDir);
 
         for (const url of urls) {
-            const thisTargetWorkingDir = toolOutputDir + "/" + new URL(url).host.replace(":", "_");
-            fs.mkdirSync(thisTargetWorkingDir);
-            const outputDir = thisTargetWorkingDir + "/output";
-            await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
+            try {
+                let urlTest = new URL(url);
+                const thisTargetWorkingDir = toolOutputDir + "/" + new URL(url).host.replace(":", "_");
+                fs.mkdirSync(thisTargetWorkingDir);
+                const outputDir = thisTargetWorkingDir + "/output";
+                await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
+            } catch (e) {
+                console.log(chalk.bgRed(`[!] Invalid URL: ${url}`));
+            }
         }
     }
 };
