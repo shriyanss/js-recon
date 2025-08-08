@@ -172,16 +172,26 @@ const frameworkDetect = async (url: string) => {
         args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
     });
     const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(30000);
+    let pageSource = "";
     try {
         await page.goto(url, {
-            waitUntil: "networkidle0",
+            waitUntil: "domcontentloaded",
+            timeout: 30000,
         });
+        // Give client-side frameworks a brief window to render
+        await page.waitForSelector("html", { timeout: 10000 }).catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        pageSource = await page.content();
     } catch (err) {
-        console.log(chalk.yellow("[!] Page load timed out, but continuing with current state"));
+        console.log(
+            chalk.yellow(
+                "[!] Page navigation/content failed, falling back to fetch response if available"
+            )
+        );
+    } finally {
+        await browser.close().catch(() => {});
     }
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    const pageSource = await page.content();
-    await browser.close();
 
     // if (res === null || res === undefined) {
     //   return;

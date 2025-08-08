@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.1-beta.2 - (unreleased)
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix "Attempted to use detached Frame" error by adding try-catch block
+
 ## 1.2.1-beta.1 - 2025.08.07
 
 ### Added
