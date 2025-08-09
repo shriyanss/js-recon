@@ -56,9 +56,11 @@ const html = async (
   <meta charset="UTF-8">
   <title>JS Recon Report</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.css">
-  ${dtAssets.css
-      ? `<style id="dt-inline-css">${dtAssets.css}</style>`
-      : `<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">`}
+  ${
+      dtAssets.css
+          ? `<style id="dt-inline-css">${dtAssets.css}</style>`
+          : `<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">`
+  }
   <style>
     h2, h3, h4 {
         cursor: pointer;
@@ -132,15 +134,19 @@ const html = async (
         mappedJson: await marked.parse(mappedJsonMarkdown),
         dataTables: dataTablesHtml,
         about: `# About\n\n The documentation for this tool is available at [JS Recon Docs](https://js-recon.io/).\n\n## Version\n\nThis report is generated with JS Recon [v${CONFIG.version}](https://github.com/shriyanss/js-recon/releases/tag/v${CONFIG.version}).`,
-    }).replace(/</g, '\\u003c')}
+    }).replace(/</g, "\\u003c")}
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  ${jqueryJs
-      ? `<script id="jquery-inline-js">${jqueryJs}</script>`
-      : `<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>`}
-  ${dtAssets.js
-      ? `<script id="dt-inline-js">${dtAssets.js}</script>`
-      : `<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>`}
+  ${
+      jqueryJs
+          ? `<script id="jquery-inline-js">${jqueryJs}</script>`
+          : `<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>`
+  }
+  ${
+      dtAssets.js
+          ? `<script id="dt-inline-js">${dtAssets.js}</script>`
+          : `<script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>`
+  }
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const contentDiv = document.getElementById('content');
@@ -427,13 +433,7 @@ const genHtml = async (outputReportFile: string, db: Database.Database) => {
     });
     const dtAssets = getLocalDataTablesAssets();
     const jqueryJs = getLocalJqueryAsset();
-    const renderedHtml = await html(
-        analyzeMarkdown,
-        mappedJsonMarkdown,
-        dataTablesHtml,
-        dtAssets,
-        jqueryJs
-    );
+    const renderedHtml = await html(analyzeMarkdown, mappedJsonMarkdown, dataTablesHtml, dtAssets, jqueryJs);
     fs.writeFileSync(outputReportFile, renderedHtml);
 
     console.log(chalk.green("[✓] HTML report generated successfully"));
