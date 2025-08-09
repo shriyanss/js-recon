@@ -34,6 +34,23 @@ const escapeHtml = (value: unknown): string => {
 
 const booleanIcon = (b: number | boolean) => (b ? "✅" : "❌");
 
+// Map severity to a sortable rank: info < low < medium < high
+const severityRank = (sev: string): number => {
+    const s = (sev || "").toString().toLowerCase().trim();
+    switch (s) {
+        case "info":
+            return 0;
+        case "low":
+            return 1;
+        case "medium":
+            return 2;
+        case "high":
+            return 3;
+        default:
+            return 99; // unknown values sort last
+    }
+};
+
 const genDataTablesPage = (db: Database.Database): string => {
     const findings = db.prepare(`SELECT * FROM analysis_findings`).all() as AnalysisFinding[];
     const mapped = db.prepare(`SELECT * FROM mapped`).all() as MappedData[];
@@ -48,7 +65,7 @@ const genDataTablesPage = (db: Database.Database): string => {
                 <td>${escapeHtml(f.ruleDescription)}</td>
                 <td>${escapeHtml(f.ruleAuthor)}</td>
                 <td>${escapeHtml(f.ruleTech)}</td>
-                <td>${escapeHtml(f.severity)}</td>
+                <td data-order="${severityRank(f.severity)}">${escapeHtml(f.severity)}</td>
                 <td>${escapeHtml(f.message)}</td>
                 <td><pre class="code-cell">${escapeHtml(f.findingLocation)}</pre></td>
             </tr>`
