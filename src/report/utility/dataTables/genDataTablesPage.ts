@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import hljs from "highlight.js";
 
 interface AnalysisFinding {
     ruleId: string;
@@ -51,6 +52,18 @@ const severityRank = (sev: string): number => {
     }
 };
 
+// Render JS code with highlight.js inside a pre/code block
+const renderJsCode = (code: string | null | undefined): string => {
+    const src = code ?? "";
+    try {
+        const highlighted = hljs.highlight(src, { language: "javascript", ignoreIllegals: true }).value;
+        return `<pre class="code-cell"><code class="hljs language-javascript">${highlighted}</code></pre>`;
+    } catch {
+        // Fallback to escaped plain text
+        return `<pre class="code-cell">${escapeHtml(src)}</pre>`;
+    }
+};
+
 const genDataTablesPage = (db: Database.Database): string => {
     const findings = db.prepare(`SELECT * FROM analysis_findings`).all() as AnalysisFinding[];
     const mapped = db.prepare(`SELECT * FROM mapped`).all() as MappedData[];
@@ -67,7 +80,7 @@ const genDataTablesPage = (db: Database.Database): string => {
                 <td>${escapeHtml(f.ruleTech)}</td>
                 <td data-order="${severityRank(f.severity)}">${escapeHtml(f.severity)}</td>
                 <td>${escapeHtml(f.message)}</td>
-                <td><pre class="code-cell">${escapeHtml(f.findingLocation)}</pre></td>
+                <td>${renderJsCode(f.findingLocation)}</td>
             </tr>`
         )
         .join("\n");
