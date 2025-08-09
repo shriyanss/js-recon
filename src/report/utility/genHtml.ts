@@ -113,6 +113,21 @@ const html = async (
       font-size: 0.85rem;
       box-sizing: border-box;
     }
+    /* Column resize styles */
+    table.display.data-table { table-layout: fixed; }
+    table.display.data-table thead th { position: relative; }
+    .th-resizer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 6px;
+      height: 100%;
+      cursor: col-resize;
+      user-select: none;
+      opacity: 0;
+      transition: opacity 0.15s ease-in-out;
+    }
+    table.display.data-table thead th:hover .th-resizer { opacity: 1; }
   </style>
 </head>
 <body>
@@ -269,6 +284,50 @@ const html = async (
         });
       };
 
+      const setColWidth = (tableEl, colIndex, widthPx) => {
+        const nth = colIndex + 1;
+        const w = Math.max(50, widthPx) + 'px';
+        const th = tableEl.querySelector('thead tr:first-child th:nth-child(' + nth + ')');
+        if (th) th.style.width = w;
+        const filterTh = tableEl.querySelector('thead tr.filter-row th:nth-child(' + nth + ')');
+        if (filterTh) filterTh.style.width = w;
+        const tds = tableEl.querySelectorAll('tbody tr td:nth-child(' + nth + ')');
+        tds.forEach(td => { td.style.width = w; });
+      };
+
+      const addColumnResizers = (tableEl) => {
+        if (!tableEl || tableEl.dataset.resizers === '1') return;
+        const ths = tableEl.querySelectorAll('thead tr:first-child th');
+        ths.forEach((th, idx) => {
+          if (th.querySelector('.th-resizer')) return;
+          const handle = document.createElement('div');
+          handle.className = 'th-resizer';
+          th.appendChild(handle);
+          let startX = 0;
+          let startWidth = 0;
+          const onMouseMove = (e) => {
+            const dx = e.pageX - startX;
+            setColWidth(tableEl, idx, startWidth + dx);
+          };
+          const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+          };
+          handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startX = e.pageX;
+            startWidth = th.offsetWidth;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = 'col-resize';
+          });
+        });
+        tableEl.dataset.resizers = '1';
+        // Ensure table layout
+        tableEl.style.tableLayout = 'fixed';
+      };
+
       const initializeDataTablesIfPresent = async () => {
         try {
           // Ensure DataTables (ESM or UMD) is present
@@ -289,6 +348,7 @@ const html = async (
               ordering: true,
               orderMulti: true,
               pageLength: 25,
+              autoWidth: false,
               // v1 fallback
               dom: 'lfrtip',
               // v2 layout API
@@ -351,6 +411,10 @@ const html = async (
               thead.appendChild(filterRow);
             }
             table.dataset.dtInit = '1';
+            // Attach column resizers after DataTables and filters are in place
+            addColumnResizers(table);
+            // Let DataTables recalc
+            try { if (dt && dt.columns) dt.columns().adjust(); } catch (e) {}
           });
         } catch (e) {
           console.error('DataTables init error', e);
