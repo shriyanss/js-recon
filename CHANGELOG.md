@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added tabular view to the report
+
 ### Changed
 
 - The run module will skip the target if it is invalid, rather than exiting the program
