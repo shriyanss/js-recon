@@ -29,6 +29,8 @@
         "cheerio": "^1.0.0",
         "cli-highlight": "^2.1.11",
         "commander": "^14.0.0",
+        "datatables.net": "^2.3.2",
+        "datatables.net-dt": "^2.3.2",
         "esquery": "^1.6.0",
         "fs": "^0.0.2",
         "highlight.js": "^11.11.1",
