@@ -6,6 +6,7 @@ import Database from "better-sqlite3";
 import addAnalyze from "./markdownGen/addAnalyze.js";
 import CONFIG from "../../globalConfig.js";
 import addMappedJson from "./markdownGen/addMappedJson.js";
+import genDataTablesPage from "./dataTables/genDataTablesPage.js";
 
 declare global {
     interface Window {
@@ -13,13 +14,14 @@ declare global {
     }
 }
 
-const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
+const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string, dataTablesHtml: string) => {
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>JS Recon Report</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
   <style>
     h2, h3, h4 {
         cursor: pointer;
@@ -61,6 +63,8 @@ const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
       display: flex;
       gap: 15px;
     }
+    .data-table { font-size: 0.9rem; }
+    pre.code-cell { white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow: auto; }
   </style>
 </head>
 <body>
@@ -71,6 +75,7 @@ const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
     <ul class="navbar-links" id="navbar-links">
       <li><a href="#home">Home</a></li>
       <li><a href="#mappedJson">Mapped JSON</a></li>
+      <li><a href="#dataTables">Data Tables</a></li>
       <li><a href="#about">About</a></li>
     </ul>
   </nav>
@@ -79,10 +84,12 @@ const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
     ${JSON.stringify({
         home: await marked.parse(analyzeMarkdown),
         mappedJson: await marked.parse(mappedJsonMarkdown),
+        dataTables: dataTablesHtml,
         about: `# About\n\n The documentation for this tool is available at [JS Recon Docs](https://js-recon.io/).\n\n## Version\n\nThis report is generated with JS Recon [v${CONFIG.version}](https://github.com/shriyanss/js-recon/releases/tag/v${CONFIG.version}).`,
     })}
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const contentDiv = document.getElementById('content');
@@ -115,6 +122,26 @@ const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
         });
       };
 
+      const initializeDataTablesIfPresent = () => {
+        try {
+          // DataTables v2 exposes global DataTable
+          if (typeof window.DataTable === 'undefined') return;
+          const tables = contentDiv.querySelectorAll('table.data-table');
+          tables.forEach((table) => {
+            if (table.dataset.dtInit === '1') return;
+            new window.DataTable(table, {
+              paging: true,
+              searching: true,
+              ordering: true,
+              pageLength: 25
+            });
+            table.dataset.dtInit = '1';
+          });
+        } catch (e) {
+          console.error('DataTables init error', e);
+        }
+      };
+
       const initializeCollapsibleHeaders = () => {
         const headers = contentDiv.querySelectorAll('h2, h3, h4');
         headers.forEach((header) => {
@@ -130,9 +157,14 @@ const html = async (analyzeMarkdown: string, mappedJsonMarkdown: string) => {
       };
 
       const renderPage = (pageName) => {
-        const markdownContent = pages[pageName] || '<h2>Page Not Found: ' + pageName + '</h2>';
-        contentDiv.innerHTML = pageName === 'home' ? markdownContent : window.marked.parse(markdownContent);
+        const content = pages[pageName] || '<h2>Page Not Found: ' + pageName + '</h2>';
+        if (pageName === 'home' || pageName === 'dataTables') {
+          contentDiv.innerHTML = content;
+        } else {
+          contentDiv.innerHTML = window.marked.parse(content);
+        }
         initializeCollapsibleHeaders();
+        initializeDataTablesIfPresent();
       };
 
       const handleHashChange = () => {
@@ -167,6 +199,8 @@ const genHtml = async (outputReportFile: string, db: Database.Database) => {
     analyzeMarkdown = await addAnalyze(analyzeMarkdown, db);
     mappedJsonMarkdown = await addMappedJson(mappedJsonMarkdown, db);
 
+    const dataTablesHtml = genDataTablesPage(db);
+
     const renderer = new marked.Renderer();
     renderer.code = ({ text, lang }) => {
         const language = hljs.getLanguage(lang as string) ? (lang as string) : "plaintext";
@@ -180,7 +214,7 @@ const genHtml = async (outputReportFile: string, db: Database.Database) => {
         pedantic: false,
         gfm: true,
     });
-    const renderedHtml = await html(analyzeMarkdown, mappedJsonMarkdown);
+    const renderedHtml = await html(analyzeMarkdown, mappedJsonMarkdown, dataTablesHtml);
     fs.writeFileSync(outputReportFile, renderedHtml);
 
     console.log(chalk.green("[✓] HTML report generated successfully"));
