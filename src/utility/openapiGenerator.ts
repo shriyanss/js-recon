@@ -109,7 +109,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     };
 
     for (const item of items) {
-        const pathKeyBeforeQuery = item.path.split("?")[0];
+        const pathKeyBeforeQuery = typeof item.path === "string" ? item.path.split("?")[0] : "";
         const pathKey = replacePlaceholders(
             pathKeyBeforeQuery.startsWith("/") ? pathKeyBeforeQuery : `/${pathKeyBeforeQuery}`
         );

@@ -146,9 +146,10 @@ export default async (cmd) => {
             process.exit(11);
         }
 
-        let urlTest = new URL(cmd.url);
-        if (!urlTest) {
-            console.log(chalk.red("[!] Invalid URL"));
+        try {
+            new URL(cmd.url);
+        } catch (e) {
+            console.log(chalk.red(`[!] Invalid URL: ${cmd.url}`));
             process.exit(12);
         }
 
@@ -159,20 +160,6 @@ export default async (cmd) => {
             .readFileSync(cmd.url, "utf-8")
             .split("\n")
             .filter((url) => url !== "");
-
-        // iterate through the URLs, and make sure they are valid URLs
-        let allPassed = true;
-        for (const url of urls) {
-            try {
-                let urlTest = new URL(url);
-            } catch (e) {
-                console.log(chalk.red(`[!] Invalid URL: ${url}`));
-                allPassed = false;
-            }
-        }
-        if (!allPassed) {
-            process.exit(13);
-        }
 
         // first of all, make a new directory for the tool output
         const toolOutputDir = "js_recon_run_output";
@@ -192,9 +179,20 @@ export default async (cmd) => {
         fs.mkdirSync(toolOutputDir);
 
         for (const url of urls) {
-            const thisTargetWorkingDir = toolOutputDir + "/" + new URL(url).host.replace(":", "_");
-            fs.mkdirSync(thisTargetWorkingDir);
-            const outputDir = thisTargetWorkingDir + "/output";
+            // Validate URL only
+            let urlObj;
+            try {
+                urlObj = new URL(url);
+            } catch {
+                console.log(chalk.bgRed(`[!] Invalid URL: ${url}`));
+                continue;
+            }
+
+            const thisTargetWorkingDir = `${toolOutputDir}/${urlObj.host.replace(":", "_")}`;
+            if (!fs.existsSync(thisTargetWorkingDir)) {
+                fs.mkdirSync(thisTargetWorkingDir, { recursive: true });
+            }
+            const outputDir = `${thisTargetWorkingDir}/output`;
             await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
         }
     }

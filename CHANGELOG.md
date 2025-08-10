@@ -1,5 +1,20 @@
 # Change Log
 
+## 1.2.1-beta.2 - 2025.08.10
+
+### Added
+
+- Added tabular view to the report
+
+### Changed
+
+- The run module will skip the target if it is invalid, rather than exiting the program
+
+### Fixed
+
+- Fix "Attempted to use detached Frame" error by adding try-catch block
+- Fix "Cannot read properties of undefined (reading 'split')" error in openapi generator by adding try catch
+
 ## 1.2.1-beta.1 - 2025.08.07
 
 ### Added
