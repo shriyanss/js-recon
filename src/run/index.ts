@@ -178,15 +178,23 @@ export default async (cmd) => {
         fs.mkdirSync(toolOutputDir);
 
         for (const url of urls) {
+        for (const url of urls) {
+            // Validate URL only
+            let urlObj;
             try {
-                let urlTest = new URL(url);
-                const thisTargetWorkingDir = toolOutputDir + "/" + new URL(url).host.replace(":", "_");
-                fs.mkdirSync(thisTargetWorkingDir);
-                const outputDir = thisTargetWorkingDir + "/output";
-                await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
-            } catch (e) {
+                urlObj = new URL(url);
+            } catch {
                 console.log(chalk.bgRed(`[!] Invalid URL: ${url}`));
+                continue;
             }
+
+            const thisTargetWorkingDir = `${toolOutputDir}/${urlObj.host.replace(":", "_")}`;
+            if (!fs.existsSync(thisTargetWorkingDir)) {
+                fs.mkdirSync(thisTargetWorkingDir, { recursive: true });
+            }
+            const outputDir = `${thisTargetWorkingDir}/output`;
+            await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
+        }
         }
     }
 };
