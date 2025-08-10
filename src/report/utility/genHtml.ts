@@ -202,9 +202,10 @@ const html = async (
           'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js',
           'https://unpkg.com/jquery@3.7.1/dist/jquery.min.js'
         ];
-        for (const url of jqCdn) {
+        for (let i = 0; i < jqCdn.length; i++) {
+          const url = jqCdn[i];
           try {
-            await loadScriptOnce(url, 'jq-cdn');
+            await loadScriptOnce(url, 'jq-cdn-' + i);
           } catch (e) {
             console.error('[jQuery] Load failed', url, e);
           }
