@@ -70,14 +70,18 @@ const initRules = async () => {
 
     // also, if the version.txt exist, check if the version.txt is latest as per the latest release on github
     const version = fs.readFileSync(versionPath, "utf8").trim();
-    const response = await fetch("https://api.github.com/repos/shriyanss/js-recon-rules/releases/latest");
-    const release = await response.json();
-    const release_tag_name = release.tag_name;
-    if (`v${version}` !== release_tag_name) {
-        console.log(chalk.yellow("[!] Rules are not up to date. Downloading latest version..."));
-        // remove the rules directory
-        fs.rmSync(path.join(homeDir, "/.js-recon/rules"), { recursive: true });
-        await downloadRules(homeDir);
+    try {
+        const response = await fetch("https://api.github.com/repos/shriyanss/js-recon-rules/releases/latest");
+        const release = await response.json();
+        const release_tag_name = release.tag_name;
+        if (`v${version}` !== release_tag_name) {
+            console.log(chalk.yellow("[!] Rules are not up to date. Downloading latest version..."));
+            // remove the rules directory
+            fs.rmSync(path.join(homeDir, "/.js-recon/rules"), { recursive: true });
+            await downloadRules(homeDir);
+        }
+    } catch {
+        console.error(chalk.red("[!] An error occured when fetching rules from GitHub"));
     }
 };
 
