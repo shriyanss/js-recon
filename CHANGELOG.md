@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.1 - 2025.08.16
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Add try-catch block when checking version from GH for rules
+
 ## 1.2.1-beta.2 - 2025.08.10
 
 ### Added
