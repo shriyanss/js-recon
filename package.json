@@ -18,7 +18,7 @@
     "author": "Shriyans Sudhi",
     "license": "MIT",
     "dependencies": {
-        "@aws-sdk/client-api-gateway": "^3.829.0",
+        "@aws-sdk/client-api-gateway": "^3.859.0",
         "@babel/parser": "^7.27.4",
         "@babel/traverse": "^7.27.4",
         "@babel/types": "^7.27.6",
