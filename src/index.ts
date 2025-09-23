@@ -39,7 +39,13 @@ program
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setYes(cmd.yes);
-        globalsUtil.setRequestTimeout(Number(cmd.timeout));
+        const timeout = parseInt(cmd.timeout, 10);
+        if (isNaN(timeout) || timeout < 1) {
+            console.log(chalk.yellow(`[!] Invalid timeout value: "${cmd.timeout}". Using default of 30000ms.`));
+            globalsUtil.setRequestTimeout(30000);
+        } else {
+            globalsUtil.setRequestTimeout(timeout);
+        }
         await lazyLoad(
             cmd.url,
             cmd.output,
@@ -246,7 +252,13 @@ program
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
-        globalsUtil.setRequestTimeout(Number(cmd.timeout));
+        const timeoutRun = parseInt(cmd.timeout, 10);
+        if (isNaN(timeoutRun) || timeoutRun < 1) {
+            console.log(chalk.yellow(`[!] Invalid timeout value: "${cmd.timeout}". Using default of 30000ms.`));
+            globalsUtil.setRequestTimeout(30000);
+        } else {
+            globalsUtil.setRequestTimeout(timeoutRun);
+        }
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
         globalsUtil.setAiModel(cmd.model);
