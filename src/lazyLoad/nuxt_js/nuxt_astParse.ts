@@ -11,7 +11,7 @@ import * as globals from "../../utility/globals.js";
 
 const nuxt_astParse = async (url: string) => {
     let filesFound = [];
-    const resp = await makeRequest(url, { timeout: 30000 });
+    const resp = await makeRequest(url, {});
     const body = await resp.text();
 
     let ast;

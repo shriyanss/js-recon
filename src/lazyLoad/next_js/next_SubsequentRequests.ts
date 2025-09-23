@@ -71,7 +71,6 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
                 headers: {
                     RSC: "1",
                 },
-                timeout: 30000,
             });
 
             if (res && res.status === 200 && res.headers.get("content-type").includes("text/x-component")) {

@@ -33,6 +33,15 @@ export const getYes = () => {
     return yes;
 };
 
+// request timeout
+export let requestTimeout = 30000;
+export const setRequestTimeout = (value: number) => {
+    requestTimeout = value;
+};
+export const getRequestTimeout = () => {
+    return requestTimeout;
+};
+
 // AI
 export let ai = [];
 export let openaiApiKey = "";

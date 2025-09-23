@@ -164,7 +164,7 @@ const frameworkDetect = async (url: string) => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source
-    const res = await makeRequest(url, { timeout: 30000 });
+    const res = await makeRequest(url, {});
 
     // get the page source in the browser
     const browser = await puppeteer.launch({
