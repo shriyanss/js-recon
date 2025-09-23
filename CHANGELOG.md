@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added `--timeout` flag to run module
+- Added `--timeout` flag to run and lazyload modules
 
 ### Changed
 
