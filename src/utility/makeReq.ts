@@ -186,14 +186,17 @@ const makeRequest = async (
         let res: Response;
         let counter = 0;
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
-        requestOptions.signal = controller.signal;
-
         while (true) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+            const currentRequestOptions = {
+                ...requestOptions,
+                signal: controller.signal,
+            };
+
             try {
                 EventEmitter.defaultMaxListeners = 20;
-                res = await fetch(url, requestOptions);
+                res = await fetch(url, currentRequestOptions);
                 clearTimeout(timeoutId);
                 if (res) {
                     break;
