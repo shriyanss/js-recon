@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.2-alpha.1 - (unreleased)
+
+### Added
+
+- Added `--timeout` flag to run and lazyload modules
+
+### Changed
+
+### Fixed
+
 ## 1.2.1 - 2025.09.23
 
 ### Added
