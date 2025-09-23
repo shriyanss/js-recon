@@ -139,7 +139,10 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     // console.log("wrote cache for ", url);
 };
 
-const makeRequest = async (url: string, args?: Omit<RequestInit, 'timeout'> & { timeout?: number }): Promise<Response | null> => {
+const makeRequest = async (
+    url: string,
+    args?: Omit<RequestInit, "timeout"> & { timeout?: number }
+): Promise<Response | null> => {
     const requestOptions: RequestInit = { ...args, timeout: args?.timeout || globals.getRequestTimeout() };
 
     // if cache is enabled, read the cache and return if cache is present. else, continue
