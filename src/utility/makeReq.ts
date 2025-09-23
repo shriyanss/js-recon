@@ -214,7 +214,7 @@ const makeRequest = async (
                     );
                     process.exit(21);
                 }
-                if (err.name === 'AbortError') {
+                if (err.name === "AbortError") {
                     console.log(chalk.red(`[!] Request to ${url} timed out after ${requestTimeout}ms`));
                     return null;
                 }
