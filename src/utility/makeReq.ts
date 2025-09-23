@@ -139,10 +139,12 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     // console.log("wrote cache for ", url);
 };
 
-const makeRequest = async (url: string, args: RequestInit): Promise<Response | null> => {
+const makeRequest = async (url: string, args?: Omit<RequestInit, 'timeout'> & { timeout?: number }): Promise<Response | null> => {
+    const requestOptions: RequestInit = { ...args, timeout: args?.timeout || globals.getRequestTimeout() };
+
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
-        const cachedResponse = await readCache(url, args?.headers || {});
+        const cachedResponse = await readCache(url, requestOptions.headers || {});
         if (cachedResponse !== null) {
             return cachedResponse;
         }
@@ -150,8 +152,8 @@ const makeRequest = async (url: string, args: RequestInit): Promise<Response | n
 
     if (globals.useApiGateway) {
         let get_headers;
-        if (args && args.headers) {
-            get_headers = args.headers;
+        if (requestOptions && requestOptions.headers) {
+            get_headers = requestOptions.headers;
         } else {
             get_headers = {
                 "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
@@ -176,27 +178,12 @@ const makeRequest = async (url: string, args: RequestInit): Promise<Response | n
         }
         return response;
     } else {
-        if (args === undefined || Object.keys(args).length === 0) {
-            args = {
-                timeout: 30000,
-                headers: {
-                    "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
-                    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Sec-Fetch-Site": "same-origin",
-                    "Sec-Fetch-Mode": "cors",
-                    "Sec-Fetch-Dest": "empty",
-                    Referer: url,
-                    Origin: url,
-                },
-            };
-        }
         let res: Response;
         let counter = 0;
         while (true) {
             try {
                 EventEmitter.defaultMaxListeners = 20;
-                res = await fetch(url, args);
+                res = await fetch(url, requestOptions);
                 if (res) {
                     break;
                 }
@@ -272,7 +259,7 @@ const makeRequest = async (url: string, args: RequestInit): Promise<Response | n
         // if cache is enabled, write the response to the cache
         if (!globals.getDisableCache()) {
             const resToCache = preservedRes.clone();
-            await writeCache(url, args?.headers || {}, resToCache);
+            await writeCache(url, requestOptions.headers || {}, resToCache);
         }
         return preservedRes2;
     }

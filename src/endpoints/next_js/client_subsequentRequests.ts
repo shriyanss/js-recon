@@ -161,7 +161,7 @@ const checkSlug = async (files, url) => {
                 traverse(jsonObject);
 
                 for (const path of slugUrls) {
-                    const res = await makeRequest(path, { timeout: 30000 });
+                    const res = await makeRequest(path, {});
                     const statusCode = res.status;
                     if (statusCode !== 404) {
                         toReturn.push(path);

@@ -31,6 +31,7 @@ program
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
+    .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
@@ -38,6 +39,7 @@ program
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setYes(cmd.yes);
+        globalsUtil.setRequestTimeout(Number(cmd.timeout));
         await lazyLoad(
             cmd.url,
             cmd.output,
@@ -241,8 +243,10 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
+    .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .action(async (cmd) => {
+        globalsUtil.setRequestTimeout(Number(cmd.timeout));
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
         globalsUtil.setAiModel(cmd.model);
