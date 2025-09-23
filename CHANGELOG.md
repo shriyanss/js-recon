@@ -4,12 +4,11 @@
 
 ### Added
 
-- Added `--timeout` flag to run module
+- Added `--timeout` flag to run and lazyload modules
 
 ### Changed
 
 ### Fixed
-
 ## 1.2.1 - 2025.09.23
 
 ### Added
