@@ -143,7 +143,9 @@ const makeRequest = async (
     url: string,
     args?: Omit<RequestInit, "timeout"> & { timeout?: number }
 ): Promise<Response | null> => {
-    const requestOptions: RequestInit = { ...args, timeout: args?.timeout || globals.getRequestTimeout() };
+    const { timeout, ...restArgs } = args || {};
+    const requestOptions: RequestInit = restArgs;
+    const requestTimeout = timeout || globals.getRequestTimeout();
 
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
@@ -183,14 +185,21 @@ const makeRequest = async (
     } else {
         let res: Response;
         let counter = 0;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+        requestOptions.signal = controller.signal;
+
         while (true) {
             try {
                 EventEmitter.defaultMaxListeners = 20;
                 res = await fetch(url, requestOptions);
+                clearTimeout(timeoutId);
                 if (res) {
                     break;
                 }
             } catch (err) {
+                clearTimeout(timeoutId);
                 counter++;
                 // BUG: https://github.com/nodejs/node/issues/47246
                 // if the header content is too large, it will throw an error like
@@ -204,6 +213,10 @@ const makeRequest = async (
                         )
                     );
                     process.exit(21);
+                }
+                if (err.name === 'AbortError') {
+                    console.log(chalk.red(`[!] Request to ${url} timed out after ${requestTimeout}ms`));
+                    return null;
                 }
                 if (counter > 10) {
                     console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
