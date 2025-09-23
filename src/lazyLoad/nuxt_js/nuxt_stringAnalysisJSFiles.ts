@@ -73,7 +73,7 @@ const nuxt_stringAnalysisJSFiles = async (url) => {
                 continue;
             }
 
-            const response = await makeRequest(js_url, {});
+            const response = await makeRequest(js_url, { timeout: 30000 });
             const respText = await response.text();
             const foundJsFiles: FoundJsFiles = await parseJSFileContent(respText);
 

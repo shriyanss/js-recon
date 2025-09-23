@@ -24,7 +24,7 @@ const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string
     }
 
     // get the contents of that
-    let buildManifestContent = await (await makeRequest(buildManifestUrl, {})).text();
+    let buildManifestContent = await (await makeRequest(buildManifestUrl, { timeout: 30000 })).text();
 
     // parse it with babel parser
     const ast = parser.parse(buildManifestContent, {
