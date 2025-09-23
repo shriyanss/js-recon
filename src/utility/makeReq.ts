@@ -139,7 +139,7 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     // console.log("wrote cache for ", url);
 };
 
-const makeRequest = async (url: string, args: RequestInit) => {
+const makeRequest = async (url: string, args: RequestInit): Promise<Response | null> => {
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
         const cachedResponse = await readCache(url, args?.headers || {});
@@ -178,6 +178,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
     } else {
         if (args === undefined || Object.keys(args).length === 0) {
             args = {
+                timeout: 30000,
                 headers: {
                     "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
                     Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",

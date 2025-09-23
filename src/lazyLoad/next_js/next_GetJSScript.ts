@@ -15,7 +15,7 @@ import { getJsUrls, pushToJsUrls } from "../globals.js";
  */
 const next_getJSScript = async (url: string): Promise<string[]> => {
     // get the page source
-    const res = await makeRequest(url, {});
+    const res = await makeRequest(url, { timeout: 30000 });
     const pageSource = await res.text();
 
     // cheerio to parse the page source

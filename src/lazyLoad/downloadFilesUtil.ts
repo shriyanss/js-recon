@@ -56,7 +56,7 @@ const downloadFiles = async (urls: string[], output: string) => {
                     }
                     queue++; // acquire a slot in the queue
 
-                    res = await makeRequest(url, {});
+                    res = await makeRequest(url, { timeout: 30000 });
                 } catch (err) {
                     console.error(chalk.red(`[!] Failed to download: ${url}`));
                 } finally {

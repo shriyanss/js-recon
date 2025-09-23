@@ -57,7 +57,9 @@
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.13",
         "@types/blessed": "^0.1.25",
+        "@types/node": "^24.5.2",
         "ts-node": "^10.9.2",
-        "tsconfig-paths": "^4.2.0"
+        "tsconfig-paths": "^4.2.0",
+        "typescript": "^5.9.2"
     }
 }
