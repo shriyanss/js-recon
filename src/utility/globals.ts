@@ -58,6 +58,26 @@ export const getRespCacheFile = (): string => {
     return respCacheFile;
 };
 
+// Sandbox Configuration
+/** Whether to disable the browser sandbox */
+export let disableSandbox = false;
+
+/**
+ * Sets the disable sandbox flag.
+ * @param value - Whether to disable the sandbox
+ */
+export const setDisableSandbox = (value: boolean): void => {
+    disableSandbox = value;
+};
+
+/**
+ * Gets the current disable sandbox status.
+ * @returns Whether the sandbox is disabled
+ */
+export const getDisableSandbox = (): boolean => {
+    return disableSandbox;
+};
+
 // Auto-execution Configuration
 /** Whether to auto-approve code execution */
 export let yes = false;

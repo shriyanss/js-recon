@@ -39,6 +39,7 @@ program
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox", false)
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -52,6 +53,11 @@ program
         } else {
             globalsUtil.setRequestTimeout(timeout);
         }
+
+        if (process.env.IS_DOCKER === "true" || cmd.noSandbox) {
+            globalsUtil.setDisableSandbox(true);
+        }
+
         await lazyLoad(
             cmd.url,
             cmd.output,
@@ -257,6 +263,7 @@ program
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox", false)
     .action(async (cmd) => {
         const timeoutRun = parseInt(cmd.timeout, 10);
         if (isNaN(timeoutRun) || timeoutRun < 1) {
@@ -272,6 +279,10 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+
+        if (process.env.IS_DOCKER === "true" || cmd.noSandbox) {
+            globalsUtil.setDisableSandbox(true);
+        }
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {
