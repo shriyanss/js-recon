@@ -2,7 +2,13 @@ import { Widgets } from "blessed";
 import { highlight } from "cli-highlight";
 import fs from "fs";
 
-// Function to print function code with syntax highlighting
+/**
+ * Print function code with syntax highlighting.
+ * @param {Widgets.Log} outputBox - The output box element
+ * @param {string} funcCode - The function code to print
+ * @param {string} funcDesc - The function description
+ * @param {fs.PathOrFileDescriptor} funcWriteFile - The file to write the function code to
+ */
 const printFunction = (
     outputBox: Widgets.Log,
     funcCode: string,

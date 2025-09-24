@@ -9,6 +9,11 @@ import { ArrowFunctionExpression, FunctionDeclaration, Node } from "@babel/types
 
 const traverse = _traverse.default;
 
+/**
+ * Gets the third argument of a function declaration or arrow function expression.
+ * @param {Node} ast - The abstract syntax tree of the function.
+ * @returns {string} - The name of the third argument.
+ */
 const getThirdArg = (ast: Node): string => {
     let thirdArg = "";
     traverse(ast, {
@@ -32,6 +37,11 @@ const getThirdArg = (ast: Node): string => {
     return thirdArg;
 };
 
+/**
+ * Resolves axios instances in the given chunks.
+ * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
+ * @param {string} directory - The directory of the chunk file.
+ */
 const resolveAxios = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving axios instances"));
 

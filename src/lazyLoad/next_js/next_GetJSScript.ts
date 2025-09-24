@@ -5,13 +5,19 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 
+
 /**
- * Asynchronously fetches the given URL and extracts JavaScript file URLs
- * from script tags present in the HTML content.
+ * Downloads all the lazy loaded JS files from a given URL.
+ *
+ * It opens a headless browser instance, navigates to the given URL, and
+ * intercepts all the requests. It checks if the request is a JS file
+ * and if it is a GET request. If both conditions are satisfied, the URL
+ * is added to the array of URLs. Finally, it closes the browser instance
+ * and returns the array of URLs.
  *
  * @param {string} url - The URL of the webpage to fetch and parse.
- * @returns {Promise<string[]>} - A promise that resolves to an array of
- * absolute URLs pointing to JavaScript files found in script tags.
+ * @returns {Promise<string[]|undefined>} - A promise that resolves to an array of
+ * absolute URLs pointing to JavaScript files found in the page, or undefined for invalid URL.
  */
 const next_getJSScript = async (url: string): Promise<string[]> => {
     // get the page source

@@ -1,5 +1,9 @@
 import blessed from "blessed";
 
+/**
+ * Create the UI elements.
+ * @returns {Screen} - The screen object
+ */
 function createUI() {
     // Create a screen object.
     const screen = blessed.screen({

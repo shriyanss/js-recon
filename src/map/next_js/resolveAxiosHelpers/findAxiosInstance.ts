@@ -3,6 +3,14 @@ import _traverse from "@babel/traverse";
 import chalk from "chalk";
 const traverse = _traverse.default;
 
+/**
+ * Finds the variable name of the axios instance used in a chunk.
+ * @param {Node} ast - The abstract syntax tree of the chunk.
+ * @param {string} thirdArg - The third argument of the function.
+ * @param {string} axiosImportedToChunk - The name of the chunk that exports the axios instance.
+ * @param {string} chunkName - The name of the chunk.
+ * @returns {string} The variable name of the axios instance used in the chunk.
+ */
 export const findAxiosInstance = (
     ast: Node,
     thirdArg: string,

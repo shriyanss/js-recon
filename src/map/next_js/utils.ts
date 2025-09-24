@@ -4,6 +4,23 @@ import { Scope } from "@babel/traverse";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
+/**
+ * Resolves AST node values to their actual runtime values for fetch and axios calls.
+ * 
+ * This function performs deep resolution of JavaScript AST nodes, handling:
+ * - String literals, template literals, and concatenation
+ * - Object expressions and member access
+ * - Variable bindings and identifier resolution
+ * - Call expressions including JSON.stringify
+ * - Logical and conditional expressions
+ * - Binary expressions and arithmetic operations
+ * 
+ * @param initialNode - The AST node to resolve
+ * @param scope - The Babel scope for variable resolution
+ * @param nodeCode - The source code string for the node
+ * @param callType - Whether this is for 'fetch' or 'axios' call analysis
+ * @returns The resolved value or a descriptive placeholder string
+ */
 export const resolveNodeValue = (
     initialNode: Node,
     scope: Scope,
@@ -314,8 +331,18 @@ export const resolveNodeValue = (
     }
 };
 
-// Resolve string operations like "\"/api/teams/\".concat(i, \"/members\")"
-// Replaces any identifier (variable) with a placeholder string `[var <name>]` and flattens the concat chain
+/**
+ * Resolves string concatenation operations to flatten concat chains.
+ * 
+ * Handles patterns like '"/api/teams/".concat(i, "/members")' by:
+ * - Parsing the string literal and concat arguments
+ * - Replacing variables with placeholder strings like '[var name]'
+ * - Flattening the entire concatenation chain into a single string
+ * - Respecting quoted strings and handling nested expressions
+ * 
+ * @param rawExpr - The raw expression string containing concat operations
+ * @returns Flattened string with variable placeholders
+ */
 export const resolveStringOps = (rawExpr: string): string => {
     if (!rawExpr || typeof rawExpr !== "string") return rawExpr;
 

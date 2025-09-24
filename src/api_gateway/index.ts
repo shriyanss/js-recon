@@ -18,7 +18,12 @@ interface ApiGatewayConfig {
     };
 }
 
-const randomRegion = () => {
+/**
+ * Selects a random AWS region from the available API Gateway regions.
+ * 
+ * @returns A randomly selected AWS region identifier
+ */
+const randomRegion = (): string => {
     const apiGatewayRegions = [
         "us-east-2", // US East (Ohio)
         "us-east-1", // US East (N. Virginia)
@@ -62,7 +67,13 @@ let aws_secret_key;
 let region;
 let configFile = "";
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Utility function to pause execution for a specified duration.
+ * 
+ * @param ms - Number of milliseconds to sleep
+ * @returns Promise that resolves after the specified delay
+ */
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Create a new API Gateway.
@@ -134,7 +145,7 @@ const createGateway = async () => {
  * @param {string} id - The ID of the API Gateway to destroy.
  * @returns {Promise<void>}
  */
-const destroyGateway = async (id) => {
+const destroyGateway = async (id: string): Promise<void> => {
     console.log(chalk.cyan("[i] Destroying API Gateway"));
     if (!id) {
         console.log(chalk.red("[!] Please provide an API Gateway ID"));
@@ -259,17 +270,17 @@ const listGateways = async () => {
  * @returns {Promise<void>}
  */
 const apiGateway = async (
-    initInput,
-    destroyInput,
-    destroyAllInput,
-    listInput,
-    regionInput,
-    accessKey,
-    secretKey,
-    configInput,
-    feasibilityInput,
-    feasibilityUrlInput
-) => {
+    initInput: boolean,
+    destroyInput: string,
+    destroyAllInput: boolean,
+    listInput: boolean,
+    regionInput: string,
+    accessKey: string,
+    secretKey: string,
+    configInput: string,
+    feasibilityInput: boolean,
+    feasibilityUrlInput: string
+): Promise<void> => {
     console.log(chalk.cyan("[i] Loading 'API Gateway' module"));
 
     // if feasibility is true, check feasibility
@@ -295,7 +306,13 @@ const apiGateway = async (
 
     console.log(chalk.cyan(`[i] Using region: ${region}`));
 
-    const keyMask = (key) => {
+    /**
+     * Masks an API key for secure display by showing only first and last 4 characters.
+     * 
+     * @param key - The API key to mask
+     * @returns Masked version of the key
+     */
+    const keyMask = (key: string): string => {
         if (key.length < 6) return key;
         return key.slice(0, 4) + "..." + key.slice(-4);
     };

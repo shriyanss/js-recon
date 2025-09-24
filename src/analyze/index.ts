@@ -14,6 +14,12 @@ const availableTechs = {
     next: "Next.js",
 };
 
+/**
+ * Recursively searches for YAML rule files in a directory.
+ * 
+ * @param dir - The directory path to search for rule files
+ * @returns An array of file paths to YAML rule files (.yml or .yaml)
+ */
 const getRuleFilesRecursive = (dir: string): string[] => {
     let results: string[] = [];
     const list = fs.readdirSync(dir);
@@ -31,6 +37,21 @@ const getRuleFilesRecursive = (dir: string): string[] => {
     return results;
 };
 
+/**
+ * Analyzes JavaScript code using custom rules and generates findings.
+ * 
+ * This function loads and validates rules, processes mapped JSON data or OpenAPI specs,
+ * and runs analysis engines to identify potential security issues or code patterns.
+ * 
+ * @param rulesPath - Path to rules file or directory containing YAML rule files
+ * @param mappedJson - Path to the mapped JSON file containing code analysis data
+ * @param tech - Technology stack identifier (currently supports "next" for Next.js)
+ * @param list - Whether to list available technologies instead of running analysis
+ * @param openapi - Path to OpenAPI specification file for API analysis
+ * @param validate - Whether to only validate rules without running analysis
+ * @param outputFile - Output file name for analysis results
+ * @returns Promise that resolves when analysis is complete
+ */
 const analyze = async (
     rulesPath: string,
     mappedJson: string,

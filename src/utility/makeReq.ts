@@ -63,6 +63,21 @@ const UAs = [
     "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
+
+/**
+ * Reads response data from cache for future requests.
+ * 
+ * If the cache file exists, and the given URL is present in the cache,
+ * it checks if the response contains the specific request headers. If it does,
+ * it builds a Response object with the cached data and returns it.
+ * 
+ * If the response does not contain the request headers, or if the cache file
+ * does not exist, or if the URL is not present in the cache, it returns null.
+ * 
+ * @param url - The URL to read the cache for
+ * @param headers - Request headers that were used
+ * @returns A Promise that resolves to a Response object if the cache is found, or null if not
+ */
 const readCache = async (url: string, headers: {}): Promise<Response | null> => {
     // first, check if the file exists or not
     if (!fs.existsSync(globals.getRespCacheFile())) {
@@ -99,7 +114,18 @@ const readCache = async (url: string, headers: {}): Promise<Response | null> => 
     return null;
 };
 
-const writeCache = async (url: string, headers: {}, response: Response) => {
+/**
+ * Writes response data to cache for future requests.
+ * 
+ * Stores response body, status, and headers in cache file, handling special
+ * cases like RSC (React Server Components) headers separately.
+ * 
+ * @param url - The URL to cache the response for
+ * @param headers - Request headers that were used
+ * @param response - The Response object to cache
+ * @returns Promise that resolves when caching is complete
+ */
+const writeCache = async (url: string, headers: {}, response: Response): Promise<void> => {
     // clone the response
     const clonedResponse = response.clone();
 
@@ -139,6 +165,21 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     // console.log("wrote cache for ", url);
 };
 
+
+/**
+ * Makes a GET request to the given URL and returns the response.
+ * 
+ * If caching is enabled, it will first check if the response is cached.
+ * If it is, it will return the cached response. If not, it will make the request
+ * using the given options, and cache the response before returning it.
+ * 
+ * If the request fails, it will retry up to 10 times with 0.5s of sleep in between.
+ * If all retries fail, it will return null.
+ * 
+ * @param url - The URL to request
+ * @param args - Request options
+ * @returns A Promise that resolves to a Response, or null if all retries fail
+ */
 const makeRequest = async (
     url: string,
     args?: Omit<RequestInit, "timeout"> & { timeout?: number }

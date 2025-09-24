@@ -12,6 +12,14 @@ interface AnalysisFinding {
     findingLocation: string;
 }
 
+/**
+ * Adds an analyze section to the markdown.
+ * 
+ * @param markdown - The markdown string to add the analyze section to
+ * @param db - The database containing the findings
+ * 
+ * @returns A promise that resolves with the markdown string containing the analyze section
+ */
 const addAnalyze = async (markdown: string, db: Database.Database): Promise<string> => {
     let toReturn = markdown;
     toReturn += `\n## Analyze Results\n`;

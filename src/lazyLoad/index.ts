@@ -29,21 +29,18 @@ import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
 
+
 /**
- * Downloads all lazy-loaded JavaScript files from the specified URL or file containing URLs.
- *
- * The function detects the JavaScript framework used by the webpage (e.g., Next.js, Nuxt.js)
- * and utilizes specific techniques to find and download lazy-loaded JS files.
- * It supports subsequent requests for additional JS files if specified.
- *
- * @param {string} url - The URL or path to a file containing a list of URLs to process.
- * @param {string} output - The directory where downloaded files will be saved.
- * @param {boolean} strictScope - Whether to restrict downloads to the input URL domain.
- * @param {string[]} inputScope - Specific domains to download JS files from.
- * @param {number} threads - The number of threads to use for downloading files.
- * @param {boolean} subsequentRequestsFlag - Whether to include JS files from subsequent requests.
- * @param {string} urlsFile - The JSON file containing additional URLs for subsequent requests.
- * @returns {Promise<void>}
+ * Downloads the required JavaScript files for a given URL
+ * @param {string} url The URL to download the JS files from
+ * @param {string} output The output directory to store the downloaded JS files
+ * @param {boolean} strictScope If true, then only download the JS files from the input URL domain
+ * @param {string[]} inputScope The list of domains to download the JS files from
+ * @param {number} threads The number of threads to use for downloading the JS files
+ * @param {boolean} subsequentRequestsFlag If true, then also download the JS files from subsequent requests
+ * @param {string} urlsFile The file containing the list of URLs to download the JS files from
+ * @param {boolean} insecure If true, then disable SSL certificate verification
+ * @returns {Promise<void>} A Promise that resolves when the download is complete
  */
 const lazyLoad = async (
     url: string,

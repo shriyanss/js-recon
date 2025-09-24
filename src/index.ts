@@ -13,7 +13,13 @@ import chalk from "chalk";
 import analyze from "./analyze/index.js";
 import report from "./report/index.js";
 
+/**
+ * Main CLI application entry point for js-recon tool.
+ * Sets up command-line interface with various modules for JavaScript reconnaissance.
+ */
 program.version(CONFIG.version).description(CONFIG.toolDesc);
+
+/** Valid AI options for analysis modules */
 const validAiOptions = ["description"];
 
 program

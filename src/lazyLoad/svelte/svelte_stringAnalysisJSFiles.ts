@@ -12,6 +12,14 @@ const traverse = _traverse.default;
 let analyzedFiles = [];
 let filesFound = [];
 
+/**
+ * Parses the content of a JavaScript file and returns an object containing
+ * all the strings that end with ".js".
+ *
+ * @param {string} content - The content of the JavaScript file to parse.
+ * @returns {Promise<FoundJsFiles>} - A promise that resolves to an object containing
+ * all the strings that end with ".js".
+ */
 const parseJSFileContent = async (content) => {
     try {
         const ast = parser.parse(content, {
@@ -42,6 +50,11 @@ const parseJSFileContent = async (content) => {
     }
 };
 
+/**
+ * Analyzes strings in the files found and returns an array of absolute URLs pointing to JavaScript files found in the page.
+ * @param {string} url - The URL of the webpage to fetch and parse.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of absolute URLs pointing to JavaScript files found in the page.
+ */
 const svelte_stringAnalysisJSFiles = async (url) => {
     console.log(chalk.cyan("[i] Analyzing strings in the files found"));
 

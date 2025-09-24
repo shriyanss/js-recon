@@ -3,7 +3,16 @@ import fs from "fs";
 import path from "path";
 import extract from "extract-zip";
 
-const downloadRules = async (homeDir: string) => {
+/**
+ * Downloads and extracts the latest analysis rules from the GitHub repository.
+ * 
+ * Fetches the latest release from the js-recon-rules repository, downloads the zipball,
+ * extracts it to the user's home directory, and performs cleanup operations.
+ * 
+ * @param homeDir - The user's home directory path
+ * @returns Promise that resolves when rules are downloaded and extracted
+ */
+const downloadRules = async (homeDir: string): Promise<void> => {
     console.log(chalk.cyan("[i] Rules not found. Downloading from GitHub..."));
     const response = await fetch("https://api.github.com/repos/shriyanss/js-recon-rules/releases/latest");
     const release = await response.json();
@@ -43,7 +52,18 @@ const downloadRules = async (homeDir: string) => {
     console.log(chalk.green("[✓] Rules initialized successfully."));
 };
 
-const initRules = async () => {
+/**
+ * Initializes the analysis rules system by ensuring rules are available and up-to-date.
+ * 
+ * This function:
+ * 1. Creates the .js-recon directory if it doesn't exist
+ * 2. Downloads rules if they're missing
+ * 3. Validates rule integrity
+ * 4. Checks for and downloads rule updates from GitHub
+ * 
+ * @returns Promise that resolves when rules initialization is complete
+ */
+const initRules = async (): Promise<void> => {
     console.log(chalk.cyan("[i] Initializing rules..."));
 
     // get the user's home dir

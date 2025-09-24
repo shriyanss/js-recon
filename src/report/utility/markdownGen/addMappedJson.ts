@@ -10,6 +10,14 @@ interface MappedData {
     file: string;
 }
 
+/**
+ * Adds a mapped JSON section to the markdown.
+ * 
+ * @param markdown - The markdown string to add the mapped JSON section to
+ * @param db - The database containing the mapped data
+ * 
+ * @returns A promise that resolves with the markdown string containing the mapped JSON section
+ */
 const addMappedJson = async (markdown: string, db: Database.Database): Promise<string> => {
     let toReturn = markdown;
 

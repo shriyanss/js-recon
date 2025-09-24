@@ -3,10 +3,9 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "puppeteer";
 
+
 /**
- * Detects if a webpage uses Next.js by checking if any HTML tag has a src,
- * srcset, or imageSrcSet attribute that starts with "/_next/".
- * @param {CheerioStatic} $ - The Cheerio object containing the parsed HTML.
+ * Checks if a webpage uses Next.js by iterating through all HTML tags and checking if any src, srcset, or imageSrcSet attribute value starts with "/_next/".
  * @returns {Promise<{detected: boolean, evidence: string}>}
  *   A promise that resolves to an object with two properties:
  *   - detected: A boolean indicating whether Next.js was detected.
@@ -42,9 +41,10 @@ const checkNextJS = async ($) => {
     return { detected, evidence };
 };
 
+
+
 /**
- * Detects if a webpage uses Vue.js by checking if any HTML tag has a data-v-* attribute.
- * @param {CheerioStatic} $ - The Cheerio object containing the parsed HTML.
+ * Checks if a webpage uses Vue.js by iterating through all HTML tags and checking if any attribute name starts with "data-v-".
  * @returns {Promise<{detected: boolean, evidence: string}>}
  *   A promise that resolves to an object with two properties:
  *   - detected: A boolean indicating whether Vue.js was detected.
@@ -71,6 +71,12 @@ const checkVueJS = async ($) => {
     return { detected, evidence };
 };
 
+/**
+ * Detects if a webpage uses Nuxt.js by checking for "/_nuxt" paths in src or href attributes.
+ * 
+ * @param $ - The Cheerio API object containing the parsed HTML
+ * @returns Promise that resolves to an object with detection status and evidence
+ */
 const checkNuxtJS = async ($: cheerio.CheerioAPI) => {
     let detected = false;
     let evidence = "";
@@ -97,6 +103,15 @@ const checkNuxtJS = async ($: cheerio.CheerioAPI) => {
     return { detected, evidence };
 };
 
+/**
+ * Detects if a webpage uses Svelte/SvelteKit by checking for Svelte-specific attributes.
+ * 
+ * Looks for svelte- prefixed class names, IDs, and SvelteKit-specific attributes
+ * like data-sveltekit-reload to identify Svelte applications.
+ * 
+ * @param $ - The Cheerio API object containing the parsed HTML
+ * @returns Promise that resolves to an object with detection status and evidence
+ */
 const checkSvelte = async ($) => {
     let detected = false;
     let evidence = "";
@@ -152,13 +167,16 @@ const checkSvelte = async ($) => {
     return { detected, evidence };
 };
 
+
 /**
- * Detects the front-end framework used by a webpage.
- * @param {string} url - The URL of the webpage to be detected.
- * @returns {Promise<{name: string, evidence: string}> | null}
- *   A promise that resolves to an object with two properties:
- *   - name: A string indicating the detected framework, or null if no framework was detected.
- *   - evidence: A string with the evidence of the detection, or an empty string if no framework was detected.
+ * Detects the front-end framework used in a webpage.
+ * It does this by iterating through all HTML tags and checking if any attribute name starts with "data-v-".
+ * It also checks for Nuxt.js by checking for "/_nuxt" paths in src or href attributes.
+ * It also checks for SvelteKit-specific attributes
+ * @param {string} url - The URL of the webpage to fetch and parse.
+ * @returns {Promise<{name: string, evidence: string}>} - A promise that resolves to an object with two properties:
+ *   - name: The name of the detected front-end framework.
+ *   - evidence: A string with the evidence of the detection, or an empty string if no front-end framework was detected.
  */
 const frameworkDetect = async (url: string) => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));

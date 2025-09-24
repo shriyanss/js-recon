@@ -11,6 +11,16 @@ import report from "../report/index.js";
 import { clearJsUrls, clearJsonUrls, getJsUrls } from "../lazyLoad/globals.js";
 import path from "path";
 
+/**
+ * Determines the directory for a Content Delivery Network (CDN) if used by the target.
+ * 
+ * Checks if any of the downloaded JavaScript files are from a different host, which
+ * indicates a CDN is in use. This is important for modules that rely on code analysis.
+ * 
+ * @param host - The host of the target URL
+ * @param outputDir - The base output directory
+ * @returns Promise that resolves to the path of the CDN directory or undefined if no CDN is detected
+ */
 const getCdnDir = async (host: string, outputDir: string): Promise<string | undefined> => {
     // get the JS URLs
     let cdnDir: string | undefined;
@@ -27,7 +37,25 @@ const getCdnDir = async (host: string, outputDir: string): Promise<string | unde
     return cdnDir;
 };
 
-const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
+/**
+ * Processes a single URL through the entire js-recon analysis pipeline.
+ * 
+ * This function orchestrates the execution of all modules in sequence:
+ * 1. Lazyload - Downloads JavaScript files
+ * 2. Strings - Extracts endpoints and secrets
+ * 3. Map - Analyzes functions and generates mappings
+ * 4. Endpoints - Extracts client-side endpoints
+ * 5. Analyze - Runs security analysis rules
+ * 6. Report - Generates final analysis report
+ * 
+ * @param url - The URL to analyze
+ * @param outputDir - The directory for downloaded content (e.g., JS files)
+ * @param workingDir - The directory for storing analysis results and reports
+ * @param cmd - The command-line options object
+ * @param isBatch - Whether this is part of a batch process, affecting file path resolution
+ * @returns Promise that resolves when the analysis for the URL is complete
+ */
+const processUrl = async (url: string, outputDir: string, workingDir: string, cmd: any, isBatch: boolean): Promise<void> => {
     const targetHost = new URL(url).host.replace(":", "_");
 
     console.log(chalk.bgGreenBright(`[+] Starting analysis for ${url}...`));
@@ -120,7 +148,17 @@ const processUrl = async (url, outputDir, workingDir, cmd, isBatch) => {
     console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
 };
 
-export default async (cmd) => {
+/**
+ * Main handler for the 'run' command that executes the complete js-recon analysis pipeline.
+ * 
+ * Sets up global configuration and determines whether to process a single URL or
+ * a file containing multiple URLs. For batch processing, creates organized directory
+ * structure and processes each URL sequentially.
+ * 
+ * @param cmd - The command-line options object from commander.js
+ * @returns Promise that resolves when all URL processing is complete
+ */
+export default async (cmd: any): Promise<void> => {
     globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
     globalsUtil.setUseApiGateway(cmd.apiGateway);
     globalsUtil.setDisableCache(cmd.disableCache);

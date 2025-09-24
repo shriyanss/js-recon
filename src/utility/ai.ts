@@ -2,15 +2,36 @@ import OpenAI from "openai";
 import { Ollama } from "ollama";
 import * as globals from "./globals.js";
 
+/**
+ * OpenAI client instance.
+ *
+ * @remarks
+ * This client is used to communicate with the OpenAI API.
+ * The base URL and API key are configurable via the
+ * `setAiEndpoint` and `setOpenaiApiKey` functions.
+ */
 const openai_client = new OpenAI({
     baseURL: globals.getAiEndpoint() || "https://api.openai.com/v1",
     apiKey: globals.getOpenaiApiKey(),
 });
+
+/**
+ * Ollama client instance.
+ *
+ * @remarks
+ * This client is used to communicate with the Ollama API.
+ * The host is configurable via the `setAiEndpoint` function.
+ */
 const ollama_client = new Ollama({
     host: globals.getAiEndpoint() || "http://127.0.0.1:11434",
 });
 
-const ai = async () => {
+/**
+ * Returns an AI client instance based on the configured provider.
+ *
+ * @returns {Object} An object containing the AI client and the configured model.
+ */
+const ai = async (): Promise<{ client: OpenAI | Ollama; model: string }> => {
     let returnVal = { client: undefined, model: globals.getAiModel() };
     const provider = globals.getAiServiceProvider();
 
@@ -23,6 +44,13 @@ const ai = async () => {
     return returnVal;
 };
 
+/**
+ * Asks an AI service provider to generate code based on a prompt.
+ *
+ * @param {string} prompt The code to generate based on this prompt.
+ * @param {string} [systemPrompt="You are a helpful assistant."] The system prompt to use for generating code.
+ * @returns {Promise<string>} The generated code based on the prompt.
+ */
 async function getCompletion(prompt, systemPrompt = "You are a helpful assistant.") {
     const { client, model } = await ai();
     const provider = globals.getAiServiceProvider();
@@ -32,6 +60,7 @@ async function getCompletion(prompt, systemPrompt = "You are a helpful assistant
     }
 
     if (provider === "openai") {
+        // @ts-ignore
         const completion = await client.responses.create({
             input: [
                 { role: "system", content: systemPrompt },

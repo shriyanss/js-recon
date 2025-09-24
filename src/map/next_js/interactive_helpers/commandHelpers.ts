@@ -4,6 +4,11 @@ import { State } from "../interactive.js";
 import prettier from "prettier";
 
 const commandHelpers = {
+    /**
+     * Lists chunks that contain fetch instances.
+     * @param {Chunks} chunks - Collection of code chunks to analyze
+     * @returns {string} - A string containing the list of chunks with fetch instances
+     */
     fetchMenu: (chunks: Chunks) => {
         let returnText = chalk.cyan("List of chunks that contain fetch instances\n");
         for (const chunk of Object.values(chunks)) {
@@ -13,6 +18,11 @@ const commandHelpers = {
         }
         return returnText;
     },
+    /**
+     * Lists chunks that are axios clients.
+     * @param {Chunks} chunks - Collection of code chunks to analyze
+     * @returns {string} - A string containing the list of chunks that are axios clients
+     */
     axiosClientsMenu: (chunks: Chunks) => {
         let returnText = chalk.cyan("List of chunks that are axios clients\n");
         for (const chunk of Object.values(chunks)) {
@@ -22,6 +32,13 @@ const commandHelpers = {
         }
         return returnText;
     },
+    /**
+     * Retrieves the code of a specific function.
+     * @param {Chunks} chunks - Collection of code chunks to analyze
+     * @param {string} funcName - Name of the function to retrieve code for
+     * @param {State} state - State object containing writeimports flag
+     * @returns {Promise<string>} - A Promise that resolves to the code of the specified function
+     */
     getFunctionCode: async (chunks: Chunks, funcName: string, state: State) => {
         let funcCode: string;
         for (const chunk of Object.values(chunks)) {
@@ -51,6 +68,11 @@ const commandHelpers = {
         }
         return funcCode;
     },
+    /**
+     * Lists all functions in the code chunks.
+     * @param {Chunks} chunks - Collection of code chunks to analyze
+     * @returns {string} - A string containing the list of all functions
+     */
     listAllFunctions: (chunks: Chunks) => {
         let returnText = chalk.cyan("List of all functions\n");
         for (const chunk of Object.values(chunks)) {
@@ -58,6 +80,12 @@ const commandHelpers = {
         }
         return returnText;
     },
+    /**
+     * Retrieves the navigation history.
+     * @param {Chunks} chunks - Collection of code chunks to analyze
+     * @param {string[]} navList - List of function IDs in navigation history
+     * @returns {string} - A string containing the navigation history
+     */
     navHistory: (chunks: Chunks, navList: string[]): string => {
         let returnText = chalk.cyan("Navigation history\n");
         if (navList.length === 0) {
@@ -73,6 +101,12 @@ const commandHelpers = {
         }
         return returnText;
     },
+    /**
+     * Traces a specific function.
+     * @param {Chunks} chunks - Collection of code chunks to analyze
+     * @param {string} funcName - Name of the function to trace
+     * @returns {string} - A string containing the trace of the specified function
+     */
     traceFunction: (chunks: Chunks, funcName: string) => {
         let returnText = chalk.cyan(`Tracing function ${funcName}\n`);
         const thisChunk = chunks[funcName];
