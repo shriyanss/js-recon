@@ -25,7 +25,7 @@
         "@types/chalk": "^0.4.31",
         "better-sqlite3": "^12.2.0",
         "blessed": "^0.1.81",
-        "chalk": "^5.4.1",
+        "chalk": "^5.5.0",
         "cheerio": "^1.0.0",
         "cli-highlight": "^2.1.11",
         "commander": "^14.0.0",
