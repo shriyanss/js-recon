@@ -14,6 +14,12 @@ interface Screen {
     inputBox: Widgets.TextboxElement;
 }
 
+/**
+ * Handle user input commands.
+ * @param {string} text - the user input text.
+ * @param {State} state - the state of the application.
+ * @param {Screen} ui - the UI elements.
+ */
 async function handleCommand(text: string, state: State, ui: Screen) {
     const { outputBox, inputBox, screen } = ui;
 

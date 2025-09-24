@@ -10,6 +10,21 @@ import populateEndpoints from "./utility/populateDb/populateEndpoints.js";
 import populateMappedOpenapi from "./utility/populateDb/populateMappedOpenapi.js";
 import genHtml from "./utility/genHtml.js";
 
+/**
+ * Generates comprehensive HTML reports from analysis results.
+ * 
+ * This function consolidates data from various analysis modules (mapping, analysis,
+ * endpoints, OpenAPI) into a SQLite database and generates an HTML report with
+ * interactive visualizations and detailed findings.
+ * 
+ * @param sqliteDbPath - Path to the SQLite database file for storing report data
+ * @param mappedJsonFilePath - Path to the mapped JSON file containing code analysis
+ * @param analyzeJsonFilePath - Path to the analysis results JSON file
+ * @param endpointsJsonFilePath - Path to the endpoints JSON file
+ * @param mappedOpenapiJsonFilePath - Path to the mapped OpenAPI specification file
+ * @param reportFileName - Base filename for the generated HTML report (without extension)
+ * @returns Promise that resolves when report generation is complete
+ */
 const report = async (
     sqliteDbPath: string,
     mappedJsonFilePath: string | undefined,
@@ -17,7 +32,7 @@ const report = async (
     endpointsJsonFilePath: string | undefined,
     mappedOpenapiJsonFilePath: string | undefined,
     reportFileName: string | undefined
-) => {
+): Promise<void> => {
     console.log(chalk.cyan("[i] Running 'report' module"));
 
     // check if db exists. if not, init

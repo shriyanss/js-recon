@@ -9,6 +9,11 @@ import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
 import { handleAxiosCreate } from "./handleAxiosCreate.js";
 
+/**
+ * Gets the HTTP method from a method name.
+ * @param {string} methodName - The method name.
+ * @returns {string | null} - The HTTP method, or null if the method name is not a valid HTTP method.
+ */
 const getHttpMethod = (methodName: string): string | null => {
     const upperCaseMethod = methodName.toUpperCase();
     const httpMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE", "CONNECT"];
@@ -18,6 +23,16 @@ const getHttpMethod = (methodName: string): string | null => {
     return null;
 };
 
+/**
+ * Processes an axios call.
+ * @param {NodePath<MemberExpression>} path - The path to the MemberExpression node.
+ * @param {string} axiosInstance - The axios instance name.
+ * @param {string} chunkCode - The code of the chunk.
+ * @param {string} directory - The directory of the chunk file.
+ * @param {string} chunkName - The name of the chunk.
+ * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
+ * @param {any} ast - The abstract syntax tree of the chunk.
+ */
 export const processAxiosCall = (
     path: NodePath<MemberExpression>,
     axiosInstance: string,

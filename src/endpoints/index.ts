@@ -10,9 +10,27 @@ import client_mappedJsonFile from "./next_js/client_mappedJsonFile.js";
 // Report Generation
 import gen_json from "./gen_report/gen_json.js";
 
+/** Available technology stacks for endpoint extraction */
 const techs = ["Next.JS (next)"];
+/** Supported output formats for endpoint results */
 const outputFormats = ["json"];
 
+/**
+ * Extracts client-side endpoints from JavaScript applications.
+ * 
+ * Analyzes JavaScript files and mapped data to discover client-side routes,
+ * API endpoints, and other paths used by the application. Supports different
+ * technology stacks and output formats.
+ * 
+ * @param url - Base URL for resolving relative paths
+ * @param directory - Directory containing JavaScript files to analyze
+ * @param output - Output filename (without extension) for results
+ * @param outputFormat - Array of output formats to generate (e.g., ['json'])
+ * @param tech - Technology stack identifier (e.g., 'next' for Next.js)
+ * @param list - Whether to list available technologies instead of running extraction
+ * @param mappedJsonFile - Path to mapped JSON file for additional analysis
+ * @returns Promise that resolves when endpoint extraction is complete
+ */
 const endpoints = async (
     url: string | undefined,
     directory: string | undefined,
@@ -21,7 +39,7 @@ const endpoints = async (
     tech: string | undefined,
     list: boolean | undefined,
     mappedJsonFile: string | undefined
-) => {
+): Promise<void> => {
     console.log(chalk.cyan("[i] Loading endpoints module"));
 
     // list available technologies

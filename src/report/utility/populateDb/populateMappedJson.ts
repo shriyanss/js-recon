@@ -2,6 +2,14 @@ import chalk from "chalk";
 import { Chunks } from "../../../utility/interfaces.js";
 import Database from "better-sqlite3";
 
+/**
+ * Populates the mapped JSON table in the database with the given chunks.
+ * 
+ * @param db - The database to populate
+ * @param chunks - The chunks to populate the database with
+ * 
+ * @returns A promise that resolves when the database is populated
+ */
 export const populateMappedJson = async (db: Database.Database, chunks: Chunks) => {
     // Clear the table before inserting new data
     db.prepare(`DELETE FROM mapped`).run();

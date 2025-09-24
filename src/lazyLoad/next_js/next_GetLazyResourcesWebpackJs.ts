@@ -10,14 +10,20 @@ import execFunc from "../../utility/runSandboxed.js";
 import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 import * as globals from "../../utility/globals.js";
 
+
 /**
- * Asynchronously fetches the given URL and extracts JavaScript file URLs
- * from webpack's require.ensure() function.
+ * Finds all the lazy loaded JS files from a given URL using a Next.js
+ * specific approach. It works by first parsing the HTML of the page
+ * and then extracting all the JS files from it. Then it parses the
+ * contents of each JS file and extracts all the functions from it.
+ * Then it iterates through the functions and finds out which one
+ * ends with `.js`. It then asks the user if this is the correct
+ * function, and if so, it proceeds to use the function to fetch
+ * all the lazy loaded JS files.
  *
  * @param {string} url - The URL of the webpage to fetch and parse.
- * @returns {Promise<string[]|undefined>} - A promise that resolves to an array of
- * absolute URLs pointing to JavaScript files found in require.ensure()
- * functions, or undefined if no webpack JS is found.
+ * @returns {Promise<string[] | any>} - A promise that resolves to an array of
+ * absolute URLs pointing to JavaScript files found in the page, or undefined for invalid URL.
  */
 const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | any> => {
     const browser = await puppeteer.launch({

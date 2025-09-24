@@ -3,6 +3,16 @@ import { Node } from "@babel/types";
 
 const traverse = _traverse.default;
 
+/**
+ * Finds direct assignment expressions or variable declarations for a given identifier node.
+ * 
+ * Searches through the AST scope to locate where a specific identifier is assigned a value,
+ * either through assignment expressions (e.g., `x = value`) or variable declarations (e.g., `var x = value`).
+ * 
+ * @param nodeToFind - The identifier node to search for assignments
+ * @param scope - The AST scope to search within
+ * @returns The assignment or declaration node if found, null otherwise
+ */
 export function findDirectAssignment(nodeToFind: Node, scope: Node): Node | null {
     let assignmentNode: Node | null = null;
 

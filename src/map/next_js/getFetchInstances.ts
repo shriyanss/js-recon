@@ -5,11 +5,25 @@ const traverse = _traverse.default;
 import parser from "@babel/parser";
 import { Chunks } from "../../utility/interfaces.js";
 
-const isFetchIdentifier = (node) => {
+/**
+ * Checks if a node is a fetch identifier.
+ * 
+ * @param node - The AST node to check
+ * @returns True if the node is an identifier named 'fetch'
+ */
+const isFetchIdentifier = (node: any): boolean => {
     return node.type === "Identifier" && node.name === "fetch";
 };
 
-const isFetchFallback = (node) => {
+/**
+ * Checks if a node represents a fallback pattern that resolves to fetch.
+ * 
+ * Detects patterns like 'x ?? fetch' or 'cond ? x : fetch' where fetch is used as a fallback.
+ * 
+ * @param node - The AST node to check
+ * @returns True if the node is a fallback pattern that resolves to fetch
+ */
+const isFetchFallback = (node: any): boolean => {
     // x ?? fetch      OR     cond ? x : fetch
     return (
         (node.type === "LogicalExpression" && node.right && isFetchIdentifier(node.right)) ||
@@ -17,7 +31,21 @@ const isFetchFallback = (node) => {
     );
 };
 
-const getFetchInstances = async (chunks: Chunks, output, formats) => {
+/**
+ * Analyzes code chunks to identify fetch API usage including direct calls and aliases.
+ * 
+ * This function performs a multi-pass analysis to:
+ * 1. Find variables that are aliases for the fetch function
+ * 2. Track all direct fetch() calls
+ * 3. Report call sites for both direct calls and aliases
+ * 4. Mark chunks that contain fetch usage
+ * 
+ * @param chunks - Collection of code chunks to analyze
+ * @param output - Base filename for output files (without extension)
+ * @param formats - Array of output formats to generate (e.g., ['json'])
+ * @returns Promise that resolves to updated chunks with fetch detection results
+ */
+const getFetchInstances = async (chunks: Chunks, output: string, formats: string[]): Promise<Chunks> => {
     console.log(chalk.cyan("[i] Running 'getFetchInstances' module"));
     let chunk_copy: Chunks = { ...chunks };
 

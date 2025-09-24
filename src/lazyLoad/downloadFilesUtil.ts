@@ -6,14 +6,20 @@ import makeRequest from "../utility/makeReq.js";
 import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max_req_queue functions
 
+
 /**
- * Downloads a list of URLs and saves them as files in the specified output directory.
- * It creates the necessary subdirectories based on the URL's host and path.
- * If the URL does not end with `.js`, it is skipped.
- * The function logs the progress and any errors to the console.
- * @param {string[]} urls - An array of URLs to be downloaded.
- * @param {string} output - The directory where the downloaded files will be saved.
- * @returns {Promise<void>}
+ * Downloads all the lazy loaded JS files from a given list of URLs.
+ *
+ * It opens a headless browser instance, navigates to the given URL, and
+ * intercepts all the requests. It checks if the request is a JS file
+ * and if it is a GET request. If both conditions are satisfied, the URL
+ * is added to the array of URLs. Finally, it closes the browser instance
+ * and returns the array of URLs.
+ *
+ * @param {string[]} urls - The list of URLs to download.
+ * @param {string} output - The directory to download the JS chunks to.
+ * @returns {Promise<string[]|undefined>} - A promise that resolves to an array of
+ * absolute URLs pointing to JavaScript files found in the page, or undefined for invalid URL.
  */
 const downloadFiles = async (urls: string[], output: string) => {
     console.log(chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`));

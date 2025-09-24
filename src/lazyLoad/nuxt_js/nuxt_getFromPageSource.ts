@@ -3,6 +3,14 @@ import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 import * as cheerio from "cheerio";
 
+/**
+ * Finds all the lazy loaded JavaScript files from a webpage by parsing the page source.
+ * It looks for all `<link>` tags with `as="script"` attribute and `<script>` tags with `src` attribute.
+ * It then resolves the relative URLs to absolute URLs and returns an array of all the JS files found.
+ *
+ * @param {string} url - The URL of the webpage to fetch and parse.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of absolute URLs pointing to JavaScript files found in the page.
+ */
 const nuxt_getFromPageSource = async (url) => {
     console.log(chalk.cyan("[i] Analyzing page source"));
 
