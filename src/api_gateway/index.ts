@@ -20,7 +20,7 @@ interface ApiGatewayConfig {
 
 /**
  * Selects a random AWS region from the available API Gateway regions.
- * 
+ *
  * @returns A randomly selected AWS region identifier
  */
 const randomRegion = (): string => {
@@ -69,7 +69,7 @@ let configFile = "";
 
 /**
  * Utility function to pause execution for a specified duration.
- * 
+ *
  * @param ms - Number of milliseconds to sleep
  * @returns Promise that resolves after the specified delay
  */
@@ -308,7 +308,7 @@ const apiGateway = async (
 
     /**
      * Masks an API key for secure display by showing only first and last 4 characters.
-     * 
+     *
      * @param key - The API key to mask
      * @returns Masked version of the key
      */

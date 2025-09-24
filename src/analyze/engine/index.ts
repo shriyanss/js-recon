@@ -7,11 +7,11 @@ import { EngineOutput } from "../helpers/outputHelper.js";
 
 /**
  * Main analysis engine that routes rules to appropriate sub-engines based on rule type.
- * 
+ *
  * This function serves as the central dispatcher for analysis rules, determining whether
  * to use the AST engine for code analysis or the request engine for API analysis.
  * It validates technology compatibility before executing the appropriate engine.
- * 
+ *
  * @param rule - The analysis rule containing patterns and conditions to match
  * @param mappedJsonData - Code chunks data for AST-based analysis (optional)
  * @param openapiData - OpenAPI specification data for request-based analysis (optional)

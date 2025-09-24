@@ -6,7 +6,7 @@ const traverse = _traverse.default;
 
 /**
  * Resolves AST node values to their actual runtime values for fetch and axios calls.
- * 
+ *
  * This function performs deep resolution of JavaScript AST nodes, handling:
  * - String literals, template literals, and concatenation
  * - Object expressions and member access
@@ -14,7 +14,7 @@ const traverse = _traverse.default;
  * - Call expressions including JSON.stringify
  * - Logical and conditional expressions
  * - Binary expressions and arithmetic operations
- * 
+ *
  * @param initialNode - The AST node to resolve
  * @param scope - The Babel scope for variable resolution
  * @param nodeCode - The source code string for the node
@@ -333,13 +333,13 @@ export const resolveNodeValue = (
 
 /**
  * Resolves string concatenation operations to flatten concat chains.
- * 
+ *
  * Handles patterns like '"/api/teams/".concat(i, "/members")' by:
  * - Parsing the string literal and concat arguments
  * - Replacing variables with placeholder strings like '[var name]'
  * - Flattening the entire concatenation chain into a single string
  * - Respecting quoted strings and handling nested expressions
- * 
+ *
  * @param rawExpr - The raw expression string containing concat operations
  * @returns Flattened string with variable placeholders
  */

@@ -12,11 +12,11 @@ const availableTechs = {
 
 /**
  * Refactors JavaScript code chunks based on technology-specific patterns.
- * 
+ *
  * This function takes mapped code chunks and applies technology-specific refactoring
  * rules to improve code readability, remove obfuscation, and standardize formatting.
  * The refactored code is written to individual files in the output directory.
- * 
+ *
  * @param mappedJson - Path to the mapped JSON file containing code chunks
  * @param outputDir - Directory where refactored code files will be written
  * @param tech - Technology stack identifier (e.g., 'next' for Next.js)

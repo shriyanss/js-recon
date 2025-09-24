@@ -1,4 +1,3 @@
-
 /**
  * Resolves a relative path with a given base URL.
  *

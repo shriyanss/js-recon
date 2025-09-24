@@ -3,7 +3,6 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "puppeteer";
 
-
 /**
  * Checks if a webpage uses Next.js by iterating through all HTML tags and checking if any src, srcset, or imageSrcSet attribute value starts with "/_next/".
  * @returns {Promise<{detected: boolean, evidence: string}>}
@@ -41,8 +40,6 @@ const checkNextJS = async ($) => {
     return { detected, evidence };
 };
 
-
-
 /**
  * Checks if a webpage uses Vue.js by iterating through all HTML tags and checking if any attribute name starts with "data-v-".
  * @returns {Promise<{detected: boolean, evidence: string}>}
@@ -73,7 +70,7 @@ const checkVueJS = async ($) => {
 
 /**
  * Detects if a webpage uses Nuxt.js by checking for "/_nuxt" paths in src or href attributes.
- * 
+ *
  * @param $ - The Cheerio API object containing the parsed HTML
  * @returns Promise that resolves to an object with detection status and evidence
  */
@@ -105,10 +102,10 @@ const checkNuxtJS = async ($: cheerio.CheerioAPI) => {
 
 /**
  * Detects if a webpage uses Svelte/SvelteKit by checking for Svelte-specific attributes.
- * 
+ *
  * Looks for svelte- prefixed class names, IDs, and SvelteKit-specific attributes
  * like data-sveltekit-reload to identify Svelte applications.
- * 
+ *
  * @param $ - The Cheerio API object containing the parsed HTML
  * @returns Promise that resolves to an object with detection status and evidence
  */
@@ -166,7 +163,6 @@ const checkSvelte = async ($) => {
 
     return { detected, evidence };
 };
-
 
 /**
  * Detects the front-end framework used in a webpage.

@@ -7,7 +7,6 @@ import secrets from "./secrets.js";
 import permutate from "./permutate.js";
 import openapi from "./openapi.js";
 
-
 /**
  * Recursively extracts all string literals from a given AST node.
  * @param {object} node - The AST node to extract strings from
@@ -60,7 +59,7 @@ const extractStrings = (node: object): string[] => {
 
     recurse(node);
     return Array.from(strings);
-}
+};
 
 /**
  * Extracts all string literals from all .js files in a given directory and its

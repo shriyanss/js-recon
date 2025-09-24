@@ -74,14 +74,14 @@ interface SecretMatch {
 
 /**
  * Scans source code for potential secrets and sensitive information using regex patterns.
- * 
+ *
  * This function searches through source code to identify various types of secrets including:
  * - API keys (AWS, Google, Facebook, etc.)
  * - OAuth tokens and access tokens
  * - Private keys and certificates
  * - Database credentials and connection strings
  * - Authentication tokens and passwords
- * 
+ *
  * @param source - The source code string to scan for secrets
  * @returns Promise that resolves to an array of found secrets with their names and values
  */

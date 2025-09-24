@@ -24,14 +24,14 @@ const availableFormats = {
 
 /**
  * Maps and analyzes JavaScript code to identify functions, API calls, and connections.
- * 
+ *
  * This function orchestrates the mapping process by:
  * 1. Analyzing webpack connections and chunk relationships
  * 2. Extracting exports and function definitions
  * 3. Identifying fetch and axios instances
  * 4. Resolving API calls and their parameters
  * 5. Optionally generating OpenAPI specifications
- * 
+ *
  * @param directory - Directory containing JavaScript files to analyze
  * @param output - Base filename for output files (without extension)
  * @param formats - Array of output formats to generate (e.g., ['json'])

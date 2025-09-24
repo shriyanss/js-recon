@@ -2,12 +2,12 @@ import { Node } from "@babel/types";
 
 /**
  * Recursively converts an AST node to a JSON-like string representation.
- * 
+ *
  * The function walks the AST tree, resolving each node's value as a JSON-like string.
  * For example, an ObjectExpression node will be resolved to a string like "{key1: value1, key2: value2}".
  * A SpreadElement will be resolved to "...<resolved argument value>".
  * A MemberExpression will be resolved to a string like "<resolved property name>".
- * 
+ *
  * @param node - The AST node to be converted
  * @param code - The original source code string
  * @returns A JSON-like string representation of the AST node

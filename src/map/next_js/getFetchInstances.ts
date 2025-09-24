@@ -7,7 +7,7 @@ import { Chunks } from "../../utility/interfaces.js";
 
 /**
  * Checks if a node is a fetch identifier.
- * 
+ *
  * @param node - The AST node to check
  * @returns True if the node is an identifier named 'fetch'
  */
@@ -17,9 +17,9 @@ const isFetchIdentifier = (node: any): boolean => {
 
 /**
  * Checks if a node represents a fallback pattern that resolves to fetch.
- * 
+ *
  * Detects patterns like 'x ?? fetch' or 'cond ? x : fetch' where fetch is used as a fallback.
- * 
+ *
  * @param node - The AST node to check
  * @returns True if the node is a fallback pattern that resolves to fetch
  */
@@ -33,13 +33,13 @@ const isFetchFallback = (node: any): boolean => {
 
 /**
  * Analyzes code chunks to identify fetch API usage including direct calls and aliases.
- * 
+ *
  * This function performs a multi-pass analysis to:
  * 1. Find variables that are aliases for the fetch function
  * 2. Track all direct fetch() calls
  * 3. Report call sites for both direct calls and aliases
  * 4. Mark chunks that contain fetch usage
- * 
+ *
  * @param chunks - Collection of code chunks to analyze
  * @param output - Base filename for output files (without extension)
  * @param formats - Array of output formats to generate (e.g., ['json'])

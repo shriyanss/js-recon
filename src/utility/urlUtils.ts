@@ -1,4 +1,3 @@
-
 /**
  * Given a URL, returns an object with the host and directory
  * of the URL. The directory is the path of the URL after the

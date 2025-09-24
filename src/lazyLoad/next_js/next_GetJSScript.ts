@@ -5,7 +5,6 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 
-
 /**
  * Downloads all the lazy loaded JS files from a given URL.
  *

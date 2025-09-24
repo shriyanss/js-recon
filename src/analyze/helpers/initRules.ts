@@ -5,10 +5,10 @@ import extract from "extract-zip";
 
 /**
  * Downloads and extracts the latest analysis rules from the GitHub repository.
- * 
+ *
  * Fetches the latest release from the js-recon-rules repository, downloads the zipball,
  * extracts it to the user's home directory, and performs cleanup operations.
- * 
+ *
  * @param homeDir - The user's home directory path
  * @returns Promise that resolves when rules are downloaded and extracted
  */
@@ -54,13 +54,13 @@ const downloadRules = async (homeDir: string): Promise<void> => {
 
 /**
  * Initializes the analysis rules system by ensuring rules are available and up-to-date.
- * 
+ *
  * This function:
  * 1. Creates the .js-recon directory if it doesn't exist
  * 2. Downloads rules if they're missing
  * 3. Validates rule integrity
  * 4. Checks for and downloads rule updates from GitHub
- * 
+ *
  * @returns Promise that resolves when rules initialization is complete
  */
 const initRules = async (): Promise<void> => {

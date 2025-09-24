@@ -67,7 +67,6 @@ export interface OpenAPISpec {
     };
 }
 
-
 /**
  * Returns the OpenAPI type string corresponding to the given value.
  *
@@ -95,7 +94,7 @@ export const getOpenApiType = (value: any): string => {
 
 /**
  * Generates an OpenAPI v3 spec based on the given OpenAPI output items.
- * 
+ *
  * @param items - The OpenAPI output items to generate the spec from
  * @param chunks - The chunks of API endpoints that the items belong to
  * @returns The generated OpenAPI v3 spec

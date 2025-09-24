@@ -10,7 +10,6 @@ import execFunc from "../../utility/runSandboxed.js";
 import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 import * as globals from "../../utility/globals.js";
 
-
 /**
  * Finds all the lazy loaded JS files from a given URL using a Next.js
  * specific approach. It works by first parsing the HTML of the page
