@@ -5,6 +5,7 @@
 ### Added
 
 - Added `--timeout` flag to run and lazyload modules
+- Added `--no-sandbox` flag to disable browser sandbox
 
 ### Changed
 
