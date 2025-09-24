@@ -3,10 +3,10 @@ import Database from "better-sqlite3";
 
 /**
  * Populates the endpoints table in the database with the given endpoints.
- * 
+ *
  * @param db - The database to populate
  * @param endpoints - The endpoints to populate the database with
- * 
+ *
  * @returns A promise that resolves when the database is populated
  */
 const populateEndpoints = async (db: Database.Database, endpoints: any) => {

@@ -17,7 +17,7 @@ declare global {
 
 /**
  * Attempts to read local DataTables assets from node_modules (for offline/self-contained reports)
- * 
+ *
  * @returns An object containing the DataTables JavaScript and CSS, or null if not found
  */
 const getLocalDataTablesAssets = () => {
@@ -36,7 +36,7 @@ const getLocalDataTablesAssets = () => {
 
 /**
  * Attempts to read local jQuery asset
- * 
+ *
  * @returns The jQuery JavaScript, or null if not found
  */
 const getLocalJqueryAsset = () => {
@@ -53,13 +53,13 @@ const getLocalJqueryAsset = () => {
 
 /**
  * Generates an HTML report based on the provided markdown and assets.
- * 
+ *
  * @param analyzeMarkdown - The markdown for the analyze section
  * @param mappedJsonMarkdown - The markdown for the mapped JSON section
  * @param dataTablesHtml - The HTML for the data tables section
  * @param dtAssets - The DataTables assets (JavaScript and CSS)
  * @param jqueryJs - The jQuery JavaScript
- * 
+ *
  * @returns The generated HTML report as a string
  */
 const html = async (
@@ -493,10 +493,10 @@ const html = async (
 
 /**
  * Generates an HTML report based on the provided database.
- * 
+ *
  * @param outputReportFile - The path to the output report file
  * @param db - The database containing the findings and mapped data
- * 
+ *
  * @returns A promise that resolves when the HTML report is generated
  */
 const genHtml = async (outputReportFile: string, db: Database.Database) => {

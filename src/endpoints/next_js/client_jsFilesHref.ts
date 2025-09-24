@@ -7,11 +7,11 @@ const traverse = _traverse.default;
 
 /**
  * Searches for href attributes in JavaScript files to discover client-side paths.
- * 
+ *
  * Parses JavaScript files using AST traversal to find object properties with 'href' keys
  * and extracts their values, which typically represent client-side routes or URLs.
  * Handles various patterns including string literals and concatenation calls.
- * 
+ *
  * @param directory - The directory path containing JavaScript files to analyze
  * @returns Promise that resolves to an array of discovered paths/URLs
  */

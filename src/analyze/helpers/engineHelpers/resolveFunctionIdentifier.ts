@@ -4,11 +4,11 @@ const traverse = _traverse.default;
 
 /**
  * Resolves a function identifier to its declaration node in the given AST.
- * 
+ *
  * Given an identifier node, this function traverses the given AST and returns the
  * function declaration node associated with the identifier. The traversal is stopped
  * once a match is found.
- * 
+ *
  * @param identifier - The identifier node to resolve
  * @param ast - The AST to traverse
  * @returns The function declaration node associated with the identifier, or undefined if not found

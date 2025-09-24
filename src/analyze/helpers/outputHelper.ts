@@ -16,7 +16,7 @@ export interface EngineOutput {
 
 /**
  * Writes analysis findings to a JSON file.
- * 
+ *
  * @param {string} outputFile - Path to the output file where findings will be written
  * @param {EngineOutput[]} findings - Array of analysis findings to write to the output file
  */

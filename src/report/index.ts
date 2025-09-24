@@ -12,11 +12,11 @@ import genHtml from "./utility/genHtml.js";
 
 /**
  * Generates comprehensive HTML reports from analysis results.
- * 
+ *
  * This function consolidates data from various analysis modules (mapping, analysis,
  * endpoints, OpenAPI) into a SQLite database and generates an HTML report with
  * interactive visualizations and detailed findings.
- * 
+ *
  * @param sqliteDbPath - Path to the SQLite database file for storing report data
  * @param mappedJsonFilePath - Path to the mapped JSON file containing code analysis
  * @param analyzeJsonFilePath - Path to the analysis results JSON file

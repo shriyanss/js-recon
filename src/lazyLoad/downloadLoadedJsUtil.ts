@@ -1,7 +1,6 @@
 import chalk from "chalk";
 import puppeteer from "puppeteer";
 
-
 /**
  * Downloads all the lazy loaded JS files from a given URL.
  * @param {string} url - The URL of the webpage to fetch and parse.

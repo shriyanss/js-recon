@@ -4,11 +4,11 @@ import fs from "fs";
 
 /**
  * Detects and marks chunks that contain Axios HTTP client library instances.
- * 
+ *
  * Uses regex patterns to identify chunks containing Axios-specific code patterns
  * such as AxiosHeaders, isAxiosError, and AxiosError. When detected, marks the
  * chunk with an isAxiosClient flag and updates its description.
- * 
+ *
  * @param chunks - Collection of code chunks to analyze for Axios instances
  * @param output - Base filename for output files (without extension)
  * @param formats - Array of output formats to generate (e.g., ['json'])

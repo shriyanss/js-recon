@@ -29,7 +29,6 @@ import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
 
-
 /**
  * Downloads the required JavaScript files for a given URL
  * @param {string} url The URL to download the JS files from

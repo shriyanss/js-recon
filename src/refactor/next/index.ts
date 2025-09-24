@@ -9,13 +9,13 @@ const generate = _generator.default;
 
 /**
  * Refactors a Next.js chunk to conform to the new Webpack 5 module system.
- * 
+ *
  * This function takes a code chunk and:
  * 1. Finds the third argument of the function declaration (if it exists)
  * 2. Replaces all calls to the third argument with `require("./<some_number>.js")`
  * 3. Finds the name of the exported function (if it exists)
  * 4. Appends `export default <function_name>` to the code
- * 
+ *
  * @param chunk - The code chunk to refactor
  * @returns A promise that resolves with the refactored code string
  */

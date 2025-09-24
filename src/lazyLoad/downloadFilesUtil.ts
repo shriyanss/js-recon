@@ -6,7 +6,6 @@ import makeRequest from "../utility/makeReq.js";
 import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max_req_queue functions
 
-
 /**
  * Downloads all the lazy loaded JS files from a given list of URLs.
  *

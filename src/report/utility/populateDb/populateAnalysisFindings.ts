@@ -4,10 +4,10 @@ import Database from "better-sqlite3";
 
 /**
  * Populates the analysis findings table in the database with the given findings.
- * 
+ *
  * @param db - The database to populate
  * @param findings - The findings to populate the database with
- * 
+ *
  * @returns A promise that resolves when the database is populated
  */
 export const populateAnalysisFindings = async (db: Database.Database, findings: EngineOutput[]) => {

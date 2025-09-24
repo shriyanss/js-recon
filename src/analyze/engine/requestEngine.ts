@@ -5,11 +5,11 @@ import { EngineOutput } from "../helpers/outputHelper.js";
 
 /**
  * Request-based analysis engine for analyzing OpenAPI specifications against rules.
- * 
+ *
  * This engine analyzes API endpoints, methods, headers, and URL patterns defined in
  * OpenAPI specifications to identify security issues, misconfigurations, or patterns
  * of interest. It supports multiple condition types including presence, absence, and equality checks.
- * 
+ *
  * @param rule - The analysis rule containing request-based patterns to match
  * @param openapiData - OpenAPI specification containing API endpoint definitions
  * @returns Promise that resolves to an array of analysis findings

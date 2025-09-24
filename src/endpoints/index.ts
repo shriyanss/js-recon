@@ -17,11 +17,11 @@ const outputFormats = ["json"];
 
 /**
  * Extracts client-side endpoints from JavaScript applications.
- * 
+ *
  * Analyzes JavaScript files and mapped data to discover client-side routes,
  * API endpoints, and other paths used by the application. Supports different
  * technology stacks and output formats.
- * 
+ *
  * @param url - Base URL for resolving relative paths
  * @param directory - Directory containing JavaScript files to analyze
  * @param output - Output filename (without extension) for results
