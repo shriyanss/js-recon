@@ -12,6 +12,7 @@ import run from "./run/index.js";
 import chalk from "chalk";
 import analyze from "./analyze/index.js";
 import report from "./report/index.js";
+import configureSandbox from "./utility/configureSandbox.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -54,11 +55,7 @@ program
             globalsUtil.setRequestTimeout(timeout);
         }
 
-        // Commander defines '--no-sandbox' as option 'sandbox' set to false. Also handle legacy 'noSandbox'.
-        if (process.env.IS_DOCKER === "true" || cmd.noSandbox || cmd.sandbox === false) {
-            globalsUtil.setDisableSandbox(true);
-            console.log(chalk.yellow(`[!] Disabling browser sandbox`));
-        }
+        configureSandbox(cmd);
 
         await lazyLoad(
             cmd.url,
@@ -282,10 +279,7 @@ program
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
 
-        if (process.env.IS_DOCKER === "true" || cmd.noSandbox || cmd.sandbox === false) {
-            globalsUtil.setDisableSandbox(true);
-            console.log(chalk.yellow(`[!] Disabling browser sandbox`));
-        }
+        configureSandbox(cmd);
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {
