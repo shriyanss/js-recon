@@ -15,7 +15,7 @@ const downloadLoadedJs = async (url) => {
 
     const browser = await puppeteer.launch({
         headless: true,
-        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox"] : [],
+        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
     });
 
     const page = await browser.newPage();
