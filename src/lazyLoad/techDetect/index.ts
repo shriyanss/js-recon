@@ -2,6 +2,7 @@ import chalk from "chalk";
 import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "puppeteer";
+import * as globalsUtil from "../../utility/globals.js";
 
 /**
  * Checks if a webpage uses Next.js by iterating through all HTML tags and checking if any src, srcset, or imageSrcSet attribute value starts with "/_next/".
@@ -183,7 +184,7 @@ const frameworkDetect = async (url: string) => {
     // get the page source in the browser
     const browser = await puppeteer.launch({
         headless: true,
-        args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
+        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
     });
     const page = await browser.newPage();
     page.setDefaultNavigationTimeout(30000);

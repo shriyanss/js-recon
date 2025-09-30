@@ -27,7 +27,7 @@ import * as globals from "../../utility/globals.js";
 const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | any> => {
     const browser = await puppeteer.launch({
         headless: true,
-        args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
+        args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
     });
 
     const page = await browser.newPage();

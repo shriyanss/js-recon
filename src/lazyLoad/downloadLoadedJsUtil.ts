@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import puppeteer from "puppeteer";
+import * as globalsUtil from "../utility/globals.js";
 
 /**
  * Downloads all the lazy loaded JS files from a given URL.
@@ -14,7 +15,7 @@ const downloadLoadedJs = async (url) => {
 
     const browser = await puppeteer.launch({
         headless: true,
-        args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
+        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
     });
 
     const page = await browser.newPage();
