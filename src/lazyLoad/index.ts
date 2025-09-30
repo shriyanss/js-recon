@@ -53,8 +53,8 @@ const lazyLoad = async (
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
-    if (process.env.IS_DOCKER === "true") {
-        console.log(chalk.yellow("[!] Running in Docker. Browser sandbox disabled"));
+    if (globals.getDisableSandbox()) {
+        console.log(chalk.yellow("[!] Browser sandbox disabled"));
     }
 
     if (insecure) {

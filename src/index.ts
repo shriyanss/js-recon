@@ -12,6 +12,7 @@ import run from "./run/index.js";
 import chalk from "chalk";
 import analyze from "./analyze/index.js";
 import report from "./report/index.js";
+import configureSandbox from "./utility/configureSandbox.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -39,6 +40,7 @@ program
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -52,6 +54,9 @@ program
         } else {
             globalsUtil.setRequestTimeout(timeout);
         }
+
+        configureSandbox(cmd);
+
         await lazyLoad(
             cmd.url,
             cmd.output,
@@ -257,6 +262,7 @@ program
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox")
     .action(async (cmd) => {
         const timeoutRun = parseInt(cmd.timeout, 10);
         if (isNaN(timeoutRun) || timeoutRun < 1) {
@@ -272,6 +278,8 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+
+        configureSandbox(cmd);
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {

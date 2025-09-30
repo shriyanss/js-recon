@@ -281,7 +281,7 @@ const makeRequest = async (
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
-                args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
+                args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
             });
             const page = await browser.newPage();
             await page.goto(url);
@@ -299,7 +299,7 @@ const makeRequest = async (
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
-                args: process.env.IS_DOCKER ? ["--no-sandbox"] : [],
+                args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
             });
             const page = await browser.newPage();
             await page.goto(url);
