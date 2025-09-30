@@ -184,7 +184,7 @@ const frameworkDetect = async (url: string) => {
     // get the page source in the browser
     const browser = await puppeteer.launch({
         headless: true,
-        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox"] : [],
+        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
     });
     const page = await browser.newPage();
     page.setDefaultNavigationTimeout(30000);

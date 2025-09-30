@@ -39,7 +39,7 @@ program
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
-    .option("--no-sandbox", "Disable browser sandbox", false)
+    .option("--no-sandbox", "Disable browser sandbox")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -54,8 +54,10 @@ program
             globalsUtil.setRequestTimeout(timeout);
         }
 
-        if (process.env.IS_DOCKER === "true" || cmd.noSandbox) {
+        // Commander defines '--no-sandbox' as option 'sandbox' set to false. Also handle legacy 'noSandbox'.
+        if (process.env.IS_DOCKER === "true" || cmd.noSandbox || cmd.sandbox === false) {
             globalsUtil.setDisableSandbox(true);
+            console.log(chalk.yellow(`[!] Disabling browser sandbox`));
         }
 
         await lazyLoad(
@@ -263,7 +265,7 @@ program
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
-    .option("--no-sandbox", "Disable browser sandbox", false)
+    .option("--no-sandbox", "Disable browser sandbox")
     .action(async (cmd) => {
         const timeoutRun = parseInt(cmd.timeout, 10);
         if (isNaN(timeoutRun) || timeoutRun < 1) {
@@ -280,8 +282,9 @@ program
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
 
-        if (process.env.IS_DOCKER === "true" || cmd.noSandbox) {
+        if (process.env.IS_DOCKER === "true" || cmd.noSandbox || cmd.sandbox === false) {
             globalsUtil.setDisableSandbox(true);
+            console.log(chalk.yellow(`[!] Disabling browser sandbox`));
         }
 
         // validate AI options
