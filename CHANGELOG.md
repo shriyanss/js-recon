@@ -6,6 +6,7 @@
 
 - Added `--timeout` flag to run and lazyload modules
 - Added `--no-sandbox` flag to disable browser sandbox
+- Added `--build-id` flag to lazyload module to get the buildId from the Next.js app
 
 ### Changed
 
