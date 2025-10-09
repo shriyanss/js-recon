@@ -11,6 +11,7 @@ import subsequentRequests from "./next_js/next_SubsequentRequests.js";
 import next_getJSScript from "./next_js/next_GetJSScript.js";
 import next_GetLazyResourcesWebpackJs from "./next_js/next_GetLazyResourcesWebpackJs.js";
 import next_getLazyResourcesBuildManifestJs from "./next_js/next_GetLazyResourcesBuildManifestJs.js";
+import { next_buildId_RSC } from "./next_js/next_buildId.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
@@ -28,6 +29,7 @@ import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
+import path from "path";
 
 /**
  * Downloads the required JavaScript files for a given URL
@@ -49,7 +51,8 @@ const lazyLoad = async (
     threads: number,
     subsequentRequestsFlag: boolean,
     urlsFile: string,
-    insecure: boolean
+    insecure: boolean,
+    buildId: boolean
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -142,6 +145,20 @@ const lazyLoad = async (
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 await downloadFiles(jsFilesToDownload, output);
+
+                if (buildId) {
+                    // get the buildId
+                    // the directory is the output <output>/<host.replace(":", "_")>/___subsequent_requests
+                    const buildId = await next_buildId_RSC(
+                        output + "/" + new URL(url).host.replace(":", "_") + "/___subsequent_requests"
+                    );
+
+                    if (buildId) {
+                        console.log(chalk.cyan("[+] Found buildId: " + buildId));
+                        // now, write it to a file
+                        fs.writeFileSync(path.join(output, new URL(url).host.replace(":", "_") + "/BUILD_ID"), buildId);
+                    }
+                }
             } else if (tech.name === "vue") {
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));

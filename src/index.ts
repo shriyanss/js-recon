@@ -41,6 +41,7 @@ program
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
+    .option("--build-id", "Get the buildId from the Next.js app", false)
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -65,7 +66,8 @@ program
             Number(cmd.threads),
             cmd.subsequentRequests,
             cmd.urlsFile,
-            cmd.insecure
+            cmd.insecure,
+            cmd.buildId
         );
     });
 
