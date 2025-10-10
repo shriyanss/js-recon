@@ -47,11 +47,11 @@ const ai = async (): Promise<{ client: OpenAI | Ollama; model: string }> => {
 };
 
 /**
- * Asks an AI service provider to generate code based on a prompt.
+ * Asks an AI service provider to generate text based on a prompt.
  *
- * @param {string} prompt The code to generate based on this prompt.
- * @param {string} [systemPrompt="You are a helpful assistant."] The system prompt to use for generating code.
- * @returns {Promise<string>} The generated code based on the prompt.
+ * @param {string} prompt The input prompt describing the desired text output.
+ * @param {string} [systemPrompt="You are a helpful assistant."] The system prompt guiding the overall tone and behavior.
+ * @returns {Promise<string>} The generated text produced for the prompt.
  */
 async function getCompletion(prompt, systemPrompt = "You are a helpful assistant.") {
     const { client, model } = await ai();
