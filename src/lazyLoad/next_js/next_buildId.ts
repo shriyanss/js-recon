@@ -44,4 +44,3 @@ export const next_buildId_RSC = async (rsc_directory: string): Promise<string | 
     traverseDirectory(rsc_directory);
     return next_globals.getBuildId();
 };
-
