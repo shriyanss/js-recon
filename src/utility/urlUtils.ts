@@ -3,7 +3,7 @@
  * of the URL. The directory is the path of the URL after the
  * host, and the filename is removed if it ends with a file extension.
  * For example, given "https://vercel.com/static/js/main.js", it will return
- * an object with host "vercel_com" and directory "/static/js".
+ * an object with host "vercel.com" and directory "/static/js".
  * @param {string} url - The URL to parse.
  * @returns {Object} An object with the host and directory of the URL.
  */
