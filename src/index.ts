@@ -23,6 +23,20 @@ program.version(CONFIG.version).description(CONFIG.toolDesc);
 /** Valid AI options for analysis modules */
 const validAiOptions = ["description"];
 
+/**
+ * Validates a timeout string and updates the global request timeout.
+ * @param timeoutValue Timeout value provided via CLI.
+ */
+function validateAndSetTimeout(timeoutValue: string): void {
+    const parsedTimeout = parseInt(timeoutValue, 10);
+    if (Number.isNaN(parsedTimeout) || parsedTimeout < 1) {
+        console.log(chalk.yellow(`[!] Invalid timeout value: "${timeoutValue}". Using default of 30000ms.`));
+        globalsUtil.setRequestTimeout(30000);
+    } else {
+        globalsUtil.setRequestTimeout(parsedTimeout);
+    }
+}
+
 program
     .command("lazyload")
     .description("Run lazy load module")
@@ -48,13 +62,7 @@ program
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setYes(cmd.yes);
-        const timeout = parseInt(cmd.timeout, 10);
-        if (isNaN(timeout) || timeout < 1) {
-            console.log(chalk.yellow(`[!] Invalid timeout value: "${cmd.timeout}". Using default of 30000ms.`));
-            globalsUtil.setRequestTimeout(30000);
-        } else {
-            globalsUtil.setRequestTimeout(timeout);
-        }
+        validateAndSetTimeout(cmd.timeout);
 
         configureSandbox(cmd);
 
@@ -266,13 +274,7 @@ program
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
     .action(async (cmd) => {
-        const timeoutRun = parseInt(cmd.timeout, 10);
-        if (isNaN(timeoutRun) || timeoutRun < 1) {
-            console.log(chalk.yellow(`[!] Invalid timeout value: "${cmd.timeout}". Using default of 30000ms.`));
-            globalsUtil.setRequestTimeout(30000);
-        } else {
-            globalsUtil.setRequestTimeout(timeoutRun);
-        }
+        validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
         globalsUtil.setAiModel(cmd.model);
