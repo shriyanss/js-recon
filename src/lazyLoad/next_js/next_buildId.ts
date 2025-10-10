@@ -1,37 +1,47 @@
 import fs from "fs";
+import path from "path";
 import * as next_globals from "./next_globals.js";
 
 export const next_buildId_RSC = async (rsc_directory: string): Promise<string | null> => {
-    // list all the files in the directory, including the sub and sub-sub directories
-    const files = fs.readdirSync(rsc_directory, { recursive: true });
+    const traverseDirectory = (directory: string): boolean => {
+        const dirents = fs.readdirSync(directory, { withFileTypes: true });
 
-    // go through those files
-    for (const file of files) {
-        // check if it is a file. if so, read it
-        if (!fs.statSync(rsc_directory + "/" + file).isDirectory()) {
-            const fileContent = fs.readFileSync(rsc_directory + "/" + file, "utf8");
+        for (const dirent of dirents) {
+            const fullPath = path.join(directory, dirent.name);
 
-            // go through each line
+            if (dirent.isDirectory()) {
+                if (traverseDirectory(fullPath)) {
+                    return true;
+                }
+                continue;
+            }
+
+            if (!dirent.isFile()) {
+                continue;
+            }
+
+            const fileContent = fs.readFileSync(fullPath, "utf8");
+
             const lines = fileContent.split("\n");
             for (const line of lines) {
-                // check if the line starts with `0:`
                 if (line.startsWith("0:")) {
-                    // remove the ^0: from the line
                     const buildIdLine = line.replace("0:", "");
-
-                    // parse the remaining content as json
                     const buildIdLineJSON = JSON.parse(buildIdLine);
 
-                    // iterate through the JSON, and get the "b" key and value
                     for (const [key, value] of Object.entries(buildIdLineJSON)) {
                         if (key === "b") {
                             next_globals.setBuildId(value as string);
-                            break;
+                            return true;
                         }
                     }
                 }
             }
         }
-    }
+
+        return false;
+    };
+
+    traverseDirectory(rsc_directory);
     return next_globals.getBuildId();
 };
+
