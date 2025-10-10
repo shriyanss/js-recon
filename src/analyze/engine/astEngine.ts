@@ -14,6 +14,17 @@ import { findMemberExpressionAssignment } from "../helpers/engineHelpers/findMem
 import { findDirectAssignment } from "../helpers/engineHelpers/findDirectAssignment.js";
 import { EngineOutput } from "../helpers/outputHelper.js";
 
+/**
+ * ESQuery-based AST analysis engine for detecting code patterns using custom rules.
+ *
+ * This engine parses JavaScript/TypeScript code into ASTs and uses ESQuery selectors
+ * to find specific patterns defined in rules. It supports complex multi-step analysis
+ * including function resolution and assignment checking.
+ *
+ * @param rule - The analysis rule containing steps and patterns to match
+ * @param mappedJsonData - Collection of code chunks to analyze
+ * @returns Promise that resolves to an array of analysis findings
+ */
 const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<EngineOutput[]> => {
     let findings: EngineOutput[] = [];
 

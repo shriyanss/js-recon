@@ -1,6 +1,13 @@
 import chalk from "chalk";
 import fs from "fs";
 
+/**
+ * Permute URLs and paths, and write the results to a .txt file.
+ * @param {string[]} urls - The list of URLs to permute
+ * @param {string[]} paths - The list of paths to permute
+ * @param {string} output - The output file path
+ * @returns {Promise<void>} - A promise that resolves when the permutated URLs and paths are written to the output file
+ */
 const permutate = async (urls: string[], paths: string[], output: string): Promise<void> => {
     console.log(chalk.cyan("[i] Permutating URLs and paths"));
 

@@ -8,6 +8,13 @@ const traverse = _traverse.default;
 
 let toReturn = [];
 
+/**
+ * Checks for client-side paths in a file and appends discovered paths to the module-scoped `toReturn` array.
+ *
+ * @param {string[]} files - The list of files to check
+ * @param {string} url - The base URL to resolve relative URLs against
+ * @returns {Promise<void>} - A promise that resolves when all files have been processed
+ */
 const checkHref = async (files, url) => {
     // open each file and read the contents
     for (const file of files) {

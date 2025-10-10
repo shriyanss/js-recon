@@ -5,6 +5,16 @@ const traverse = _traverse.default;
 import fs from "fs";
 import path from "path";
 
+/**
+ * Extracts client-side paths from JSON.parse() calls in JavaScript files.
+ *
+ * Analyzes JavaScript files to find JSON.parse() calls with string literals as arguments.
+ * When the parsed JSON contains objects with keys that look like paths (starting with '/'),
+ * those keys are extracted as potential client-side routes.
+ *
+ * @param directory - The directory path containing JavaScript files to analyze
+ * @returns Promise that resolves to an array of discovered paths from JSON.parse() calls
+ */
 const client_jsonParse = async (directory: string): Promise<string[]> => {
     let foundUrls = [];
     console.log(chalk.cyan("[i] Searching for client-side paths in JSON.parse()"));

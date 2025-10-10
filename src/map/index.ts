@@ -22,6 +22,24 @@ const availableFormats = {
     json: "JSON",
 };
 
+/**
+ * Maps and analyzes JavaScript code to identify functions, API calls, and connections.
+ *
+ * This function orchestrates the mapping process by:
+ * 1. Analyzing webpack connections and chunk relationships
+ * 2. Extracting exports and function definitions
+ * 3. Identifying fetch and axios instances
+ * 4. Resolving API calls and their parameters
+ * 5. Optionally generating OpenAPI specifications
+ *
+ * @param directory - Directory containing JavaScript files to analyze
+ * @param output - Base filename for output files (without extension)
+ * @param formats - Array of output formats to generate (e.g., ['json'])
+ * @param tech - Technology stack identifier (e.g., 'next' for Next.js)
+ * @param list - Whether to list available technologies instead of running analysis
+ * @param interactive_mode - Whether to launch interactive mode after analysis
+ * @returns Promise that resolves when mapping analysis is complete
+ */
 const map = async (
     directory: string,
     output: string,
@@ -29,7 +47,7 @@ const map = async (
     tech: string,
     list: boolean,
     interactive_mode: boolean
-) => {
+): Promise<void> => {
     console.log(chalk.cyan("[i] Running 'map' module"));
 
     if (list) {

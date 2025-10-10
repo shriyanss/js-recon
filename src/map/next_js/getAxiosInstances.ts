@@ -2,7 +2,19 @@ import { Chunks } from "../../utility/interfaces.js";
 import chalk from "chalk";
 import fs from "fs";
 
-const getAxiosInstances = async (chunks: Chunks, output: string, formats: string[]) => {
+/**
+ * Detects and marks chunks that contain Axios HTTP client library instances.
+ *
+ * Uses regex patterns to identify chunks containing Axios-specific code patterns
+ * such as AxiosHeaders, isAxiosError, and AxiosError. When detected, marks the
+ * chunk with an isAxiosClient flag and updates its description.
+ *
+ * @param chunks - Collection of code chunks to analyze for Axios instances
+ * @param output - Base filename for output files (without extension)
+ * @param formats - Array of output formats to generate (e.g., ['json'])
+ * @returns Promise that resolves to the updated chunks with Axios detection results
+ */
+const getAxiosInstances = async (chunks: Chunks, output: string, formats: string[]): Promise<Chunks> => {
     console.log(chalk.cyan("[i] Getting axios instances"));
 
     let chunkCopy = structuredClone(chunks);

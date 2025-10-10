@@ -5,6 +5,11 @@ import _traverse from "@babel/traverse";
 import { ArrowFunctionExpression, FunctionDeclaration } from "@babel/types";
 const traverse = _traverse.default;
 
+/**
+ * Gets the exports of each chunk.
+ * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
+ * @returns {Promise<Chunks>} - A promise that resolves with a dictionary of chunk names to chunk objects with their exports.
+ */
 const getExports = async (chunks: Chunks): Promise<Chunks> => {
     console.log(chalk.cyan("[i] Getting exports"));
 

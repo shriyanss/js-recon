@@ -6,12 +6,15 @@ import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls, pushToJsUrls } from "../globals.js";
 
 /**
- * Asynchronously fetches the given URL and extracts JavaScript file URLs
- * from script tags present in the HTML content.
+ * Scrapes all lazy-loaded JavaScript file URLs from the provided Next.js page.
+ *
+ * The function fetches the HTML with `makeRequest`, parses `script` tags via `cheerio`,
+ * and normalizes discovered `src` attributes (absolute, relative, or inline chunk hints)
+ * into absolute URLs using the shared lazy-load URL registry.
  *
  * @param {string} url - The URL of the webpage to fetch and parse.
- * @returns {Promise<string[]>} - A promise that resolves to an array of
- * absolute URLs pointing to JavaScript files found in script tags.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of absolute URLs
+ * pointing to JavaScript files found in the page.
  */
 const next_getJSScript = async (url: string): Promise<string[]> => {
     // get the page source

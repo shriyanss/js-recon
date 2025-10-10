@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.2.2-alpha.1 - 2025.10.09
+
+### Added
+
+- Added `--timeout` flag to run and lazyload modules
+- Added `--no-sandbox` flag to disable browser sandbox
+- Added `--build-id` flag to lazyload module to get the buildId from the Next.js app
+
+### Changed
+
+### Fixed
+
 ## 1.2.1 - 2025.09.23
 
 ### Added

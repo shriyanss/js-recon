@@ -11,6 +11,13 @@ import * as globals from "../../utility/globals.js";
 import { getCompletion } from "../../utility/ai.js";
 import { File } from "@babel/types";
 
+/**
+ * Gets the webpack connections for a given directory and output file name.
+ * @param {string} directory - The directory to search for webpack chunks.
+ * @param {string} output - The output file name.
+ * @param {string[]} formats - The output formats to generate.
+ * @returns {Promise<Chunks>} - A promise that resolves with a dictionary of chunk names to chunk objects.
+ */
 const getWebpackConnections = async (directory, output, formats) => {
     const maxAiThreads = globals.getAiThreads();
     if (globals.getAi().length > 0) {

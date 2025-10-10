@@ -1,5 +1,23 @@
 import resolvePath from "../../../utility/resolvePath.js";
 
+/**
+ * Iterate over a list of URLs and store them in a nested object structure.
+ *
+ * For each URL, the function will:
+ *  - Ignore URLs that start with "mailto:" or "tel:"
+ *  - Resolve relative URLs against the given base URL
+ *  - Parse the URL and extract the origin and pathname
+ *  - Create a nested object structure with the origin as the top-level key
+ *  - Create a nested object structure with the pathname as the key
+ *  - Ensure that every origin has a root path ("/") inserted
+ *
+ * The resulting object structure will have the following shape:
+ *  - { origin: { /path/to/resource: {}, ... } }
+ *
+ * @param {string} baseUrl - The base URL to resolve relative URLs against
+ * @param {string[]} urls - The list of URLs to iterate over
+ * @returns {Promise<object>} - A promise that resolves to the nested object structure
+ */
 const iterate_n_store = async (baseUrl: string, urls: string[]) => {
     let result = {};
     for (let url of urls) {

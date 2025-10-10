@@ -3,9 +3,12 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
 /**
- * Traverses a given AST node to find and log assignments between two member expressions.
+ * Finds an assignment expression where the left side is a member expression with a property that matches the given name.
+ * Traverses the given node and its children to find a match.
  * @param node The AST node to traverse.
  * @param toMatch The name of the property to match on the left side of the assignment.
+ * @param scope The scope of the traverse.
+ * @returns The assignment expression node if found, otherwise undefined.
  */
 export const findMemberExpressionAssignment = (node: Node, toMatch: string, scope: Node): Node | undefined => {
     let foundNode: Node | undefined;

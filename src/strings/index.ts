@@ -8,16 +8,15 @@ import permutate from "./permutate.js";
 import openapi from "./openapi.js";
 
 /**
- * Recursively extracts strings from a babel AST node.
- * This is a deeper search than just StringLiterals.
- * @param {object} node - The AST node to traverse.
- * @returns {string[]} - An array of extracted strings.
+ * Recursively extracts all string literals from a given AST node.
+ * @param {object} node - The AST node to extract strings from
+ * @returns {string[]} An array of extracted string literals
  */
-function extractStrings(node) {
-    const strings = new Set();
+const extractStrings = (node: object): string[] => {
+    const strings: Set<string> = new Set();
     const seen = new WeakSet();
 
-    function recurse(currentNode) {
+    function recurse(currentNode: any) {
         if (!currentNode || typeof currentNode !== "object" || seen.has(currentNode)) {
             return;
         }
@@ -60,7 +59,7 @@ function extractStrings(node) {
 
     recurse(node);
     return Array.from(strings);
-}
+};
 
 /**
  * Extracts all string literals from all .js files in a given directory and its

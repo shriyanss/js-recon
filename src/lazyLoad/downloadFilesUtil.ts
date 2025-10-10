@@ -7,13 +7,15 @@ import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max_req_queue functions
 
 /**
- * Downloads a list of URLs and saves them as files in the specified output directory.
- * It creates the necessary subdirectories based on the URL's host and path.
- * If the URL does not end with `.js`, it is skipped.
- * The function logs the progress and any errors to the console.
- * @param {string[]} urls - An array of URLs to be downloaded.
- * @param {string} output - The directory where the downloaded files will be saved.
- * @returns {Promise<void>}
+ * Downloads the provided JavaScript or JSON URLs and stores them in the given output directory.
+ *
+ * Each URL is fetched while respecting the configured request queue limits. Files that fall
+ * outside the allowed scope are skipped, and downloaded files are formatted before being
+ * written to disk.
+ *
+ * @param {string[]} urls - The list of URLs to download.
+ * @param {string} output - The directory where the downloaded JS chunks should be written.
+ * @returns {Promise<void>} - Resolves once all eligible files have been downloaded and saved.
  */
 const downloadFiles = async (urls: string[], output: string) => {
     console.log(chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`));

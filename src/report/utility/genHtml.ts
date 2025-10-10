@@ -15,7 +15,11 @@ declare global {
     }
 }
 
-// Attempt to read local DataTables assets from node_modules (for offline/self-contained reports)
+/**
+ * Attempts to read local DataTables assets from node_modules (for offline/self-contained reports)
+ *
+ * @returns An object containing the DataTables JavaScript and CSS, or null if not found
+ */
 const getLocalDataTablesAssets = () => {
     try {
         const require = createRequire(import.meta.url);
@@ -30,7 +34,11 @@ const getLocalDataTablesAssets = () => {
     }
 };
 
-// Attempt to read local jQuery asset
+/**
+ * Attempts to read local jQuery asset
+ *
+ * @returns The jQuery JavaScript, or null if not found
+ */
 const getLocalJqueryAsset = () => {
     try {
         const require = createRequire(import.meta.url);
@@ -43,6 +51,17 @@ const getLocalJqueryAsset = () => {
     }
 };
 
+/**
+ * Generates an HTML report based on the provided markdown and assets.
+ *
+ * @param analyzeMarkdown - The markdown for the analyze section
+ * @param mappedJsonMarkdown - The markdown for the mapped JSON section
+ * @param dataTablesHtml - The HTML for the data tables section
+ * @param dtAssets - The DataTables assets (JavaScript and CSS)
+ * @param jqueryJs - The jQuery JavaScript
+ *
+ * @returns The generated HTML report as a string
+ */
 const html = async (
     analyzeMarkdown: string,
     mappedJsonMarkdown: string,
@@ -472,6 +491,14 @@ const html = async (
 </html>`;
 };
 
+/**
+ * Generates an HTML report based on the provided database.
+ *
+ * @param outputReportFile - The path to the output report file
+ * @param db - The database containing the findings and mapped data
+ *
+ * @returns A promise that resolves when the HTML report is generated
+ */
 const genHtml = async (outputReportFile: string, db: Database.Database) => {
     console.log(chalk.cyan("[i] Generating HTML report..."));
 

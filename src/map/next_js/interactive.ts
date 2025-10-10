@@ -15,6 +15,11 @@ export interface State {
     mapFile: string;
 }
 
+/**
+ * Starts the interactive mode.
+ * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
+ * @param {string} map_file - The name of the map file.
+ */
 const interactive = async (chunks: Chunks, map_file: string) => {
     const state = {
         chunks,

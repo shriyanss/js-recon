@@ -1,5 +1,10 @@
 import Database from "better-sqlite3";
 
+/**
+ * Creates the mapped table in the database.
+ *
+ * @param db - The database to create the table in
+ */
 const createMappedTable = (db: Database.Database) => {
     db.prepare(
         `
@@ -19,6 +24,11 @@ const createMappedTable = (db: Database.Database) => {
     ).run();
 };
 
+/**
+ * Creates the mapped OpenAPI table in the database.
+ *
+ * @param db - The database to create the table in
+ */
 const createMappedOpenapiTable = (db: Database.Database) => {
     db.prepare(
         `
@@ -35,6 +45,11 @@ const createMappedOpenapiTable = (db: Database.Database) => {
     ).run();
 };
 
+/**
+ * Creates the endpoints table in the database.
+ *
+ * @param db - The database to create the table in
+ */
 const createEndpointsTable = (db: Database.Database) => {
     db.prepare(
         `
@@ -45,6 +60,11 @@ const createEndpointsTable = (db: Database.Database) => {
     ).run();
 };
 
+/**
+ * Creates the analysis findings table in the database.
+ *
+ * @param db - The database to create the table in
+ */
 const createAnalysisFindingsTable = (db: Database.Database) => {
     db.prepare(
         `
@@ -63,6 +83,11 @@ const createAnalysisFindingsTable = (db: Database.Database) => {
     ).run();
 };
 
+/**
+ * Initializes the report database.
+ *
+ * @param sqliteDbPath - The path to the SQLite database file
+ */
 const initReportDb = async (sqliteDbPath: string) => {
     const db = new Database(sqliteDbPath);
 
