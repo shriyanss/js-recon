@@ -10,7 +10,7 @@ import resolvePath from "../../utility/resolvePath.js";
 import * as globals from "../../utility/globals.js";
 
 /**
- * Finds all the lazy loaded JS files from a given URL using a Next.js specific approach.
+ * Finds all the lazy loaded JS files from a given URL using a Nuxt.js specific approach.
  * It works by first parsing the HTML of the page and then extracting all the JS files from it.
  * Then it parses the contents of each JS file and extracts all the functions from it.
  * Then it iterates through the functions, and finds out the one that ends with ".js"
