@@ -10,6 +10,12 @@ import execFunc from "../../utility/runSandboxed.js";
 import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js"; // Import js_urls functions
 import * as globals from "../../utility/globals.js";
 
+type ExtractedFunction = {
+    name: string;
+    type: string;
+    source: string;
+};
+
 /**
  * Finds all the lazy loaded JS files from a given URL using a Next.js
  * specific approach. It works by first parsing the HTML of the page
@@ -21,10 +27,10 @@ import * as globals from "../../utility/globals.js";
  * all the lazy loaded JS files.
  *
  * @param {string} url - The URL of the webpage to fetch and parse.
- * @returns {Promise<string[] | any>} - A promise that resolves to an array of
- * absolute URLs pointing to JavaScript files found in the page, or undefined for invalid URL.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of absolute URLs pointing to
+ * JavaScript files found in the page, or an empty array when no files are discovered.
  */
-const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | any> => {
+const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> => {
     const browser = await puppeteer.launch({
         headless: true,
         args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
@@ -76,7 +82,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | a
     if (!webpack_js) {
         console.log(chalk.red("[!] No webpack JS file found"));
         console.log(chalk.magenta(CONFIG.notFoundMessage));
-        return []; // Return undefined as per JSDoc
+        return [];
     }
 
     // parse the webpack JS file
@@ -90,7 +96,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | a
         errorRecovery: true,
     });
 
-    let functions = [];
+    const functions: ExtractedFunction[] = [];
 
     traverse(ast, {
         FunctionDeclaration(path) {
@@ -134,7 +140,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | a
     // method 1
     // iterate through the functions, and find out which one ends with `".js"`
 
-    let final_Func;
+    let final_Func: string | undefined;
     for (const func of functions) {
         if (func.source.match(/"\.js".{0,15}$/)) {
             console.log(chalk.green(`[✓] Found JS chunk having the following source`));
@@ -174,7 +180,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | a
 
     const urlBuilderFunc = `(() => (${final_Func}))()`;
 
-    let js_paths = [];
+    const js_paths: string[] = [];
     try {
         // rather than fuzzing, grep the integers from the func code
         const integers = final_Func.match(/\d+/g);
@@ -200,7 +206,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[] | a
     }
 
     // build final URL
-    let final_urls = [];
+    const final_urls: string[] = [];
     for (let i = 0; i < js_paths.length; i++) {
         // following is a broken logic
 
