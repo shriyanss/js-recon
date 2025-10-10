@@ -1,6 +1,14 @@
 import { Chunks } from "../../../utility/interfaces.js";
 import chalk from "chalk";
 
+/**
+ * Finds the chunks that export and import Axios clients.
+ * @param {Chunks} chunks - Collection of code chunks to analyze
+ * @returns {{axiosExportedTo: string[], axiosImportedTo: { [key: string]: string }}
+ *      - an object containing two properties: axiosExportedTo and axiosImportedTo.
+ *      - axiosExportedTo is an array of chunk names that have an Axios client.
+ *      - axiosImportedTo is an object where each key is a chunk name and the value is the name of the Axios client chunk that it imports.
+ */
 export const findAxiosClients = (
     chunks: Chunks
 ): { axiosExportedTo: string[]; axiosImportedTo: { [key: string]: string } } => {

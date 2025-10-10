@@ -68,14 +68,15 @@ export interface OpenAPISpec {
 }
 
 /**
- * Generates a minimal OpenAPI v3 specification document from the collected
- * `OpenapiOutputItem` objects.
+ * Returns the OpenAPI type string corresponding to the given value.
  *
- * The generated document includes:
- *  - Basic `info` section
- *  - A single `servers` entry with a `{{baseUrl}}` placeholder
- *  - An entry in `paths` for every unique combination of `path` & HTTP `method`
- *    discovered, including request headers & body where available.
+ * If the value is null, returns "string" as OpenAPI 3.0 doesn't have a 'null' type.
+ * If the value is an array, returns "array".
+ * If the value is a primitive type (string, number, boolean), returns the corresponding OpenAPI type.
+ * If the value is an object, returns "object".
+ * For other types, returns "string" as a fallback.
+ * @param value - The value to determine the OpenAPI type for
+ * @returns The OpenAPI type string corresponding to the given value
  */
 export const getOpenApiType = (value: any): string => {
     if (value === null) {
@@ -91,6 +92,13 @@ export const getOpenApiType = (value: any): string => {
     return "string"; // Fallback for other types
 };
 
+/**
+ * Generates an OpenAPI v3 spec based on the given OpenAPI output items.
+ *
+ * @param items - The OpenAPI output items to generate the spec from
+ * @param chunks - The chunks of API endpoints that the items belong to
+ * @returns The generated OpenAPI v3 spec
+ */
 export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks): OpenAPISpec => {
     const spec: OpenAPISpec = {
         openapi: "3.0.0",

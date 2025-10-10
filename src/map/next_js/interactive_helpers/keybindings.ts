@@ -2,6 +2,13 @@ import { Widgets } from "blessed";
 import chalk from "chalk";
 import { State } from "../interactive.js";
 
+/**
+ * Setup keybindings for the interactive mode.
+ * @param {Widgets.Screen} screen - The screen object
+ * @param {Widgets.TextboxElement} inputBox - The input box element
+ * @param {Widgets.Log} outputBox - The output box element
+ * @param {State} state - The state object
+ */
 function setupKeybindings(
     screen: Widgets.Screen,
     inputBox: Widgets.TextboxElement,

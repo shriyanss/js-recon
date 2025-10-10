@@ -12,9 +12,30 @@ import run from "./run/index.js";
 import chalk from "chalk";
 import analyze from "./analyze/index.js";
 import report from "./report/index.js";
+import configureSandbox from "./utility/configureSandbox.js";
 
+/**
+ * Main CLI application entry point for js-recon tool.
+ * Sets up command-line interface with various modules for JavaScript reconnaissance.
+ */
 program.version(CONFIG.version).description(CONFIG.toolDesc);
+
+/** Valid AI options for analysis modules */
 const validAiOptions = ["description"];
+
+/**
+ * Validates a timeout string and updates the global request timeout.
+ * @param timeoutValue Timeout value provided via CLI.
+ */
+function validateAndSetTimeout(timeoutValue: string): void {
+    const parsedTimeout = parseInt(timeoutValue, 10);
+    if (Number.isNaN(parsedTimeout) || parsedTimeout < 1) {
+        console.log(chalk.yellow(`[!] Invalid timeout value: "${timeoutValue}". Using default of 30000ms.`));
+        globalsUtil.setRequestTimeout(30000);
+    } else {
+        globalsUtil.setRequestTimeout(parsedTimeout);
+    }
+}
 
 program
     .command("lazyload")
@@ -31,13 +52,20 @@ program
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
+    .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox")
+    .option("--build-id", "Get the buildId from the Next.js app", false)
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setYes(cmd.yes);
+        validateAndSetTimeout(cmd.timeout);
+
+        configureSandbox(cmd);
+
         await lazyLoad(
             cmd.url,
             cmd.output,
@@ -46,7 +74,8 @@ program
             Number(cmd.threads),
             cmd.subsequentRequests,
             cmd.urlsFile,
-            cmd.insecure
+            cmd.insecure,
+            cmd.buildId
         );
     });
 
@@ -241,8 +270,11 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
+    .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox")
     .action(async (cmd) => {
+        validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
         globalsUtil.setAiModel(cmd.model);
@@ -250,6 +282,8 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+
+        configureSandbox(cmd);
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {

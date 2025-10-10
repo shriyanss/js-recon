@@ -5,7 +5,17 @@ import _traverse from "@babel/traverse";
 import chalk from "chalk";
 const traverse = _traverse.default;
 
-const client_jsFilesHref = async (directory) => {
+/**
+ * Searches for href attributes in JavaScript files to discover client-side paths.
+ *
+ * Parses JavaScript files using AST traversal to find object properties with 'href' keys
+ * and extracts their values, which typically represent client-side routes or URLs.
+ * Handles various patterns including string literals and concatenation calls.
+ *
+ * @param directory - The directory path containing JavaScript files to analyze
+ * @returns Promise that resolves to an array of discovered paths/URLs
+ */
+const client_jsFilesHref = async (directory: string): Promise<string[]> => {
     console.log(chalk.cyan("[i] Searching for `href` in the JS chunks"));
     let discoveredPaths = [];
     // index all the files in the directory

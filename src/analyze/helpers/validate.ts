@@ -3,6 +3,15 @@ import fs from "fs";
 import yaml from "yaml";
 import { ruleSchema } from "./schemas.js";
 
+/**
+ * Validates a collection of YAML rule files against the defined schema.
+ *
+ * Reads each rule file, parses the YAML content, and validates it against
+ * the rule schema. Reports any validation errors found in the rules.
+ *
+ * @param ruleFiles - Array of file paths to YAML rule files to validate
+ * @returns Promise that resolves to true if all rules are valid, false otherwise
+ */
 const validateRules = async (ruleFiles: string[]): Promise<boolean> => {
     console.log(chalk.cyan("[i] Validating rules..."));
     let allValid = true;

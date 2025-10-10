@@ -23,6 +23,18 @@ interface MappedData {
     file: string;
 }
 
+/**
+ * Escapes HTML characters in a given string.
+ * This function replaces the following characters with their HTML entity equivalents:
+ * - & with &amp;
+ * - < with &lt;
+ * - > with &gt;
+ * - " with &quot;
+ * - ' with &#39;
+ *
+ * @param value - The string to escape. If null or undefined, an empty string is returned.
+ * @returns The escaped string.
+ */
 const escapeHtml = (value: unknown): string => {
     const str = value === null || value === undefined ? "" : String(value);
     return str
@@ -33,9 +45,27 @@ const escapeHtml = (value: unknown): string => {
         .replace(/'/g, "&#39;");
 };
 
+/**
+ * Returns a boolean icon (✅ or ❌) based on the input value.
+ *
+ * @param b - The boolean value to convert to an icon.
+ * @returns "✅" if the input is true, "❌" if the input is false.
+ */
 const booleanIcon = (b: number | boolean) => (b ? "✅" : "❌");
 
-// Map severity to a sortable rank: info < low < medium < high
+/**
+ * Maps severity levels to sortable ranks.
+ *
+ * @param sev - The severity level to map.
+ * @returns A number representing the severity rank.
+ *
+ * The mapping is as follows:
+ * - "info" -> 0
+ * - "low" -> 1
+ * - "medium" -> 2
+ * - "high" -> 3
+ * - Any other value -> 99 (unknown values sort last)
+ */
 const severityRank = (sev: string): number => {
     const s = (sev || "").toString().toLowerCase().trim();
     switch (s) {
@@ -52,7 +82,14 @@ const severityRank = (sev: string): number => {
     }
 };
 
-// Render JS code with highlight.js inside a pre/code block
+/**
+ * Renders JavaScript code with syntax highlighting using highlight.js.
+ *
+ * @param code - The JavaScript code to render. If null or undefined, an empty string is used.
+ * @returns A string containing the rendered code wrapped in a pre/code block with syntax highlighting.
+ *
+ * If the code cannot be highlighted (e.g., due to syntax errors), it falls back to plain text with HTML escaping.
+ */
 const renderJsCode = (code: string | null | undefined): string => {
     const src = code ?? "";
     try {
@@ -64,6 +101,15 @@ const renderJsCode = (code: string | null | undefined): string => {
     }
 };
 
+/**
+ * Generates a DataTables page based on the provided database.
+ *
+ * @param db - The database containing the findings and mapped data.
+ * @returns A string containing the HTML for the DataTables page.
+ *
+ * The function queries the database for findings and mapped data, and generates
+ * a DataTables page with sortable tables for both findings and mapped data.
+ */
 const genDataTablesPage = (db: Database.Database): string => {
     const findings = db.prepare(`SELECT * FROM analysis_findings`).all() as AnalysisFinding[];
     const mapped = db.prepare(`SELECT * FROM mapped`).all() as MappedData[];

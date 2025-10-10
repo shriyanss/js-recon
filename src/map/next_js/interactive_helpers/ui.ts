@@ -1,5 +1,14 @@
 import blessed from "blessed";
 
+/**
+ * Create the UI elements.
+ * @returns {{
+ *   screen: blessed.Widgets.Screen,
+ *   titleBox: blessed.Widgets.BoxElement,
+ *   outputBox: blessed.Widgets.Log,
+ *   inputBox: blessed.Widgets.TextboxElement,
+ * }} Object containing the screen and its associated boxes
+ */
 function createUI() {
     // Create a screen object.
     const screen = blessed.screen({

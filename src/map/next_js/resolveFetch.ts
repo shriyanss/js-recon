@@ -8,6 +8,11 @@ import { Chunks } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
 import * as globals from "../../utility/globals.js";
 
+/**
+ * Resolves fetch instances in the given chunks.
+ * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
+ * @param {string} directory - The directory of the chunk file.
+ */
 const resolveFetch = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving fetch instances"));
 

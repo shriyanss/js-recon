@@ -5,6 +5,17 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
+/**
+ * Finds lazy-loaded JavaScript files from Next.js `_buildManifest.js`.
+ *
+ * Given a URL, this function finds the `_buildManifest.js` file in the given URL or file containing URLs.
+ * It then parses the file with the Babel parser and extracts all string literals from the AST.
+ * Finally, it iterates over the strings and finds any chunks (i.e., URLs containing "static/chunks/").
+ * The function returns an array of absolute URLs pointing to the lazy-loaded JS files found.
+ *
+ * @param {string} url - The URL or path to a file containing a list of URLs to process.
+ * @returns {Promise<string[] | any>} - A promise that resolves to an array of absolute URLs pointing to lazy-loaded JS files found, or undefined for invalid URL.
+ */
 const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string[] | any> => {
     // get the JS URLs
     const foundUrls = globals.getJsUrls();

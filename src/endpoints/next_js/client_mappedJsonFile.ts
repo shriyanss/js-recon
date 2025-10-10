@@ -5,6 +5,12 @@ import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { Chunks } from "../../utility/interfaces.js";
 
+/**
+ * Checks for client-side paths in a mapped JSON file.
+ *
+ * @param {string} filePath - The path to the mapped JSON file
+ * @returns {Promise<string[]>} - A promise that resolves to an array of client-side paths
+ */
 const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
     console.log(chalk.cyan("[i] Checking for client-side paths from mapped JSON file"));
 

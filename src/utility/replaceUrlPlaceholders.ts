@@ -1,3 +1,18 @@
+/**
+ * Replaces all placeholders in a URL with their corresponding OpenAPI placeholder.
+ *
+ * Currently, supports the following placeholders:
+ * - `[MemberExpression -> <member_expression>]`
+ * - `[var <variable_name>]`
+ * - `[unresolved member expression]`
+ * - `[unresolved: <variable_name>]`
+ *
+ * The placeholders are replaced with the following OpenAPI placeholders:
+ * - `{<member_expression>}`
+ * - `{<variable_name>}`
+ * - `{unres_mem_exp_<appearance_count_like_1_and_2_in_case_found_multiple_times>}`
+ * - `{<variable_name>}`
+ */
 const replacePlaceholders = (url: string): string => {
     // match it against multiple regexes and replace with the right placeholder as per the openapi spec
 

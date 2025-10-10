@@ -9,13 +9,9 @@ let queue = 0;
 let max_queue;
 
 /**
- * Given a string of JS content, it finds all the static files used in the
- * file, and returns them as an array.
- *
- * @param {string} js_content - The string of JS content to search through.
- *
- * @returns {string[]} An array of strings, each string being a static file
- * path.
+ * Finds all static JS files from a given JavaScript content.
+ * @param {string} js_content - The JavaScript content to search in.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of static JS file URLs.
  */
 const findStaticFiles = async (js_content) => {
     // do some regex-ing

@@ -1,6 +1,14 @@
 import chalk from "chalk";
 import Database from "better-sqlite3";
 
+/**
+ * Populates the mapped OpenAPI table in the database with the given OpenAPI data.
+ *
+ * @param db - The database to populate
+ * @param openapi - The OpenAPI data to populate the database with
+ *
+ * @returns A promise that resolves when the database is populated
+ */
 const populateMappedOpenapi = async (db: Database.Database, openapi: any) => {
     const insert = db.prepare(
         `INSERT OR REPLACE INTO mapped_openapi (path, method, summary, parameters, requestBody, tags)

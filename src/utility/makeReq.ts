@@ -63,6 +63,20 @@ const UAs = [
     "Firefox/Android: Mozilla/5.0 (Android 11; Mobile; rv:68.0) Gecko/68.0 Firefox/84.0",
 ];
 
+/**
+ * Reads response data from cache for future requests.
+ *
+ * If the cache file exists, and the given URL is present in the cache,
+ * it checks if the response contains the specific request headers. If it does,
+ * it builds a Response object with the cached data and returns it.
+ *
+ * If the response does not contain the request headers, or if the cache file
+ * does not exist, or if the URL is not present in the cache, it returns null.
+ *
+ * @param url - The URL to read the cache for
+ * @param headers - Request headers that were used
+ * @returns A Promise that resolves to a Response object if the cache is found, or null if not
+ */
 const readCache = async (url: string, headers: {}): Promise<Response | null> => {
     // first, check if the file exists or not
     if (!fs.existsSync(globals.getRespCacheFile())) {
@@ -99,7 +113,18 @@ const readCache = async (url: string, headers: {}): Promise<Response | null> => 
     return null;
 };
 
-const writeCache = async (url: string, headers: {}, response: Response) => {
+/**
+ * Writes response data to cache for future requests.
+ *
+ * Stores response body, status, and headers in cache file, handling special
+ * cases like RSC (React Server Components) headers separately.
+ *
+ * @param url - The URL to cache the response for
+ * @param headers - Request headers that were used
+ * @param response - The Response object to cache
+ * @returns Promise that resolves when caching is complete
+ */
+const writeCache = async (url: string, headers: {}, response: Response): Promise<void> => {
     // clone the response
     const clonedResponse = response.clone();
 
@@ -139,10 +164,31 @@ const writeCache = async (url: string, headers: {}, response: Response) => {
     // console.log("wrote cache for ", url);
 };
 
-const makeRequest = async (url: string, args: RequestInit) => {
+/**
+ * Makes a GET request to the given URL and returns the response.
+ *
+ * If caching is enabled, it will first check if the response is cached.
+ * If it is, it will return the cached response. If not, it will make the request
+ * using the given options, and cache the response before returning it.
+ *
+ * If the request fails, it will retry up to 10 times with 0.5s of sleep in between.
+ * If all retries fail, it will return null.
+ *
+ * @param url - The URL to request
+ * @param args - Request options
+ * @returns A Promise that resolves to a Response, or null if all retries fail
+ */
+const makeRequest = async (
+    url: string,
+    args?: Omit<RequestInit, "timeout"> & { timeout?: number }
+): Promise<Response | null> => {
+    const { timeout, ...restArgs } = args || {};
+    const requestOptions: RequestInit = restArgs;
+    const requestTimeout = timeout || globals.getRequestTimeout();
+
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
-        const cachedResponse = await readCache(url, args?.headers || {});
+        const cachedResponse = await readCache(url, requestOptions.headers || {});
         if (cachedResponse !== null) {
             return cachedResponse;
         }
@@ -150,8 +196,8 @@ const makeRequest = async (url: string, args: RequestInit) => {
 
     if (globals.useApiGateway) {
         let get_headers;
-        if (args && args.headers) {
-            get_headers = args.headers;
+        if (requestOptions && requestOptions.headers) {
+            get_headers = requestOptions.headers;
         } else {
             get_headers = {
                 "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
@@ -176,30 +222,26 @@ const makeRequest = async (url: string, args: RequestInit) => {
         }
         return response;
     } else {
-        if (args === undefined || Object.keys(args).length === 0) {
-            args = {
-                headers: {
-                    "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
-                    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Sec-Fetch-Site": "same-origin",
-                    "Sec-Fetch-Mode": "cors",
-                    "Sec-Fetch-Dest": "empty",
-                    Referer: url,
-                    Origin: url,
-                },
-            };
-        }
         let res: Response;
         let counter = 0;
+
         while (true) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+            const currentRequestOptions = {
+                ...requestOptions,
+                signal: controller.signal,
+            };
+
             try {
                 EventEmitter.defaultMaxListeners = 20;
-                res = await fetch(url, args);
+                res = await fetch(url, currentRequestOptions);
+                clearTimeout(timeoutId);
                 if (res) {
                     break;
                 }
             } catch (err) {
+                clearTimeout(timeoutId);
                 counter++;
                 // BUG: https://github.com/nodejs/node/issues/47246
                 // if the header content is too large, it will throw an error like
@@ -213,6 +255,10 @@ const makeRequest = async (url: string, args: RequestInit) => {
                         )
                     );
                     process.exit(21);
+                }
+                if (err.name === "AbortError") {
+                    console.log(chalk.red(`[!] Request to ${url} timed out after ${requestTimeout}ms`));
+                    return null;
                 }
                 if (counter > 10) {
                     console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
@@ -235,7 +281,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
-                args: process.env.IS_DOCKER === "true" ? ["--no-sandbox"] : [],
+                args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
             });
             const page = await browser.newPage();
             await page.goto(url);
@@ -253,7 +299,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
             // if it is, load it in a headless browser
             const browser = await puppeteer.launch({
                 headless: true,
-                args: process.env.IS_DOCKER ? ["--no-sandbox"] : [],
+                args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
             });
             const page = await browser.newPage();
             await page.goto(url);
@@ -271,7 +317,7 @@ const makeRequest = async (url: string, args: RequestInit) => {
         // if cache is enabled, write the response to the cache
         if (!globals.getDisableCache()) {
             const resToCache = preservedRes.clone();
-            await writeCache(url, args?.headers || {}, resToCache);
+            await writeCache(url, requestOptions.headers || {}, resToCache);
         }
         return preservedRes2;
     }

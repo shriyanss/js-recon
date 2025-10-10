@@ -11,6 +11,14 @@ import { resolveNodeValue } from "../utils.js";
 
 const traverse = _traverse.default;
 
+/**
+ * Finds the line number of a target line content in a given file content.
+ * The line number is 1-indexed.
+ *
+ * @param {string} fileContent - The content of the file to search in.
+ * @param {string} targetLineContent - The target line content to search for.
+ * @returns {number} - The line number of the target line content, or 0 if not found.
+ */
 const findLineNumberByContent = (fileContent: string, targetLineContent: string): number => {
     const lines = fileContent.split("\n");
     const trimmedTarget = targetLineContent.trim();
@@ -22,6 +30,16 @@ const findLineNumberByContent = (fileContent: string, targetLineContent: string)
     return 0;
 };
 
+/**
+ * Handles an axios.create() call in a chunk.
+ * @param {NodePath<MemberExpression>} path - The path to the MemberExpression node.
+ * @param {any} ast - The abstract syntax tree of the chunk.
+ * @param {string} chunkCode - The code of the chunk.
+ * @param {string} directory - The directory of the chunk file.
+ * @param {string} chunkName - The name of the chunk.
+ * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
+ * @returns {boolean} - True if this was an axios.create() call and was handled, false otherwise.
+ */
 export const handleAxiosCreate = (
     path: NodePath<MemberExpression>,
     ast: any,
