@@ -32,16 +32,18 @@ const ollama_client = new Ollama({
  * @returns {Object} An object containing the AI client and the configured model.
  */
 const ai = async (): Promise<{ client: OpenAI | Ollama; model: string }> => {
-    let returnVal = { client: undefined, model: globals.getAiModel() };
+    const model = globals.getAiModel();
     const provider = globals.getAiServiceProvider();
 
     if (provider === "openai") {
-        returnVal.client = openai_client;
-    } else if (provider === "ollama") {
-        returnVal.client = ollama_client;
+        return { client: openai_client, model };
     }
 
-    return returnVal;
+    if (provider === "ollama") {
+        return { client: ollama_client, model };
+    }
+
+    throw new Error(`AI service provider "${provider}" is not supported or configured.`);
 };
 
 /**
