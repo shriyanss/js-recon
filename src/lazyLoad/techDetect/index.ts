@@ -198,7 +198,7 @@ const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
     if (hasMainJs) {
         const mainJsRes = await makeRequest(mainJsURL, {});
         const mainJsBody = await mainJsRes.text();
-        
+
         // check if the traces of angular js are present
         // using regex for this, as this is simple and fast
 
@@ -208,13 +208,13 @@ const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
         const isAngularZoneRegex2 = /"isAngularZone"/;
         const ngZoneRegex = /this\.ngZone/;
         const routerLinkRegex = /"routerLink"/;
-        
+
         if (isAngularZoneRegex.test(mainJsBody)) {
             detected = true;
             evidence = "isAngularZone()";
         } else if (isAngularZoneRegex2.test(mainJsBody)) {
             detected = true;
-            evidence = "\"isAngularZone\"";
+            evidence = '"isAngularZone"';
         } else if (ngZoneRegex.test(mainJsBody)) {
             detected = true;
             evidence = "this.ngZone";
@@ -237,7 +237,7 @@ const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
  *   - name: The name of the detected front-end framework.
  *   - evidence: A string with the evidence of the detection, or an empty string if no front-end framework was detected.
  */
-const frameworkDetect = async (url: string) : Promise<{name: string, evidence: string}> => {
+const frameworkDetect = async (url: string): Promise<{ name: string; evidence: string }> => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source
