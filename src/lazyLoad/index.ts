@@ -22,6 +22,9 @@ import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
 
+// Angular
+import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
+
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
@@ -212,6 +215,17 @@ const lazyLoad = async (
             } else if (tech.name === "angular") {
                 console.log(chalk.green("[✓] Angular detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload = [];
+
+                // find the files from the page source
+                const jsFilesFromPageSource = await angular_getFromPageSource(url);
+                jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
             } else {
                 console.log(chalk.red("[!] Framework not detected :("));
                 console.log(chalk.magenta(CONFIG.notFoundMessage));
