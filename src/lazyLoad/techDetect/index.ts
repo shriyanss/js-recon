@@ -203,9 +203,11 @@ const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
         // using regex for this, as this is simple and fast
 
         // check: isAngularZone(), "isAngularZone", this.ngZone
+        // if lazyload enabled, need to check routerlink: `["routerLink",`
         const isAngularZoneRegex = /isAngularZone\(\)/;
         const isAngularZoneRegex2 = /"isAngularZone"/;
         const ngZoneRegex = /this\.ngZone/;
+        const routerLinkRegex = /"routerLink"/;
         
         if (isAngularZoneRegex.test(mainJsBody)) {
             detected = true;
@@ -216,6 +218,9 @@ const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
         } else if (ngZoneRegex.test(mainJsBody)) {
             detected = true;
             evidence = "this.ngZone";
+        } else if (routerLinkRegex.test(mainJsBody)) {
+            detected = true;
+            evidence = "routerLink";
         }
     }
 
