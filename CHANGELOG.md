@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.2-alpha.2 - 2025.10.26
+
+### Added
+
+- Added Angular support to lazyload module
+
+### Changed
+
+### Fixed
+
 ## 1.2.2-alpha.1 - 2025.10.09
 
 ### Added
