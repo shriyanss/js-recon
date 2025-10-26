@@ -24,6 +24,7 @@ import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.
 
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
+import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -221,6 +222,20 @@ const lazyLoad = async (
                 // find the files from the page source
                 const jsFilesFromPageSource = await angular_getFromPageSource(url);
                 jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // files using the main.js
+                let mainJsUrl: string | undefined;
+                for (const jsFile of jsFilesToDownload) {
+                    if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
+                        mainJsUrl = jsFile;
+                        break;
+                    }
+                }
+
+                if (mainJsUrl) {
+                    const jsFilesFromMainJs = await angular_getFromMainJs(url, mainJsUrl);
+                    jsFilesToDownload.push(...jsFilesFromMainJs);
+                }
 
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
