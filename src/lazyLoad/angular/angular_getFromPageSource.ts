@@ -3,10 +3,10 @@ import chalk from "chalk";
 import * as cheerio from "cheerio";
 import resolvePath from "../../utility/resolvePath.js";
 
-const angular_getFromPageSource = async (url:string) => {
+const angular_getFromPageSource = async (url: string) => {
     console.log(chalk.cyan("[i] Analyzing page source"));
 
-    let foundUrls:string[] = [];
+    let foundUrls: string[] = [];
 
     const pageSource = await makeRequest(url, {});
     const body = await pageSource.text();
@@ -29,6 +29,6 @@ const angular_getFromPageSource = async (url:string) => {
     }
 
     return foundUrls;
-}
+};
 
 export default angular_getFromPageSource;

@@ -35,14 +35,14 @@ const angular_getFromMainJs = async (url: string, mainJsUrl: string): Promise<st
     traverse(ast, {
         CallExpression(path) {
             // Check if the callee is an import()
-            if (path.node.callee.type === 'Import') {
+            if (path.node.callee.type === "Import") {
                 const importArg = path.node.arguments[0];
                 // Ensure the first argument is a string literal and extract its value
-                if (importArg && importArg.type === 'StringLiteral') {
+                if (importArg && importArg.type === "StringLiteral") {
                     importDeclarationPaths.push(importArg.value);
                 }
             }
-        }
+        },
     });
 
     // now, resolve the paths
