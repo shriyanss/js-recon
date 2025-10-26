@@ -101,7 +101,7 @@ const lazyLoad = async (
         lazyLoadGlobals.setMaxReqQueue(threads);
 
         const tech = await frameworkDetect(url);
-        globals.setTech(tech ? tech.name : undefined);
+        globals.setTech(tech ? tech.name : "");
 
         if (tech) {
             if (tech.name === "next") {
