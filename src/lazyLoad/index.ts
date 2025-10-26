@@ -209,15 +209,18 @@ const lazyLoad = async (
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 await downloadFiles(jsFilesToDownload, output);
-            }
-        } else {
-            console.log(chalk.red("[!] Framework not detected :("));
-            console.log(chalk.magenta(CONFIG.notFoundMessage));
-            console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-            const js_urls = await downloadLoadedJs(url);
-            if (js_urls && js_urls.length > 0) {
-                console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-                await downloadFiles(js_urls, output);
+            } else if (tech.name === "angular") {
+                console.log(chalk.green("[✓] Angular detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+            } else {
+                console.log(chalk.red("[!] Framework not detected :("));
+                console.log(chalk.magenta(CONFIG.notFoundMessage));
+                console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+                const js_urls = await downloadLoadedJs(url);
+                if (js_urls && js_urls.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+                    await downloadFiles(js_urls, output);
+                }
             }
         }
     }
