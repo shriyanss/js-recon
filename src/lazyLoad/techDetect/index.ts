@@ -165,6 +165,63 @@ const checkSvelte = async ($) => {
     return { detected, evidence };
 };
 
+const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
+    let detected = false;
+    let evidence = "";
+
+    // to detect angular js, first check if it has something like `main-*.js` or `main.js` in script src
+    let hasMainJs = false;
+    let mainJsURL: string | undefined = undefined;
+    $("script").each((_, el) => {
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "src") {
+                    // @ts-ignore
+                    if (attrValue.includes("main-")) {
+                        hasMainJs = true;
+
+                        // if the url starts with `main-...`, then build the full url
+                        if (!attrValue.startsWith("http")) {
+                            mainJsURL = url + `/${attrValue}`; // join using url
+                        } else {
+                            mainJsURL = attrValue;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // now, get the contents of the main.js file
+    if (hasMainJs) {
+        const mainJsRes = await makeRequest(mainJsURL, {});
+        const mainJsBody = await mainJsRes.text();
+        
+        // check if the traces of angular js are present
+        // using regex for this, as this is simple and fast
+
+        // check: isAngularZone(), "isAngularZone", this.ngZone
+        const isAngularZoneRegex = /isAngularZone\(\)/;
+        const isAngularZoneRegex2 = /"isAngularZone"/;
+        const ngZoneRegex = /this\.ngZone/;
+        
+        if (isAngularZoneRegex.test(mainJsBody)) {
+            detected = true;
+            evidence = "isAngularZone()";
+        } else if (isAngularZoneRegex2.test(mainJsBody)) {
+            detected = true;
+            evidence = "\"isAngularZone\"";
+        } else if (ngZoneRegex.test(mainJsBody)) {
+            detected = true;
+            evidence = "this.ngZone";
+        }
+    }
+
+    return { detected, evidence };
+};
+
 /**
  * Detects the front-end framework used in a webpage.
  * It does this by iterating through all HTML tags and checking if any attribute name starts with "data-v-".
@@ -175,7 +232,7 @@ const checkSvelte = async ($) => {
  *   - name: The name of the detected front-end framework.
  *   - evidence: A string with the evidence of the detection, or an empty string if no front-end framework was detected.
  */
-const frameworkDetect = async (url: string) => {
+const frameworkDetect = async (url: string) : Promise<{name: string, evidence: string}> => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source
@@ -213,15 +270,21 @@ const frameworkDetect = async (url: string) => {
     // cheerio to parse the page source
     const $ = cheerio.load(pageSource);
 
+    // there are two checks
+    // one is directly on the response the tool gets by making request with fetch ($)
+    // and the second one is by opening the page in browser, loading content, and then analyzing the page content ($res)
+
     // check all technologies one by one
     const result_checkNextJS = await checkNextJS($);
     const result_checkVueJS = await checkVueJS($);
     const result_checkSvelte = await checkSvelte($);
+    const result_checkAngular = await checkAngularJS($, url);
 
     // now, also check with the res response
     let result_checkNextJS_res = { detected: false, evidence: "" };
     let result_checkVueJS_res = { detected: false, evidence: "" };
     let result_checkSvelte_res = { detected: false, evidence: "" };
+    let result_checkAngularJS_res = { detected: false, evidence: "" };
     let $res;
     // if network error was caused, then return
     if (res === null) {
@@ -232,6 +295,7 @@ const frameworkDetect = async (url: string) => {
         result_checkNextJS_res = await checkNextJS($res);
         result_checkVueJS_res = await checkVueJS($res);
         result_checkSvelte_res = await checkSvelte($res);
+        result_checkAngularJS_res = await checkAngularJS($res, url);
     }
 
     if (result_checkNextJS.detected === true || result_checkNextJS_res.detected === true) {
@@ -255,6 +319,10 @@ const frameworkDetect = async (url: string) => {
         const evidence =
             result_checkSvelte.evidence !== "" ? result_checkSvelte.evidence : result_checkSvelte_res.evidence;
         return { name: "svelte", evidence };
+    } else if (result_checkAngular.detected === true || result_checkAngularJS_res.detected === true) {
+        const evidence =
+            result_checkAngular.evidence !== "" ? result_checkAngular.evidence : result_checkAngularJS_res.evidence;
+        return { name: "angular", evidence };
     }
 
     return null;
