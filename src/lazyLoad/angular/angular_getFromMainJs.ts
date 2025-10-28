@@ -9,7 +9,7 @@ const traverse = _traverse.default;
 /**
  * Parses the main.js file of an Angular application to extract lazy-loaded module paths.
  * It traverses the AST to find dynamic import() expressions and extracts the chunk paths.
- * 
+ *
  * @param mainJsUrl The full URL to the main.js file.
  * @returns A promise that resolves to an array of strings, where each string is a path to a lazy-loaded chunk.
  */
