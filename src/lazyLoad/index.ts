@@ -22,6 +22,10 @@ import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
 
+// Angular
+import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
+import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
+
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
@@ -98,7 +102,7 @@ const lazyLoad = async (
         lazyLoadGlobals.setMaxReqQueue(threads);
 
         const tech = await frameworkDetect(url);
-        globals.setTech(tech ? tech.name : undefined);
+        globals.setTech(tech ? tech.name : "");
 
         if (tech) {
             if (tech.name === "next") {
@@ -209,15 +213,43 @@ const lazyLoad = async (
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 await downloadFiles(jsFilesToDownload, output);
-            }
-        } else {
-            console.log(chalk.red("[!] Framework not detected :("));
-            console.log(chalk.magenta(CONFIG.notFoundMessage));
-            console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-            const js_urls = await downloadLoadedJs(url);
-            if (js_urls && js_urls.length > 0) {
-                console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-                await downloadFiles(js_urls, output);
+            } else if (tech.name === "angular") {
+                console.log(chalk.green("[✓] Angular detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload = [];
+
+                // find the files from the page source
+                const jsFilesFromPageSource = await angular_getFromPageSource(url);
+                jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // files using the main.js
+                let mainJsUrl: string | undefined;
+                for (const jsFile of jsFilesToDownload) {
+                    if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
+                        mainJsUrl = jsFile;
+                        break;
+                    }
+                }
+
+                if (mainJsUrl) {
+                    const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
+                    jsFilesToDownload.push(...jsFilesFromMainJs);
+                }
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
+            } else {
+                console.log(chalk.red("[!] Framework not detected :("));
+                console.log(chalk.magenta(CONFIG.notFoundMessage));
+                console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+                const js_urls = await downloadLoadedJs(url);
+                if (js_urls && js_urls.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+                    await downloadFiles(js_urls, output);
+                }
             }
         }
     }

@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.2.2-alpha.2 - 2025.10.28
+
+### Added
+
+- Added Angular support to lazyload module
+
+### Changed
+
+- Added root path (`/`) to endpoints list for Next.js subsequent requests
+
+### Fixed
+
 ## 1.2.2-alpha.1 - 2025.10.09
 
 ### Added

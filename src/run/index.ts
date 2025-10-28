@@ -80,7 +80,7 @@ const processUrl = async (
         process.exit(10);
     }
 
-    if (globalsUtil.getTech() !== "next") {
+    if (!["next"].includes(globalsUtil.getTech())) {
         console.log(
             chalk.bgYellow(
                 `[!] The tool only supports Next.JS ('next') fully. For ${globalsUtil.getTech()}, only downloading JS files is supported`
