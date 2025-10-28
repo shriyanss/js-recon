@@ -49,7 +49,10 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
         console.log(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
         process.exit(17);
     }
-    const endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
+    let endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
+
+    // add `/` to endpoints
+    endpoints.push("/");
 
     let js_contents = {};
 
