@@ -22,6 +22,10 @@ const angular_getFromPageSource = async (url: string) => {
             // if it starts with http, then push it directly. if no, then resolve it
             if (srcAttr.startsWith("http")) {
                 foundUrls.push(srcAttr);
+            } else if (srcAttr.startsWith("//")) {
+                // get the url protocol and use that
+                const protocol = url.split(":")[0];
+                foundUrls.push(protocol + srcAttr);
             } else {
                 foundUrls.push(await resolvePath(url, srcAttr));
             }
