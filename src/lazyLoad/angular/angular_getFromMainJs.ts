@@ -9,12 +9,11 @@ const traverse = _traverse.default;
 /**
  * Parses the main.js file of an Angular application to extract lazy-loaded module paths.
  * It traverses the AST to find dynamic import() expressions and extracts the chunk paths.
- *
- * @param url The base URL of the target application (not used directly in request, but for context).
+ * 
  * @param mainJsUrl The full URL to the main.js file.
  * @returns A promise that resolves to an array of strings, where each string is a path to a lazy-loaded chunk.
  */
-const angular_getFromMainJs = async (url: string, mainJsUrl: string): Promise<string[]> => {
+const angular_getFromMainJs = async (mainJsUrl: string): Promise<string[]> => {
     console.log(chalk.cyan("[i] Analyzing main.js from", mainJsUrl));
 
     let foundUrls: string[] = [];
