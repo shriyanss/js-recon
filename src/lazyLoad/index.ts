@@ -233,7 +233,7 @@ const lazyLoad = async (
                 }
 
                 if (mainJsUrl) {
-                    const jsFilesFromMainJs = await angular_getFromMainJs(url, mainJsUrl);
+                    const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
                     jsFilesToDownload.push(...jsFilesFromMainJs);
                 }
 
