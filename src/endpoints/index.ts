@@ -90,6 +90,7 @@ const endpoints = async (
             // check if the subsequent requests directory exists
             if (!fs.existsSync(subsequentRequestsDir)) {
                 console.log(chalk.red("[!] Directory containing subsequent requests does not exist"));
+                // TODO: if subsequent requests directory doesn't exist, pass this, and try other methods
                 return;
             }
 
