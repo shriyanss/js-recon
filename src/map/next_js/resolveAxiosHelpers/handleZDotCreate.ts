@@ -33,7 +33,7 @@ const findLineNumberByContent = (fileContent: string, targetLineContent: string)
 /**
  * Handles a pattern like 'n(7066).Z.create()' where Z is a property and create() is a method call.
  * This identifies when an axios client is created in this pattern and tracks its usage.
- * 
+ *
  * @param {NodePath<CallExpression>} path - The path to the CallExpression node.
  * @param {string} chunkCode - The code of the chunk.
  * @param {string} directory - The directory of the chunk file.
@@ -56,10 +56,10 @@ export const handleZDotCreate = (
     }
 
     const calleeNode = path.node.callee;
-    
+
     // Check if the pattern matches n(...).Z.create()
     if (
-        calleeNode.property.type !== "Identifier" || 
+        calleeNode.property.type !== "Identifier" ||
         calleeNode.property.name !== "create" ||
         calleeNode.object.type !== "MemberExpression" ||
         calleeNode.object.property.type !== "Identifier" ||
@@ -98,7 +98,7 @@ export const handleZDotCreate = (
         if (assignment.left.type === "Identifier") {
             axiosCreateVarName = assignment.left.name;
             const axiosCreateLineContent = chunkCode.split("\n")[assignment.loc.start.line - 1];
-            
+
             const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
             axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
         }
@@ -106,9 +106,9 @@ export const handleZDotCreate = (
         const varDeclarator = path.parentPath.node;
         if (varDeclarator.id.type === "Identifier") {
             axiosCreateVarName = varDeclarator.id.name;
-            
+
             const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
-            
+
             const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
             axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
         }
@@ -120,7 +120,7 @@ export const handleZDotCreate = (
                 `[✓] n(${moduleId}).Z.create() assigned to '${axiosCreateVarName}' in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateLineNumber})`
             )
         );
-        
+
         // Extract configuration options from the create() call, like baseURL
         let axiosCreateBaseURL: string;
         const axiosCreateArgs = path.node.arguments;
@@ -136,38 +136,38 @@ export const handleZDotCreate = (
                 }
             }
         }
-        
+
         return axiosCreateVarName;
     }
-    
+
     return "";
 };
 
 /**
  * Gets the HTTP method from a method name, supporting Axios form methods.
- * 
+ *
  * @param {string} methodName - The method name from Axios.
  * @returns {string | null} - The HTTP method, or null if not a valid HTTP method.
  */
 export const getHttpMethodWithForm = (methodName: string): string | null => {
     const upperCaseMethod = methodName.toUpperCase();
     const httpMethods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE", "CONNECT"];
-    
+
     if (httpMethods.includes(upperCaseMethod)) {
         return upperCaseMethod;
     }
-    
+
     // Handle special form methods
     if (methodName === "postForm") return "POST";
     if (methodName === "putForm") return "PUT";
     if (methodName === "patchForm") return "PATCH";
-    
+
     return null;
 };
 
 /**
  * Process an API call made with a Z.create() axios instance.
- * 
+ *
  * @param {NodePath<MemberExpression>} path - The path to the MemberExpression node.
  * @param {string} axiosInstance - The axios instance variable name.
  * @param {string} chunkCode - The code of the chunk.
@@ -185,10 +185,7 @@ export const processZDotCreateCall = (
     chunks: Chunks,
     ast: any
 ) => {
-    if (
-        path.node.object.type !== "Identifier" ||
-        path.node.object.name !== axiosInstance
-    ) {
+    if (path.node.object.type !== "Identifier" || path.node.object.name !== axiosInstance) {
         return;
     }
 
@@ -282,7 +279,9 @@ export const processZDotCreateCall = (
         }
     }
 
-    console.log(chalk.blue(`[+] Found Z.create() axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`));
+    console.log(
+        chalk.blue(`[+] Found Z.create() axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`)
+    );
     console.log(chalk.green(`    URL: ${callUrl}`));
     console.log(chalk.green(`    Method: ${callMethod}`));
     if (callBody) {
