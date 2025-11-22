@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added support for `.Z.create()` axios pattern detection in Next.js
+
 ### Changed
 
 ### Fixed
