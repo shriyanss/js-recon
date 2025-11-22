@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.2-alpha.3 - (unreleased)
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Fixed build ID extraction for Next.js applications when the subsequent requests directory is missing or inaccessible
+
 ## 1.2.2-alpha.2 - 2025.10.26
 
 ### Added
