@@ -184,7 +184,7 @@ const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
 
                         // if the url starts with `main-...`, then build the full url
                         if (!attrValue.startsWith("http")) {
-                            mainJsURL = url + `/${attrValue}`; // join using url
+                            mainJsURL = new URL(attrValue, url).href;
                         } else {
                             mainJsURL = attrValue;
                         }

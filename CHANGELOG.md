@@ -16,12 +16,15 @@
 - Fixed SECURITY issues by upgrading the packages
 
 ## 1.2.2-alpha.2 - 2025.10.26
+## 1.2.2-alpha.2 - 2025.10.28
 
 ### Added
 
 - Added Angular support to lazyload module
 
 ### Changed
+
+- Added root path (`/`) to endpoints list for Next.js subsequent requests
 
 ### Fixed
 
