@@ -76,7 +76,10 @@ const processUrl = async (
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
     if (globalsUtil.getTech() === "") {
-        console.log(chalk.bgRed("[!] Technology not detected. Quitting."));
+        console.log(chalk.bgRed(`[!] Technology not detected. ${isBatch ? "Skipping this target." : "Quitting."}`));
+        if (isBatch) {
+            return;
+        }
         process.exit(10);
     }
 

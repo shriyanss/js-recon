@@ -6,6 +6,7 @@ import { findAxiosClients } from "./resolveAxiosHelpers/findAxiosClients.js";
 import { findAxiosInstance } from "./resolveAxiosHelpers/findAxiosInstance.js";
 import { processAxiosCall } from "./resolveAxiosHelpers/processAxiosCall.js";
 import { ArrowFunctionExpression, FunctionDeclaration, Node } from "@babel/types";
+import { handleZDotCreate, processZDotCreateCall } from "./resolveAxiosHelpers/handleZDotCreate.js";
 
 const traverse = _traverse.default;
 
@@ -57,9 +58,10 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
         return;
     }
 
-    for (const chunkName of Object.keys(axiosImportedTo)) {
+    for (const chunkName of Object.keys(chunks)) {
         const chunk = chunks[chunkName];
         const chunkCode = chunk.code;
+        let axiosCallsFound = false;
 
         const ast = parser.parse(chunkCode, {
             sourceType: "unambiguous",
@@ -67,23 +69,55 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
             errorRecovery: true,
         });
 
-        const thirdArg = getThirdArg(ast);
+        // First, check for the n(...).Z.create() pattern
+        const zDotCreateInstances: { [key: string]: string } = {};
 
-        if (thirdArg) {
-            const axiosInstance = findAxiosInstance(ast, thirdArg, axiosImportedTo[chunkName], chunkName);
+        traverse(ast, {
+            CallExpression(path) {
+                const axiosVarName = handleZDotCreate(path, chunkCode, directory, chunkName, chunks, axiosExportedTo);
+                if (axiosVarName) {
+                    zDotCreateInstances[axiosVarName] = axiosVarName;
+                }
+            },
+        });
 
-            if (axiosInstance) {
-                traverse(ast, {
-                    MemberExpression(path) {
-                        processAxiosCall(path, axiosInstance, chunkCode, directory, chunkName, chunks, ast);
-                    },
-                });
+        // Process any found Z.create instances
+        for (const axiosVarName of Object.keys(zDotCreateInstances)) {
+            traverse(ast, {
+                MemberExpression(path) {
+                    processZDotCreateCall(path, axiosVarName, chunkCode, directory, chunkName, chunks, ast);
+                },
+            });
+            axiosCallsFound = true;
+        }
+
+        // Process regular axios instances
+        if (Object.keys(axiosImportedTo).includes(chunkName)) {
+            const thirdArg = getThirdArg(ast);
+
+            if (thirdArg) {
+                const axiosInstance = findAxiosInstance(ast, thirdArg, axiosImportedTo[chunkName], chunkName);
+
+                if (axiosInstance) {
+                    traverse(ast, {
+                        MemberExpression(path) {
+                            processAxiosCall(path, axiosInstance, chunkCode, directory, chunkName, chunks, ast);
+                        },
+                    });
+                    axiosCallsFound = true;
+                }
             } else {
-                console.log(chalk.yellow(`[!] No axios instance found in ${chunkName}`));
+                // This case might not be an error, just a different pattern.
+                // console.log(chalk.yellow(`[!] Could not find a function with 3 arguments in ${chunkName}`));
             }
-        } else {
-            // This case might not be an error, just a different pattern.
-            // console.log(chalk.yellow(`[!] Could not find a function with 3 arguments in ${chunkName}`));
+        }
+
+        if (
+            !axiosCallsFound &&
+            Object.keys(axiosImportedTo).includes(chunkName) &&
+            Object.keys(zDotCreateInstances).length !== 0
+        ) {
+            console.log(chalk.yellow(`[!] No axios calls found in ${chunkName}`));
         }
     }
 };
