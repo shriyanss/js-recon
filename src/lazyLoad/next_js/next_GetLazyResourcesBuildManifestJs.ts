@@ -35,37 +35,45 @@ const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string
     }
 
     // get the contents of that
-    let buildManifestContent = await (await makeRequest(buildManifestUrl, {})).text();
+    try {
+        const response = await makeRequest(buildManifestUrl, {});
+        if (!response) return [];
 
-    // parse it with babel parser
-    const ast = parser.parse(buildManifestContent, {
-        sourceType: "unambiguous",
-        plugins: ["jsx", "typescript"],
-        errorRecovery: true,
-    });
+        let buildManifestContent = await response.text();
 
-    let strings: string[] = [];
+        // parse it with babel parser
+        const ast = parser.parse(buildManifestContent, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
 
-    traverse(ast, {
-        StringLiteral(path) {
-            strings.push(path.node.value);
-        },
-    });
+        let strings: string[] = [];
 
-    // iterate over the strings, and find the chunks
+        traverse(ast, {
+            StringLiteral(path) {
+                strings.push(path.node.value);
+            },
+        });
 
-    for (const stringTxt of strings) {
-        if (stringTxt.includes("static/chunks/")) {
-            // a chunk is found
-            // bui;d the relative URL
-            const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl).href;
-            globals.pushToJsUrls(foundUrl);
-            toReturn.push(foundUrl);
+        // iterate over the strings, and find the chunks
+
+        for (const stringTxt of strings) {
+            if (stringTxt.includes("static/chunks/")) {
+                // a chunk is found
+                // bui;d the relative URL
+                const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl).href;
+                globals.pushToJsUrls(foundUrl);
+                toReturn.push(foundUrl);
+            }
         }
-    }
 
-    if (toReturn.length > 0) {
-        console.log(chalk.green(`[✓] Found ${toReturn.length} JS files from _buildManifest.js`));
+        if (toReturn.length > 0) {
+            console.log(chalk.green(`[✓] Found ${toReturn.length} JS files from _buildManifest.js`));
+        }
+    } catch (err) {
+        // This is expected if the file is not found or is not a JS file
+        // console.log(chalk.red(`[!] Failed to parse _buildManifest.js: ${err.message}`));
     }
 
     return toReturn;

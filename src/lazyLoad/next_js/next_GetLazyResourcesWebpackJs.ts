@@ -197,7 +197,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
             }
         }
     } catch (err) {
-        console.error("Unsafe or invalid code:", err.message);
+        console.error(chalk.red("Unsafe or invalid code:", err.message));
         return [];
     }
 

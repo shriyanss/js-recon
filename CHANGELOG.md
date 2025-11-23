@@ -1,5 +1,20 @@
 # Change Log
 
+## 1.2.2-alpha.3 - (2025.10.23)
+
+### Added
+
+- Added support for `.Z.create()` axios pattern detection in Next.js
+
+### Changed
+
+### Fixed
+
+- Fixed build ID extraction for Next.js applications when the subsequent requests directory is missing or inaccessible
+- Fixed handling of exit when tech in one target can't be detected
+- Fixed syntax error issue in Next.js build manifest parsing
+- Fixed SECURITY issues by upgrading the packages
+
 ## 1.2.2-alpha.2 - 2025.10.28
 
 ### Added
