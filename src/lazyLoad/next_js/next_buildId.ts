@@ -1,10 +1,22 @@
 import { readdir, readFile } from "fs/promises";
 import path from "path";
 import * as next_globals from "./next_globals.js";
+import { Dirent } from "fs";
+import chalk from "chalk";
 
 export const next_buildId_RSC = async (rsc_directory: string): Promise<string | null> => {
     const traverseDirectory = async (directory: string): Promise<boolean> => {
-        const dirents = await readdir(directory, { withFileTypes: true });
+        let dirents: Dirent<string>[];
+        try {
+            dirents = await readdir(directory, { withFileTypes: true });
+        } catch {
+            console.log(
+                chalk.red(
+                    `[!] Can't read subsequent requests directory. Skipping build ID extraction using this method...`
+                )
+            );
+            return false;
+        }
 
         for (const dirent of dirents) {
             const fullPath = path.join(directory, dirent.name);
