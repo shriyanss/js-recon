@@ -12,6 +12,7 @@
 
 - Fixed build ID extraction for Next.js applications when the subsequent requests directory is missing or inaccessible
 - Fixed handling of exit when tech in one target can't be detected
+- Fixed syntax error issue in Next.js build manifest parsing
 
 ## 1.2.2-alpha.2 - 2025.10.26
 
