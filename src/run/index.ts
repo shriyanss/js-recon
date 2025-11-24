@@ -27,9 +27,11 @@ const getCdnDir = async (host: string, outputDir: string): Promise<string | unde
     for (const url of getJsUrls()) {
         if (url.includes("_next/static/chunks")) {
             // check if the host and url.host match
-            const urlHost = new URL(url).host.replace(":", "_");
-            if (urlHost !== host) {
-                cdnDir = path.join(outputDir, urlHost);
+            const urlHostDir = new URL(url).host.replace(":", "_"); // e.g. example.com_8443
+            const urlHost = new URL(url).host; // e.g. example.com:8443
+            const initialHost = new URL(host).host; // e.g. example.com:443 
+            if (urlHost !== initialHost) {
+                cdnDir = path.join(outputDir, urlHostDir);
                 break;
             }
         }

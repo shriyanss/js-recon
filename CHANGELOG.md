@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.2.2-alpha.4 - (unreleased)
+
+### Added
+
+- Added support for direct axios calls like `axios.Z.get()` for Next.js
+
+### Changed
+
+### Fixed
+
+- Fixed CDN handling for Next.js applications with custom ports
+
 ## 1.2.2-alpha.3 - (2025.10.23)
 
 ### Added

@@ -44,7 +44,7 @@ const getAxiosInstances = async (chunks: Chunks, output: string, formats: string
         }
 
         if (axiosDetected) {
-            chunkCopy[chunk.id].isAxiosClient = true;
+            chunkCopy[chunk.id].isAxiosLibrary = true;
             if (chunks[chunk.id].description === "none") {
                 chunkCopy[chunk.id].description = "Axios library";
             }
