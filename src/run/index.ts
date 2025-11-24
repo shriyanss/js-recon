@@ -29,7 +29,7 @@ const getCdnDir = async (host: string, outputDir: string): Promise<string | unde
             // check if the host and url.host match
             const urlHostDir = new URL(url).host.replace(":", "_"); // e.g. example.com_8443
             const urlHost = new URL(url).host; // e.g. example.com:8443
-            const initialHost = new URL(host).host; // e.g. example.com:443 
+            const initialHost = new URL(host).host; // e.g. example.com:443
             if (urlHost !== initialHost) {
                 cdnDir = path.join(outputDir, urlHostDir);
                 break;

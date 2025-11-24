@@ -107,7 +107,15 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                 const thirdArg = getThirdArg(ast);
 
                 if (thirdArg) {
-                    directCallsWithoutAssignment(ast, thirdArg, importedAxiosLib, chunkCode, directory, chunkName, chunks);
+                    directCallsWithoutAssignment(
+                        ast,
+                        thirdArg,
+                        importedAxiosLib,
+                        chunkCode,
+                        directory,
+                        chunkName,
+                        chunks
+                    );
                     axiosCallsFound = true;
                 }
             }
