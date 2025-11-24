@@ -101,7 +101,9 @@ export const processDirectAxiosCall = (
         }
     }
 
-    console.log(chalk.blue(`[+] Found direct axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`));
+    console.log(
+        chalk.blue(`[+] Found direct axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`)
+    );
     console.log(chalk.green(`    URL: ${callUrl}`));
     console.log(chalk.green(`    Method: ${callMethod}`));
     if (callBody) {
