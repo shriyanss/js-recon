@@ -26,7 +26,7 @@ const commandHelpers = {
     axiosClientsMenu: (chunks: Chunks) => {
         let returnText = chalk.cyan("List of chunks that are axios clients\n");
         for (const chunk of Object.values(chunks)) {
-            if (chunk.isAxiosClient) {
+            if (chunk.isAxiosLibrary) {
                 returnText += chalk.green(`- ${chunk.id}: ${chunk.file} (${chunk.description})\n`);
             }
         }
