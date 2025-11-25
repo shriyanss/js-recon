@@ -546,10 +546,15 @@ const extractApiCalls = (
                     for (const prop of configArg.properties) {
                         if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                             const propName = prop.key.name;
-                            
+
                             // Use resolveNodeValue for better resolution
-                            const resolvedValue = resolveNodeValue(prop.value, path.scope, chunkCode.substring(prop.value.start, prop.value.end), "axios");
-                            
+                            const resolvedValue = resolveNodeValue(
+                                prop.value,
+                                path.scope,
+                                chunkCode.substring(prop.value.start, prop.value.end),
+                                "axios"
+                            );
+
                             if (propName === "url") {
                                 // Handle both string and resolved values
                                 if (typeof resolvedValue === "string") {
