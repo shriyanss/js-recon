@@ -298,6 +298,7 @@ export interface OpenapiOutputItem {
     chunkId: string;
     functionFile: string;
     functionFileLine: number;
+    crossChunkParams?: Array<{chunkId: string, params: string, file: string, line: number}>;
 }
 /** Array of OpenAPI output items */
 export let openapiOutput: OpenapiOutputItem[] = [];

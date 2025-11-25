@@ -5,6 +5,8 @@ import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import * as fs from "fs";
 import * as globals from "../../../utility/globals.js";
 import chalk from "chalk";
+import parser from "@babel/parser";
+import { findCrossChunkParameters } from "./findCrossChunkParams.js";
 
 const traverse = _traverse.default;
 
@@ -207,6 +209,9 @@ export const processExportedEndpoints = (
                             console.log(chalk.green(`    Params/Body: ${params}`));
                         }
                         
+                        // Find cross-chunk parameters for this endpoint
+                        const crossChunkParams = findCrossChunkParameters(chunkName, exportKey, chunks, directory);
+                        
                         // Add to the API collection
                         globals.addOpenapiOutput({
                             url: endpoint || "",
@@ -217,6 +222,7 @@ export const processExportedEndpoints = (
                             chunkId: chunkName,
                             functionFile: functionFile,
                             functionFileLine: functionFileLine,
+                            crossChunkParams: crossChunkParams
                         });
                     }
                 }
@@ -308,6 +314,9 @@ export const processExportedEndpoints = (
                             console.log(chalk.green(`    Params/Body: ${params}`));
                         }
                         
+                        // Find cross-chunk parameters for this endpoint
+                        const crossChunkParams = findCrossChunkParameters(chunkName, exportKey, chunks, directory);
+                        
                         // Add to the API collection
                         globals.addOpenapiOutput({
                             url: endpoint || "",
@@ -318,6 +327,7 @@ export const processExportedEndpoints = (
                             chunkId: chunkName,
                             functionFile: functionFile,
                             functionFileLine: functionFileLine,
+                            crossChunkParams: crossChunkParams
                         });
                     }
                 }
