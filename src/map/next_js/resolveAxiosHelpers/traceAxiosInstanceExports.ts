@@ -6,6 +6,7 @@ import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import chalk from "chalk";
 import * as globals from "../../../utility/globals.js";
 import { getThirdArg } from "../resolveAxios.js";
+import { resolveNodeValue } from "../utils.js";
 
 const traverse = _traverse.default;
 
@@ -614,18 +615,41 @@ const extractApiCalls = (
                     for (const prop of configArg.properties) {
                         if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                             const propName = prop.key.name;
-                            const propValue = astNodeToJsonString(prop.value, chunkCode);
-
+                            
+                            // Use resolveNodeValue for better resolution
+                            const resolvedValue = resolveNodeValue(prop.value, path.scope, chunkCode.substring(prop.value.start, prop.value.end), "axios");
+                            
                             if (propName === "url") {
-                                url = propValue;
+                                // Handle both string and resolved values
+                                if (typeof resolvedValue === "string") {
+                                    url = resolvedValue;
+                                } else {
+                                    url = JSON.stringify(resolvedValue);
+                                }
                             } else if (propName === "method") {
-                                method = propValue.replace(/"/g, "").toUpperCase();
+                                if (typeof resolvedValue === "string") {
+                                    method = resolvedValue.replace(/"/g, "").toUpperCase();
+                                } else {
+                                    method = String(resolvedValue).replace(/"/g, "").toUpperCase();
+                                }
                             } else if (propName === "data") {
-                                data = propValue;
+                                if (typeof resolvedValue === "object" && resolvedValue !== null) {
+                                    data = JSON.stringify(resolvedValue);
+                                } else {
+                                    data = String(resolvedValue);
+                                }
                             } else if (propName === "params") {
-                                params = propValue;
+                                if (typeof resolvedValue === "object" && resolvedValue !== null) {
+                                    params = JSON.stringify(resolvedValue);
+                                } else {
+                                    params = String(resolvedValue);
+                                }
                             } else if (propName === "headers") {
-                                headers = propValue;
+                                if (typeof resolvedValue === "object" && resolvedValue !== null) {
+                                    headers = JSON.stringify(resolvedValue);
+                                } else {
+                                    headers = String(resolvedValue);
+                                }
                             }
                         }
                     }
