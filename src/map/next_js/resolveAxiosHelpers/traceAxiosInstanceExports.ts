@@ -18,7 +18,7 @@ interface AxiosInstanceInfo {
 
 /**
  * Recursively trace axios instance exports across chunks
- * 
+ *
  * @param {string} sourceChunkId - The chunk ID where the axios instance was created
  * @param {string} axiosVarName - The variable name holding the axios instance
  * @param {Chunks} chunks - Dictionary of all chunks
@@ -45,61 +45,40 @@ export const traceAxiosInstanceExports = (
 
     // Step 1: Find if the axios instance is exported from this chunk
     const exportName = findAxiosInstanceExport(sourceChunkId, axiosVarName, chunks);
-    
+
     if (!exportName) {
-        console.log(
-            chalk.yellow(
-                `    [!] Axios instance '${axiosVarName}' in chunk ${sourceChunkId} is not exported`
-            )
-        );
+        console.log(chalk.yellow(`    [!] Axios instance '${axiosVarName}' in chunk ${sourceChunkId} is not exported`));
         return;
     }
 
     console.log(
-        chalk.blue(
-            `    [→] Axios instance '${axiosVarName}' exported as '${exportName}' from chunk ${sourceChunkId}`
-        )
+        chalk.blue(`    [→] Axios instance '${axiosVarName}' exported as '${exportName}' from chunk ${sourceChunkId}`)
     );
 
     // Step 2: Find all chunks that import this chunk
     const importingChunks = findImportingChunks(sourceChunkId, chunks);
-    
+
     if (importingChunks.length === 0) {
         console.log(
-            chalk.yellow(
-                `    [!] No chunks import the axios instance '${exportName}' from chunk ${sourceChunkId}`
-            )
+            chalk.yellow(`    [!] No chunks import the axios instance '${exportName}' from chunk ${sourceChunkId}`)
         );
         return;
     }
 
     console.log(
-        chalk.blue(
-            `    [→] Found ${importingChunks.length} chunk(s) importing axios instance '${exportName}'`
-        )
+        chalk.blue(`    [→] Found ${importingChunks.length} chunk(s) importing axios instance '${exportName}'`)
     );
 
     // Step 3: Process each importing chunk
     for (const importingChunkId of importingChunks) {
-        processImportingChunk(
-            importingChunkId,
-            sourceChunkId,
-            exportName,
-            chunks,
-            directory,
-            visited
-        );
+        processImportingChunk(importingChunkId, sourceChunkId, exportName, chunks, directory, visited);
     }
 };
 
 /**
  * Find if an axios instance variable is exported from a chunk
  */
-const findAxiosInstanceExport = (
-    chunkId: string,
-    axiosVarName: string,
-    chunks: Chunks
-): string | null => {
+const findAxiosInstanceExport = (chunkId: string, axiosVarName: string, chunks: Chunks): string | null => {
     const chunk = chunks[chunkId];
     if (!chunk || !chunk.exports || chunk.exports.length === 0) {
         return null;
@@ -130,8 +109,7 @@ const findAxiosInstanceExport = (
                 for (const prop of exportsObj.properties) {
                     if (
                         prop.type === "ObjectProperty" &&
-                        (prop.value.type === "FunctionExpression" ||
-                            prop.value.type === "ArrowFunctionExpression")
+                        (prop.value.type === "FunctionExpression" || prop.value.type === "ArrowFunctionExpression")
                     ) {
                         let exportName = "";
                         if (prop.key.type === "Identifier") {
@@ -211,11 +189,7 @@ const processImportingChunk = (
     // Get the third argument (import function)
     const thirdArg = getThirdArg(ast);
     if (!thirdArg) {
-        console.log(
-            chalk.yellow(
-                `    [!] Could not find third argument in chunk ${importingChunkId}`
-            )
-        );
+        console.log(chalk.yellow(`    [!] Could not find third argument in chunk ${importingChunkId}`));
         return;
     }
 
@@ -231,55 +205,31 @@ const processImportingChunk = (
     }
 
     console.log(
-        chalk.blue(
-            `    [→] In chunk ${importingChunkId}, axios instance imported as '${importVarName}.${exportName}'`
-        )
+        chalk.blue(`    [→] In chunk ${importingChunkId}, axios instance imported as '${importVarName}.${exportName}'`)
     );
 
     // Check if this chunk uses or re-exports the axios instance
     const isReexported = checkIfReexported(ast, importVarName, exportName, chunks, importingChunkId);
-    
+
     if (isReexported.reexported) {
         console.log(
-            chalk.magenta(
-                `    [↻] Axios instance re-exported from chunk ${importingChunkId}, tracing further...`
-            )
+            chalk.magenta(`    [↻] Axios instance re-exported from chunk ${importingChunkId}, tracing further...`)
         );
         // Recursively trace the re-export
-        traceAxiosInstanceExports(
-            importingChunkId,
-            isReexported.localVarName!,
-            chunks,
-            directory,
-            visited
-        );
+        traceAxiosInstanceExports(importingChunkId, isReexported.localVarName!, chunks, directory, visited);
     } else {
         // This chunk uses the axios instance, extract API calls
         console.log(
-            chalk.greenBright(
-                `    [✓] Chunk ${importingChunkId} uses the axios instance, extracting API calls...`
-            )
+            chalk.greenBright(`    [✓] Chunk ${importingChunkId} uses the axios instance, extracting API calls...`)
         );
-        extractApiCalls(
-            ast,
-            chunkCode,
-            importVarName,
-            exportName,
-            importingChunkId,
-            chunks,
-            directory
-        );
+        extractApiCalls(ast, chunkCode, importVarName, exportName, importingChunkId, chunks, directory);
     }
 };
 
 /**
  * Find the variable that imports the source chunk
  */
-const findImportVariable = (
-    ast: any,
-    thirdArg: string,
-    sourceChunkId: string
-): string | null => {
+const findImportVariable = (ast: any, thirdArg: string, sourceChunkId: string): string | null => {
     let importVar: string | null = null;
 
     traverse(ast, {
@@ -336,11 +286,7 @@ const checkIfReexported = (
                     path.node.right.type === "CallExpression")
             ) {
                 // Check if the function body contains a call to importVar.exportName
-                const containsAxiosCall = checkNodeForAxiosCall(
-                    path.node.right,
-                    importVarName,
-                    exportName
-                );
+                const containsAxiosCall = checkNodeForAxiosCall(path.node.right, importVarName, exportName);
 
                 if (containsAxiosCall) {
                     localVarName = path.node.left.name;
@@ -358,11 +304,7 @@ const checkIfReexported = (
                     path.node.init.type === "FunctionExpression" ||
                     path.node.init.type === "CallExpression")
             ) {
-                const containsAxiosCall = checkNodeForAxiosCall(
-                    path.node.init,
-                    importVarName,
-                    exportName
-                );
+                const containsAxiosCall = checkNodeForAxiosCall(path.node.init, importVarName, exportName);
 
                 if (containsAxiosCall) {
                     localVarName = path.node.id.name;
@@ -391,11 +333,7 @@ const checkIfReexported = (
 /**
  * Check if a node contains a call to the axios instance (recursive AST inspection)
  */
-const checkNodeForAxiosCall = (
-    node: any,
-    importVarName: string,
-    exportName: string
-): boolean => {
+const checkNodeForAxiosCall = (node: any, importVarName: string, exportName: string): boolean => {
     if (!node) return false;
 
     // Check if this node is a call expression to our axios instance
@@ -488,11 +426,7 @@ const checkNodeForAxiosCall = (
 /**
  * Check if a variable is exported with a given export name
  */
-const checkIfVariableIsExported = (
-    ast: any,
-    exportName: string,
-    varName: string
-): boolean => {
+const checkIfVariableIsExported = (ast: any, exportName: string, varName: string): boolean => {
     let isExported = false;
 
     traverse(ast, {
@@ -522,10 +456,7 @@ const checkIfVariableIsExported = (
                                 prop.value.type === "FunctionExpression" ||
                                 prop.value.type === "ArrowFunctionExpression"
                             ) {
-                                if (
-                                    prop.value.body &&
-                                    prop.value.body.type === "BlockStatement"
-                                ) {
+                                if (prop.value.body && prop.value.body.type === "BlockStatement") {
                                     for (const stmt of prop.value.body.body) {
                                         if (
                                             stmt.type === "ReturnStatement" &&
@@ -604,7 +535,7 @@ const extractApiCalls = (
 
             if (isTargetCall && path.node.arguments.length > 0) {
                 const configArg = path.node.arguments[0];
-                
+
                 if (configArg.type === "ObjectExpression") {
                     let url = "";
                     let method = "";
@@ -661,11 +592,7 @@ const extractApiCalls = (
 
                     const lines = codeFileContent.split("\n");
                     for (let i = 0; i < lines.length; i++) {
-                        if (
-                            lines[i].includes(
-                                callSnippet.trim().substring(0, Math.min(callSnippet.length, 30))
-                            )
-                        ) {
+                        if (lines[i].includes(callSnippet.trim().substring(0, Math.min(callSnippet.length, 30)))) {
                             functionFileLine = i + 1;
                             break;
                         }
@@ -693,7 +620,7 @@ const extractApiCalls = (
                             parsedHeaders = { _raw: headers };
                         }
                     }
-                    
+
                     globals.addOpenapiOutput({
                         url: url || "",
                         method: method || "",
