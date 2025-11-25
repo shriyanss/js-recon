@@ -8,6 +8,7 @@ import { Chunks } from "../../../utility/interfaces.js";
 import * as globals from "../../../utility/globals.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import { resolveNodeValue } from "../utils.js";
+import { traceAxiosInstanceExports } from "./traceAxiosInstanceExports.js";
 
 const traverse = _traverse.default;
 
@@ -51,15 +52,52 @@ export const handleAxiosCreate = (
     let axiosCreateVarName = "";
     let axiosCreateLineNumber = 0;
 
-    if (path.parentPath.isCallExpression() && path.parentPath.parentPath.isVariableDeclarator()) {
-        const varDeclarator = path.parentPath.parentPath.node;
-        if (varDeclarator.id.type === "Identifier") {
-            axiosCreateVarName = varDeclarator.id.name;
-
-            const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
-
-            const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
-            axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
+    // Find the wrapper function that contains the axios.create() call
+    // Pattern: p = ((t) => { let e = n.Z.create({...}) })
+    // We want 'p', not 'e'
+    
+    // First, traverse up to find if we're inside a function
+    let wrapperFunction = path.findParent((p) => 
+        p.isArrowFunctionExpression() || p.isFunctionExpression()
+    );
+    
+    if (wrapperFunction) {
+        // Now check if this function is assigned to a variable or wrapped in a call expression
+        let assignmentParent = wrapperFunction.findParent((p) => 
+            p.isAssignmentExpression() || p.isVariableDeclarator()
+        );
+        
+        if (assignmentParent) {
+            if (assignmentParent.isAssignmentExpression()) {
+                // Pattern: p = ((t) => {...})
+                const assignment = assignmentParent.node;
+                if (assignment.left.type === "Identifier") {
+                    axiosCreateVarName = assignment.left.name;
+                    const axiosCreateLineContent = chunkCode.split("\n")[assignment.loc.start.line - 1];
+                    const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
+                    axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
+                }
+            } else if (assignmentParent.isVariableDeclarator()) {
+                // Pattern: const p = ((t) => {...})
+                const varDeclarator = assignmentParent.node;
+                if (varDeclarator.id.type === "Identifier") {
+                    axiosCreateVarName = varDeclarator.id.name;
+                    const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
+                    const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
+                    axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
+                }
+            }
+        }
+    } else {
+        // Fallback to old logic if not wrapped in a function
+        if (path.parentPath.isCallExpression() && path.parentPath.parentPath.isVariableDeclarator()) {
+            const varDeclarator = path.parentPath.parentPath.node;
+            if (varDeclarator.id.type === "Identifier") {
+                axiosCreateVarName = varDeclarator.id.name;
+                const axiosCreateLineContent = chunkCode.split("\n")[varDeclarator.loc.start.line - 1];
+                const chunkFile = fs.readFileSync(fsPath.join(directory, chunks[chunkName].file), "utf-8");
+                axiosCreateLineNumber = findLineNumberByContent(chunkFile, axiosCreateLineContent);
+            }
         }
     }
 
@@ -69,6 +107,10 @@ export const handleAxiosCreate = (
                 `[✓] axios.create() assigned to '${axiosCreateVarName}' in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateLineNumber})`
             )
         );
+
+        // Trace if this axios instance is exported and re-used in other chunks
+        console.log(chalk.blue(`    [→] Tracing axios instance '${axiosCreateVarName}' exports...`));
+        traceAxiosInstanceExports(chunkName, axiosCreateVarName, chunks, directory);
 
         // get the arguments of this axios create. Like .create({})
         let axiosCreateBaseURL: string;
