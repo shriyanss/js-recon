@@ -16,7 +16,7 @@ const traverse = _traverse.default;
  * @param {Node} ast - The abstract syntax tree of the function.
  * @returns {string} - The name of the third argument.
  */
-const getThirdArg = (ast: Node): string => {
+export const getThirdArg = (ast: Node): string => {
     let thirdArg = "";
     traverse(ast, {
         enter(path) {
