@@ -4,6 +4,7 @@ import * as fs from "fs";
 import parser from "@babel/parser";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import chalk from "chalk";
+import pathModule from "path";
 
 const traverse = _traverse.default;
 
@@ -302,7 +303,7 @@ export const findCrossChunkParameters = (
                                         const params = astNodeToJsonString(arg, chunkCode);
                                         
                                         // Find the line number in the file
-                                        const functionFile = `${directory}/${importingChunk.file}`;
+                                        const functionFile = pathModule.join(directory, importingChunk.file);
                                         const codeFileContent = fs.readFileSync(functionFile, "utf-8");
                                         let functionFileLine = -1;
                                         
