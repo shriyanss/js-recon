@@ -121,7 +121,7 @@ export const handleZDotCreate = (
                 `[✓] .Z.create() assigned to '${axiosCreateVarName}' in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateLineNumber})`
             )
         );
-        
+
         // After detecting Z.create(), check for exported endpoint wrappers
         if (chunks[chunkName].exports && chunks[chunkName].exports.length > 1) {
             // Get the AST from the program parent scope to use for traversal

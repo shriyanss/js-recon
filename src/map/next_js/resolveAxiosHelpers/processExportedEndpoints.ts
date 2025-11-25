@@ -33,28 +33,29 @@ export const processExportedEndpoints = (
     const exportMap: { [key: string]: string } = {};
     const axiosMethodVars: { [key: string]: string } = {};
     let axiosMethodsFound = false;
-    
+
     // Step 1: Find the destructuring assignment for axios methods
     // Example: let {request: s, get: o, post: a} = i
     traverse(ast, {
         VariableDeclarator(path) {
             if (
                 path.node.init &&
-                path.node.init.type === "Identifier" && 
+                path.node.init.type === "Identifier" &&
                 path.node.init.name === axiosInstance &&
                 path.node.id.type === "ObjectPattern"
             ) {
                 // Found the destructuring of the axios instance
                 axiosMethodsFound = true;
-                
+
                 for (const prop of path.node.id.properties) {
-                    if (prop.type === "ObjectProperty" && 
-                        prop.key.type === "Identifier" && 
-                        prop.value.type === "Identifier") {
-                        
+                    if (
+                        prop.type === "ObjectProperty" &&
+                        prop.key.type === "Identifier" &&
+                        prop.value.type === "Identifier"
+                    ) {
                         const methodName = prop.key.name; // e.g., "get", "post"
                         const varName = prop.value.name; // e.g., "o", "a"
-                        
+
                         // Store the mapping of variable names to HTTP methods
                         axiosMethodVars[varName] = methodName;
                     }
@@ -62,32 +63,32 @@ export const processExportedEndpoints = (
             }
         },
     });
-    
+
     if (!axiosMethodsFound) {
         return; // No axios method destructuring found
     }
-    
+
     // Step 2: Find the exports and their corresponding variable names
     // Example: n.d(t, { FX: function() { return l } })
     traverse(ast, {
         CallExpression(path) {
             const callee = path.node.callee;
             if (
-                callee.type === "MemberExpression" && 
-                callee.object.type === "Identifier" && 
-                callee.property.type === "Identifier" && 
+                callee.type === "MemberExpression" &&
+                callee.object.type === "Identifier" &&
+                callee.property.type === "Identifier" &&
                 callee.property.name === "d" &&
-                path.node.arguments.length >= 2 && 
+                path.node.arguments.length >= 2 &&
                 path.node.arguments[1].type === "ObjectExpression"
             ) {
                 // This is likely the n.d(t, {exports}) pattern
                 const exportsObj = path.node.arguments[1];
-                
+
                 for (const prop of exportsObj.properties) {
-                    if (prop.type === "ObjectProperty" && 
-                        (prop.value.type === "FunctionExpression" ||
-                        prop.value.type === "ArrowFunctionExpression")) {
-                        
+                    if (
+                        prop.type === "ObjectProperty" &&
+                        (prop.value.type === "FunctionExpression" || prop.value.type === "ArrowFunctionExpression")
+                    ) {
                         // Get the export name
                         let exportName = "";
                         if (prop.key.type === "Identifier") {
@@ -95,14 +96,15 @@ export const processExportedEndpoints = (
                         } else if (prop.key.type === "StringLiteral") {
                             exportName = prop.key.value;
                         }
-                        
+
                         // Find the return statement in the function body
                         if (prop.value.body && prop.value.body.type === "BlockStatement") {
                             for (const stmt of prop.value.body.body) {
-                                if (stmt.type === "ReturnStatement" && 
-                                    stmt.argument && 
-                                    stmt.argument.type === "Identifier") {
-                                    
+                                if (
+                                    stmt.type === "ReturnStatement" &&
+                                    stmt.argument &&
+                                    stmt.argument.type === "Identifier"
+                                ) {
                                     // Map the export name to its returned variable
                                     exportMap[exportName] = stmt.argument.name;
                                 }
@@ -116,28 +118,32 @@ export const processExportedEndpoints = (
             }
         },
     });
-    
+
     // Step 3: Find the variable declarations for the exported functions
     // Example: l = () => o("/something")
     for (const exportKey in exportMap) {
         const varName = exportMap[exportKey];
-        
+
         traverse(ast, {
             AssignmentExpression(path) {
                 if (
-                    path.node.left.type === "Identifier" && 
+                    path.node.left.type === "Identifier" &&
                     path.node.left.name === varName &&
-                    (path.node.right.type === "ArrowFunctionExpression" || 
-                     path.node.right.type === "FunctionExpression")
+                    (path.node.right.type === "ArrowFunctionExpression" ||
+                        path.node.right.type === "FunctionExpression")
                 ) {
                     const funcExpr = path.node.right;
                     let callExpr;
-                    
+
                     // Handle different function body types
                     if (funcExpr.body.type === "BlockStatement") {
                         // Function with block body, look for return statement
                         for (const stmt of funcExpr.body.body) {
-                            if (stmt.type === "ReturnStatement" && stmt.argument && stmt.argument.type === "CallExpression") {
+                            if (
+                                stmt.type === "ReturnStatement" &&
+                                stmt.argument &&
+                                stmt.argument.type === "CallExpression"
+                            ) {
                                 callExpr = stmt.argument;
                                 break;
                             }
@@ -146,23 +152,20 @@ export const processExportedEndpoints = (
                         // Arrow function with implicit return
                         callExpr = funcExpr.body;
                     }
-                    
-                    if (callExpr && 
-                        callExpr.callee.type === "Identifier" && 
-                        axiosMethodVars[callExpr.callee.name]) {
-                        
+
+                    if (callExpr && callExpr.callee.type === "Identifier" && axiosMethodVars[callExpr.callee.name]) {
                         // Found an axios method call, extract endpoint details
                         const axiosMethodVar = callExpr.callee.name;
                         const axiosMethod = axiosMethodVars[axiosMethodVar];
                         const httpMethod = getHttpMethodWithForm(axiosMethod);
-                        
+
                         if (!httpMethod) {
                             return; // Skip if HTTP method is not recognized
                         }
-                        
+
                         let endpoint = "";
                         let params = "";
-                        
+
                         // Extract the URL/endpoint
                         if (callExpr.arguments.length > 0) {
                             if (callExpr.arguments[0].type === "StringLiteral") {
@@ -171,47 +174,50 @@ export const processExportedEndpoints = (
                                 endpoint = astNodeToJsonString(callExpr.arguments[0], chunkCode);
                             }
                         }
-                        
+
                         // Extract parameters/body if present
                         if (callExpr.arguments.length > 1) {
                             params = astNodeToJsonString(callExpr.arguments[1], chunkCode);
                         }
-                        
+
                         // Find line number in source file
                         const functionFile = `${directory}/${chunks[chunkName].file}`;
                         const codeFileContent = fs.readFileSync(functionFile, "utf-8");
                         let functionFileLine = -1;
-                        
+
                         // Extract the code snippet for this arrow function
-                        const arrowFuncSnippet = chunkCode.substring(
-                            path.node.start, 
-                            path.node.end
-                        );
-                        
+                        const arrowFuncSnippet = chunkCode.substring(path.node.start, path.node.end);
+
                         // Look for this snippet in the file
                         const lines = codeFileContent.split("\n");
                         for (let i = 0; i < lines.length; i++) {
-                            if (lines[i].includes(arrowFuncSnippet.trim().substring(0, Math.min(arrowFuncSnippet.length, 30)))) {
+                            if (
+                                lines[i].includes(
+                                    arrowFuncSnippet.trim().substring(0, Math.min(arrowFuncSnippet.length, 30))
+                                )
+                            ) {
                                 functionFileLine = i + 1;
                                 break;
                             }
                         }
-                        
+
                         // Log the found exported endpoint
                         console.log(
-                            chalk.cyan(`[+] Found exported endpoint '${exportKey}' in chunk ${chunkName} ("${functionFile}":${functionFileLine})`)
+                            chalk.cyan(
+                                `[+] Found exported endpoint '${exportKey}' in chunk ${chunkName} ("${functionFile}":${functionFileLine})`
+                            )
                         );
                         console.log(chalk.yellow(`    Export: ${exportKey} => ${varName}`));
                         console.log(chalk.green(`    URL: ${endpoint}`));
                         console.log(chalk.green(`    Method: ${httpMethod}`));
-                        
+
                         if (params) {
                             console.log(chalk.green(`    Params/Body: ${params}`));
                         }
-                        
+
                         // Find cross-chunk parameters for this endpoint
                         const crossChunkParams = findCrossChunkParameters(chunkName, exportKey, chunks, directory);
-                        
+
                         // Add to the API collection
                         globals.addOpenapiOutput({
                             url: endpoint || "",
@@ -222,27 +228,30 @@ export const processExportedEndpoints = (
                             chunkId: chunkName,
                             functionFile: functionFile,
                             functionFileLine: functionFileLine,
-                            crossChunkParams: crossChunkParams
+                            crossChunkParams: crossChunkParams,
                         });
                     }
                 }
             },
             VariableDeclarator(path) {
                 if (
-                    path.node.id.type === "Identifier" && 
+                    path.node.id.type === "Identifier" &&
                     path.node.id.name === varName &&
                     path.node.init &&
-                    (path.node.init.type === "ArrowFunctionExpression" || 
-                     path.node.init.type === "FunctionExpression")
+                    (path.node.init.type === "ArrowFunctionExpression" || path.node.init.type === "FunctionExpression")
                 ) {
                     const funcExpr = path.node.init;
                     let callExpr;
-                    
+
                     // Handle different function body types
                     if (funcExpr.body.type === "BlockStatement") {
                         // Function with block body, look for return statement
                         for (const stmt of funcExpr.body.body) {
-                            if (stmt.type === "ReturnStatement" && stmt.argument && stmt.argument.type === "CallExpression") {
+                            if (
+                                stmt.type === "ReturnStatement" &&
+                                stmt.argument &&
+                                stmt.argument.type === "CallExpression"
+                            ) {
                                 callExpr = stmt.argument;
                                 break;
                             }
@@ -251,23 +260,20 @@ export const processExportedEndpoints = (
                         // Arrow function with implicit return
                         callExpr = funcExpr.body;
                     }
-                    
-                    if (callExpr && 
-                        callExpr.callee.type === "Identifier" && 
-                        axiosMethodVars[callExpr.callee.name]) {
-                        
+
+                    if (callExpr && callExpr.callee.type === "Identifier" && axiosMethodVars[callExpr.callee.name]) {
                         // Found an axios method call, extract endpoint details
                         const axiosMethodVar = callExpr.callee.name;
                         const axiosMethod = axiosMethodVars[axiosMethodVar];
                         const httpMethod = getHttpMethodWithForm(axiosMethod);
-                        
+
                         if (!httpMethod) {
                             return; // Skip if HTTP method is not recognized
                         }
-                        
+
                         let endpoint = "";
                         let params = "";
-                        
+
                         // Extract the URL/endpoint
                         if (callExpr.arguments.length > 0) {
                             if (callExpr.arguments[0].type === "StringLiteral") {
@@ -276,47 +282,50 @@ export const processExportedEndpoints = (
                                 endpoint = astNodeToJsonString(callExpr.arguments[0], chunkCode);
                             }
                         }
-                        
+
                         // Extract parameters/body if present
                         if (callExpr.arguments.length > 1) {
                             params = astNodeToJsonString(callExpr.arguments[1], chunkCode);
                         }
-                        
+
                         // Find line number in source file
                         const functionFile = `${directory}/${chunks[chunkName].file}`;
                         const codeFileContent = fs.readFileSync(functionFile, "utf-8");
                         let functionFileLine = -1;
-                        
+
                         // Extract the code snippet for this variable declaration
-                        const varDeclSnippet = chunkCode.substring(
-                            path.node.start, 
-                            path.node.end
-                        );
-                        
+                        const varDeclSnippet = chunkCode.substring(path.node.start, path.node.end);
+
                         // Look for this snippet in the file
                         const lines = codeFileContent.split("\n");
                         for (let i = 0; i < lines.length; i++) {
-                            if (lines[i].includes(varDeclSnippet.trim().substring(0, Math.min(varDeclSnippet.length, 30)))) {
+                            if (
+                                lines[i].includes(
+                                    varDeclSnippet.trim().substring(0, Math.min(varDeclSnippet.length, 30))
+                                )
+                            ) {
                                 functionFileLine = i + 1;
                                 break;
                             }
                         }
-                        
+
                         // Log the found exported endpoint
                         console.log(
-                            chalk.cyan(`[+] Found exported endpoint '${exportKey}' in chunk ${chunkName} ("${functionFile}":${functionFileLine})`)
+                            chalk.cyan(
+                                `[+] Found exported endpoint '${exportKey}' in chunk ${chunkName} ("${functionFile}":${functionFileLine})`
+                            )
                         );
                         console.log(chalk.yellow(`    Export: ${exportKey} => ${varName}`));
                         console.log(chalk.green(`    URL: ${endpoint}`));
                         console.log(chalk.green(`    Method: ${httpMethod}`));
-                        
+
                         if (params) {
                             console.log(chalk.green(`    Params/Body: ${params}`));
                         }
-                        
+
                         // Find cross-chunk parameters for this endpoint
                         const crossChunkParams = findCrossChunkParameters(chunkName, exportKey, chunks, directory);
-                        
+
                         // Add to the API collection
                         globals.addOpenapiOutput({
                             url: endpoint || "",
@@ -327,11 +336,11 @@ export const processExportedEndpoints = (
                             chunkId: chunkName,
                             functionFile: functionFile,
                             functionFileLine: functionFileLine,
-                            crossChunkParams: crossChunkParams
+                            crossChunkParams: crossChunkParams,
                         });
                     }
                 }
-            }
+            },
         });
     }
 };
