@@ -55,18 +55,16 @@ export const handleAxiosCreate = (
     // Find the wrapper function that contains the axios.create() call
     // Pattern: p = ((t) => { let e = n.Z.create({...}) })
     // We want 'p', not 'e'
-    
+
     // First, traverse up to find if we're inside a function
-    let wrapperFunction = path.findParent((p) => 
-        p.isArrowFunctionExpression() || p.isFunctionExpression()
-    );
-    
+    let wrapperFunction = path.findParent((p) => p.isArrowFunctionExpression() || p.isFunctionExpression());
+
     if (wrapperFunction) {
         // Now check if this function is assigned to a variable or wrapped in a call expression
-        let assignmentParent = wrapperFunction.findParent((p) => 
-            p.isAssignmentExpression() || p.isVariableDeclarator()
+        let assignmentParent = wrapperFunction.findParent(
+            (p) => p.isAssignmentExpression() || p.isVariableDeclarator()
         );
-        
+
         if (assignmentParent) {
             if (assignmentParent.isAssignmentExpression()) {
                 // Pattern: p = ((t) => {...})
