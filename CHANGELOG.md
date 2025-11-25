@@ -5,6 +5,7 @@
 ### Added
 
 - Added support for direct axios calls like `axios.Z.get()` for Next.js
+- Added support for axios with URLs exported to chunks
 
 ### Changed
 
