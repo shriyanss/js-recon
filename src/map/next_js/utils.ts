@@ -7,13 +7,13 @@ const traverse = _traverse.default;
 
 /**
  * Resolves webpack chunk imports by tracing through chunk definitions.
- * 
+ *
  * This function handles patterns like:
  * - `i = l(17917)` where `l` is the third arg and `17917` is a chunk ID
  * - Finds exports in the target chunk (e.g., `l: function() { return n; }`)
  * - Recursively follows references to resolve the final object
  * - Supports nested member expressions like `i.l.FLOW.postFlowCompleteStatus`
- * 
+ *
  * @param identifierName - The name of the identifier to resolve (e.g., 'i')
  * @param chunkCode - The source code of the current chunk
  * @param chunks - All available chunks for cross-chunk resolution
@@ -98,7 +98,7 @@ export const resolveWebpackChunkImport = (
             // console.log(`[DEBUG] Could not find chunk import for ${identifierName} using third arg ${thirdArgName}`);
             return `[unresolved: could not find chunk import for ${identifierName}]`;
         }
-        
+
         // console.log(`[DEBUG] Resolved ${identifierName} to chunk ${targetChunkId}, looking for path: ${memberPath.join('.')}`);
 
         // Find the target chunk
@@ -205,7 +205,7 @@ export const resolveWebpackChunkImport = (
             // console.log(`[DEBUG] Property ${firstProperty} not found in chunk ${targetChunkId}`);
             return `[unresolved: property ${firstProperty} not found in chunk ${targetChunkId}]`;
         }
-        
+
         // console.log(`[DEBUG] Found property ${firstProperty} in chunk ${targetChunkId}`);
 
         // Convert AST node to JavaScript object
@@ -228,7 +228,7 @@ export const resolveWebpackChunkImport = (
                             if (value.type === "ArrowFunctionExpression" || value.type === "FunctionExpression") {
                                 // Try to extract the return value from arrow/regular functions
                                 let returnValue: any = null;
-                                
+
                                 if (value.type === "ArrowFunctionExpression") {
                                     // Arrow function: could be expression body or block body
                                     if (value.body.type !== "BlockStatement") {
@@ -239,7 +239,11 @@ export const resolveWebpackChunkImport = (
                                         const returnStmt: any = value.body.body.find(
                                             (stmt: any) => stmt.type === "ReturnStatement"
                                         );
-                                        if (returnStmt && returnStmt.type === "ReturnStatement" && returnStmt.argument) {
+                                        if (
+                                            returnStmt &&
+                                            returnStmt.type === "ReturnStatement" &&
+                                            returnStmt.argument
+                                        ) {
                                             returnValue = returnStmt.argument;
                                         }
                                     }
@@ -271,11 +275,14 @@ export const resolveWebpackChunkImport = (
                                                 }
                                             }
                                         }
-                                        
+
                                         // Reorganize if base URL found
                                         let baseUrlIndex = -1;
                                         for (let i = 0; i < parts.length; i++) {
-                                            if (typeof parts[i] === 'string' && (parts[i].startsWith('http://') || parts[i].startsWith('https://'))) {
+                                            if (
+                                                typeof parts[i] === "string" &&
+                                                (parts[i].startsWith("http://") || parts[i].startsWith("https://"))
+                                            ) {
                                                 baseUrlIndex = i;
                                                 break;
                                             }
@@ -286,7 +293,10 @@ export const resolveWebpackChunkImport = (
                                             const baseUrl = parts[baseUrlIndex];
                                             const afterUrl = parts.slice(baseUrlIndex + 1);
                                             // Normalize slashes to avoid double slashes
-                                            const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(/([^:]\/)\/+/g, '$1');
+                                            const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(
+                                                /([^:]\/)\/+/g,
+                                                "$1"
+                                            );
                                             obj[key] = result;
                                         } else {
                                             obj[key] = parts.join("");
@@ -328,7 +338,10 @@ export const resolveWebpackChunkImport = (
                                         // Reorganize parts if a base URL is found in the middle
                                         let baseUrlIndex = -1;
                                         for (let i = 0; i < parts.length; i++) {
-                                            if (typeof parts[i] === 'string' && (parts[i].startsWith('http://') || parts[i].startsWith('https://'))) {
+                                            if (
+                                                typeof parts[i] === "string" &&
+                                                (parts[i].startsWith("http://") || parts[i].startsWith("https://"))
+                                            ) {
                                                 baseUrlIndex = i;
                                                 break;
                                             }
@@ -339,9 +352,12 @@ export const resolveWebpackChunkImport = (
                                             const beforeUrl = parts.slice(0, baseUrlIndex);
                                             const baseUrl = parts[baseUrlIndex];
                                             const afterUrl = parts.slice(baseUrlIndex + 1);
-                                            
+
                                             // Reconstruct: baseUrl + beforeUrl + afterUrl and normalize slashes
-                                            const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(/([^:]\/)\/+/g, '$1');
+                                            const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(
+                                                /([^:]\/)\/+/g,
+                                                "$1"
+                                            );
                                             obj[key] = result;
                                         } else {
                                             obj[key] = parts.join("");
@@ -372,11 +388,14 @@ export const resolveWebpackChunkImport = (
                                         }
                                     }
                                 }
-                                
+
                                 // Reorganize if base URL found
                                 let baseUrlIndex = -1;
                                 for (let i = 0; i < parts.length; i++) {
-                                    if (typeof parts[i] === 'string' && (parts[i].startsWith('http://') || parts[i].startsWith('https://'))) {
+                                    if (
+                                        typeof parts[i] === "string" &&
+                                        (parts[i].startsWith("http://") || parts[i].startsWith("https://"))
+                                    ) {
                                         baseUrlIndex = i;
                                         break;
                                     }
@@ -386,7 +405,10 @@ export const resolveWebpackChunkImport = (
                                     const beforeUrl = parts.slice(0, baseUrlIndex);
                                     const baseUrl = parts[baseUrlIndex];
                                     const afterUrl = parts.slice(baseUrlIndex + 1);
-                                    const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(/([^:]\/)\/+/g, '$1');
+                                    const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(
+                                        /([^:]\/)\/+/g,
+                                        "$1"
+                                    );
                                     obj[key] = result;
                                 } else {
                                     obj[key] = parts.join("");
@@ -432,7 +454,10 @@ export const resolveWebpackChunkImport = (
                                     // Reorganize parts if a base URL is found in the middle
                                     let baseUrlIndex = -1;
                                     for (let i = 0; i < parts.length; i++) {
-                                        if (typeof parts[i] === 'string' && (parts[i].startsWith('http://') || parts[i].startsWith('https://'))) {
+                                        if (
+                                            typeof parts[i] === "string" &&
+                                            (parts[i].startsWith("http://") || parts[i].startsWith("https://"))
+                                        ) {
                                             baseUrlIndex = i;
                                             break;
                                         }
@@ -442,7 +467,10 @@ export const resolveWebpackChunkImport = (
                                         const beforeUrl = parts.slice(0, baseUrlIndex);
                                         const baseUrl = parts[baseUrlIndex];
                                         const afterUrl = parts.slice(baseUrlIndex + 1);
-                                        const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(/([^:]\/)\/+/g, '$1');
+                                        const result = (baseUrl + beforeUrl.join("") + afterUrl.join("")).replace(
+                                            /([^:]\/)\/+/g,
+                                            "$1"
+                                        );
                                         obj[key] = result;
                                     } else {
                                         obj[key] = parts.join("");
@@ -765,7 +793,7 @@ export const resolveNodeValue = (
                     ) {
                         // Try to resolve the callee as a webpack chunk import
                         const memberExpr = currentNode.callee;
-                        
+
                         // Collect the full member expression path
                         const memberPath: string[] = [];
                         let tempNode: Node = memberExpr;
@@ -793,7 +821,11 @@ export const resolveNodeValue = (
 
                             // If resolved successfully (not an error message), return it
                             // console.log(`[DEBUG] Webpack resolved value: ${typeof resolved === 'object' ? JSON.stringify(resolved) : resolved}, starts with unresolved: ${String(resolved).startsWith("[unresolved:")}, starts with error: ${String(resolved).startsWith("[error")}`);
-                            if (resolved && !String(resolved).startsWith("[unresolved:") && !String(resolved).startsWith("[error")) {
+                            if (
+                                resolved &&
+                                !String(resolved).startsWith("[unresolved:") &&
+                                !String(resolved).startsWith("[error")
+                            ) {
                                 // console.log(`[DEBUG] RETURNING webpack resolved value: ${resolved}`);
                                 return resolved;
                             }
