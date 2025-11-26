@@ -222,7 +222,7 @@ const processImportingChunk = (
         console.log(
             chalk.greenBright(`    [✓] Chunk ${importingChunkId} uses the axios instance, extracting API calls...`)
         );
-        extractApiCalls(ast, chunkCode, importVarName, exportName, importingChunkId, chunks, directory);
+        extractApiCalls(ast, chunkCode, importVarName, exportName, importingChunkId, chunks, directory, thirdArg);
     }
 };
 
@@ -497,7 +497,8 @@ const extractApiCalls = (
     exportName: string,
     chunkId: string,
     chunks: Chunks,
-    directory: string
+    directory: string,
+    thirdArgName: string
 ): void => {
     const chunk = chunks[chunkId];
     const functionFile = `${directory}/${chunk.file}`;
@@ -547,8 +548,16 @@ const extractApiCalls = (
                         if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                             const propName = prop.key.name;
                             
-                            // Use resolveNodeValue for better resolution
-                            const resolvedValue = resolveNodeValue(prop.value, path.scope, chunkCode.substring(prop.value.start, prop.value.end), "axios");
+                            // Use resolveNodeValue for better resolution with webpack chunk context
+                            const resolvedValue = resolveNodeValue(
+                                prop.value,
+                                path.scope,
+                                chunkCode.substring(prop.value.start, prop.value.end),
+                                "axios",
+                                chunkCode,
+                                chunks,
+                                thirdArgName
+                            );
                             
                             if (propName === "url") {
                                 // Handle both string and resolved values

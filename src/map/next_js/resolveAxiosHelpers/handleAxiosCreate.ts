@@ -9,6 +9,7 @@ import * as globals from "../../../utility/globals.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import { resolveNodeValue } from "../utils.js";
 import { traceAxiosInstanceExports } from "./traceAxiosInstanceExports.js";
+import { getThirdArg } from "../resolveAxios.js";
 
 const traverse = _traverse.default;
 
@@ -160,7 +161,16 @@ export const handleAxiosCreate = (
                                     } else {
                                         const scope = callPath.scope;
                                         const nodeCode = chunkCode.slice(property.value.start, property.value.end);
-                                        axiosCreateCallUrl = resolveNodeValue(property.value, scope, nodeCode, "axios");
+                                        const thirdArgName = getThirdArg(ast);
+                                        axiosCreateCallUrl = resolveNodeValue(
+                                            property.value,
+                                            scope,
+                                            nodeCode,
+                                            "axios",
+                                            chunkCode,
+                                            chunks,
+                                            thirdArgName
+                                        );
                                     }
                                 } else if (property.key.name === "method" && property.value.type === "StringLiteral") {
                                     axiosCreateCallMethod = property.value.value;
