@@ -547,7 +547,7 @@ const extractApiCalls = (
                     for (const prop of configArg.properties) {
                         if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                             const propName = prop.key.name;
-                            
+
                             // Use resolveNodeValue for better resolution with webpack chunk context
                             const resolvedValue = resolveNodeValue(
                                 prop.value,
@@ -558,7 +558,7 @@ const extractApiCalls = (
                                 chunks,
                                 thirdArgName
                             );
-                            
+
                             if (propName === "url") {
                                 // Handle both string and resolved values
                                 if (typeof resolvedValue === "string") {
