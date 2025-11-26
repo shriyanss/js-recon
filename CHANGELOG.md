@@ -9,6 +9,8 @@
 
 ### Changed
 
+- Improved node value resolver with research about Axios library 
+
 ### Fixed
 
 - Fixed CDN handling for Next.js applications with custom ports
