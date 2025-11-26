@@ -7,6 +7,7 @@ import { resolveNodeValue, resolveStringOps } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
+import { getThirdArg } from "../resolveAxios.js";
 
 const getHttpMethod = (methodName: string): string | null => {
     const upperCaseMethod = methodName.toUpperCase();
@@ -39,6 +40,9 @@ export const processDirectAxiosCall = (
     let callBody: string;
     let callHeaders: { [key: string]: string } = {};
 
+    // Get the webpack require function name (third arg) for enhanced resolution
+    const thirdArgName = getThirdArg(ast);
+
     if (path.parentPath.isCallExpression()) {
         const args = path.parentPath.node.arguments;
         if (args.length > 0) {
@@ -51,7 +55,15 @@ export const processDirectAxiosCall = (
             } else if (t.isStringLiteral(axiosFirstArg)) {
                 callUrl = axiosFirstArg.value;
             } else {
-                callUrl = resolveNodeValue(axiosFirstArg, path.scope, axiosFirstArgText, "axios");
+                callUrl = resolveNodeValue(
+                    axiosFirstArg,
+                    path.scope,
+                    axiosFirstArgText,
+                    "axios",
+                    chunkCode,
+                    chunks,
+                    thirdArgName
+                );
             }
         }
 

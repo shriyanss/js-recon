@@ -9,6 +9,7 @@ import * as globals from "../../../utility/globals.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import { resolveNodeValue, resolveStringOps } from "../utils.js";
 import { processExportedEndpoints } from "./processExportedEndpoints.js";
+import { getThirdArg } from "../resolveAxios.js";
 
 const traverse = _traverse.default;
 
@@ -210,6 +211,9 @@ export const processZDotCreateCall = (
     let callBody: string;
     let callHeaders: { [key: string]: string } = {};
 
+    // Get the webpack require function name (third arg) for enhanced resolution
+    const thirdArgName = getThirdArg(ast);
+
     if (path.parentPath.isCallExpression()) {
         const args = path.parentPath.node.arguments;
         if (args.length > 0) {
@@ -222,7 +226,15 @@ export const processZDotCreateCall = (
             } else if (axiosFirstArg.type === "StringLiteral") {
                 callUrl = axiosFirstArg.value;
             } else {
-                callUrl = resolveNodeValue(axiosFirstArg, path.scope, axiosFirstArgText, "axios");
+                callUrl = resolveNodeValue(
+                    axiosFirstArg,
+                    path.scope,
+                    axiosFirstArgText,
+                    "axios",
+                    chunkCode,
+                    chunks,
+                    thirdArgName
+                );
             }
         }
 
