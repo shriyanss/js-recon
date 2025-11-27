@@ -7,7 +7,7 @@ const traverse = _traverse.default;
 
 /**
  * Resolves a variable in a chunk by finding its declaration/assignment.
- * 
+ *
  * @param varName - The name of the variable to resolve
  * @param chunkCode - The source code of the chunk
  * @param depth - Current recursion depth to prevent infinite loops
@@ -17,22 +17,22 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
     if (depth > 5) {
         return `[max recursion depth for ${varName}]`;
     }
-    
+
     try {
         const ast = parser.parse(chunkCode, {
             sourceType: "module",
             plugins: ["jsx", "typescript"],
             errorRecovery: true,
         });
-        
+
         let resolvedValue: any = null;
-        
+
         traverse(ast, {
             // Find variable declarations: let/const/var varName = ...
             VariableDeclarator(path) {
                 if (path.node.id.type === "Identifier" && path.node.id.name === varName && path.node.init) {
                     const init = path.node.init;
-                    
+
                     if (init.type === "StringLiteral") {
                         resolvedValue = init.value;
                         path.stop();
@@ -61,18 +61,22 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
                         // Recursively resolve if it references another variable
                         resolvedValue = resolveVariableInChunk(init.name, chunkCode, depth + 1);
                         path.stop();
-                    } else if (init.type === "CallExpression" && 
-                               init.callee.type === "MemberExpression" &&
-                               init.callee.property.type === "Identifier" &&
-                               init.callee.property.name === "concat") {
+                    } else if (
+                        init.type === "CallExpression" &&
+                        init.callee.type === "MemberExpression" &&
+                        init.callee.property.type === "Identifier" &&
+                        init.callee.property.name === "concat"
+                    ) {
                         // Handle concat chains
                         const parts: string[] = [];
                         let currentCall: any = init;
-                        
-                        while (currentCall.type === "CallExpression" &&
-                               currentCall.callee.type === "MemberExpression" &&
-                               currentCall.callee.property.type === "Identifier" &&
-                               currentCall.callee.property.name === "concat") {
+
+                        while (
+                            currentCall.type === "CallExpression" &&
+                            currentCall.callee.type === "MemberExpression" &&
+                            currentCall.callee.property.type === "Identifier" &&
+                            currentCall.callee.property.name === "concat"
+                        ) {
                             for (const arg of currentCall.arguments) {
                                 if (arg.type === "StringLiteral") {
                                     parts.unshift(arg.value);
@@ -85,14 +89,14 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
                             }
                             currentCall = currentCall.callee.object;
                         }
-                        
+
                         if (currentCall.type === "StringLiteral") {
                             parts.unshift(currentCall.value);
                         } else if (currentCall.type === "Identifier") {
                             const baseValue = resolveVariableInChunk(currentCall.name, chunkCode, depth + 1);
                             parts.unshift(baseValue);
                         }
-                        
+
                         resolvedValue = parts.join("");
                         path.stop();
                     }
@@ -102,7 +106,7 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
             AssignmentExpression(path) {
                 if (path.node.left.type === "Identifier" && path.node.left.name === varName) {
                     const right = path.node.right;
-                    
+
                     if (right.type === "StringLiteral") {
                         resolvedValue = right.value;
                         path.stop();
@@ -116,7 +120,7 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
                 }
             },
         });
-        
+
         return resolvedValue || `[unresolved: ${varName}]`;
     } catch (e) {
         return `[error resolving ${varName}: ${e.message}]`;
@@ -125,7 +129,7 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
 
 /**
  * Resolves a member expression like "obj.property" in a chunk.
- * 
+ *
  * @param objectName - The name of the object variable
  * @param propertyName - The name of the property to access
  * @param chunkCode - The source code of the chunk
@@ -135,8 +139,8 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
  * @returns The resolved value or a placeholder if unresolved
  */
 export const resolveMemberExpressionInChunk = (
-    objectName: string, 
-    propertyName: string, 
+    objectName: string,
+    propertyName: string,
     chunkCode: string,
     chunks?: Chunks,
     thirdArgName?: string,
@@ -145,30 +149,31 @@ export const resolveMemberExpressionInChunk = (
     if (depth > 10) {
         return `[max recursion depth for ${objectName}.${propertyName}]`;
     }
-    
+
     try {
         const ast = parser.parse(chunkCode, {
             sourceType: "module",
             plugins: ["jsx", "typescript"],
             errorRecovery: true,
         });
-        
+
         let resolvedValue: any = null;
-        
+
         traverse(ast, {
             VariableDeclarator(path) {
                 if (path.node.id.type === "Identifier" && path.node.id.name === objectName && path.node.init) {
                     const init = path.node.init;
-                    
+
                     // Check if this is a webpack chunk import: u = r(3269)
-                    if (init.type === "CallExpression" && 
-                        init.callee.type === "Identifier" && 
-                        thirdArgName && 
+                    if (
+                        init.type === "CallExpression" &&
+                        init.callee.type === "Identifier" &&
+                        thirdArgName &&
                         init.callee.name === thirdArgName &&
                         init.arguments.length > 0 &&
                         init.arguments[0].type === "NumericLiteral" &&
-                        chunks) {
-                        
+                        chunks
+                    ) {
                         // This is a webpack chunk import, use resolveWebpackChunkImport with the property name
                         const chunkImportValue = resolveWebpackChunkImport(
                             objectName,
@@ -177,26 +182,29 @@ export const resolveMemberExpressionInChunk = (
                             thirdArgName,
                             [propertyName]
                         );
-                        
-                        if (chunkImportValue && 
-                            typeof chunkImportValue === "string" && 
+
+                        if (
+                            chunkImportValue &&
+                            typeof chunkImportValue === "string" &&
                             !chunkImportValue.startsWith("[unresolved") &&
-                            !chunkImportValue.startsWith("[error")) {
+                            !chunkImportValue.startsWith("[error")
+                        ) {
                             resolvedValue = chunkImportValue;
                             path.stop();
                             return;
                         }
                     }
-                    
+
                     // Handle object expressions: let obj = { prop: "value" }
                     if (init.type === "ObjectExpression") {
                         for (const prop of init.properties) {
-                            if (prop.type === "ObjectProperty" && 
-                                prop.key.type === "Identifier" && 
-                                prop.key.name === propertyName) {
-                                
+                            if (
+                                prop.type === "ObjectProperty" &&
+                                prop.key.type === "Identifier" &&
+                                prop.key.name === propertyName
+                            ) {
                                 const value = prop.value;
-                                
+
                                 if (value.type === "StringLiteral") {
                                     resolvedValue = value.value;
                                     path.stop();
@@ -224,7 +232,11 @@ export const resolveMemberExpressionInChunk = (
                                         if (i < value.expressions.length) {
                                             const expr = value.expressions[i];
                                             if (expr.type === "Identifier") {
-                                                const nestedValue = resolveVariableInChunk(expr.name, chunkCode, depth + 1);
+                                                const nestedValue = resolveVariableInChunk(
+                                                    expr.name,
+                                                    chunkCode,
+                                                    depth + 1
+                                                );
                                                 result += nestedValue;
                                             } else {
                                                 result += `[${expr.type}]`;
@@ -234,18 +246,22 @@ export const resolveMemberExpressionInChunk = (
                                     resolvedValue = result;
                                     path.stop();
                                     return;
-                                } else if (value.type === "CallExpression" && 
-                                          value.callee.type === "MemberExpression" &&
-                                          value.callee.property.type === "Identifier" &&
-                                          value.callee.property.name === "concat") {
+                                } else if (
+                                    value.type === "CallExpression" &&
+                                    value.callee.type === "MemberExpression" &&
+                                    value.callee.property.type === "Identifier" &&
+                                    value.callee.property.name === "concat"
+                                ) {
                                     // Handle concat chains in property values
                                     const parts: string[] = [];
                                     let currentCall: any = value;
-                                    
-                                    while (currentCall.type === "CallExpression" &&
-                                           currentCall.callee.type === "MemberExpression" &&
-                                           currentCall.callee.property.type === "Identifier" &&
-                                           currentCall.callee.property.name === "concat") {
+
+                                    while (
+                                        currentCall.type === "CallExpression" &&
+                                        currentCall.callee.type === "MemberExpression" &&
+                                        currentCall.callee.property.type === "Identifier" &&
+                                        currentCall.callee.property.name === "concat"
+                                    ) {
                                         for (const arg of currentCall.arguments) {
                                             if (arg.type === "StringLiteral") {
                                                 parts.unshift(arg.value);
@@ -258,14 +274,18 @@ export const resolveMemberExpressionInChunk = (
                                         }
                                         currentCall = currentCall.callee.object;
                                     }
-                                    
+
                                     if (currentCall.type === "StringLiteral") {
                                         parts.unshift(currentCall.value);
                                     } else if (currentCall.type === "Identifier") {
-                                        const baseValue = resolveVariableInChunk(currentCall.name, chunkCode, depth + 1);
+                                        const baseValue = resolveVariableInChunk(
+                                            currentCall.name,
+                                            chunkCode,
+                                            depth + 1
+                                        );
                                         parts.unshift(baseValue);
                                     }
-                                    
+
                                     resolvedValue = parts.join("");
                                     path.stop();
                                     return;
@@ -275,13 +295,20 @@ export const resolveMemberExpressionInChunk = (
                     }
                     // Handle if object is assigned to another variable
                     else if (init.type === "Identifier") {
-                        resolvedValue = resolveMemberExpressionInChunk(init.name, propertyName, chunkCode, chunks, thirdArgName, depth + 1);
+                        resolvedValue = resolveMemberExpressionInChunk(
+                            init.name,
+                            propertyName,
+                            chunkCode,
+                            chunks,
+                            thirdArgName,
+                            depth + 1
+                        );
                         path.stop();
                     }
                 }
             },
         });
-        
+
         return resolvedValue || `[unresolved: ${objectName}.${propertyName}]`;
     } catch (e) {
         return `[error resolving ${objectName}.${propertyName}: ${e.message}]`;
@@ -290,25 +317,30 @@ export const resolveMemberExpressionInChunk = (
 
 /**
  * Substitutes [var X] placeholders in a string with their resolved values.
- * 
+ *
  * @param str - The string containing [var X] placeholders
  * @param chunkCode - The source code of the chunk to resolve variables from
  * @param chunks - All available chunks for cross-chunk resolution
  * @param thirdArgName - The name of the third parameter (webpack require function)
  * @returns The string with variables substituted
  */
-export const substituteVariablesInString = (str: string, chunkCode: string, chunks?: Chunks, thirdArgName?: string): string => {
+export const substituteVariablesInString = (
+    str: string,
+    chunkCode: string,
+    chunks?: Chunks,
+    thirdArgName?: string
+): string => {
     if (typeof str !== "string") return str;
-    
+
     let result = str;
-    
+
     // Match [MemberExpression -> propertyName] patterns
     const memberPattern = /\[MemberExpression -> ([^\]]+)\]/g;
     let memberMatch;
-    
+
     while ((memberMatch = memberPattern.exec(str)) !== null) {
         const propertyName = memberMatch[1];
-        
+
         // Try to find the object that contains this property
         // We need to look at the context where this placeholder came from
         // For now, we'll search for common patterns in the chunk
@@ -318,29 +350,38 @@ export const substituteVariablesInString = (str: string, chunkCode: string, chun
                 plugins: ["jsx", "typescript"],
                 errorRecovery: true,
             });
-            
+
             let foundValue: string | null = null;
-            
+
             traverse(ast, {
                 MemberExpression(path) {
-                    if (path.node.property.type === "Identifier" && 
+                    if (
+                        path.node.property.type === "Identifier" &&
                         path.node.property.name === propertyName &&
-                        path.node.object.type === "Identifier") {
-                        
+                        path.node.object.type === "Identifier"
+                    ) {
                         const objectName = path.node.object.name;
-                        const resolvedValue = resolveMemberExpressionInChunk(objectName, propertyName, chunkCode, chunks, thirdArgName);
-                        
-                        if (typeof resolvedValue === "string" && 
-                            !resolvedValue.startsWith("[unresolved:") && 
+                        const resolvedValue = resolveMemberExpressionInChunk(
+                            objectName,
+                            propertyName,
+                            chunkCode,
+                            chunks,
+                            thirdArgName
+                        );
+
+                        if (
+                            typeof resolvedValue === "string" &&
+                            !resolvedValue.startsWith("[unresolved:") &&
                             !resolvedValue.startsWith("[error") &&
-                            !resolvedValue.startsWith("[max recursion")) {
+                            !resolvedValue.startsWith("[max recursion")
+                        ) {
                             foundValue = resolvedValue;
                             path.stop();
                         }
                     }
                 },
             });
-            
+
             if (foundValue) {
                 result = result.replace(`[MemberExpression -> ${propertyName}]`, foundValue);
             }
@@ -348,24 +389,26 @@ export const substituteVariablesInString = (str: string, chunkCode: string, chun
             // Skip if parsing fails
         }
     }
-    
+
     // Match [var varName] patterns
     const varPattern = /\[var ([^\]]+)\]/g;
     let match;
-    
+
     while ((match = varPattern.exec(str)) !== null) {
         const varName = match[1];
         const resolvedValue = resolveVariableInChunk(varName, chunkCode);
-        
+
         // Only substitute if we got a clean value (not an error/unresolved placeholder)
-        if (typeof resolvedValue === "string" && 
-            !resolvedValue.startsWith("[unresolved:") && 
+        if (
+            typeof resolvedValue === "string" &&
+            !resolvedValue.startsWith("[unresolved:") &&
             !resolvedValue.startsWith("[error") &&
-            !resolvedValue.startsWith("[max recursion")) {
+            !resolvedValue.startsWith("[max recursion")
+        ) {
             result = result.replace(`[var ${varName}]`, resolvedValue);
         }
     }
-    
+
     return result;
 };
 
@@ -1081,7 +1124,7 @@ export const resolveNodeValue = (
                                 thirdArgName,
                                 [propertyName]
                             );
-                            
+
                             if (
                                 webpackResult &&
                                 typeof webpackResult === "string" &&
@@ -1128,7 +1171,7 @@ export const resolveNodeValue = (
                         }
                         return object[propertyName];
                     }
-                    
+
                     return `[unresolved member expression]`;
                 }
                 case "CallExpression": {

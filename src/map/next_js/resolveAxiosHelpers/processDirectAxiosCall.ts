@@ -65,7 +65,7 @@ export const processDirectAxiosCall = (
                     thirdArgName
                 );
             }
-            
+
             // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk
             if (typeof callUrl === "string" && (callUrl.includes("[var ") || callUrl.includes("[MemberExpression"))) {
                 callUrl = substituteVariablesInString(callUrl, chunkCode, chunks, thirdArgName);
