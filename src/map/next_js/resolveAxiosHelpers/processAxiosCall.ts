@@ -84,7 +84,15 @@ export const processAxiosCall = (
 
             const concatRegex = /\".*\"(\\.concat\(.+\))+/;
             if (concatRegex.test(axiosFirstArgText)) {
-                callUrl = resolveNodeValue(axiosFirstArg, path.scope, axiosFirstArgText, "axios", chunkCode, chunks, thirdArgName);
+                callUrl = resolveNodeValue(
+                    axiosFirstArg,
+                    path.scope,
+                    axiosFirstArgText,
+                    "axios",
+                    chunkCode,
+                    chunks,
+                    thirdArgName
+                );
             } else if (axiosFirstArg.type === "StringLiteral") {
                 callUrl = axiosFirstArg.value;
             } else {
@@ -98,7 +106,7 @@ export const processAxiosCall = (
                     thirdArgName
                 );
             }
-            
+
             // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk
             if (typeof callUrl === "string" && (callUrl.includes("[var ") || callUrl.includes("[MemberExpression"))) {
                 callUrl = substituteVariablesInString(callUrl, chunkCode, chunks, thirdArgName);
