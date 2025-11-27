@@ -10,6 +10,7 @@
 ### Changed
 
 - Improved node value resolver with research about Axios library
+- Improved node value resolver with research about fetch() usage
 
 ### Fixed
 
