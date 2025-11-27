@@ -6,6 +6,155 @@ import { Chunks } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
 
 /**
+ * Resolves a variable in a chunk by finding its declaration/assignment.
+ * 
+ * @param varName - The name of the variable to resolve
+ * @param chunkCode - The source code of the chunk
+ * @param depth - Current recursion depth to prevent infinite loops
+ * @returns The resolved value or a placeholder if unresolved
+ */
+export const resolveVariableInChunk = (varName: string, chunkCode: string, depth: number = 0): any => {
+    if (depth > 5) {
+        return `[max recursion depth for ${varName}]`;
+    }
+    
+    try {
+        const ast = parser.parse(chunkCode, {
+            sourceType: "module",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+        
+        let resolvedValue: any = null;
+        
+        traverse(ast, {
+            // Find variable declarations: let/const/var varName = ...
+            VariableDeclarator(path) {
+                if (path.node.id.type === "Identifier" && path.node.id.name === varName && path.node.init) {
+                    const init = path.node.init;
+                    
+                    if (init.type === "StringLiteral") {
+                        resolvedValue = init.value;
+                        path.stop();
+                    } else if (init.type === "NumericLiteral") {
+                        resolvedValue = String(init.value);
+                        path.stop();
+                    } else if (init.type === "TemplateLiteral") {
+                        // Handle template literals
+                        let result = "";
+                        for (let i = 0; i < init.quasis.length; i++) {
+                            result += init.quasis[i].value.raw;
+                            if (i < init.expressions.length) {
+                                const expr = init.expressions[i];
+                                if (expr.type === "Identifier") {
+                                    // Recursively resolve nested variables
+                                    const nestedValue = resolveVariableInChunk(expr.name, chunkCode, depth + 1);
+                                    result += nestedValue;
+                                } else {
+                                    result += `[${expr.type}]`;
+                                }
+                            }
+                        }
+                        resolvedValue = result;
+                        path.stop();
+                    } else if (init.type === "Identifier") {
+                        // Recursively resolve if it references another variable
+                        resolvedValue = resolveVariableInChunk(init.name, chunkCode, depth + 1);
+                        path.stop();
+                    } else if (init.type === "CallExpression" && 
+                               init.callee.type === "MemberExpression" &&
+                               init.callee.property.type === "Identifier" &&
+                               init.callee.property.name === "concat") {
+                        // Handle concat chains
+                        const parts: string[] = [];
+                        let currentCall: any = init;
+                        
+                        while (currentCall.type === "CallExpression" &&
+                               currentCall.callee.type === "MemberExpression" &&
+                               currentCall.callee.property.type === "Identifier" &&
+                               currentCall.callee.property.name === "concat") {
+                            for (const arg of currentCall.arguments) {
+                                if (arg.type === "StringLiteral") {
+                                    parts.unshift(arg.value);
+                                } else if (arg.type === "Identifier") {
+                                    const argValue = resolveVariableInChunk(arg.name, chunkCode, depth + 1);
+                                    parts.unshift(argValue);
+                                } else {
+                                    parts.unshift(`[${arg.type}]`);
+                                }
+                            }
+                            currentCall = currentCall.callee.object;
+                        }
+                        
+                        if (currentCall.type === "StringLiteral") {
+                            parts.unshift(currentCall.value);
+                        } else if (currentCall.type === "Identifier") {
+                            const baseValue = resolveVariableInChunk(currentCall.name, chunkCode, depth + 1);
+                            parts.unshift(baseValue);
+                        }
+                        
+                        resolvedValue = parts.join("");
+                        path.stop();
+                    }
+                }
+            },
+            // Find assignments: varName = ...
+            AssignmentExpression(path) {
+                if (path.node.left.type === "Identifier" && path.node.left.name === varName) {
+                    const right = path.node.right;
+                    
+                    if (right.type === "StringLiteral") {
+                        resolvedValue = right.value;
+                        path.stop();
+                    } else if (right.type === "NumericLiteral") {
+                        resolvedValue = String(right.value);
+                        path.stop();
+                    } else if (right.type === "Identifier") {
+                        resolvedValue = resolveVariableInChunk(right.name, chunkCode, depth + 1);
+                        path.stop();
+                    }
+                }
+            },
+        });
+        
+        return resolvedValue || `[unresolved: ${varName}]`;
+    } catch (e) {
+        return `[error resolving ${varName}: ${e.message}]`;
+    }
+};
+
+/**
+ * Substitutes [var X] placeholders in a string with their resolved values.
+ * 
+ * @param str - The string containing [var X] placeholders
+ * @param chunkCode - The source code of the chunk to resolve variables from
+ * @returns The string with variables substituted
+ */
+export const substituteVariablesInString = (str: string, chunkCode: string): string => {
+    if (typeof str !== "string") return str;
+    
+    // Match [var varName] patterns
+    const varPattern = /\[var ([^\]]+)\]/g;
+    let result = str;
+    let match;
+    
+    while ((match = varPattern.exec(str)) !== null) {
+        const varName = match[1];
+        const resolvedValue = resolveVariableInChunk(varName, chunkCode);
+        
+        // Only substitute if we got a clean value (not an error/unresolved placeholder)
+        if (typeof resolvedValue === "string" && 
+            !resolvedValue.startsWith("[unresolved:") && 
+            !resolvedValue.startsWith("[error") &&
+            !resolvedValue.startsWith("[max recursion")) {
+            result = result.replace(`[var ${varName}]`, resolvedValue);
+        }
+    }
+    
+    return result;
+};
+
+/**
  * Resolves webpack chunk imports by tracing through chunk definitions.
  *
  * This function handles patterns like:

@@ -3,7 +3,7 @@ import * as t from "@babel/types";
 import { Chunks } from "../../../utility/interfaces.js";
 import * as fs from "fs";
 import chalk from "chalk";
-import { resolveNodeValue, resolveStringOps } from "../utils.js";
+import { resolveNodeValue, resolveStringOps, substituteVariablesInString } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
@@ -64,6 +64,11 @@ export const processDirectAxiosCall = (
                     chunks,
                     thirdArgName
                 );
+            }
+            
+            // Substitute any [var X] placeholders with actual values from the chunk
+            if (typeof callUrl === "string" && callUrl.includes("[var ")) {
+                callUrl = substituteVariablesInString(callUrl, chunkCode);
             }
         }
 

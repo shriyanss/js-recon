@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { resolveNodeValue } from "./utils.js";
+import { resolveNodeValue, substituteVariablesInString } from "./utils.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import fs from "fs";
@@ -290,7 +290,17 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                         // extract the whole code from the main file just in case the resolution fails
                         const argText = fileContent.slice(args[0].start, args[0].end).replace(/\n\s*/g, "");
 
-                        const url = resolveNodeValue(args[0], path.scope, argText, "fetch");
+                        let url = resolveNodeValue(args[0], path.scope, argText, "fetch");
+                        
+                        // Substitute any [var X] placeholders with actual values from the chunk
+                        if (typeof url === "string" && url.includes("[var ")) {
+                            const substitutedUrl = substituteVariablesInString(url, fileContent);
+                            if (substitutedUrl !== url) {
+                                console.log(chalk.cyan(`    [i] Resolved variables in URL: ${url} -> ${substitutedUrl}`));
+                                url = substitutedUrl;
+                            }
+                        }
+                        
                         callUrl = url;
                         console.log(chalk.green(`    URL: ${url}`));
 
