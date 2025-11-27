@@ -292,8 +292,8 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
 
                         let url = resolveNodeValue(args[0], path.scope, argText, "fetch");
                         
-                        // Substitute any [var X] placeholders with actual values from the chunk
-                        if (typeof url === "string" && url.includes("[var ")) {
+                        // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk
+                        if (typeof url === "string" && (url.includes("[var ") || url.includes("[MemberExpression"))) {
                             const substitutedUrl = substituteVariablesInString(url, fileContent);
                             if (substitutedUrl !== url) {
                                 console.log(chalk.cyan(`    [i] Resolved variables in URL: ${url} -> ${substitutedUrl}`));
