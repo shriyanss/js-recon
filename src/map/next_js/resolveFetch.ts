@@ -255,6 +255,9 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
             },
         });
 
+        // Get the third arg (webpack require function name) for this chunk
+        const thirdArgName = getThirdArg(fileAst);
+
         // define some arguments to be finally printed
         let callUrl: string;
         let callMethod: string;
@@ -294,7 +297,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                         
                         // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk
                         if (typeof url === "string" && (url.includes("[var ") || url.includes("[MemberExpression"))) {
-                            const substitutedUrl = substituteVariablesInString(url, fileContent);
+                            const substitutedUrl = substituteVariablesInString(url, fileContent, chunks, thirdArgName);
                             if (substitutedUrl !== url) {
                                 console.log(chalk.cyan(`    [i] Resolved variables in URL: ${url} -> ${substitutedUrl}`));
                                 url = substitutedUrl;
@@ -305,7 +308,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                         console.log(chalk.green(`    URL: ${url}`));
 
                         if (args.length > 1) {
-                            let options = resolveNodeValue(args[1], path.scope, "", "fetch");
+                            let options = resolveNodeValue(args[1], path.scope, "", "fetch", fileContent, chunks, thirdArgName);
                             
                             // Try to trace fetch function exports for better body resolution
                             const functionName = getFunctionNameForFetchCall(path);
@@ -339,6 +342,27 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                             }
                             
                             if (typeof options === "object" && options !== null) {
+                                // Substitute variables in headers
+                                if (options.headers && typeof options.headers === "object") {
+                                    const resolvedHeaders: { [key: string]: string } = {};
+                                    for (const [key, value] of Object.entries(options.headers)) {
+                                        const resolvedKey = typeof key === "string" ? substituteVariablesInString(key, fileContent, chunks, thirdArgName) : String(key);
+                                        const resolvedValue = typeof value === "string" ? substituteVariablesInString(value, fileContent, chunks, thirdArgName) : String(value);
+                                        resolvedHeaders[resolvedKey] = resolvedValue;
+                                    }
+                                    options.headers = resolvedHeaders;
+                                }
+                                
+                                // Substitute variables in body if it's an object with string values
+                                if (options.body && typeof options.body === "object") {
+                                    const resolvedBody: any = {};
+                                    for (const [key, value] of Object.entries(options.body)) {
+                                        const resolvedValue = typeof value === "string" ? substituteVariablesInString(value, fileContent, chunks, thirdArgName) : value;
+                                        resolvedBody[key] = resolvedValue;
+                                    }
+                                    options.body = resolvedBody;
+                                }
+                                
                                 console.log(chalk.green(`    Method: ${options.method || "UNKNOWN"}`));
                                 callMethod = options.method || "UNKNOWN";
                                 if (options.headers)

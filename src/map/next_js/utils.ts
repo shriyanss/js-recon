@@ -129,16 +129,20 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
  * @param objectName - The name of the object variable
  * @param propertyName - The name of the property to access
  * @param chunkCode - The source code of the chunk
+ * @param chunks - All available chunks for cross-chunk resolution
+ * @param thirdArgName - The name of the third parameter (webpack require function)
  * @param depth - Current recursion depth to prevent infinite loops
  * @returns The resolved value or a placeholder if unresolved
  */
 export const resolveMemberExpressionInChunk = (
     objectName: string, 
     propertyName: string, 
-    chunkCode: string, 
+    chunkCode: string,
+    chunks?: Chunks,
+    thirdArgName?: string,
     depth: number = 0
 ): any => {
-    if (depth > 5) {
+    if (depth > 10) {
         return `[max recursion depth for ${objectName}.${propertyName}]`;
     }
     
@@ -155,6 +159,34 @@ export const resolveMemberExpressionInChunk = (
             VariableDeclarator(path) {
                 if (path.node.id.type === "Identifier" && path.node.id.name === objectName && path.node.init) {
                     const init = path.node.init;
+                    
+                    // Check if this is a webpack chunk import: u = r(3269)
+                    if (init.type === "CallExpression" && 
+                        init.callee.type === "Identifier" && 
+                        thirdArgName && 
+                        init.callee.name === thirdArgName &&
+                        init.arguments.length > 0 &&
+                        init.arguments[0].type === "NumericLiteral" &&
+                        chunks) {
+                        
+                        // This is a webpack chunk import, use resolveWebpackChunkImport with the property name
+                        const chunkImportValue = resolveWebpackChunkImport(
+                            objectName,
+                            chunkCode,
+                            chunks,
+                            thirdArgName,
+                            [propertyName]
+                        );
+                        
+                        if (chunkImportValue && 
+                            typeof chunkImportValue === "string" && 
+                            !chunkImportValue.startsWith("[unresolved") &&
+                            !chunkImportValue.startsWith("[error")) {
+                            resolvedValue = chunkImportValue;
+                            path.stop();
+                            return;
+                        }
+                    }
                     
                     // Handle object expressions: let obj = { prop: "value" }
                     if (init.type === "ObjectExpression") {
@@ -243,7 +275,7 @@ export const resolveMemberExpressionInChunk = (
                     }
                     // Handle if object is assigned to another variable
                     else if (init.type === "Identifier") {
-                        resolvedValue = resolveMemberExpressionInChunk(init.name, propertyName, chunkCode, depth + 1);
+                        resolvedValue = resolveMemberExpressionInChunk(init.name, propertyName, chunkCode, chunks, thirdArgName, depth + 1);
                         path.stop();
                     }
                 }
@@ -261,9 +293,11 @@ export const resolveMemberExpressionInChunk = (
  * 
  * @param str - The string containing [var X] placeholders
  * @param chunkCode - The source code of the chunk to resolve variables from
+ * @param chunks - All available chunks for cross-chunk resolution
+ * @param thirdArgName - The name of the third parameter (webpack require function)
  * @returns The string with variables substituted
  */
-export const substituteVariablesInString = (str: string, chunkCode: string): string => {
+export const substituteVariablesInString = (str: string, chunkCode: string, chunks?: Chunks, thirdArgName?: string): string => {
     if (typeof str !== "string") return str;
     
     let result = str;
@@ -294,7 +328,7 @@ export const substituteVariablesInString = (str: string, chunkCode: string): str
                         path.node.object.type === "Identifier") {
                         
                         const objectName = path.node.object.name;
-                        const resolvedValue = resolveMemberExpressionInChunk(objectName, propertyName, chunkCode);
+                        const resolvedValue = resolveMemberExpressionInChunk(objectName, propertyName, chunkCode, chunks, thirdArgName);
                         
                         if (typeof resolvedValue === "string" && 
                             !resolvedValue.startsWith("[unresolved:") && 
@@ -1026,45 +1060,38 @@ export const resolveNodeValue = (
                     return obj;
                 }
                 case "MemberExpression": {
-                    // For axios, check if this is a webpack chunk import pattern
+                    // Handle webpack chunk imports first - try to resolve directly
                     if (
-                        callType === "axios" &&
                         currentNode.object.type === "Identifier" &&
+                        currentNode.property.type === "Identifier" &&
+                        !currentNode.computed &&
                         chunkCode &&
                         chunks &&
                         thirdArgName
                     ) {
-                        // Try webpack chunk import resolution
-                        // First, collect the full member expression path
-                        const memberPath: string[] = [];
-                        let tempNode: Node = currentNode;
+                        const identifierName = currentNode.object.name;
+                        const propertyName = currentNode.property.name;
 
-                        // Traverse backwards to collect the path
-                        while (tempNode.type === "MemberExpression") {
-                            if (tempNode.property.type === "Identifier") {
-                                memberPath.unshift(tempNode.property.name);
-                            }
-                            tempNode = tempNode.object;
-                        }
-
-                        // Get the root identifier
-                        if (tempNode.type === "Identifier") {
-                            const rootIdentifier = tempNode.name;
-
-                            // Try to resolve using webpack chunk import
-                            const resolved = resolveWebpackChunkImport(
-                                rootIdentifier,
+                        // Try webpack chunk import resolution directly
+                        try {
+                            const webpackResult = resolveWebpackChunkImport(
+                                identifierName,
                                 chunkCode,
                                 chunks,
                                 thirdArgName,
-                                memberPath
+                                [propertyName]
                             );
-
-                            // If resolved successfully (not an error message), return it
-                            if (resolved && !String(resolved).startsWith("[unresolved:")) {
-                                return resolved;
+                            
+                            if (
+                                webpackResult &&
+                                typeof webpackResult === "string" &&
+                                !webpackResult.startsWith("[unresolved") &&
+                                !webpackResult.startsWith("[error")
+                            ) {
+                                return webpackResult;
                             }
-                            // Otherwise fall through to normal resolution
+                        } catch (e) {
+                            // Fall through to normal resolution
                         }
                     }
 
@@ -1101,6 +1128,7 @@ export const resolveNodeValue = (
                         }
                         return object[propertyName];
                     }
+                    
                     return `[unresolved member expression]`;
                 }
                 case "CallExpression": {
