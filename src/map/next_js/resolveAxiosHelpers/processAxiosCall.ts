@@ -3,7 +3,7 @@ import { MemberExpression, Node } from "@babel/types";
 import { Chunks } from "../../../utility/interfaces.js";
 import * as fs from "fs";
 import chalk from "chalk";
-import { resolveNodeValue, resolveStringOps } from "../utils.js";
+import { resolveNodeValue, substituteVariablesInString } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
@@ -84,7 +84,7 @@ export const processAxiosCall = (
 
             const concatRegex = /\".*\"(\\.concat\(.+\))+/;
             if (concatRegex.test(axiosFirstArgText)) {
-                callUrl = resolveStringOps(axiosFirstArgText);
+                callUrl = resolveNodeValue(axiosFirstArg, path.scope, axiosFirstArgText, "axios", chunkCode, chunks, thirdArgName);
             } else if (axiosFirstArg.type === "StringLiteral") {
                 callUrl = axiosFirstArg.value;
             } else {
@@ -97,6 +97,11 @@ export const processAxiosCall = (
                     chunks,
                     thirdArgName
                 );
+            }
+            
+            // Substitute any [var X] placeholders with actual values from the chunk
+            if (typeof callUrl === "string" && callUrl.includes("[var ")) {
+                callUrl = substituteVariablesInString(callUrl, chunkCode);
             }
         }
 
