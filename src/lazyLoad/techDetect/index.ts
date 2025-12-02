@@ -3,6 +3,7 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "puppeteer";
 import * as globalsUtil from "../../utility/globals.js";
+import path from "path";
 
 /**
  * Checks if a webpage uses Next.js by iterating through all HTML tags and checking if any src, srcset, or imageSrcSet attribute value starts with "/_next/".
@@ -49,7 +50,7 @@ const checkNextJS = async ($) => {
  *   - evidence: A string with the evidence of the detection, or an empty string
  *     if Vue.js was not detected.
  */
-const checkVueJS = async ($) => {
+const checkVueJS = async ($, url:string) => {
     let detected = false;
     let evidence = "";
 
@@ -61,10 +62,52 @@ const checkVueJS = async ($) => {
                 if (attrName.startsWith("data-v-")) {
                     detected = true;
                     evidence = `${tag} :: ${attrName}`;
+                } else if (attrName.startsWith("data-vue-")) {
+                    detected = true;
+                    evidence = `${tag} :: ${attrName}`;
+                } 
+            }
+        }
+    });
+    if (detected) {
+        return { detected, evidence };
+    }
+
+    // now, iterate through all the script tags, and find something like `app.js`
+    let appJsURL:string | undefined;
+    $("script").each((_, el) => {
+        const tag = $(el).get(0).tagName;
+        const attribs = el.attribs;
+        if (attribs) {
+            for (const [attrName, attrValue] of Object.entries(attribs)) {
+                if (attrName === "src") {
+                    // @ts-ignore
+                    if (attrValue.includes("app.js")) {
+                        // get the URL of the app.js file
+                        // @ts-ignore
+                        if (attrValue.startsWith("/")) {
+                            // @ts-ignore
+                            appJsURL = path.join(url, attrValue);
+                            // @ts-ignore
+                        } else if (attrValue.startsWith("http")) {
+                            // @ts-ignore
+                            appJsURL = attrValue;
+                        }
+                    }
                 }
             }
         }
     });
+
+    if (appJsURL) {
+        const appJsContent:string = await makeRequest(appJsURL).then((res) => res.text());
+        if (appJsContent) {
+            if (appJsContent.includes("Vue.component(")) {
+                detected = true;
+                evidence = `${appJsURL} :: Vue.component()`;
+            }
+        }
+    }
 
     return { detected, evidence };
 };
@@ -281,7 +324,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
 
     // check all technologies one by one
     const result_checkNextJS = await checkNextJS($);
-    const result_checkVueJS = await checkVueJS($);
+    const result_checkVueJS = await checkVueJS($, url);
     const result_checkSvelte = await checkSvelte($);
     const result_checkAngular = await checkAngularJS($, url);
 
@@ -298,7 +341,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         const resBody = await res.text();
         $res = cheerio.load(resBody);
         result_checkNextJS_res = await checkNextJS($res);
-        result_checkVueJS_res = await checkVueJS($res);
+        result_checkVueJS_res = await checkVueJS($res, url);
         result_checkSvelte_res = await checkSvelte($res);
         result_checkAngularJS_res = await checkAngularJS($res, url);
     }
