@@ -2,11 +2,11 @@
  * ==============================================
  * ==============================================
  * ==============================================
- * 
+ *
  *            !!!INCOMPLETE MODULE!!!
- * 
+ *
  *             WILL RETURN BLANK LIST
- * 
+ *
  * ==============================================
  * ==============================================
  * ==============================================
@@ -84,13 +84,10 @@ const vue_runtimeJs = async (url: string) => {
             ) {
                 // Check if right side is a CallExpression (IIFE pattern)
                 // i.e., function(e) { ... }(e)
-                if (
-                    right.type === "CallExpression" &&
-                    right.callee.type === "FunctionExpression"
-                ) {
+                if (right.type === "CallExpression" && right.callee.type === "FunctionExpression") {
                     // Found the pattern! Extract the function body
                     const funcExpr = right.callee;
-                    
+
                     // Get the source code for this node
                     const start = path.node.start;
                     const end = path.node.end;
