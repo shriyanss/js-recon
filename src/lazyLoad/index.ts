@@ -5,6 +5,8 @@ import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
+import makeRequest from "../utility/makeReq.js";
+import * as cheerio from "cheerio";
 
 // Next.js
 import subsequentRequests from "./next_js/next_SubsequentRequests.js";
@@ -25,6 +27,9 @@ import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
 import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
+
+// Vue
+import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -166,6 +171,26 @@ const lazyLoad = async (
             } else if (tech.name === "vue") {
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload:string[] = [];
+
+
+
+                // according to the vibe-coded app with a few pages, there are
+                // just a few files, like 2-3, but that's not the case in prod
+
+                // okay, found something from real apps :/
+                // maybe vibes aren't enough xD
+
+                // method 1: through runtime.<hash>.js 
+
+                // for this, first get the contents of `/`, and find runtime.<hash>.js file
+
+                const runtimeJsFiles = await vue_runtimeJs(url);
+                jsFilesToDownload.push(...runtimeJsFiles);
+
+                // 
+
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
