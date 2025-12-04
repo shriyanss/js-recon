@@ -31,6 +31,7 @@ import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 // Vue
 import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
 import vue_singleJsFileOnHome from "./vue/vue_SingleJsFileOnHome.js";
+import vue_jsImports from "./vue/vue_jsImports.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -206,7 +207,14 @@ const lazyLoad = async (
                 }
 
                 // now, get the import statements from the JS files
-                
+                const foundJsFilesFromImport = await vue_jsImports(url, jsFilesToDownload);
+                jsFilesToDownload.push(...foundJsFilesFromImport);
+                if (foundJsFilesFromImport.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${foundJsFilesFromImport.length} files from import statements`));
+                }
+
+                // finally, download these
+                await downloadFiles(jsFilesToDownload, output);
 
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
