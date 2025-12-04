@@ -30,6 +30,7 @@ import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 
 // Vue
 import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
+import vue_singleJsFileOnHome from "./vue/vue_SingleJsFileOnHome.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -186,10 +187,28 @@ const lazyLoad = async (
 
                 // for this, first get the contents of `/`, and find runtime.<hash>.js file
 
-                const runtimeJsFiles = await vue_runtimeJs(url);
-                jsFilesToDownload.push(...runtimeJsFiles);
 
-                // 
+                /* ==========================
+                 *  IMPORTANT: THE FOLLOWING MODULE IS INCOMPLETE
+                 *  JUST NEED TO COMPLETE IT
+                 *  DO NOT PERMANENTLY DELETE IT
+                 * ========================== 
+                 */
+                // const runtimeJsFiles = await vue_runtimeJs(url);
+                // jsFilesToDownload.push(...runtimeJsFiles);
+
+                
+                // another method: this is when the application only loads a single JS file
+                // everything is there right in that file
+
+                const jsFilesFromSingleJsFile = await vue_singleJsFileOnHome(url);
+                jsFilesToDownload.push(...jsFilesFromSingleJsFile);
+                if (jsFilesFromSingleJsFile.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${jsFilesFromSingleJsFile.length} files from the single JS file on home`));
+                }
+
+                // now, get the import statements from the JS files
+                
 
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));

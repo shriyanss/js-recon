@@ -186,6 +186,10 @@ const makeRequest = async (
     const requestOptions: RequestInit = restArgs;
     const requestTimeout = timeout || globals.getRequestTimeout();
 
+    if (url === "https://example.com/assets/index-CF_nYZ_d.js") {
+        console.log("[!] Requesting ", url);
+    }
+
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
         const cachedResponse = await readCache(url, requestOptions.headers || {});
@@ -262,6 +266,7 @@ const makeRequest = async (
                 }
                 if (counter > 10) {
                     console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
+                    console.log(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
                     return null;
                 }
                 // sleep 0.5 s before retrying
