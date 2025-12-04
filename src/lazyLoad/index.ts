@@ -215,7 +215,6 @@ const lazyLoad = async (
 
                 // finally, download these
                 await downloadFiles(jsFilesToDownload, output);
-
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
