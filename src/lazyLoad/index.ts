@@ -172,9 +172,7 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload:string[] = [];
-
-
+                let jsFilesToDownload: string[] = [];
 
                 // according to the vibe-coded app with a few pages, there are
                 // just a few files, like 2-3, but that's not the case in prod
@@ -182,15 +180,14 @@ const lazyLoad = async (
                 // okay, found something from real apps :/
                 // maybe vibes aren't enough xD
 
-                // method 1: through runtime.<hash>.js 
+                // method 1: through runtime.<hash>.js
 
                 // for this, first get the contents of `/`, and find runtime.<hash>.js file
 
                 const runtimeJsFiles = await vue_runtimeJs(url);
                 jsFilesToDownload.push(...runtimeJsFiles);
 
-                // 
-
+                //
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
