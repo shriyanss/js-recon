@@ -7,6 +7,7 @@
 - Added support for direct axios calls like `axios.Z.get()` for Next.js
 - Added support for axios with URLs exported to chunks
 - Added new method for Vue.js detection using `app.js` `Vue.component()` calls
+- Added new method to find JS files through the single JS file on homepage
 
 ### Changed
 
