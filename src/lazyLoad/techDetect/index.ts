@@ -50,7 +50,7 @@ const checkNextJS = async ($) => {
  *   - evidence: A string with the evidence of the detection, or an empty string
  *     if Vue.js was not detected.
  */
-const checkVueJS = async ($, url:string) => {
+const checkVueJS = async ($, url: string) => {
     let detected = false;
     let evidence = "";
 
@@ -65,7 +65,7 @@ const checkVueJS = async ($, url:string) => {
                 } else if (attrName.startsWith("data-vue-")) {
                     detected = true;
                     evidence = `${tag} :: ${attrName}`;
-                } 
+                }
             }
         }
     });
@@ -74,7 +74,7 @@ const checkVueJS = async ($, url:string) => {
     }
 
     // now, iterate through all the script tags, and find something like `app.js`
-    let appJsURL:string | undefined;
+    let appJsURL: string | undefined;
     $("script").each((_, el) => {
         const tag = $(el).get(0).tagName;
         const attribs = el.attribs;
@@ -100,7 +100,7 @@ const checkVueJS = async ($, url:string) => {
     });
 
     if (appJsURL) {
-        const appJsContent:string = await makeRequest(appJsURL).then((res) => res.text());
+        const appJsContent: string = await makeRequest(appJsURL).then((res) => res.text());
         if (appJsContent) {
             if (appJsContent.includes("Vue.component(")) {
                 detected = true;
