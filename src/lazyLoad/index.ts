@@ -213,6 +213,9 @@ const lazyLoad = async (
                     console.log(chalk.green(`[✓] Found ${foundJsFilesFromImport.length} files from import statements`));
                 }
 
+                // dedupe the list
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
                 // finally, download these
                 await downloadFiles(jsFilesToDownload, output);
             } else if (tech.name === "nuxt") {
