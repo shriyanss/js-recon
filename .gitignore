@@ -146,6 +146,7 @@ mapped.json
 endpoints.json
 endpoints.txt
 test.js
+*_test.js
 strings.md
 .DS_Store
 mapped-openapi.json
@@ -155,3 +156,4 @@ js-recon.db
 report.html
 js_recon_run_output/
 urls.txt
+extracted/

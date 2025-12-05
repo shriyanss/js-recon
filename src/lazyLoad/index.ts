@@ -5,6 +5,8 @@ import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
+import makeRequest from "../utility/makeReq.js";
+import * as cheerio from "cheerio";
 
 // Next.js
 import subsequentRequests from "./next_js/next_SubsequentRequests.js";
@@ -26,14 +28,66 @@ import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
 import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 
+// Vue
+import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
+import vue_singleJsFileOnHome from "./vue/vue_SingleJsFileOnHome.js";
+import vue_jsImports from "./vue/vue_jsImports.js";
+import vue_reconstructSourceMaps from "./vue/vue_reconstructSourceMaps.js";
+
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 
+// for rebuilding source maps
+import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import path from "path";
+import { join, dirname } from "path";
+import { extractSources } from "./sourcemap.js";
+
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
-import path from "path";
+
+const getMapFilesRecursively = (dir: string): string[] => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    const mapFiles: string[] = [];
+
+    for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            mapFiles.push(...getMapFilesRecursively(fullPath));
+        } else if (entry.isFile() && entry.name.endsWith(".js.map")) {
+            mapFiles.push(fullPath);
+        }
+    }
+
+    return mapFiles;
+};
+
+/**
+ * Extracts the source maps from a given directory and writes the original source files to an output directory.
+ * @param {string} assetsDir The directory containing the source maps (.js.map files)
+ * @param {string} outputDir The directory to write the extracted source files
+ * @returns {Promise<void>}
+ */
+const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
+    const mapFiles = getMapFilesRecursively(assetsDir);
+    let counter = 0;
+
+    for (const mapFile of mapFiles) {
+        // read the file while skipping the first line
+        const mapContent = readFileSync(mapFile, "utf-8").split("\n").slice(1).join("\n");
+        const { files } = extractSources(mapContent);
+
+        for (const file of files) {
+            const outPath = join(outputDir, file.path);
+            mkdirSync(dirname(outPath), { recursive: true });
+            writeFileSync(outPath, file.content);
+            counter++;
+        }
+    }
+    console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`));
+};
 
 /**
  * Downloads the required JavaScript files for a given URL
@@ -56,7 +110,8 @@ const lazyLoad = async (
     subsequentRequestsFlag: boolean,
     urlsFile: string,
     insecure: boolean,
-    buildId: boolean
+    buildId: boolean,
+    sourcemapDir: string
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -166,6 +221,66 @@ const lazyLoad = async (
             } else if (tech.name === "vue") {
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload: string[] = [];
+
+                // according to the vibe-coded app with a few pages, there are
+                // just a few files, like 2-3, but that's not the case in prod
+
+                // okay, found something from real apps :/
+                // maybe vibes aren't enough xD
+
+                // method 1: through runtime.<hash>.js
+
+                // for this, first get the contents of `/`, and find runtime.<hash>.js file
+
+                /* ==========================
+                 *  IMPORTANT: THE FOLLOWING MODULE IS INCOMPLETE
+                 *  JUST NEED TO COMPLETE IT
+                 *  DO NOT PERMANENTLY DELETE IT
+                 * ==========================
+                 */
+                // const runtimeJsFiles = await vue_runtimeJs(url);
+                // jsFilesToDownload.push(...runtimeJsFiles);
+
+                // another method: this is when the application only loads a single JS file
+                // everything is there right in that file
+
+                // the following method was tested on an app running in dev mode
+                // effectiveness in prod mode is unknown atm
+                const jsFilesFromSingleJsFile = await vue_singleJsFileOnHome(url);
+                jsFilesToDownload.push(...jsFilesFromSingleJsFile);
+                if (jsFilesFromSingleJsFile.length > 0) {
+                    console.log(
+                        chalk.green(`[✓] Found ${jsFilesFromSingleJsFile.length} files from the single JS file on home`)
+                    );
+                }
+
+                // now, get the import statements from the JS files
+                const foundJsFilesFromImport = await vue_jsImports(url, jsFilesToDownload);
+                jsFilesToDownload.push(...foundJsFilesFromImport);
+                if (foundJsFilesFromImport.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${foundJsFilesFromImport.length} files from import statements`));
+                }
+
+                // check if those have sourcemaps
+
+                const reconstructSourceMaps = await vue_reconstructSourceMaps(url, jsFilesToDownload);
+                jsFilesToDownload.push(...reconstructSourceMaps);
+                if (reconstructSourceMaps.length > 0) {
+                    console.log(
+                        chalk.green(`[✓] Found ${reconstructSourceMaps.length} files from reconstructing source maps`)
+                    );
+                }
+
+                // dedupe the list
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                // finally, download these
+                await downloadFiles(jsFilesToDownload, output);
+
+                // extract the source maps
+                await extractSourceMaps(output, sourcemapDir);
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
