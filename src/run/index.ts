@@ -74,7 +74,7 @@ const processUrl = async (
     }
 
     console.log(chalk.bgCyan("[1/8] Running lazyload to download JavaScript files..."));
-    await lazyLoad(url, outputDir, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "", cmd.insecure, false);
+    await lazyLoad(url, outputDir, cmd.strictScope, cmd.scope.split(","), cmd.threads, false, "", cmd.insecure, false, cmd.sourcemapDir);
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
     if (globalsUtil.getTech() === "") {
@@ -124,7 +124,8 @@ const processUrl = async (
         true,
         `${extractedUrlsFile}.json`,
         cmd.insecure,
-        true
+        true,
+        cmd.sourcemapDir
     );
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 

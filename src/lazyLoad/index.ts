@@ -38,10 +38,56 @@ import vue_reconstructSourceMaps from "./vue/vue_reconstructSourceMaps.js";
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 
+// for rebuilding source maps
+import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import path from "path";
+import { join, dirname } from "path";
+import { extractSources } from "./sourcemap.js";
+
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
-import path from "path";
+
+const getMapFilesRecursively = (dir: string): string[] => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    const mapFiles: string[] = [];
+
+    for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+            mapFiles.push(...getMapFilesRecursively(fullPath));
+        } else if (entry.isFile() && entry.name.endsWith(".js.map")) {
+            mapFiles.push(fullPath);
+        }
+    }
+
+    return mapFiles;
+};
+
+/**
+ * Extracts the source maps from a given directory and writes the original source files to an output directory.
+ * @param {string} assetsDir The directory containing the source maps (.js.map files)
+ * @param {string} outputDir The directory to write the extracted source files
+ * @returns {Promise<void>}
+ */
+const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
+    const mapFiles = getMapFilesRecursively(assetsDir);
+    let counter = 0;
+
+    for (const mapFile of mapFiles) {
+        // read the file while skipping the first line
+        const mapContent = readFileSync(mapFile, "utf-8").split("\n").slice(1).join("\n");
+        const { files } = extractSources(mapContent);
+
+        for (const file of files) {
+            const outPath = join(outputDir, file.path);
+            mkdirSync(dirname(outPath), { recursive: true });
+            writeFileSync(outPath, file.content);
+            counter++;
+        }
+    }
+    console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`))
+};
 
 /**
  * Downloads the required JavaScript files for a given URL
@@ -64,7 +110,8 @@ const lazyLoad = async (
     subsequentRequestsFlag: boolean,
     urlsFile: string,
     insecure: boolean,
-    buildId: boolean
+    buildId: boolean,
+    sourcemapDir: string
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -231,6 +278,9 @@ const lazyLoad = async (
 
                 // finally, download these
                 await downloadFiles(jsFilesToDownload, output);
+
+                // extract the source maps
+                await extractSourceMaps(output, sourcemapDir);
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
