@@ -92,6 +92,9 @@ const checkVueJS = async ($, url: string) => {
                         } else if (attrValue.startsWith("http")) {
                             // @ts-ignore
                             appJsURL = attrValue;
+                        } else {
+                            // @ts-ignore
+                            appJsURL = new URL(attrValue, url).href;
                         }
                     }
                 }
