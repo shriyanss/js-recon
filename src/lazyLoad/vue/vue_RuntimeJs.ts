@@ -39,7 +39,7 @@ const vue_runtimeJs = async (url: string) => {
             for (const [attrName, attrValue] of Object.entries(attribs)) {
                 if (attrName === "src") {
                     // @ts-ignore
-                    if (attrValue.match(/runtime\..\.js/)) {
+                    if (attrValue.match(/runtime\..+\.js/)) {
                         // @ts-ignore
                         runtimeJsUrl = attrValue;
                     }
