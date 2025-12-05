@@ -12,7 +12,7 @@
         "build": "rm -rf build/ && tsc",
         "start": "node build/index.js",
         "test": "node build/index.js -h",
-        "cleanup": "rm -rf build output .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json} analyze.json test{.yaml,.js} shriyanss-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js && tsc"
+        "cleanup": "rm -rf build output .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json} analyze.json test{.yaml,.js} shriyanss-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js extracted/ && tsc"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
