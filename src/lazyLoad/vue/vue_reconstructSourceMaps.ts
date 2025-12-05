@@ -3,8 +3,12 @@ import chalk from "chalk";
 
 const vue_reconstructSourceMaps = async (url: string, jsFilesToDownload: string[]) => {
     // get the contents of first file, and check if it has the sourceMappingURL
-
+    
     let sourceMapUrls: string[] = [];
+    // guard against empty input
+    if (jsFilesToDownload.length === 0) {
+        return sourceMapUrls;
+    }
 
     const req = await makeRequest(jsFilesToDownload[0]);
     const content = await req.text();
@@ -32,7 +36,7 @@ const vue_reconstructSourceMaps = async (url: string, jsFilesToDownload: string[
             if (sourceMappingURL.startsWith("/")) {
                 reconstructedUrl = new URL(jsFile).origin + sourceMappingURL;
             } else if (sourceMappingURL.startsWith("./")) {
-                reconstructedUrl = new URL(jsFile).origin + new URL(jsFile).pathname + sourceMappingURL;
+                reconstructedUrl = new URL(sourceMappingURL, jsFile).href;
             } else if (sourceMappingURL.startsWith("http")) {
                 reconstructedUrl = sourceMappingURL;
             } else {
