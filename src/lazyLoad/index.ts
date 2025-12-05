@@ -32,6 +32,7 @@ import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
 import vue_singleJsFileOnHome from "./vue/vue_SingleJsFileOnHome.js";
 import vue_jsImports from "./vue/vue_jsImports.js";
+import vue_reconstructSourceMaps from "./vue/vue_reconstructSourceMaps.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -198,6 +199,8 @@ const lazyLoad = async (
                 // another method: this is when the application only loads a single JS file
                 // everything is there right in that file
 
+                // the following method was tested on an app running in dev mode
+                // effectiveness in prod mode is unknown atm
                 const jsFilesFromSingleJsFile = await vue_singleJsFileOnHome(url);
                 jsFilesToDownload.push(...jsFilesFromSingleJsFile);
                 if (jsFilesFromSingleJsFile.length > 0) {
@@ -211,6 +214,14 @@ const lazyLoad = async (
                 jsFilesToDownload.push(...foundJsFilesFromImport);
                 if (foundJsFilesFromImport.length > 0) {
                     console.log(chalk.green(`[✓] Found ${foundJsFilesFromImport.length} files from import statements`));
+                }
+
+                // check if those have sourcemaps
+
+                const reconstructSourceMaps = await vue_reconstructSourceMaps(url, jsFilesToDownload);
+                jsFilesToDownload.push(...reconstructSourceMaps);
+                if (reconstructSourceMaps.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${reconstructSourceMaps.length} files from reconstructing source maps`));
                 }
 
                 // dedupe the list
