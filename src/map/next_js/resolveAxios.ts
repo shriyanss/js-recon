@@ -7,6 +7,7 @@ import { findAxiosInstance } from "./resolveAxiosHelpers/findAxiosInstance.js";
 import { processAxiosCall } from "./resolveAxiosHelpers/processAxiosCall.js";
 import { ArrowFunctionExpression, FunctionDeclaration, Node } from "@babel/types";
 import { handleZDotCreate, processZDotCreateCall } from "./resolveAxiosHelpers/handleZDotCreate.js";
+import { directCallsWithoutAssignment } from "./resolveAxiosHelpers/directCallsWithoutAssignment.js";
 
 const traverse = _traverse.default;
 
@@ -15,7 +16,7 @@ const traverse = _traverse.default;
  * @param {Node} ast - The abstract syntax tree of the function.
  * @returns {string} - The name of the third argument.
  */
-const getThirdArg = (ast: Node): string => {
+export const getThirdArg = (ast: Node): string => {
     let thirdArg = "";
     traverse(ast, {
         enter(path) {
@@ -46,9 +47,9 @@ const getThirdArg = (ast: Node): string => {
 const resolveAxios = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving axios instances"));
 
-    const { axiosExportedTo, axiosImportedTo } = findAxiosClients(chunks);
+    const { axiosExportedFrom, axiosImportedTo } = findAxiosClients(chunks);
 
-    if (axiosExportedTo.length === 0) {
+    if (axiosExportedFrom.length === 0) {
         console.log(chalk.yellow("[!] No axios clients defined in any chunk."));
         return;
     }
@@ -74,7 +75,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
 
         traverse(ast, {
             CallExpression(path) {
-                const axiosVarName = handleZDotCreate(path, chunkCode, directory, chunkName, chunks, axiosExportedTo);
+                const axiosVarName = handleZDotCreate(path, chunkCode, directory, chunkName, chunks, axiosExportedFrom);
                 if (axiosVarName) {
                     zDotCreateInstances[axiosVarName] = axiosVarName;
                 }
@@ -89,6 +90,35 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                 },
             });
             axiosCallsFound = true;
+        }
+
+        // similar to n(...).Z.create() pattern, search for direct calls, like n(...).Z.get(), n(...).Z.post(), etc.
+        // for this, iterate through all the chunks, and find which ones import the axios instances
+
+        const axiosLibraries: string[] = Object.values(chunks)
+            .filter((chunk) => chunk.isAxiosLibrary === true)
+            .map((chunk) => chunk.id);
+
+        if (axiosLibraries.length > 0) {
+            const importedAxiosLib = axiosLibraries.find((lib) => chunk.imports?.includes(lib));
+
+            if (importedAxiosLib) {
+                // now it can be processed to find axios calls
+                const thirdArg = getThirdArg(ast);
+
+                if (thirdArg) {
+                    directCallsWithoutAssignment(
+                        ast,
+                        thirdArg,
+                        importedAxiosLib,
+                        chunkCode,
+                        directory,
+                        chunkName,
+                        chunks
+                    );
+                    axiosCallsFound = true;
+                }
+            }
         }
 
         // Process regular axios instances

@@ -3,11 +3,12 @@ import { MemberExpression, Node } from "@babel/types";
 import { Chunks } from "../../../utility/interfaces.js";
 import * as fs from "fs";
 import chalk from "chalk";
-import { resolveNodeValue, resolveStringOps } from "../utils.js";
+import { resolveNodeValue, substituteVariablesInString } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
 import { handleAxiosCreate } from "./handleAxiosCreate.js";
+import { getThirdArg } from "../resolveAxios.js";
 
 /**
  * Gets the HTTP method from a method name.
@@ -72,6 +73,9 @@ export const processAxiosCall = (
     let callBody: string;
     let callHeaders: { [key: string]: string } = {};
 
+    // Get the webpack require function name (third arg) for enhanced resolution
+    const thirdArgName = getThirdArg(ast);
+
     if (path.parentPath.isCallExpression()) {
         const args = path.parentPath.node.arguments;
         if (args.length > 0) {
@@ -80,11 +84,32 @@ export const processAxiosCall = (
 
             const concatRegex = /\".*\"(\\.concat\(.+\))+/;
             if (concatRegex.test(axiosFirstArgText)) {
-                callUrl = resolveStringOps(axiosFirstArgText);
+                callUrl = resolveNodeValue(
+                    axiosFirstArg,
+                    path.scope,
+                    axiosFirstArgText,
+                    "axios",
+                    chunkCode,
+                    chunks,
+                    thirdArgName
+                );
             } else if (axiosFirstArg.type === "StringLiteral") {
                 callUrl = axiosFirstArg.value;
             } else {
-                callUrl = resolveNodeValue(axiosFirstArg, path.scope, axiosFirstArgText, "axios");
+                callUrl = resolveNodeValue(
+                    axiosFirstArg,
+                    path.scope,
+                    axiosFirstArgText,
+                    "axios",
+                    chunkCode,
+                    chunks,
+                    thirdArgName
+                );
+            }
+
+            // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk
+            if (typeof callUrl === "string" && (callUrl.includes("[var ") || callUrl.includes("[MemberExpression"))) {
+                callUrl = substituteVariablesInString(callUrl, chunkCode, chunks, thirdArgName);
             }
         }
 

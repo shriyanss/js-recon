@@ -1,5 +1,5 @@
 import { NodePath } from "@babel/traverse";
-import { MemberExpression, CallExpression, VariableDeclarator } from "@babel/types";
+import { MemberExpression, CallExpression, VariableDeclarator, ObjectProperty } from "@babel/types";
 import _traverse from "@babel/traverse";
 import * as fs from "fs";
 import * as fsPath from "path";
@@ -8,6 +8,8 @@ import { Chunks } from "../../../utility/interfaces.js";
 import * as globals from "../../../utility/globals.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import { resolveNodeValue, resolveStringOps } from "../utils.js";
+import { processExportedEndpoints } from "./processExportedEndpoints.js";
+import { getThirdArg } from "../resolveAxios.js";
 
 const traverse = _traverse.default;
 
@@ -117,9 +119,16 @@ export const handleZDotCreate = (
     if (axiosCreateVarName !== "") {
         console.log(
             chalk.magenta(
-                `[✓] n(${moduleId}).Z.create() assigned to '${axiosCreateVarName}' in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateLineNumber})`
+                `[✓] .Z.create() assigned to '${axiosCreateVarName}' in chunk ${chunkName} ("${directory}/${chunks[chunkName].file}":${axiosCreateLineNumber})`
             )
         );
+
+        // After detecting Z.create(), check for exported endpoint wrappers
+        if (chunks[chunkName].exports && chunks[chunkName].exports.length > 1) {
+            // Get the AST from the program parent scope to use for traversal
+            const ast = path.scope.getProgramParent().path.node;
+            processExportedEndpoints(axiosCreateVarName, chunkCode, directory, chunkName, chunks, ast);
+        }
 
         // Extract configuration options from the create() call, like baseURL
         let axiosCreateBaseURL: string;
@@ -202,6 +211,9 @@ export const processZDotCreateCall = (
     let callBody: string;
     let callHeaders: { [key: string]: string } = {};
 
+    // Get the webpack require function name (third arg) for enhanced resolution
+    const thirdArgName = getThirdArg(ast);
+
     if (path.parentPath.isCallExpression()) {
         const args = path.parentPath.node.arguments;
         if (args.length > 0) {
@@ -214,7 +226,15 @@ export const processZDotCreateCall = (
             } else if (axiosFirstArg.type === "StringLiteral") {
                 callUrl = axiosFirstArg.value;
             } else {
-                callUrl = resolveNodeValue(axiosFirstArg, path.scope, axiosFirstArgText, "axios");
+                callUrl = resolveNodeValue(
+                    axiosFirstArg,
+                    path.scope,
+                    axiosFirstArgText,
+                    "axios",
+                    chunkCode,
+                    chunks,
+                    thirdArgName
+                );
             }
         }
 

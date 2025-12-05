@@ -1,6 +1,26 @@
 # Change Log
 
-## 1.2.2-alpha.3 - (2025.10.23)
+## 1.2.2-alpha.4 - (2025.12.05)
+
+### Added
+
+- Added support for direct axios calls like `axios.Z.get()` for Next.js
+- Added support for axios with URLs exported to chunks
+- Added new method for Vue.js detection using `app.js` `Vue.component()` calls
+- Added new method to find JS files through the single JS file on homepage for Vue.js
+- Added new method to find JS files through import statements for Vue.js
+- Added support for sourcemap reconstruction for Vue.js
+
+### Changed
+
+- Improved node value resolver with research about Axios library
+- Improved node value resolver with research about fetch() usage
+
+### Fixed
+
+- Fixed CDN handling for Next.js applications with custom ports
+
+## 1.2.2-alpha.3 - (2025.11.23)
 
 ### Added
 
