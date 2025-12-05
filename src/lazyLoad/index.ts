@@ -221,7 +221,9 @@ const lazyLoad = async (
                 const reconstructSourceMaps = await vue_reconstructSourceMaps(url, jsFilesToDownload);
                 jsFilesToDownload.push(...reconstructSourceMaps);
                 if (reconstructSourceMaps.length > 0) {
-                    console.log(chalk.green(`[✓] Found ${reconstructSourceMaps.length} files from reconstructing source maps`));
+                    console.log(
+                        chalk.green(`[✓] Found ${reconstructSourceMaps.length} files from reconstructing source maps`)
+                    );
                 }
 
                 // dedupe the list
