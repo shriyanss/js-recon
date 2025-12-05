@@ -86,7 +86,7 @@ const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
             counter++;
         }
     }
-    console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`))
+    console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`));
 };
 
 /**
