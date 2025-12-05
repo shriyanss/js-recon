@@ -48,7 +48,7 @@ const vue_jsImports = async (url: string, foundJsFiles: string[]) => {
     }
 
     // continue crawling until no new URLs are found
-    while (foundUrls.some(url => !crawledUrls.includes(url))) {
+    while (foundUrls.some((url) => !crawledUrls.includes(url))) {
         // iterate through foundUrls
         for (const url of foundUrls) {
             if (!crawledUrls.includes(url)) {
