@@ -52,8 +52,6 @@ const vue_runtimeJs = async (url: string) => {
         // if it starts with HTTP, then great. else, construct using path.join
         if (!runtimeJsUrl.startsWith("http")) {
             runtimeJsUrl = path.join(url, runtimeJsUrl);
-        } else {
-            runtimeJsUrl = path.join(url, runtimeJsUrl);
         }
     }
 
