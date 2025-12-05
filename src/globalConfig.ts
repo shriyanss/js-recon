@@ -11,6 +11,7 @@ let CONFIG = {
     version: version,
     toolDesc: toolDesc,
     axiosNonHttpMethods: axiosNonHttpMethods,
+    issueUrl: `${githubURL}/issues/new/choose`,
 };
 
 export default CONFIG;

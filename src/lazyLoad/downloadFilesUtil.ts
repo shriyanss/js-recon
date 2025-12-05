@@ -31,7 +31,7 @@ const downloadFiles = async (urls: string[], output: string) => {
     const downloadPromises = urls.map(async (url) => {
         try {
             await new Promise((resolve) => setTimeout(resolve, Math.random() * 4950 + 50));
-            if (url.match(/(\.js|\.json)/)) {
+            if (url.match(/(\.js|\.json|\.js\.map)/)) {
                 // get the directory of the url
                 const { host, directory } = getURLDirectory(url);
 
@@ -68,7 +68,7 @@ const downloadFiles = async (urls: string[], output: string) => {
                 // only push it if the file is a JS file
                 let file;
                 if (!url.match(/\.json/)) {
-                    file = `// JS Source: ${url}\n${await res.text()}`;
+                    file = `// File Source: ${url}\n${await res.text()}`;
                 } else {
                     file = await res.text();
                 }
@@ -77,7 +77,7 @@ const downloadFiles = async (urls: string[], output: string) => {
                     filename = url
                         .split("/")
                         .pop()
-                        .match(/[a-zA-Z0-9\.\-_]+\.js(on)?/)[0];
+                        .match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)[0];
                 } catch (err) {
                     // split the URL into multiple chunks. then iterate
                     // through it, and find whatever matches with JS or JSON ext
@@ -99,7 +99,7 @@ const downloadFiles = async (urls: string[], output: string) => {
                 const filePath = path.join(childDir, filename);
                 try {
                     // if it's json, then use different parser
-                    if (url.match(/\.json/)) {
+                    if (url.match(/\.json/) || url.match(/\.js\.map/)) {
                         fs.writeFileSync(filePath, await prettier.format(file, { parser: "json" }));
                     } else {
                         fs.writeFileSync(filePath, await prettier.format(file, { parser: "babel" }));
@@ -108,6 +108,8 @@ const downloadFiles = async (urls: string[], output: string) => {
                     console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
                 }
                 download_count++;
+            } else {
+                console.log(chalk.yellow(`[i] Ignored ${url}`));
             }
         } catch (err) {
             console.error(chalk.red(`[!] Failed to download: ${url} : ${err}`));
