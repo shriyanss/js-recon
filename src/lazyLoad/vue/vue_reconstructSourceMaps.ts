@@ -3,7 +3,7 @@ import chalk from "chalk";
 
 const vue_reconstructSourceMaps = async (url: string, jsFilesToDownload: string[]) => {
     // get the contents of first file, and check if it has the sourceMappingURL
-    
+
     let sourceMapUrls: string[] = [];
     // guard against empty input
     if (jsFilesToDownload.length === 0) {
