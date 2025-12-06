@@ -186,10 +186,6 @@ const makeRequest = async (
     const requestOptions: RequestInit = restArgs;
     const requestTimeout = timeout || globals.getRequestTimeout();
 
-    if (url === "https://REMOVED/assets/index-CF_nYZ_d.js") {
-        console.log("[!] Requesting ", url);
-    }
-
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
         const cachedResponse = await readCache(url, requestOptions.headers || {});
