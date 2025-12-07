@@ -1,6 +1,16 @@
 # Change Log
 
-## 1.2.2-alpha.4 - (2025.12.05)
+## 1.2.2-alpha.5 - (unreleased)
+
+### Added
+
+### Changed
+
+- Add referer header to requests for improved stability
+
+### Fixed
+
+## 1.2.2-alpha.4 - 2025.12.05
 
 ### Added
 
@@ -20,7 +30,7 @@
 
 - Fixed CDN handling for Next.js applications with custom ports
 
-## 1.2.2-alpha.3 - (2025.11.23)
+## 1.2.2-alpha.3 - 2025.11.23
 
 ### Added
 

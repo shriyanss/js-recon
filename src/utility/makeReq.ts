@@ -165,11 +165,98 @@ const writeCache = async (url: string, headers: {}, response: Response): Promise
 };
 
 /**
+ * Performs a single fetch request with retry logic.
+ *
+ * @param url - The URL to request
+ * @param requestOptions - Request options including headers
+ * @param requestTimeout - Timeout in milliseconds
+ * @returns A Promise that resolves to a Response, or null if all retries fail
+ */
+const singleFetch = async (
+    url: string,
+    requestOptions: RequestInit,
+    requestTimeout: number
+): Promise<Response | null> => {
+    let res: Response;
+    let counter = 0;
+
+    while (true) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
+        const currentRequestOptions = {
+            ...requestOptions,
+            signal: controller.signal,
+        };
+
+        try {
+            EventEmitter.defaultMaxListeners = 20;
+            res = await fetch(url, currentRequestOptions);
+            clearTimeout(timeoutId);
+            if (res) {
+                break;
+            }
+        } catch (err) {
+            clearTimeout(timeoutId);
+            counter++;
+            // BUG: https://github.com/nodejs/node/issues/47246
+            if (err.cause && err.cause.code === "UND_ERR_HEADERS_OVERFLOW") {
+                console.log(
+                    chalk.yellow(
+                        `[!] The tool detected a header overflow. Please increase the limit by setting environment variable \`NODE_OPTIONS="--max-http-header-size=99999999"\`. If the error still persists, please try again with a higher limit.`
+                    )
+                );
+                process.exit(21);
+            }
+            if (err.name === "AbortError") {
+                console.log(chalk.red(`[!] Request to ${url} timed out after ${requestTimeout}ms`));
+                return null;
+            }
+            if (counter > 10) {
+                console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
+                console.log(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
+                return null;
+            }
+            // sleep 0.5 s before retrying
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+        }
+    }
+    return res;
+};
+
+/**
+ * Handles firewall detection and bypass using headless browser.
+ *
+ * @param url - The URL being requested
+ * @param resp_text - The response text to check for firewall signatures
+ * @returns A Promise that resolves to Response content if firewall detected, or null if not
+ */
+const handleFirewall = async (url: string, resp_text: string): Promise<string | null> => {
+    if (resp_text.includes("/?bm-verify=") || resp_text.includes("<title>Just a moment...</title>")) {
+        console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+        });
+        const page = await browser.newPage();
+        await page.goto(url);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const content = await page.content();
+        await browser.close();
+        return content;
+    }
+    return null;
+};
+
+/**
  * Makes a GET request to the given URL and returns the response.
  *
  * If caching is enabled, it will first check if the response is cached.
  * If it is, it will return the cached response. If not, it will make the request
  * using the given options, and cache the response before returning it.
+ *
+ * When no custom headers are provided, tries both with and without Referer header,
+ * returning the successful (200) response.
  *
  * If the request fails, it will retry up to 10 times with 0.5s of sleep in between.
  * If all retries fail, it will return null.
@@ -185,6 +272,25 @@ const makeRequest = async (
     const { timeout, ...restArgs } = args || {};
     const requestOptions: RequestInit = restArgs;
     const requestTimeout = timeout || globals.getRequestTimeout();
+    const usingDefaultHeaders = !requestOptions.headers;
+
+    // Build default headers if not provided
+    const baseHeaders = {
+        "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+    };
+
+    if (!requestOptions.headers) {
+        requestOptions.headers = {
+            ...baseHeaders,
+            Referer: new URL(url).origin,
+            Origin: new URL(url).origin,
+        };
+    }
 
     // if cache is enabled, read the cache and return if cache is present. else, continue
     if (!globals.getDisableCache()) {
@@ -195,21 +301,7 @@ const makeRequest = async (
     }
 
     if (globals.useApiGateway) {
-        let get_headers;
-        if (requestOptions && requestOptions.headers) {
-            get_headers = requestOptions.headers;
-        } else {
-            get_headers = {
-                "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
-                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Sec-Fetch-Site": "same-origin",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Dest": "empty",
-                Referer: url,
-                Origin: url,
-            };
-        }
+        const get_headers = requestOptions.headers;
 
         const body = await get(url, get_headers);
 
@@ -222,105 +314,91 @@ const makeRequest = async (
         }
         return response;
     } else {
-        let res: Response;
-        let counter = 0;
-
-        while (true) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
-            const currentRequestOptions = {
-                ...requestOptions,
-                signal: controller.signal,
+        // When using default headers, try both with and without Referer/Origin
+        // to handle servers that return 404 for one but 200 for the other
+        if (usingDefaultHeaders) {
+            // First try: with Referer and Origin
+            const headersWithReferer = {
+                ...baseHeaders,
+                Referer: new URL(url).origin,
+                Origin: new URL(url).origin,
             };
+            const resWithReferer = await singleFetch(url, { ...requestOptions, headers: headersWithReferer }, requestTimeout);
 
-            try {
-                EventEmitter.defaultMaxListeners = 20;
-                res = await fetch(url, currentRequestOptions);
-                clearTimeout(timeoutId);
-                if (res) {
-                    break;
+            if (resWithReferer && resWithReferer.ok) {
+                // Check for firewall
+                const clonedRes = resWithReferer.clone();
+                const resp_text = await clonedRes.text();
+                const firewallContent = await handleFirewall(url, resp_text);
+                if (firewallContent) {
+                    if (!globals.getDisableCache()) {
+                        await writeCache(url, headersWithReferer, new Response(firewallContent));
+                    }
+                    return new Response(firewallContent);
                 }
-            } catch (err) {
-                clearTimeout(timeoutId);
-                counter++;
-                // BUG: https://github.com/nodejs/node/issues/47246
-                // if the header content is too large, it will throw an error like
-                // code: `UND_ERR_HEADERS_OVERFLOW`
-                // so, if this error happens, tell the user to fix it using setting the environment variables
-                // if this is docker, this will be increased by default
-                if (err.cause && err.cause.code === "UND_ERR_HEADERS_OVERFLOW") {
-                    console.log(
-                        chalk.yellow(
-                            `[!] The tool detected a header overflow. Please increase the limit by setting environment variable \`NODE_OPTIONS="--max-http-header-size=99999999"\`. If the error still persists, please try again with a higher limit.`
-                        )
-                    );
-                    process.exit(21);
+
+                // Cache and return successful response
+                if (!globals.getDisableCache()) {
+                    await writeCache(url, headersWithReferer, resWithReferer.clone());
                 }
-                if (err.name === "AbortError") {
-                    console.log(chalk.red(`[!] Request to ${url} timed out after ${requestTimeout}ms`));
-                    return null;
-                }
-                if (counter > 10) {
-                    console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
-                    console.log(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
-                    return null;
-                }
-                // sleep 0.5 s before retrying
-                await new Promise((resolve) => setTimeout(resolve, 500));
-                continue;
+                return resWithReferer;
             }
-        }
 
-        const preservedRes = res.clone();
-        const preservedRes2 = res.clone();
+            // Second try: without Referer and Origin
+            const headersWithoutReferer = { ...baseHeaders };
+            const resWithoutReferer = await singleFetch(url, { ...requestOptions, headers: headersWithoutReferer }, requestTimeout);
 
-        // check if this is a firewall
-        // CF first
-        const resp_text = await res.text();
-        if (resp_text.includes("/?bm-verify=")) {
-            console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
-            // if it is, load it in a headless browser
-            const browser = await puppeteer.launch({
-                headless: true,
-                args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
-            });
-            const page = await browser.newPage();
-            await page.goto(url);
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            const content = await page.content();
-            await browser.close();
+            if (resWithoutReferer && resWithoutReferer.ok) {
+                // Check for firewall
+                const clonedRes = resWithoutReferer.clone();
+                const resp_text = await clonedRes.text();
+                const firewallContent = await handleFirewall(url, resp_text);
+                if (firewallContent) {
+                    if (!globals.getDisableCache()) {
+                        await writeCache(url, headersWithoutReferer, new Response(firewallContent));
+                    }
+                    return new Response(firewallContent);
+                }
 
-            // if cache is enabled, write the response to the cache
+                // Cache and return successful response
+                if (!globals.getDisableCache()) {
+                    await writeCache(url, headersWithoutReferer, resWithoutReferer.clone());
+                }
+                return resWithoutReferer;
+            }
+
+            // Both failed, return whichever response we got (prefer non-null)
+            const finalRes = resWithReferer || resWithoutReferer;
+            if (finalRes) {
+                if (!globals.getDisableCache()) {
+                    await writeCache(url, headersWithReferer, finalRes.clone());
+                }
+            }
+            return finalRes;
+        } else {
+            // Custom headers provided, use them directly
+            const res = await singleFetch(url, requestOptions, requestTimeout);
+            if (!res) return null;
+
+            const preservedRes = res.clone();
+            const preservedRes2 = res.clone();
+
+            // Check for firewall
+            const resp_text = await res.text();
+            const firewallContent = await handleFirewall(url, resp_text);
+            if (firewallContent) {
+                if (!globals.getDisableCache()) {
+                    await writeCache(url, requestOptions.headers || {}, new Response(firewallContent));
+                }
+                return new Response(firewallContent);
+            }
+
+            // Cache and return
             if (!globals.getDisableCache()) {
-                await writeCache(url, {}, new Response(content));
+                await writeCache(url, requestOptions.headers || {}, preservedRes.clone());
             }
-            return new Response(content);
-        } else if (resp_text.includes("<title>Just a moment...</title>")) {
-            console.log(chalk.yellow(`[!] CF Firewall detected. Trying to bypass with headless browser`));
-            // if it is, load it in a headless browser
-            const browser = await puppeteer.launch({
-                headless: true,
-                args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
-            });
-            const page = await browser.newPage();
-            await page.goto(url);
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-            const content = await page.content();
-            await browser.close();
-
-            // if cache is enabled, write the response to the cache
-            if (!globals.getDisableCache()) {
-                await writeCache(url, {}, new Response(content));
-            }
-            return new Response(content);
+            return preservedRes2;
         }
-
-        // if cache is enabled, write the response to the cache
-        if (!globals.getDisableCache()) {
-            const resToCache = preservedRes.clone();
-            await writeCache(url, requestOptions.headers || {}, resToCache);
-        }
-        return preservedRes2;
     }
 };
 
