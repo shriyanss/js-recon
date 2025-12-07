@@ -323,7 +323,11 @@ const makeRequest = async (
                 Referer: new URL(url).origin,
                 Origin: new URL(url).origin,
             };
-            const resWithReferer = await singleFetch(url, { ...requestOptions, headers: headersWithReferer }, requestTimeout);
+            const resWithReferer = await singleFetch(
+                url,
+                { ...requestOptions, headers: headersWithReferer },
+                requestTimeout
+            );
 
             if (resWithReferer && resWithReferer.ok) {
                 // Check for firewall
@@ -346,7 +350,11 @@ const makeRequest = async (
 
             // Second try: without Referer and Origin
             const headersWithoutReferer = { ...baseHeaders };
-            const resWithoutReferer = await singleFetch(url, { ...requestOptions, headers: headersWithoutReferer }, requestTimeout);
+            const resWithoutReferer = await singleFetch(
+                url,
+                { ...requestOptions, headers: headersWithoutReferer },
+                requestTimeout
+            );
 
             if (resWithoutReferer && resWithoutReferer.ok) {
                 // Check for firewall
