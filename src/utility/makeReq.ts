@@ -314,6 +314,21 @@ const makeRequest = async (
         }
         return response;
     } else {
+        // Helper to read response once and store data for reuse
+        const consumeResponse = async (
+            res: Response | null
+        ): Promise<{ body: ArrayBuffer; status: number; headers: Headers; ok: boolean; text: string } | null> => {
+            if (!res) return null;
+            const body = await res.arrayBuffer();
+            const text = new TextDecoder().decode(body);
+            return { body, status: res.status, headers: res.headers, ok: res.ok, text };
+        };
+
+        // Helper to create Response from stored data
+        const createResponse = (data: { body: ArrayBuffer; status: number; headers: Headers }): Response => {
+            return new Response(data.body, { status: data.status, headers: data.headers });
+        };
+
         // When using default headers, try both with and without Referer/Origin
         // to handle servers that return 404 for one but 200 for the other
         if (usingDefaultHeaders) {
@@ -328,12 +343,11 @@ const makeRequest = async (
                 { ...requestOptions, headers: headersWithReferer },
                 requestTimeout
             );
+            const dataWithReferer = await consumeResponse(resWithReferer);
 
-            if (resWithReferer && resWithReferer.ok) {
+            if (dataWithReferer && dataWithReferer.ok) {
                 // Check for firewall
-                const clonedRes = resWithReferer.clone();
-                const resp_text = await clonedRes.text();
-                const firewallContent = await handleFirewall(url, resp_text);
+                const firewallContent = await handleFirewall(url, dataWithReferer.text);
                 if (firewallContent) {
                     if (!globals.getDisableCache()) {
                         await writeCache(url, headersWithReferer, new Response(firewallContent));
@@ -343,9 +357,9 @@ const makeRequest = async (
 
                 // Cache and return successful response
                 if (!globals.getDisableCache()) {
-                    await writeCache(url, headersWithReferer, resWithReferer.clone());
+                    await writeCache(url, headersWithReferer, createResponse(dataWithReferer));
                 }
-                return resWithReferer;
+                return createResponse(dataWithReferer);
             }
 
             // Second try: without Referer and Origin
@@ -355,12 +369,11 @@ const makeRequest = async (
                 { ...requestOptions, headers: headersWithoutReferer },
                 requestTimeout
             );
+            const dataWithoutReferer = await consumeResponse(resWithoutReferer);
 
-            if (resWithoutReferer && resWithoutReferer.ok) {
+            if (dataWithoutReferer && dataWithoutReferer.ok) {
                 // Check for firewall
-                const clonedRes = resWithoutReferer.clone();
-                const resp_text = await clonedRes.text();
-                const firewallContent = await handleFirewall(url, resp_text);
+                const firewallContent = await handleFirewall(url, dataWithoutReferer.text);
                 if (firewallContent) {
                     if (!globals.getDisableCache()) {
                         await writeCache(url, headersWithoutReferer, new Response(firewallContent));
@@ -370,30 +383,28 @@ const makeRequest = async (
 
                 // Cache and return successful response
                 if (!globals.getDisableCache()) {
-                    await writeCache(url, headersWithoutReferer, resWithoutReferer.clone());
+                    await writeCache(url, headersWithoutReferer, createResponse(dataWithoutReferer));
                 }
-                return resWithoutReferer;
+                return createResponse(dataWithoutReferer);
             }
 
             // Both failed, return whichever response we got (prefer non-null)
-            const finalRes = resWithReferer || resWithoutReferer;
-            if (finalRes) {
+            const finalData = dataWithReferer || dataWithoutReferer;
+            if (finalData) {
                 if (!globals.getDisableCache()) {
-                    await writeCache(url, headersWithReferer, finalRes.clone());
+                    await writeCache(url, headersWithReferer, createResponse(finalData));
                 }
+                return createResponse(finalData);
             }
-            return finalRes;
+            return null;
         } else {
             // Custom headers provided, use them directly
             const res = await singleFetch(url, requestOptions, requestTimeout);
-            if (!res) return null;
-
-            const preservedRes = res.clone();
-            const preservedRes2 = res.clone();
+            const data = await consumeResponse(res);
+            if (!data) return null;
 
             // Check for firewall
-            const resp_text = await res.text();
-            const firewallContent = await handleFirewall(url, resp_text);
+            const firewallContent = await handleFirewall(url, data.text);
             if (firewallContent) {
                 if (!globals.getDisableCache()) {
                     await writeCache(url, requestOptions.headers || {}, new Response(firewallContent));
@@ -403,9 +414,9 @@ const makeRequest = async (
 
             // Cache and return
             if (!globals.getDisableCache()) {
-                await writeCache(url, requestOptions.headers || {}, preservedRes.clone());
+                await writeCache(url, requestOptions.headers || {}, createResponse(data));
             }
-            return preservedRes2;
+            return createResponse(data);
         }
     }
 };
