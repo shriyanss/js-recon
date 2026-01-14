@@ -7,6 +7,7 @@
 ### Changed
 
 - Add referer header to requests for improved stability
+- Add support to go force request `.js.map` files
 
 ### Fixed
 

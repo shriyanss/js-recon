@@ -47,6 +47,7 @@ import { extractSources } from "./sourcemap.js";
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
+import next_bruteForceJsFiles from "./next_js/next_bruteForceJsFiles.js";
 
 const getMapFilesRecursively = (dir: string): string[] => {
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -199,6 +200,18 @@ const lazyLoad = async (
 
                 // also, download the JSON files, so push those as well into this list
                 jsFilesToDownload.push(...lazyLoadGlobals.getJsonUrls());
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                // another method found during research: 
+                // when an app is built with turbopack, the .js.map files are present, but unlike webpack,
+                // they aren't present on the bottom of the file
+                // so, the way to find them is to just append `.map` on found JS files and bruteforce them
+
+                const jsFilesSourcemaps = await next_bruteForceJsFiles(jsFilesToDownload);
+
+                jsFilesToDownload.push(...jsFilesSourcemaps);
 
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
