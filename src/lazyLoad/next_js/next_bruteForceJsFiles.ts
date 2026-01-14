@@ -22,7 +22,7 @@ const next_bruteForceJsFiles = async (urls: string[]) => {
         console.log(chalk.red("[!] No source maps found"));
         return foundSourceMaps;
     }
-    
+
     console.log(chalk.green(`[✓] Found ${foundSourceMaps.length} source maps`));
     return foundSourceMaps;
 };

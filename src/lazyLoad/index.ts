@@ -204,7 +204,7 @@ const lazyLoad = async (
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
-                // another method found during research: 
+                // another method found during research:
                 // when an app is built with turbopack, the .js.map files are present, but unlike webpack,
                 // they aren't present on the bottom of the file
                 // so, the way to find them is to just append `.map` on found JS files and bruteforce them
