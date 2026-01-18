@@ -1,6 +1,19 @@
 # Change Log
 
-## 1.2.2-alpha.4 - (2025.12.05)
+## 1.2.2-alpha.5 - 2025.01.18
+
+### Added
+
+- Add support to bruteforce request `.js.map` files
+- Add support for Promise.all-based lazy loading in Next.js Turbopack builds
+
+### Changed
+
+- Add referer header to requests for improved stability
+
+### Fixed
+
+## 1.2.2-alpha.4 - 2025.12.05
 
 ### Added
 
@@ -20,7 +33,7 @@
 
 - Fixed CDN handling for Next.js applications with custom ports
 
-## 1.2.2-alpha.3 - (2025.11.23)
+## 1.2.2-alpha.3 - 2025.11.23
 
 ### Added
 
