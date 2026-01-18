@@ -15,7 +15,6 @@ const next_promiseResolve = async (urls: string[]) => {
     for (const url of urls) {
         if (url.includes("static/chunks/")) {
             jsDirBase = url.split("/").slice(0, -1).join("/");
-            console.log(jsDirBase);
             break;
         }
     }
@@ -70,7 +69,6 @@ const next_promiseResolve = async (urls: string[]) => {
             for (const match of matches) {
                 const jsFileName = match.replace("static/chunks/", "/");
                 const jsFileUrl = jsDirBase + jsFileName;
-                console.log(jsFileUrl);
 
                 toReturn.push(jsFileUrl);
             }
