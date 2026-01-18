@@ -205,18 +205,6 @@ const lazyLoad = async (
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
-                // another method found during research:
-                // when an app is built with turbopack, the .js.map files are present, but unlike webpack,
-                // they aren't present on the bottom of the file
-                // so, the way to find them is to just append `.map` on found JS files and bruteforce them
-
-                const jsFilesSourcemaps = await next_bruteForceJsFiles(jsFilesToDownload);
-
-                jsFilesToDownload.push(...jsFilesSourcemaps);
-
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
                 // JS files are also loaded like:
                 // e.v((t) =>
                 // Promise.all(
@@ -235,6 +223,18 @@ const lazyLoad = async (
 
                 const jsFilesFrom_next_promiseResolve = await next_promiseResolve(jsFilesToDownload);
                 jsFilesToDownload.push(...jsFilesFrom_next_promiseResolve);
+
+                // another method found during research:
+                // when an app is built with turbopack, the .js.map files are present, but unlike webpack,
+                // they aren't present on the bottom of the file
+                // so, the way to find them is to just append `.map` on found JS files and bruteforce them
+
+                const jsFilesSourcemaps = await next_bruteForceJsFiles(jsFilesToDownload);
+
+                jsFilesToDownload.push(...jsFilesSourcemaps);
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
