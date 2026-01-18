@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.2.2-alpha.5 - (unreleased)
+## 1.2.2-alpha.5 - 2025.01.18
 
 ### Added
 - Add support to go force request `.js.map` files
