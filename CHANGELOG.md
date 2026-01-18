@@ -3,6 +3,7 @@
 ## 1.2.2-alpha.5 - 2025.01.18
 
 ### Added
+
 - Add support to go force request `.js.map` files
 - Add support for Promise.all-based lazy loading in Next.js Turbopack builds
 
