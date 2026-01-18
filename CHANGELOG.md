@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add support to go force request `.js.map` files
+- Add support to bruteforce request `.js.map` files
 - Add support for Promise.all-based lazy loading in Next.js Turbopack builds
 
 ### Changed
