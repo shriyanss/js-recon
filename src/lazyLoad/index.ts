@@ -14,6 +14,7 @@ import next_getJSScript from "./next_js/next_GetJSScript.js";
 import next_GetLazyResourcesWebpackJs from "./next_js/next_GetLazyResourcesWebpackJs.js";
 import next_getLazyResourcesBuildManifestJs from "./next_js/next_GetLazyResourcesBuildManifestJs.js";
 import { next_buildId_RSC } from "./next_js/next_buildId.js";
+import next_promiseResolve from "./next_js/next_promiseResolve.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
@@ -216,6 +217,27 @@ const lazyLoad = async (
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
+                // JS files are also loaded like:
+                // e.v((t) =>
+                // Promise.all(
+                //     [
+                //     "static/chunks/8c89748310820503.js",
+                //     "static/chunks/cc50acdcbae71ebc.js",
+                //     "static/chunks/bedf897aaa1cca78.js",
+                //     ].map((t) => e.l(t)),
+                // ).then(() => t(58485)),
+                // );
+
+                // this behavior was found in my own site, which uses turbopack instead of webpack
+
+                // so, to resolve everything, we need to go through all the files' content
+                // and AST search for this pattern
+
+                const jsFilesFrom_next_promiseResolve = await next_promiseResolve(jsFilesToDownload);
+                jsFilesToDownload.push(...jsFilesFrom_next_promiseResolve);
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
                 await downloadFiles(jsFilesToDownload, output);
 
                 if (buildId) {
