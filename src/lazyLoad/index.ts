@@ -237,19 +237,19 @@ const lazyLoad = async (
                 // layout.*.js contains some UI builder elements
                 // parsing those gives us some client-side paths
                 // for example, the following code snippet is extracted, and returns a valid client side-path:
-                    // (0, r.jsx)("div", {
-                    //   className: "border-b border-gray-600 pb-2",
-                    //   children: (0, r.jsxs)(l(), {
-                    //     href: "/profile/".concat(t.auth.username),
-                    //     className: "flex flex-row space-x-2 items-center",
-                    //     onClick: () => a(!1),
-                    //     children: [
-                    //       (0, r.jsx)(er.A, { size: "20" }),
-                    //       (0, r.jsx)("p", { children: "Profile" }),
-                    //     ],
-                    //   }),
-                    // }),
-                // it is often nested in element names `children`, which is mostly an array 
+                // (0, r.jsx)("div", {
+                //   className: "border-b border-gray-600 pb-2",
+                //   children: (0, r.jsxs)(l(), {
+                //     href: "/profile/".concat(t.auth.username),
+                //     className: "flex flex-row space-x-2 items-center",
+                //     onClick: () => a(!1),
+                //     children: [
+                //       (0, r.jsx)(er.A, { size: "20" }),
+                //       (0, r.jsx)("p", { children: "Profile" }),
+                //     ],
+                //   }),
+                // }),
+                // it is often nested in element names `children`, which is mostly an array
                 // e.g.
                 // children: [..., (0, r.jsx)("div", {...}), ....]
 
