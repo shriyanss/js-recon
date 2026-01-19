@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.2-alpha.6 - 2026.01.18
+
+### Added
+
+- Added support for parsing layout.js files in Next.js
+
+### Changed
+
+### Fixed
+
 ## 1.2.2-alpha.5 - 2025.01.18
 
 ### Added

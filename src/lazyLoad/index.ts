@@ -15,6 +15,7 @@ import next_GetLazyResourcesWebpackJs from "./next_js/next_GetLazyResourcesWebpa
 import next_getLazyResourcesBuildManifestJs from "./next_js/next_GetLazyResourcesBuildManifestJs.js";
 import { next_buildId_RSC } from "./next_js/next_buildId.js";
 import next_promiseResolve from "./next_js/next_promiseResolve.js";
+import next_parseLayoutJs from "./next_js/next_parseLayoutJs.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
@@ -233,8 +234,29 @@ const lazyLoad = async (
 
                 jsFilesToDownload.push(...jsFilesSourcemaps);
 
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+                // layout.*.js contains some UI builder elements
+                // parsing those gives us some client-side paths
+                // for example, the following code snippet is extracted, and returns a valid client side-path:
+                // (0, r.jsx)("div", {
+                //   className: "border-b border-gray-600 pb-2",
+                //   children: (0, r.jsxs)(l(), {
+                //     href: "/profile/".concat(t.auth.username),
+                //     className: "flex flex-row space-x-2 items-center",
+                //     onClick: () => a(!1),
+                //     children: [
+                //       (0, r.jsx)(er.A, { size: "20" }),
+                //       (0, r.jsx)("p", { children: "Profile" }),
+                //     ],
+                //   }),
+                // }),
+                // it is often nested in element names `children`, which is mostly an array
+                // e.g.
+                // children: [..., (0, r.jsx)("div", {...}), ....]
+
+                // so, we need to parse this to find such patterns
+
+                const layoutJsFiles = await next_parseLayoutJs(jsFilesToDownload);
+                jsFilesToDownload.push(...layoutJsFiles);
 
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
