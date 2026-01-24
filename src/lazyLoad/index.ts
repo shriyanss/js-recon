@@ -200,7 +200,7 @@ const lazyLoad = async (
                     ...(lazyResourcesFromWebpack || []),
                     ...(lazyResourcesFromBuildManifest || []),
                     ...(lazyResourcesFromSubsequentRequests || []),
-                    ...(scriptTagsSubsequentRequests || [])
+                    ...(scriptTagsSubsequentRequests || []),
                 ];
                 // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
                 // This is because those functions now push to the global js_urls via setters.

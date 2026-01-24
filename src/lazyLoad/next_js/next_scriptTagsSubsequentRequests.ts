@@ -5,7 +5,6 @@ import next_getJSScript from "./next_GetJSScript.js";
 import fs from "fs";
 
 const next_scriptTagsSubsequentRequests = async (url: string, endpointsFile: string) => {
-
     console.log(chalk.cyan("[i] Getting JS files from subsequent requests (script tags)"));
 
     let endpoints = JSON.parse(fs.readFileSync(endpointsFile, "utf8")).paths;

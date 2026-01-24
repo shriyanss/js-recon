@@ -183,7 +183,9 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
     // dedupe
     jsFilesFromPageHtml = [...new Set(jsFilesFromPageHtml)];
 
-    console.log(chalk.green(`[✓] Found ${(new Set([...staticJSURLs, ...jsFilesFromPageHtml])).size} JS chunks from page HTML`));
+    console.log(
+        chalk.green(`[✓] Found ${new Set([...staticJSURLs, ...jsFilesFromPageHtml]).size} JS chunks from page HTML`)
+    );
 
     return new Set([...staticJSURLs, ...jsFilesFromPageHtml]);
 };
