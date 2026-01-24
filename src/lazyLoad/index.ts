@@ -16,6 +16,7 @@ import next_getLazyResourcesBuildManifestJs from "./next_js/next_GetLazyResource
 import { next_buildId_RSC } from "./next_js/next_buildId.js";
 import next_promiseResolve from "./next_js/next_promiseResolve.js";
 import next_parseLayoutJs from "./next_js/next_parseLayoutJs.js";
+import next_scriptTagsSubsequentRequests from "./next_js/next_scriptTagsSubsequentRequests.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
@@ -174,6 +175,7 @@ const lazyLoad = async (
                 const lazyResourcesFromWebpack = await next_GetLazyResourcesWebpackJs(url);
                 const lazyResourcesFromBuildManifest = await next_getLazyResourcesBuildManifestJs(url);
                 let lazyResourcesFromSubsequentRequests;
+                let scriptTagsSubsequentRequests;
 
                 if (subsequentRequestsFlag) {
                     // get JS files from subsequent requests
@@ -184,6 +186,11 @@ const lazyLoad = async (
                         output,
                         lazyLoadGlobals.getJsUrls() // Pass the global js_urls
                     );
+
+                    // another run for to get the HTML from client side paths
+                    // and parse the script tags
+
+                    scriptTagsSubsequentRequests = await next_scriptTagsSubsequentRequests(url, urlsFile);
                 }
 
                 // download the resources
@@ -193,6 +200,7 @@ const lazyLoad = async (
                     ...(lazyResourcesFromWebpack || []),
                     ...(lazyResourcesFromBuildManifest || []),
                     ...(lazyResourcesFromSubsequentRequests || []),
+                    ...(scriptTagsSubsequentRequests || [])
                 ];
                 // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
                 // This is because those functions now push to the global js_urls via setters.

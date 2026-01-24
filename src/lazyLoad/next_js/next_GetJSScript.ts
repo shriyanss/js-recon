@@ -99,7 +99,8 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
         }
     }
 
-    console.log(chalk.green(`[✓] Found ${getJsUrls().length} JS files from the script tags`));
+    // causes too much noise after using it with subsequent requests
+    // console.log(chalk.green(`[✓] Found ${getJsUrls().length} JS files from the script tags`));
 
     return getJsUrls();
 };
