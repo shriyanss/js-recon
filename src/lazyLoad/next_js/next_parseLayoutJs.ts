@@ -71,7 +71,7 @@ const next_parseLayoutJs = async (urls: string[]) => {
                 ObjectProperty(path: any) {
                     const { key, value } = path.node;
                     // Check if key is 'href' (identifier) or "href" (literal)
-                    if (key.loc.identifierName === "href") {
+                    if (key.name === "href") {
                         const resolved = resolveString(value);
                         if (resolved) {
                             hrefFinds.push(resolved);

@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.2.2-alpha.7 - 2026.01.24
+
+### Added
+
+- Added support for extracting JS files from client-side paths (HTML) in Next.js
+
+### Changed
+
+- Fixed recursive script tag parsing
+
+### Fixed
+
 ## 1.2.2-alpha.6 - 2026.01.18
 
 ### Added
