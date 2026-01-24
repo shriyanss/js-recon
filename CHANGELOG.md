@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added support for extracting JS files from client-side paths (HTML) in Next.js
+
 ### Changed
 
 ### Fixed

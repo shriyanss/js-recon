@@ -2,8 +2,8 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import { getURLDirectory } from "../../utility/urlUtils.js";
-// custom request module
 import makeRequest from "../../utility/makeReq.js";
+import * as cheerio from "cheerio";
 
 let queue = 0;
 let max_queue;
@@ -124,9 +124,68 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
 
     staticJSURLs = [...new Set(staticJSURLs)];
 
-    console.log(chalk.green(`[✓] Found ${staticJSURLs.length} JS chunks from subsequent requests`));
+    // in addition to the RSC:1 method, the script tags on the webpage of valid client-side paths also have the JS files
+    // since we found the possible paths in the previous iteration, we can use that to find the JS files on those pages
+    // as well
 
-    return staticJSURLs;
+    let jsFilesFromPageHtml: string[] = [];
+    for (const endpoint of endpoints) {
+        const reqUrl = new URL(endpoint, url).href;
+
+        // make the request to get the contents of the webpage
+
+        const req = await makeRequest(reqUrl);
+        const resText = await req.text();
+        const $ = cheerio.load(resText);
+
+        const extract_regex = /static\/chunks\/[a-zA-Z0-9_\-]+\.js/g;
+
+        // find all script tags
+        $("script").each((_, script) => {
+            // make sure that is doesn't have src attribute
+            if (!$(script).attr("src")) {
+                // get the content of the script tag
+                const scriptContent = $(script).html();
+                if (scriptContent) {
+                    // parse the script tag contents
+                    // it would be something like the following:
+                    // self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[13032,[\"2090\",\"static/chunks/2090.....
+                    // just use regex :/
+
+                    const matches = scriptContent.matchAll(extract_regex);
+                    for (const match of matches) {
+                        jsFilesFromPageHtml.push(match[0]);
+                    }
+                }
+            }
+        });
+    }
+
+    // build the full URL from path
+    jsFilesFromPageHtml = jsFilesFromPageHtml.map((file) => {
+        // go through existing JS URLs found
+        let js_path_dir;
+        for (const js_url of js_urls) {
+            if (
+                !js_path_dir &&
+                new URL(js_url).host === new URL(url).host &&
+                new URL(js_url).pathname.includes("static/chunks/")
+            ) {
+                js_path_dir = js_url.replace(/\/[^\/]+\.js.*$/, "");
+            }
+        }
+        if (js_path_dir) {
+            return js_path_dir.replace("static/chunks", "") + file;
+        }
+        return file;
+    });
+
+    // dedupe
+    jsFilesFromPageHtml = [...new Set(jsFilesFromPageHtml)];
+
+    console.log(chalk.green(`[✓] Found ${(new Set([...staticJSURLs, ...jsFilesFromPageHtml])).size} JS chunks from page HTML`));
+
+    return new Set([...staticJSURLs, ...jsFilesFromPageHtml]);
 };
 
 export default subsequentRequests;
