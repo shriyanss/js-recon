@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Add error handling for AST parsing in next_parseLayoutJs.ts
+
 ## 1.2.2-alpha.7 - 2026.01.24
 
 ### Added

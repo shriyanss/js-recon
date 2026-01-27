@@ -19,12 +19,15 @@ const next_parseLayoutJs = async (urls: string[]) => {
             const req = await makeRequest(url);
 
             const jsContent = await req.text();
+            let ast;
 
-            const ast = parser.parse(jsContent, {
-                sourceType: "unambiguous",
-                plugins: ["jsx", "typescript"],
-                errorRecovery: true,
-            });
+            try {
+                ast = parser.parse(jsContent, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+            } catch { continue }
 
             let hrefFinds: string[] = [];
 
