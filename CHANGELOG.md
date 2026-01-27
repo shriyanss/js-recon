@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add sourcemap reconstruction for Next.js
+
 ### Changed
 
 ### Fixed

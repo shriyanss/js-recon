@@ -88,7 +88,13 @@ const next_parseLayoutJs = async (urls: string[]) => {
 
             for (const href of hrefFinds) {
                 const newUrl = new URL(href, new URL(url).origin).href;
-                const req = await makeRequest(newUrl);
+
+                if (newUrl.startsWith("mailto:")) continue;
+
+                let req: Response | null;
+                try {
+                    req = await makeRequest(newUrl);
+                } catch { continue }
 
                 if (req.status === 200) {
                     console.log(chalk.green("[✓] Found new client side URL: ", newUrl));
