@@ -263,7 +263,7 @@ const lazyLoad = async (
 
                 // so, we need to parse this to find such patterns
 
-                const layoutJsFiles = await next_parseLayoutJs(jsFilesToDownload);
+                const layoutJsFiles = await next_parseLayoutJs(url, jsFilesToDownload);
                 jsFilesToDownload.push(...layoutJsFiles);
 
                 // dedupe the files

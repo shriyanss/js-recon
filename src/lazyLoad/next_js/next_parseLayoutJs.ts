@@ -6,7 +6,7 @@ import next_getJSScript from "./next_GetJSScript.js";
 
 const traverse = _traverse.default;
 
-const next_parseLayoutJs = async (urls: string[]) => {
+const next_parseLayoutJs = async (baseUrl:string, urls: string[]) => {
     console.log(chalk.cyan("[i] Parsing layout.js files"));
 
     let toReturn: string[] = [];
@@ -90,6 +90,9 @@ const next_parseLayoutJs = async (urls: string[]) => {
                 const newUrl = new URL(href, new URL(url).origin).href;
 
                 if (newUrl.startsWith("mailto:")) continue;
+
+                // also, check if the origin is same or not
+                if (new URL(baseUrl).origin !== new URL(newUrl).origin) continue;
 
                 let req: Response | null;
                 try {
