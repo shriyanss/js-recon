@@ -6,7 +6,7 @@ import next_getJSScript from "./next_GetJSScript.js";
 
 const traverse = _traverse.default;
 
-const next_parseLayoutJs = async (baseUrl:string, urls: string[]) => {
+const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
     console.log(chalk.cyan("[i] Parsing layout.js files"));
 
     let toReturn: string[] = [];
@@ -27,7 +27,9 @@ const next_parseLayoutJs = async (baseUrl:string, urls: string[]) => {
                     plugins: ["jsx", "typescript"],
                     errorRecovery: true,
                 });
-            } catch { continue }
+            } catch {
+                continue;
+            }
 
             let hrefFinds: string[] = [];
 
@@ -97,7 +99,9 @@ const next_parseLayoutJs = async (baseUrl:string, urls: string[]) => {
                 let req: Response | null;
                 try {
                     req = await makeRequest(newUrl);
-                } catch { continue }
+                } catch {
+                    continue;
+                }
 
                 if (req.status === 200) {
                     console.log(chalk.green("[✓] Found new client side URL: ", newUrl));
