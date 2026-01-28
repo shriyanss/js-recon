@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.2.2-alpha.8 - (unreleased)
+## 1.2.2-alpha.8 - 2026.01.27
 
 ### Added
 
