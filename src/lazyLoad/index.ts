@@ -263,7 +263,7 @@ const lazyLoad = async (
 
                 // so, we need to parse this to find such patterns
 
-                const layoutJsFiles = await next_parseLayoutJs(jsFilesToDownload);
+                const layoutJsFiles = await next_parseLayoutJs(url, jsFilesToDownload);
                 jsFilesToDownload.push(...layoutJsFiles);
 
                 // dedupe the files
@@ -283,6 +283,9 @@ const lazyLoad = async (
                         fs.writeFileSync(path.join(output, new URL(url).host.replace(":", "_") + "/BUILD_ID"), buildId);
                     }
                 }
+
+                // extract the source maps
+                await extractSourceMaps(output, sourcemapDir);
             } else if (tech.name === "vue") {
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));

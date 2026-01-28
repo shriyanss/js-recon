@@ -6,7 +6,7 @@ import next_getJSScript from "./next_GetJSScript.js";
 
 const traverse = _traverse.default;
 
-const next_parseLayoutJs = async (urls: string[]) => {
+const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
     console.log(chalk.cyan("[i] Parsing layout.js files"));
 
     let toReturn: string[] = [];
@@ -19,12 +19,17 @@ const next_parseLayoutJs = async (urls: string[]) => {
             const req = await makeRequest(url);
 
             const jsContent = await req.text();
+            let ast;
 
-            const ast = parser.parse(jsContent, {
-                sourceType: "unambiguous",
-                plugins: ["jsx", "typescript"],
-                errorRecovery: true,
-            });
+            try {
+                ast = parser.parse(jsContent, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+            } catch {
+                continue;
+            }
 
             let hrefFinds: string[] = [];
 
@@ -85,7 +90,18 @@ const next_parseLayoutJs = async (urls: string[]) => {
 
             for (const href of hrefFinds) {
                 const newUrl = new URL(href, new URL(url).origin).href;
-                const req = await makeRequest(newUrl);
+
+                if (newUrl.startsWith("mailto:")) continue;
+
+                // also, check if the origin is same or not
+                if (new URL(baseUrl).origin !== new URL(newUrl).origin) continue;
+
+                let req: Response | null;
+                try {
+                    req = await makeRequest(newUrl);
+                } catch {
+                    continue;
+                }
 
                 if (req.status === 200) {
                     console.log(chalk.green("[✓] Found new client side URL: ", newUrl));

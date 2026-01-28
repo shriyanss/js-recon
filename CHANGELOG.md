@@ -1,5 +1,18 @@
 # Change Log
 
+## 1.2.2-alpha.8 - 2026.01.27
+
+### Added
+
+- Add sourcemap reconstruction for Next.js
+
+### Changed
+
+### Fixed
+
+- Add error handling for AST parsing in next_parseLayoutJs.ts
+- Fixed scope issue in parseLayoutJs.ts
+
 ## 1.2.2-alpha.7 - 2026.01.24
 
 ### Added
