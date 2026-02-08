@@ -57,6 +57,8 @@ program
     .option("--no-sandbox", "Disable browser sandbox")
     .option("--build-id", "Get the buildId from the Next.js app", false)
     .option("--sourcemap-dir <directory>", "Directory to write source maps", "extracted")
+    .option("--research", "Enable research mode", false)
+    .option("--research-output <file>", "Output file for research mode", "research.json")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -77,7 +79,9 @@ program
             cmd.urlsFile,
             cmd.insecure,
             cmd.buildId,
-            cmd.sourcemapDir
+            cmd.sourcemapDir,
+            cmd.research,
+            cmd.researchOutput
         );
     });
 
@@ -276,6 +280,8 @@ program
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
     .option("--sourcemap-dir <directory>", "Directory to write source maps", "extracted")
+    .option("--research", "Enable research mode", false)
+    .option("--research-output <file>", "Output file for research mode", "research.json")
     .action(async (cmd) => {
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
