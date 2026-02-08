@@ -84,7 +84,9 @@ const processUrl = async (
         "",
         cmd.insecure,
         false,
-        cmd.sourcemapDir
+        cmd.sourcemapDir,
+        cmd.research,
+        cmd.researchOutput
     );
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
@@ -136,7 +138,9 @@ const processUrl = async (
         `${extractedUrlsFile}.json`,
         cmd.insecure,
         true,
-        cmd.sourcemapDir
+        cmd.sourcemapDir,
+        cmd.research,
+        cmd.researchOutput
     );
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 

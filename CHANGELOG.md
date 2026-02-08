@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.2-alpha.9 - 2026.02.07
+
+### Added
+
+- Added `--research` and `--research-output` flag to lazyload module
+
+### Changed
+
+### Fixed
+
 ## 1.2.2-alpha.8 - 2026.01.27
 
 ### Added

@@ -51,6 +51,7 @@ import { extractSources } from "./sourcemap.js";
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
 import next_bruteForceJsFiles from "./next_js/next_bruteForceJsFiles.js";
+import { string } from "zod";
 
 const getMapFilesRecursively = (dir: string): string[] => {
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -115,7 +116,9 @@ const lazyLoad = async (
     urlsFile: string,
     insecure: boolean,
     buildId: boolean,
-    sourcemapDir: string
+    sourcemapDir: string,
+    research: boolean,
+    researchOutput: string
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -168,12 +171,23 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Next.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
+                // For determining the efficiency of each technique
+                // this is for research purposes
+                let techniqueEfficiecyMapping: {
+                    [key: string]: string[];
+                } = {};
+
                 // find the JS files from script of the webpage
                 const jsFilesFromScriptTag = await next_getJSScript(url);
 
+                techniqueEfficiecyMapping["next_getJSScript"] = jsFilesFromScriptTag;
+
                 // get lazy resources
                 const lazyResourcesFromWebpack = await next_GetLazyResourcesWebpackJs(url);
+                techniqueEfficiecyMapping["next_GetLazyResourcesWebpackJs"] = lazyResourcesFromWebpack;
+
                 const lazyResourcesFromBuildManifest = await next_getLazyResourcesBuildManifestJs(url);
+                techniqueEfficiecyMapping["next_getLazyResourcesBuildManifestJs"] = lazyResourcesFromBuildManifest;
                 let lazyResourcesFromSubsequentRequests;
                 let scriptTagsSubsequentRequests;
 
@@ -187,10 +201,13 @@ const lazyLoad = async (
                         lazyLoadGlobals.getJsUrls() // Pass the global js_urls
                     );
 
+                    lazyResourcesFromSubsequentRequests["subsequentRequests"] = lazyResourcesFromSubsequentRequests;
+
                     // another run for to get the HTML from client side paths
                     // and parse the script tags
 
                     scriptTagsSubsequentRequests = await next_scriptTagsSubsequentRequests(url, urlsFile);
+                    techniqueEfficiecyMapping["next_scriptTagsSubsequentRequests"] = scriptTagsSubsequentRequests;
                 }
 
                 // download the resources
@@ -231,6 +248,7 @@ const lazyLoad = async (
                 // and AST search for this pattern
 
                 const jsFilesFrom_next_promiseResolve = await next_promiseResolve(jsFilesToDownload);
+                techniqueEfficiecyMapping["next_promiseResolve"] = jsFilesFrom_next_promiseResolve;
                 jsFilesToDownload.push(...jsFilesFrom_next_promiseResolve);
 
                 // another method found during research:
@@ -239,6 +257,7 @@ const lazyLoad = async (
                 // so, the way to find them is to just append `.map` on found JS files and bruteforce them
 
                 const jsFilesSourcemaps = await next_bruteForceJsFiles(jsFilesToDownload);
+                techniqueEfficiecyMapping["next_bruteForceJsFiles"] = jsFilesSourcemaps;
 
                 jsFilesToDownload.push(...jsFilesSourcemaps);
 
@@ -264,6 +283,7 @@ const lazyLoad = async (
                 // so, we need to parse this to find such patterns
 
                 const layoutJsFiles = await next_parseLayoutJs(url, jsFilesToDownload);
+                techniqueEfficiecyMapping["next_parseLayoutJs"] = layoutJsFiles;
                 jsFilesToDownload.push(...layoutJsFiles);
 
                 // dedupe the files
@@ -282,6 +302,15 @@ const lazyLoad = async (
                         // now, write it to a file
                         fs.writeFileSync(path.join(output, new URL(url).host.replace(":", "_") + "/BUILD_ID"), buildId);
                     }
+                }
+
+                // if the research mode is enabled, then write the technique efficiency to a file
+                if (research) {
+                    // prettify the JSON and write
+                    fs.writeFileSync(researchOutput, JSON.stringify(techniqueEfficiecyMapping, null, 4));
+                    console.log(
+                        chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
+                    );
                 }
 
                 // extract the source maps
