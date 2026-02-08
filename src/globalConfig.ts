@@ -1,6 +1,6 @@
 const githubURL = "https://github.com/shriyanss/js-recon";
 const modulesDocs = "https://js-recon.io/docs/category/modules";
-const version = "1.2.2-alpha.9";
+const version = "1.2.2-alpha.10";
 const toolDesc = "JS Recon Tool";
 const axiosNonHttpMethods = ["isAxiosError"]; // methods available in axios, which are not for making HTTP requests
 

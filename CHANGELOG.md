@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.2-alpha.10 - 2026.02.07
+
+### Added
+
+### Changed
+
+### Fixed
+
+- CI pipline failed to release package on NPM - fixed
+
 ## 1.2.2-alpha.9 - 2026.02.07
 
 ### Added
