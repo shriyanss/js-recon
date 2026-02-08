@@ -203,7 +203,6 @@ const lazyLoad = async (
 
                     lazyResourcesFromSubsequentRequests["subsequentRequests"] = lazyResourcesFromSubsequentRequests;
 
-
                     // another run for to get the HTML from client side paths
                     // and parse the script tags
 
@@ -309,7 +308,9 @@ const lazyLoad = async (
                 if (research) {
                     // prettify the JSON and write
                     fs.writeFileSync(researchOutput, JSON.stringify(techniqueEfficiecyMapping, null, 4));
-                    console.log(chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput));
+                    console.log(
+                        chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
+                    );
                 }
 
                 // extract the source maps
