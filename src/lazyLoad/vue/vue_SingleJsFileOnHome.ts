@@ -36,6 +36,9 @@ const vue_singleJsFileOnHome = async (url: string) => {
     // if the count is 1, then it's a single JS file
     console.log(chalk.green("[✓] Single JS file detected"));
 
+    // add that JS file to the list
+    jsFilesFound.push(new URL(jsUrl, url).href);
+
     // print the warning
     console.log(chalk.yellow("[!] This method is MEMORY INTENSIVE. Underpowered devices may freeze"));
 

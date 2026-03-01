@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Add the single JS file to the list of files to download in Vue.js
+
 ## 1.2.2-alpha.10 - 2026.02.07
 
 ### Added
