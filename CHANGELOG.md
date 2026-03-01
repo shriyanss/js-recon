@@ -5,6 +5,7 @@
 ### Added
 
 - Added support for finding JS files through the single JS file on homepage for Vue.js
+- Added support to get JS files from `../` paths in import statements for Vue.js
 
 ### Changed
 
