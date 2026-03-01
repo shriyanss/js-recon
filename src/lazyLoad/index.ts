@@ -52,6 +52,7 @@ import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
 import next_bruteForceJsFiles from "./next_js/next_bruteForceJsFiles.js";
 import { string } from "zod";
+import vue_severalJsFilesHome from "./vue/vue_severalJsFilesHome.js";
 
 const getMapFilesRecursively = (dir: string): string[] => {
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -91,7 +92,10 @@ const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
             counter++;
         }
     }
-    console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`));
+
+    if (counter !== 0) {
+        console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`));
+    }
 };
 
 /**
@@ -352,6 +356,10 @@ const lazyLoad = async (
                         chalk.green(`[✓] Found ${jsFilesFromSingleJsFile.length} files from the single JS file on home`)
                     );
                 }
+
+                // if there are more than one JS file on the homepage, the above one will not detect those. So, the following method is used
+                const severalJsFilesHome = await vue_severalJsFilesHome(url);
+                jsFilesToDownload.push(...severalJsFilesHome);
 
                 // now, get the import statements from the JS files
                 const foundJsFilesFromImport = await vue_jsImports(url, jsFilesToDownload);

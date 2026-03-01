@@ -1,5 +1,18 @@
 # Change Log
 
+## 1.2.2-alpha.11 - 2026.03.01
+
+### Added
+
+- Added support for finding JS files through the single JS file on homepage for Vue.js
+- Added support to get JS files from `../` paths in import statements for Vue.js
+
+### Changed
+
+### Fixed
+
+- Add the single JS file to the list of files to download in Vue.js
+
 ## 1.2.2-alpha.10 - 2026.02.07
 
 ### Added

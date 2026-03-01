@@ -24,6 +24,10 @@ const parseJsFile = async (url: string) => {
                 if (!foundUrls.includes(new URL(source, url).href)) {
                     foundUrls.push(new URL(source, url).href);
                 }
+            } else if (source.startsWith("../")) {
+                if (!foundUrls.includes(new URL(source, url).href)) {
+                    foundUrls.push(new URL(source, url).href);
+                }
             } else {
                 // DEBUG
                 console.log(chalk.red(`Found import statement but can't resolve it: ${source} - on ${url}`));
