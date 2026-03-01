@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added support for finding JS files through the single JS file on homepage for Vue.js
+
 ### Changed
 
 ### Fixed
