@@ -69,7 +69,7 @@ Post-processing on the final URL set:
 
 **Characteristics:**
 
-- Runs in a **loop** until no new URLs are discovered (max 10 iterations)
+- Runs in a **loop** until no new URLs are discovered (max 10 iterations by default)
 - Takes an array of URLs as input and returns newly discovered URLs
 - Added to `recursivePass()` in `NextJsCrawler.ts`
 - Examples: Promise.all pattern detection, layout href parsing
@@ -369,7 +369,7 @@ Check `research.json` to see how many URLs your method discovered:
 Ensure your recursive method doesn't cause infinite loops:
 
 - Check that "Recursive crawl converged" message appears
-- If it hits max iterations (10), investigate why
+- If it hits max iterations (defaults to 10), investigate why
 
 ### 3. Performance Validation
 
