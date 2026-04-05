@@ -343,6 +343,8 @@ console.log(chalk.red("[!] Error occurred")); // Error
 
 ---
 
+## Testing Your Method
+
 ### 1. Integration Test with Real Sites
 
 Test against known Next.js sites:
