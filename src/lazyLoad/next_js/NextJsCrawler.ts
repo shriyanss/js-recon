@@ -91,7 +91,10 @@ class NextJsCrawler {
     private async initialDiscovery(): Promise<void> {
         // 1. Script tags on the landing page
         const jsFromScriptTag = await next_getJSScript(this.url);
-        this.techniqueEfficiencyMapping["next_getJSScript"] = jsFromScriptTag;
+        this.techniqueEfficiencyMapping["next_getJSScript"] = [
+            ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
+            ...jsFromScriptTag,
+        ];
         this.registerUrls(jsFromScriptTag);
         this.visitedPageUrls.add(this.url);
 
@@ -182,6 +185,11 @@ class NextJsCrawler {
                     console.error(`[NextJsCrawler] Returned value:`, extra);
                     process.exit(1);
                 }
+                
+                this.techniqueEfficiencyMapping["next_getJSScript"] = [
+                    ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
+                    ...extra,
+                ];
                 
                 newInThisPass.push(...this.registerUrls(extra));
             }
