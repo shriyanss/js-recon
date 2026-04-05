@@ -176,21 +176,21 @@ class NextJsCrawler {
             const isJsFile = parsed.pathname.endsWith(".js") || parsed.pathname.endsWith(".js.map");
             if (!isJsFile && !this.visitedPageUrls.has(u)) {
                 this.visitedPageUrls.add(u);
-                
+
                 const extra = await next_getJSScript(u);
-                
+
                 // If return value is invalid, log and crash
                 if (!extra || !Array.isArray(extra)) {
                     console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
                     console.error(`[NextJsCrawler] Returned value:`, extra);
                     process.exit(1);
                 }
-                
+
                 this.techniqueEfficiencyMapping["next_getJSScript"] = [
                     ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
                     ...extra,
                 ];
-                
+
                 newInThisPass.push(...this.registerUrls(extra));
             }
         }
