@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { URL } from "url";
 import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
-import { getJsUrls, pushToJsUrls } from "../globals.js";
+import { getJsUrls } from "../globals.js";
 
 /**
  * Scrapes all lazy-loaded JavaScript file URLs from the provided Next.js page.
@@ -17,6 +17,7 @@ import { getJsUrls, pushToJsUrls } from "../globals.js";
  * pointing to JavaScript files found in the page.
  */
 const next_getJSScript = async (url: string): Promise<string[]> => {
+    const toReturn: string[] = [];
     // get the page source
     const res = await makeRequest(url, {});
     const pageSource = await res.text();
@@ -38,14 +39,14 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
             if (src.startsWith("/")) {
                 const absoluteUrl = new URL(url).origin + src;
                 if (!getJsUrls().includes(absoluteUrl)) {
-                    pushToJsUrls(absoluteUrl);
+                    toReturn.push(absoluteUrl);
                 }
             } else if (src.startsWith("http")) {
                 const urlObj = new URL(src);
                 const ext = urlObj.pathname.split(".").pop();
                 if (ext === "js") {
                     if (!getJsUrls().includes(src)) {
-                        pushToJsUrls(src);
+                        toReturn.push(src);
                     }
                 }
             } else if (src.match(/^[^/]/)) {
@@ -56,11 +57,11 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
                 const directory = new URL(url).origin + pathParts.join("/") + "/";
 
                 if (!getJsUrls().includes(directory + src)) {
-                    pushToJsUrls(directory + src);
+                    toReturn.push(directory + src);
                 }
             } else {
                 if (!getJsUrls().includes(src)) {
-                    pushToJsUrls(src);
+                    toReturn.push(src);
                 }
             }
         } else {
@@ -92,7 +93,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
                     }
                     if (js_path_dir) {
                         // Ensure js_path_dir was found
-                        pushToJsUrls(js_path_dir + "/" + filename);
+                        toReturn.push(js_path_dir + "/" + filename);
                     }
                 }
             }
@@ -102,7 +103,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
     // causes too much noise after using it with subsequent requests
     // console.log(chalk.green(`[✓] Found ${getJsUrls().length} JS files from the script tags`));
 
-    return getJsUrls();
+    return toReturn;
 };
 
 export default next_getJSScript;

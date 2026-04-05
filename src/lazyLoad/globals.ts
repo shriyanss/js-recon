@@ -6,6 +6,8 @@ let js_urls: string[] = [];
 let json_urls: string[] = [];
 /** Maximum number of concurrent requests allowed */
 let max_req_queue: number;
+/** List of URLs which has been crawled */
+let crawled_urls: string[] = [];
 
 /**
  * Gets the current scope configuration.
@@ -46,8 +48,15 @@ export const clearJsUrls = (): void => {
  * Adds a JavaScript URL to the global array.
  * @param url - JavaScript URL to add
  */
-export const pushToJsUrls = (url: string): void => {
-    js_urls.push(url);
+export const pushToJsUrls = (url: string | string[]): void => {
+    if (Array.isArray(url)) {
+        js_urls.push(...url);
+    } else {
+        js_urls.push(url);
+    }
+
+    // Remove duplicates
+    js_urls = [...new Set(js_urls)];
 };
 
 /**
@@ -83,4 +92,27 @@ export const getMaxReqQueue = (): number => max_req_queue;
  */
 export const setMaxReqQueue = (newMax: number): void => {
     max_req_queue = newMax;
+};
+
+/**
+ * Checks if a URL is already in the crawled URLs list.
+ * @param url - URL to check
+ * @returns True if URL is already crawled, false otherwise
+ */
+export const presentInCrawledUrls = (url: string): boolean => {
+    return crawled_urls.includes(url);
+};
+
+/**
+ * Adds a URL to the crawled URLs list if it's not already present.
+ * @param url - URL to add to crawled list
+ */
+export const addCrawledUrl = (url: string | string[]): void => {
+    if (Array.isArray(url)) {
+        crawled_urls.push(...url);
+    } else {
+        if (!presentInCrawledUrls(url)) {
+            crawled_urls.push(url);
+        }
+    }
 };

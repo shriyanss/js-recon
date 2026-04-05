@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.2.2 - 2026.04.04
+
+### Added
+
+- Implemented recursive crawling in Next.js modules to discover more JS files
+- Added `--max-iterations` flag to limit recursive crawl iterations in `lazyload` module
+
+### Changed
+
+### Fixed
+
 ## 1.2.2-alpha.11 - 2026.03.01
 
 ### Added
