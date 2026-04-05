@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.3.1-alpha.1 - (unreleased)
+
+### Added
+
+- Added MCP CLI support with model and provider configuration
+
+### Changed
+
+### Fixed
+
 ## 1.2.2 - 2026.04.04
 
 ### Added

@@ -13,6 +13,7 @@ import chalk from "chalk";
 import analyze from "./analyze/index.js";
 import report from "./report/index.js";
 import configureSandbox from "./utility/configureSandbox.js";
+import mcp from "./mcp/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -307,6 +308,18 @@ program
             }
         }
         await run(cmd);
+    });
+
+program
+    .command("mcp")
+    .description("Interactive AI-powered CLI for js-recon modules")
+    .option("--cli", "Start interactive CLI mode", false)
+    .option("--config <file>", "Path to MCP config file", undefined)
+    .option("--api-key <key>", "API key for the LLM provider")
+    .option("--model <model>", "AI model to use (e.g. gpt-4o-mini, claude-sonnet-4-20250514)")
+    .option("--provider <provider>", "LLM provider to use (openai, anthropic)")
+    .action(async (cmd) => {
+        await mcp(cmd.cli, cmd.config, cmd.apiKey, cmd.model, cmd.provider);
     });
 
 program.parse(process.argv);
