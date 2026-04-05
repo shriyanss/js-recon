@@ -95,10 +95,11 @@ const traverse = _traverse.default;
 /**
  * Finds JS files referenced in dynamic import() statements.
  *
+ * @param baseUrl - The base URL of the application
  * @param urls - Array of JS file URLs to analyze
  * @returns Array of newly discovered JS file URLs
  */
-const next_dynamicImports = async (urls: string[]): Promise<string[]> => {
+const next_dynamicImports = async (baseUrl: string, urls: string[]): Promise<string[]> => {
     console.log(chalk.cyan("[i] Analyzing dynamic import() statements"));
 
     const discoveredUrls: string[] = [];
@@ -126,8 +127,8 @@ const next_dynamicImports = async (urls: string[]): Promise<string[]> => {
                     ) {
                         const importPath = parent.arguments[0].value;
                         if (importPath.endsWith(".js")) {
-                            // Resolve relative to current URL
-                            const resolvedUrl = new URL(importPath, url).href;
+                            // Resolve relative to base URL
+                            const resolvedUrl = new URL(importPath, baseUrl).href;
                             discoveredUrls.push(resolvedUrl);
                         }
                     }
@@ -226,16 +227,16 @@ if (response.status === 200) {
 
 ### For Initial Discovery Methods
 
-Add to `initialDiscovery()` in `NextJsCrawler.ts`:
+Add to `initialDiscovery()` in `NextJsCrawler.ts`. Use this phase for methods that only need to run once, like those starting from the application's root URL:
 
 ```typescript
 private async initialDiscovery(): Promise<void> {
     // ... existing methods ...
 
-    // 5. Your new method
-    const jsFromDynamicImports = await next_dynamicImports(this.url);
-    this.techniqueEfficiencyMapping["next_dynamicImports"] = jsFromDynamicImports;
-    this.registerUrls(jsFromDynamicImports);
+    // 5. Your new initial discovery method
+    const jsFromPrefetch = await next_prefetchHints(this.url);
+    this.techniqueEfficiencyMapping["next_prefetchHints"] = jsFromPrefetch;
+    this.registerUrls(jsFromPrefetch);
 
     // ... rest of the method ...
 }
@@ -244,12 +245,12 @@ private async initialDiscovery(): Promise<void> {
 **Don't forget to add the import at the top:**
 
 ```typescript
-import next_dynamicImports from "./next_dynamicImports.js";
+import next_prefetchHints from "./next_prefetchHints.js";
 ```
 
 ### For Recursive Discovery Methods
 
-Add to `recursivePass()` in `NextJsCrawler.ts`:
+Add to `recursivePass()` in `NextJsCrawler.ts`. Use this phase for methods that analyze JS file contents to find more JS files:
 
 ```typescript
 private async recursivePass(jsUrls: string[]): Promise<string[]> {
