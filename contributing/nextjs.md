@@ -19,20 +19,26 @@ This guide explains how to add new JavaScript file discovery techniques for Next
 The Next.js discovery system is built around the **`NextJsCrawler`** class (`src/lazyLoad/next_js/NextJsCrawler.ts`), which implements a **three-phase crawling strategy**:
 
 ### Phase 1: Initial Discovery
+
 Heavyweight methods that run **once** to bootstrap the crawl:
+
 - Script tag parsing (`next_getJSScript`)
 - Webpack runtime analysis (`next_GetLazyResourcesWebpackJs`) – uses Puppeteer
 - `_buildManifest.js` parsing (`next_getLazyResourcesBuildManifestJs`)
 - Subsequent requests with RSC headers (`subsequentRequests`)
 
 ### Phase 2: Recursive Discovery
+
 Lightweight methods that run **multiple times** on newly discovered URLs until convergence:
+
 - Promise.all pattern detection (`next_promiseResolve`)
 - Layout.js href extraction (`next_parseLayoutJs`)
 - Script tag re-parsing on new pages (`next_getJSScript`)
 
 ### Phase 3: Finalization
+
 Post-processing on the final URL set:
+
 - Source map brute-forcing (`next_bruteForceJsFiles`)
 
 ---
@@ -42,11 +48,13 @@ Post-processing on the final URL set:
 ### Initial Discovery Methods
 
 **When to use:**
+
 - The method is **expensive** (e.g., launches a browser, makes many requests)
 - The method doesn't benefit from being run multiple times
 - The method provides a bootstrap set of URLs
 
 **Characteristics:**
+
 - Runs exactly **once** per crawl
 - Added to `initialDiscovery()` in `NextJsCrawler.ts`
 - Examples: Puppeteer-based webpack analysis, manifest parsing
@@ -54,11 +62,13 @@ Post-processing on the final URL set:
 ### Recursive Discovery Methods
 
 **When to use:**
+
 - The method analyzes **JavaScript file contents** to find more JS files
 - The method discovers **client-side paths** that need to be visited
 - The method can find new URLs by examining URLs found in previous passes
 
 **Characteristics:**
+
 - Runs in a **loop** until no new URLs are discovered (max 10 iterations)
 - Takes an array of URLs as input and returns newly discovered URLs
 - Added to `recursivePass()` in `NextJsCrawler.ts`
@@ -84,13 +94,13 @@ const traverse = _traverse.default;
 
 /**
  * Finds JS files referenced in dynamic import() statements.
- * 
+ *
  * @param urls - Array of JS file URLs to analyze
  * @returns Array of newly discovered JS file URLs
  */
 const next_dynamicImports = async (urls: string[]): Promise<string[]> => {
     console.log(chalk.cyan("[i] Analyzing dynamic import() statements"));
-    
+
     const discoveredUrls: string[] = [];
 
     for (const url of urls) {
@@ -130,7 +140,7 @@ const next_dynamicImports = async (urls: string[]): Promise<string[]> => {
     }
 
     const uniqueUrls = [...new Set(discoveredUrls)];
-    
+
     if (uniqueUrls.length > 0) {
         console.log(chalk.green(`[✓] Found ${uniqueUrls.length} JS files from dynamic imports`));
     }
@@ -144,16 +154,20 @@ export default next_dynamicImports;
 ### Step 2: Method Signature Guidelines
 
 **For initial discovery methods:**
+
 ```typescript
-async function next_methodName(url: string): Promise<string[]>
+async function next_methodName(url: string): Promise<string[]>;
 ```
+
 - Takes the base URL as input
 - Returns array of discovered URLs
 
 **For recursive discovery methods:**
+
 ```typescript
-async function next_methodName(baseUrl: string, urls: string[]): Promise<string[]>
+async function next_methodName(baseUrl: string, urls: string[]): Promise<string[]>;
 ```
+
 - Takes base URL and array of URLs to analyze
 - Returns array of **newly** discovered URLs
 - Should handle empty input gracefully
@@ -161,6 +175,7 @@ async function next_methodName(baseUrl: string, urls: string[]): Promise<string[
 ### Step 3: Common Patterns
 
 #### Pattern 1: AST-based Analysis
+
 Use Babel parser to analyze JavaScript syntax:
 
 ```typescript
@@ -183,6 +198,7 @@ traverse(ast, {
 ```
 
 #### Pattern 2: String/Regex Matching
+
 Quick pattern detection without parsing:
 
 ```typescript
@@ -193,6 +209,7 @@ for (const match of matches) {
 ```
 
 #### Pattern 3: Request-Based Discovery
+
 Make HTTP requests to known patterns:
 
 ```typescript
@@ -219,12 +236,13 @@ private async initialDiscovery(): Promise<void> {
     const jsFromDynamicImports = await next_dynamicImports(this.url);
     this.techniqueEfficiencyMapping["next_dynamicImports"] = jsFromDynamicImports;
     this.registerUrls(jsFromDynamicImports);
-    
+
     // ... rest of the method ...
 }
 ```
 
 **Don't forget to add the import at the top:**
+
 ```typescript
 import next_dynamicImports from "./next_dynamicImports.js";
 ```
@@ -252,6 +270,7 @@ private async recursivePass(jsUrls: string[]): Promise<string[]> {
 ```
 
 **Key points:**
+
 - Append to `techniqueEfficiencyMapping` (not replace) for recursive methods
 - Use `registerUrls()` to deduplicate and track new URLs
 - Only add truly new URLs to `newInThisPass`
@@ -261,6 +280,7 @@ private async recursivePass(jsUrls: string[]): Promise<string[]> {
 ## Best Practices
 
 ### 1. Error Handling
+
 Always handle errors gracefully – don't crash the entire crawl:
 
 ```typescript
@@ -275,6 +295,7 @@ try {
 ```
 
 ### 2. URL Resolution
+
 Use `URL` constructor for proper relative URL resolution:
 
 ```typescript
@@ -282,6 +303,7 @@ const absoluteUrl = new URL(relativePath, baseUrl).href;
 ```
 
 ### 3. Deduplication
+
 Always deduplicate before returning:
 
 ```typescript
@@ -289,6 +311,7 @@ return [...new Set(discoveredUrls)];
 ```
 
 ### 4. Performance
+
 - Cache expensive operations (e.g., don't re-fetch the same URL)
 - Use `lazyLoadGlobals.presentInCrawledUrls()` to check if already visited
 - Mark URLs as crawled with `lazyLoadGlobals.addCrawledUrl()`
@@ -298,23 +321,24 @@ import { presentInCrawledUrls, addCrawledUrl } from "../globals.js";
 
 for (const url of urls) {
     if (presentInCrawledUrls(url)) continue;
-    
+
     // ... analyze URL ...
-    
+
     addCrawledUrl(url);
 }
 ```
 
 ### 5. Logging
+
 Use `chalk` for consistent logging:
 
 ```typescript
 import chalk from "chalk";
 
-console.log(chalk.cyan("[i] Starting analysis..."));      // Info
-console.log(chalk.green("[✓] Found 10 files"));           // Success
-console.log(chalk.yellow("[!] Warning message"));          // Warning
-console.log(chalk.red("[!] Error occurred"));              // Error
+console.log(chalk.cyan("[i] Starting analysis...")); // Info
+console.log(chalk.green("[✓] Found 10 files")); // Success
+console.log(chalk.yellow("[!] Warning message")); // Warning
+console.log(chalk.red("[!] Error occurred")); // Error
 ```
 
 ---
@@ -341,12 +365,14 @@ Check `research.json` to see how many URLs your method discovered:
 ### 2. Verify Convergence
 
 Ensure your recursive method doesn't cause infinite loops:
+
 - Check that "Recursive crawl converged" message appears
 - If it hits max iterations (10), investigate why
 
 ### 3. Performance Validation
 
 Monitor execution time:
+
 ```bash
 time npm run start -- run -u https://example.com -y
 ```
@@ -369,16 +395,13 @@ This generates `research.json` with per-method efficiency:
         "https://example.com/_next/static/chunks/main.js",
         "https://example.com/_next/static/chunks/webpack.js"
     ],
-    "next_dynamicImports": [
-        "https://example.com/_next/static/chunks/lazy-component.js"
-    ],
-    "next_promiseResolve": [
-        "https://example.com/_next/static/chunks/pages/about.js"
-    ]
+    "next_dynamicImports": ["https://example.com/_next/static/chunks/lazy-component.js"],
+    "next_promiseResolve": ["https://example.com/_next/static/chunks/pages/about.js"]
 }
 ```
 
 **Analysis tips:**
+
 - **Unique discoveries**: Methods that find URLs no other method finds
 - **Overlap**: Methods that discover the same URLs (candidates for removal)
 - **Efficiency**: URLs found per method execution

@@ -103,7 +103,6 @@ export const presentInCrawledUrls = (url: string): boolean => {
     return crawled_urls.includes(url);
 };
 
-
 /**
  * Adds a URL to the crawled URLs list if it's not already present.
  * @param url - URL to add to crawled list

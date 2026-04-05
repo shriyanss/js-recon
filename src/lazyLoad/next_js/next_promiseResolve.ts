@@ -60,7 +60,7 @@ const next_promiseResolveWorker = async (url: string, jsDirBase: string): Promis
 
             toReturn.push(jsFileUrl);
         }
-    } catch (e) { }
+    } catch (e) {}
 
     return toReturn;
 };

@@ -218,9 +218,7 @@ class NextJsCrawler {
         }
 
         // Phase 3 – brute-force .map files on the final set
-        const allJsUrls = [...this.discoveredUrls].filter(
-            (u) => u.endsWith(".js") || u.endsWith(".js.map")
-        );
+        const allJsUrls = [...this.discoveredUrls].filter((u) => u.endsWith(".js") || u.endsWith(".js.map"));
         const jsFromBrute = await next_bruteForceJsFiles(allJsUrls);
         this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;
         this.registerUrls(jsFromBrute);
