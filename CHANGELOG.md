@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.2.2-alpha.12 - (unreleased)
+## 1.2.2 - 2025.10.24
 
 ### Added
 
