@@ -86,7 +86,8 @@ const processUrl = async (
         false,
         cmd.sourcemapDir,
         cmd.research,
-        cmd.researchOutput
+        cmd.researchOutput,
+        Number(cmd.maxIterations)
     );
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
@@ -140,7 +141,8 @@ const processUrl = async (
         true,
         cmd.sourcemapDir,
         cmd.research,
-        cmd.researchOutput
+        cmd.researchOutput,
+        Number(cmd.maxIterations)
     );
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 

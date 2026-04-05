@@ -9,14 +9,8 @@ import makeRequest from "../utility/makeReq.js";
 import * as cheerio from "cheerio";
 
 // Next.js
-import subsequentRequests from "./next_js/next_SubsequentRequests.js";
-import next_getJSScript from "./next_js/next_GetJSScript.js";
-import next_GetLazyResourcesWebpackJs from "./next_js/next_GetLazyResourcesWebpackJs.js";
-import next_getLazyResourcesBuildManifestJs from "./next_js/next_GetLazyResourcesBuildManifestJs.js";
+import NextJsCrawler from "./next_js/NextJsCrawler.js";
 import { next_buildId_RSC } from "./next_js/next_buildId.js";
-import next_promiseResolve from "./next_js/next_promiseResolve.js";
-import next_parseLayoutJs from "./next_js/next_parseLayoutJs.js";
-import next_scriptTagsSubsequentRequests from "./next_js/next_scriptTagsSubsequentRequests.js";
 
 // Nuxt.js
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
@@ -50,7 +44,6 @@ import { extractSources } from "./sourcemap.js";
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
-import next_bruteForceJsFiles from "./next_js/next_bruteForceJsFiles.js";
 import { string } from "zod";
 import vue_severalJsFilesHome from "./vue/vue_severalJsFilesHome.js";
 
@@ -122,7 +115,8 @@ const lazyLoad = async (
     buildId: boolean,
     sourcemapDir: string,
     research: boolean,
-    researchOutput: string
+    researchOutput: string,
+    maxIterations: number
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -175,124 +169,21 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Next.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                // For determining the efficiency of each technique
-                // this is for research purposes
-                let techniqueEfficiecyMapping: {
-                    [key: string]: string[];
-                } = {};
+                const crawler = new NextJsCrawler({
+                    url,
+                    output,
+                    subsequentRequestsFlag,
+                    urlsFile,
+                    threads,
+                    research,
+                    maxIterations,
+                });
 
-                // find the JS files from script of the webpage
-                const jsFilesFromScriptTag = await next_getJSScript(url);
-
-                techniqueEfficiecyMapping["next_getJSScript"] = jsFilesFromScriptTag;
-
-                // get lazy resources
-                const lazyResourcesFromWebpack = await next_GetLazyResourcesWebpackJs(url);
-                techniqueEfficiecyMapping["next_GetLazyResourcesWebpackJs"] = lazyResourcesFromWebpack;
-
-                const lazyResourcesFromBuildManifest = await next_getLazyResourcesBuildManifestJs(url);
-                techniqueEfficiecyMapping["next_getLazyResourcesBuildManifestJs"] = lazyResourcesFromBuildManifest;
-                let lazyResourcesFromSubsequentRequests;
-                let scriptTagsSubsequentRequests;
-
-                if (subsequentRequestsFlag) {
-                    // get JS files from subsequent requests
-                    lazyResourcesFromSubsequentRequests = await subsequentRequests(
-                        url,
-                        urlsFile,
-                        threads,
-                        output,
-                        lazyLoadGlobals.getJsUrls() // Pass the global js_urls
-                    );
-
-                    lazyResourcesFromSubsequentRequests["subsequentRequests"] = lazyResourcesFromSubsequentRequests;
-
-                    // another run for to get the HTML from client side paths
-                    // and parse the script tags
-
-                    scriptTagsSubsequentRequests = await next_scriptTagsSubsequentRequests(url, urlsFile);
-                    techniqueEfficiecyMapping["next_scriptTagsSubsequentRequests"] = scriptTagsSubsequentRequests;
-                }
-
-                // download the resources
-                // but combine them first
-                let jsFilesToDownload: string[] | any = [
-                    ...(jsFilesFromScriptTag || []),
-                    ...(lazyResourcesFromWebpack || []),
-                    ...(lazyResourcesFromBuildManifest || []),
-                    ...(lazyResourcesFromSubsequentRequests || []),
-                    ...(scriptTagsSubsequentRequests || []),
-                ];
-                // Ensure js_urls from globals are included if next_getJSScript or next_getLazyResources populated it.
-                // This is because those functions now push to the global js_urls via setters.
-                // The return values of next_getJSScript and next_getLazyResources might be the same array instance
-                // or a new one depending on their implementation, so explicitly get the global one here.
-                jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
-
-                // also, download the JSON files, so push those as well into this list
-                jsFilesToDownload.push(...lazyLoadGlobals.getJsonUrls());
+                const jsFilesToDownload = await crawler.crawl();
 
                 // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-                // JS files are also loaded like:
-                // e.v((t) =>
-                // Promise.all(
-                //     [
-                //     "static/chunks/8c89748310820503.js",
-                //     "static/chunks/cc50acdcbae71ebc.js",
-                //     "static/chunks/bedf897aaa1cca78.js",
-                //     ].map((t) => e.l(t)),
-                // ).then(() => t(58485)),
-                // );
-
-                // this behavior was found in my own site, which uses turbopack instead of webpack
-
-                // so, to resolve everything, we need to go through all the files' content
-                // and AST search for this pattern
-
-                const jsFilesFrom_next_promiseResolve = await next_promiseResolve(jsFilesToDownload);
-                techniqueEfficiecyMapping["next_promiseResolve"] = jsFilesFrom_next_promiseResolve;
-                jsFilesToDownload.push(...jsFilesFrom_next_promiseResolve);
-
-                // another method found during research:
-                // when an app is built with turbopack, the .js.map files are present, but unlike webpack,
-                // they aren't present on the bottom of the file
-                // so, the way to find them is to just append `.map` on found JS files and bruteforce them
-
-                const jsFilesSourcemaps = await next_bruteForceJsFiles(jsFilesToDownload);
-                techniqueEfficiecyMapping["next_bruteForceJsFiles"] = jsFilesSourcemaps;
-
-                jsFilesToDownload.push(...jsFilesSourcemaps);
-
-                // layout.*.js contains some UI builder elements
-                // parsing those gives us some client-side paths
-                // for example, the following code snippet is extracted, and returns a valid client side-path:
-                // (0, r.jsx)("div", {
-                //   className: "border-b border-gray-600 pb-2",
-                //   children: (0, r.jsxs)(l(), {
-                //     href: "/profile/".concat(t.auth.username),
-                //     className: "flex flex-row space-x-2 items-center",
-                //     onClick: () => a(!1),
-                //     children: [
-                //       (0, r.jsx)(er.A, { size: "20" }),
-                //       (0, r.jsx)("p", { children: "Profile" }),
-                //     ],
-                //   }),
-                // }),
-                // it is often nested in element names `children`, which is mostly an array
-                // e.g.
-                // children: [..., (0, r.jsx)("div", {...}), ....]
-
-                // so, we need to parse this to find such patterns
-
-                const layoutJsFiles = await next_parseLayoutJs(url, jsFilesToDownload);
-                techniqueEfficiecyMapping["next_parseLayoutJs"] = layoutJsFiles;
-                jsFilesToDownload.push(...layoutJsFiles);
-
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-                await downloadFiles(jsFilesToDownload, output);
+                const dedupedFiles = [...new Set(jsFilesToDownload)];
+                await downloadFiles(dedupedFiles, output);
 
                 if (buildId) {
                     // get the buildId
@@ -311,7 +202,7 @@ const lazyLoad = async (
                 // if the research mode is enabled, then write the technique efficiency to a file
                 if (research) {
                     // prettify the JSON and write
-                    fs.writeFileSync(researchOutput, JSON.stringify(techniqueEfficiecyMapping, null, 4));
+                    fs.writeFileSync(researchOutput, JSON.stringify(crawler.techniqueEfficiencyMapping, null, 4));
                     console.log(
                         chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
                     );
