@@ -162,16 +162,28 @@ class NextJsCrawler {
         // also run getJSScript to pick up script tags we haven't seen.
         // We detect "page URLs" as non-.js URLs in the new set.
         for (const u of newInThisPass) {
+            let parsed: URL;
             try {
-                const parsed = new URL(u);
-                const isJsFile = parsed.pathname.endsWith(".js") || parsed.pathname.endsWith(".js.map");
-                if (!isJsFile && !this.visitedPageUrls.has(u)) {
-                    this.visitedPageUrls.add(u);
-                    const extra = await next_getJSScript(u);
-                    newInThisPass.push(...this.registerUrls(extra));
-                }
+                parsed = new URL(u);
             } catch {
                 // invalid URL, skip
+                continue;
+            }
+
+            const isJsFile = parsed.pathname.endsWith(".js") || parsed.pathname.endsWith(".js.map");
+            if (!isJsFile && !this.visitedPageUrls.has(u)) {
+                this.visitedPageUrls.add(u);
+                
+                const extra = await next_getJSScript(u);
+                
+                // If return value is invalid, log and crash
+                if (!extra || !Array.isArray(extra)) {
+                    console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
+                    console.error(`[NextJsCrawler] Returned value:`, extra);
+                    process.exit(1);
+                }
+                
+                newInThisPass.push(...this.registerUrls(extra));
             }
         }
 
