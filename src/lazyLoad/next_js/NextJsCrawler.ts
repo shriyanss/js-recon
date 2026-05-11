@@ -9,6 +9,7 @@ import next_promiseResolve from "./next_promiseResolve.js";
 import next_parseLayoutJs from "./next_parseLayoutJs.js";
 import next_scriptTagsSubsequentRequests from "./next_scriptTagsSubsequentRequests.js";
 import next_bruteForceJsFiles from "./next_bruteForceJsFiles.js";
+import next_getClientSidePaths from "./next_getClientSidePaths.js";
 
 import * as lazyLoadGlobals from "../globals.js";
 
@@ -98,6 +99,16 @@ class NextJsCrawler {
         this.registerUrls(jsFromScriptTag);
         this.visitedPageUrls.add(this.url);
 
+        // 1b. Client-side paths from <a href> tags on the landing page.
+        // These are page URLs (not JS), so they'll be picked up by the
+        // recursivePass loop which visits any newly registered non-JS URL.
+        const pathsFromAnchors = await next_getClientSidePaths(this.url);
+        this.techniqueEfficiencyMapping["next_getClientSidePaths"] = [
+            ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
+            ...pathsFromAnchors,
+        ];
+        this.registerUrls(pathsFromAnchors);
+
         // 2. Webpack runtime analysis (puppeteer – expensive, run once)
         const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
         this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
@@ -161,38 +172,68 @@ class NextJsCrawler {
         ];
         newInThisPass.push(...this.registerUrls(jsFromLayout));
 
-        // For every new page URL that parseLayoutJs may have visited,
-        // also run getJSScript to pick up script tags we haven't seen.
-        // We detect "page URLs" as non-.js URLs in the new set.
-        for (const u of newInThisPass) {
+        // Build a queue of unvisited page URLs to walk. Seed it with:
+        //   - unvisited page URLs from the input batch (anchor-derived URLs
+        //     registered by initialDiscovery, or pages from earlier passes
+        //     that haven't been visited yet)
+        //   - new page URLs discovered above (parseLayoutJs etc.)
+        // For every page URL visited we run script-tag extraction AND
+        // <a href> extraction, then enqueue any new page URLs that surfaces.
+        // visitedPageUrls breaks cycles.
+        const isPageUrl = (u: string): boolean => {
             let parsed: URL;
             try {
                 parsed = new URL(u);
             } catch {
-                // invalid URL, skip
-                continue;
+                return false;
+            }
+            return !parsed.pathname.endsWith(".js") && !parsed.pathname.endsWith(".js.map");
+        };
+
+        const pageQueue: string[] = [];
+        const enqueued = new Set<string>();
+        const enqueueIfPage = (u: string) => {
+            if (this.visitedPageUrls.has(u) || enqueued.has(u)) return;
+            if (!isPageUrl(u)) return;
+            enqueued.add(u);
+            pageQueue.push(u);
+        };
+
+        for (const u of jsUrls) enqueueIfPage(u);
+        for (const u of newInThisPass) enqueueIfPage(u);
+
+        for (const u of pageQueue) {
+            if (this.visitedPageUrls.has(u)) continue;
+            this.visitedPageUrls.add(u);
+
+            const extra = await next_getJSScript(u);
+
+            // If return value is invalid, log and crash
+            if (!extra || !Array.isArray(extra)) {
+                console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
+                console.error(`[NextJsCrawler] Returned value:`, extra);
+                process.exit(1);
             }
 
-            const isJsFile = parsed.pathname.endsWith(".js") || parsed.pathname.endsWith(".js.map");
-            if (!isJsFile && !this.visitedPageUrls.has(u)) {
-                this.visitedPageUrls.add(u);
+            this.techniqueEfficiencyMapping["next_getJSScript"] = [
+                ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
+                ...extra,
+            ];
 
-                const extra = await next_getJSScript(u);
+            const newFromScripts = this.registerUrls(extra);
+            newInThisPass.push(...newFromScripts);
+            for (const x of newFromScripts) enqueueIfPage(x);
 
-                // If return value is invalid, log and crash
-                if (!extra || !Array.isArray(extra)) {
-                    console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
-                    console.error(`[NextJsCrawler] Returned value:`, extra);
-                    process.exit(1);
-                }
-
-                this.techniqueEfficiencyMapping["next_getJSScript"] = [
-                    ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
-                    ...extra,
-                ];
-
-                newInThisPass.push(...this.registerUrls(extra));
-            }
+            // Harvest <a href> links from this page so we keep expanding
+            // the crawl frontier.
+            const morePaths = await next_getClientSidePaths(u);
+            this.techniqueEfficiencyMapping["next_getClientSidePaths"] = [
+                ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
+                ...morePaths,
+            ];
+            const newFromAnchors = this.registerUrls(morePaths);
+            newInThisPass.push(...newFromAnchors);
+            for (const x of newFromAnchors) enqueueIfPage(x);
         }
 
         return newInThisPass;
@@ -243,7 +284,16 @@ class NextJsCrawler {
         this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;
         this.registerUrls(jsFromBrute);
 
-        return [...this.discoveredUrls];
+        // Only return downloadable assets. Anchor-derived page URLs live in
+        // discoveredUrls to drive the crawl, but must not reach downloadFiles.
+        return [...this.discoveredUrls].filter((u) => {
+            try {
+                const p = new URL(u).pathname;
+                return p.endsWith(".js") || p.endsWith(".js.map");
+            } catch {
+                return false;
+            }
+        });
     }
 }
 
