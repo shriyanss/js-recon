@@ -63,13 +63,13 @@ const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string
                 // a chunk is found
                 // bui;d the relative URL
                 const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl).href;
-                globals.pushToJsUrls(foundUrl);
                 toReturn.push(foundUrl);
             }
         }
 
-        if (toReturn.length > 0) {
-            console.log(chalk.green(`[✓] Found ${toReturn.length} JS files from _buildManifest.js`));
+        const newlyDiscovered = globals.pushToJsUrls(toReturn);
+        if (newlyDiscovered.length > 0) {
+            console.log(chalk.green(`[✓] Found ${newlyDiscovered.length} new JS files from _buildManifest.js`));
         }
     } catch (err) {
         // This is expected if the file is not found or is not a JS file

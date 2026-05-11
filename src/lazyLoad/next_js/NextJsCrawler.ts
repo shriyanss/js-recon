@@ -77,6 +77,13 @@ class NextJsCrawler {
         return newUrls;
     }
 
+    /** Store only newly discovered URLs for a method's research/count output. */
+    private recordTechnique(name: string, urls: string[]): string[] {
+        const newUrls = this.registerUrls(urls);
+        this.techniqueEfficiencyMapping[name] = [...(this.techniqueEfficiencyMapping[name] || []), ...newUrls];
+        return newUrls;
+    }
+
     /** Snapshot the current size so we can detect growth. */
     private get size(): number {
         return this.discoveredUrls.size;
@@ -91,24 +98,18 @@ class NextJsCrawler {
     private async initialDiscovery(): Promise<void> {
         // 1. Script tags on the landing page
         const jsFromScriptTag = await next_getJSScript(this.url);
-        this.techniqueEfficiencyMapping["next_getJSScript"] = [
-            ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
-            ...jsFromScriptTag,
-        ];
-        this.registerUrls(jsFromScriptTag);
+        this.recordTechnique("next_getJSScript", jsFromScriptTag);
         this.visitedPageUrls.add(this.url);
 
         // 2. Webpack runtime analysis (puppeteer – expensive, run once)
         const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
-        this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
         lazyLoadGlobals.pushToJsUrls(jsFromWebpack);
-        this.registerUrls(jsFromWebpack);
+        this.recordTechnique("next_GetLazyResourcesWebpackJs", jsFromWebpack);
 
         // 3. _buildManifest.js
         const jsFromBuildManifest = await next_getLazyResourcesBuildManifestJs(this.url);
-        this.techniqueEfficiencyMapping["next_getLazyResourcesBuildManifestJs"] = jsFromBuildManifest;
         lazyLoadGlobals.pushToJsUrls(jsFromBuildManifest);
-        this.registerUrls(jsFromBuildManifest);
+        this.recordTechnique("next_getLazyResourcesBuildManifestJs", jsFromBuildManifest);
 
         // 4. Subsequent requests (RSC / script-tags on known endpoints)
         if (this.subsequentRequestsFlag) {
@@ -119,13 +120,11 @@ class NextJsCrawler {
                 this.output,
                 lazyLoadGlobals.getJsUrls()
             );
-            this.techniqueEfficiencyMapping["subsequentRequests"] = [...jsFromSubsequent];
-            this.registerUrls([...jsFromSubsequent]);
+            this.recordTechnique("subsequentRequests", [...jsFromSubsequent]);
 
             const jsFromScriptTagsSR = await next_scriptTagsSubsequentRequests(this.url, this.urlsFile);
-            this.techniqueEfficiencyMapping["next_scriptTagsSubsequentRequests"] = jsFromScriptTagsSR;
             lazyLoadGlobals.pushToJsUrls(jsFromScriptTagsSR);
-            this.registerUrls(jsFromScriptTagsSR);
+            this.recordTechnique("next_scriptTagsSubsequentRequests", jsFromScriptTagsSR);
         }
 
         // Also pull in anything the globals accumulated
@@ -147,19 +146,11 @@ class NextJsCrawler {
 
         // Promise.all pattern analysis on JS file contents
         const jsFromPromise = await next_promiseResolve(jsUrls);
-        this.techniqueEfficiencyMapping["next_promiseResolve"] = [
-            ...(this.techniqueEfficiencyMapping["next_promiseResolve"] || []),
-            ...jsFromPromise,
-        ];
-        newInThisPass.push(...this.registerUrls(jsFromPromise));
+        newInThisPass.push(...this.recordTechnique("next_promiseResolve", jsFromPromise));
 
         // Layout.js parsing → discovers new client-side page paths → visits them
         const jsFromLayout = await next_parseLayoutJs(this.url, jsUrls);
-        this.techniqueEfficiencyMapping["next_parseLayoutJs"] = [
-            ...(this.techniqueEfficiencyMapping["next_parseLayoutJs"] || []),
-            ...jsFromLayout,
-        ];
-        newInThisPass.push(...this.registerUrls(jsFromLayout));
+        newInThisPass.push(...this.recordTechnique("next_parseLayoutJs", jsFromLayout));
 
         // For every new page URL that parseLayoutJs may have visited,
         // also run getJSScript to pick up script tags we haven't seen.
@@ -186,12 +177,7 @@ class NextJsCrawler {
                     process.exit(1);
                 }
 
-                this.techniqueEfficiencyMapping["next_getJSScript"] = [
-                    ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
-                    ...extra,
-                ];
-
-                newInThisPass.push(...this.registerUrls(extra));
+                newInThisPass.push(...this.recordTechnique("next_getJSScript", extra));
             }
         }
 
@@ -240,8 +226,7 @@ class NextJsCrawler {
         // Phase 3 – brute-force .map files on the final set
         const allJsUrls = [...this.discoveredUrls].filter((u) => u.endsWith(".js") || u.endsWith(".js.map"));
         const jsFromBrute = await next_bruteForceJsFiles(allJsUrls);
-        this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;
-        this.registerUrls(jsFromBrute);
+        this.recordTechnique("next_bruteForceJsFiles", jsFromBrute);
 
         return [...this.discoveredUrls];
     }

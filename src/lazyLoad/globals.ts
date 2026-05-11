@@ -47,16 +47,20 @@ export const clearJsUrls = (): void => {
 /**
  * Adds a JavaScript URL to the global array.
  * @param url - JavaScript URL to add
+ * @returns URLs that were not already present in the global array
  */
-export const pushToJsUrls = (url: string | string[]): void => {
-    if (Array.isArray(url)) {
-        js_urls.push(...url);
-    } else {
-        js_urls.push(url);
+export const pushToJsUrls = (url: string | string[]): string[] => {
+    const urls = Array.isArray(url) ? url : [url];
+    const newlyDiscovered: string[] = [];
+
+    for (const jsUrl of urls) {
+        if (!js_urls.includes(jsUrl) && !newlyDiscovered.includes(jsUrl)) {
+            newlyDiscovered.push(jsUrl);
+        }
     }
 
-    // Remove duplicates
-    js_urls = [...new Set(js_urls)];
+    js_urls.push(...newlyDiscovered);
+    return newlyDiscovered;
 };
 
 /**
