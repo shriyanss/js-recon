@@ -69,7 +69,10 @@ const downloadFiles = async (urls: string[], output: string) => {
 
             let filename: string | undefined;
             try {
-                filename = url.split("/").pop()?.match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)?.[0];
+                filename = url
+                    .split("/")
+                    .pop()
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)?.[0];
             } catch {
                 for (const chunk of url.split("/")) {
                     if (chunk.match(/\.js(on)?$/)) {
@@ -87,14 +90,12 @@ const downloadFiles = async (urls: string[], output: string) => {
             const filePath = path.join(childDir, filename);
             try {
                 if (url.match(/\.json/) || url.match(/\.js\.map/)) {
-                    const formatted = file.length <= PRETTIER_SIZE_LIMIT
-                        ? await prettier.format(file, { parser: "json" })
-                        : file;
+                    const formatted =
+                        file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "json" }) : file;
                     fs.writeFileSync(filePath, formatted);
                 } else {
-                    const formatted = file.length <= PRETTIER_SIZE_LIMIT
-                        ? await prettier.format(file, { parser: "babel" })
-                        : file;
+                    const formatted =
+                        file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "babel" }) : file;
                     fs.writeFileSync(filePath, formatted);
                 }
             } catch {

@@ -29,7 +29,9 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
         const jsContent = await req.text();
 
         if (jsContent.length > MAX_JS_SIZE_BYTES) {
-            console.log(chalk.yellow(`[!] Skipping large file (${(jsContent.length / 1024 / 1024).toFixed(1)} MB): ${jsFile}`));
+            console.log(
+                chalk.yellow(`[!] Skipping large file (${(jsContent.length / 1024 / 1024).toFixed(1)} MB): ${jsFile}`)
+            );
             continue;
         }
 
@@ -76,7 +78,8 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                     !t.isMemberExpression(callee) ||
                     !t.isIdentifier(callee.object, { name: "Object" }) ||
                     !t.isIdentifier(callee.property, { name: "assign" })
-                ) return;
+                )
+                    return;
 
                 if (args.length < 2) return;
 
@@ -88,7 +91,8 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                     !t.isIdentifier(firstArg.property, { name: "routes" }) ||
                     !t.isMemberExpression(firstArg.object) ||
                     !t.isIdentifier((firstArg.object as t.MemberExpression).object, { name: "window" })
-                ) return;
+                )
+                    return;
 
                 if (!t.isObjectExpression(secondArg)) return;
 
@@ -100,17 +104,15 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                             !t.isObjectProperty(routeProp) ||
                             !t.isIdentifier(routeProp.key, { name: "tokens" }) ||
                             !t.isArrayExpression(routeProp.value)
-                        ) continue;
+                        )
+                            continue;
 
                         for (const tokenEl of routeProp.value.elements) {
                             if (!t.isArrayExpression(tokenEl)) continue;
 
                             const [typeEl, valueEl] = tokenEl.elements;
 
-                            if (
-                                t.isStringLiteral(typeEl, { value: "text" }) &&
-                                t.isStringLiteral(valueEl)
-                            ) {
+                            if (t.isStringLiteral(typeEl, { value: "text" }) && t.isStringLiteral(valueEl)) {
                                 const pathVal = valueEl.value;
 
                                 if (pathVal.startsWith("/")) {

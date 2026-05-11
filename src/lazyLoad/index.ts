@@ -215,7 +215,11 @@ const lazyLoad = async (
                 const { jsFiles, clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb);
 
                 // recurse the same pipeline through every client-side path we found
-                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb);
+                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(
+                    clientSidePaths,
+                    threads,
+                    maxJsSizeMb
+                );
 
                 const jsFilesToDownload = [...new Set([...jsFiles, ...recursivelyDiscovered])];
 
