@@ -56,7 +56,12 @@ const detectIntent = (
         lower.includes("show results") ||
         lower.includes("what did you find")
     ) {
-        if (lower.includes("lazyload") || lower.includes("lazy load") || lower.includes("directory") || lower.includes("files")) {
+        if (
+            lower.includes("lazyload") ||
+            lower.includes("lazy load") ||
+            lower.includes("directory") ||
+            lower.includes("files")
+        ) {
             return { action: "parse_lazyload" };
         }
         return { action: "parse_run" };
@@ -98,11 +103,7 @@ const detectIntent = (
 /**
  * Handles tool execution based on detected intent.
  */
-const handleToolExecution = async (
-    session: CliSession,
-    action: string,
-    url?: string
-): Promise<string | null> => {
+const handleToolExecution = async (session: CliSession, action: string, url?: string): Promise<string | null> => {
     const outputDir = session.config.default_output_dir;
     const threads = session.config.default_threads;
 
@@ -182,7 +183,12 @@ const promptConfiguration = async (): Promise<{ provider: "openai" | "anthropic"
 /**
  * Starts the interactive MCP CLI session.
  */
-export const startCli = async (config: McpConfig, cliApiKey?: string, cliModel?: string, cliProvider?: string): Promise<void> => {
+export const startCli = async (
+    config: McpConfig,
+    cliApiKey?: string,
+    cliModel?: string,
+    cliProvider?: string
+): Promise<void> => {
     let providerName = (cliProvider || config.provider) as "openai" | "anthropic";
     let model = cliModel || config.model;
     let apiKey = resolveApiKey(providerName, cliApiKey, config);
@@ -249,7 +255,9 @@ export const startCli = async (config: McpConfig, cliApiKey?: string, cliModel?:
             ctrlCCount++;
             if (ctrlCCount === 1) {
                 console.log(chalk.yellow("\n\n[!] Press Ctrl-C again to exit, or type /exit\n"));
-                setTimeout(() => { ctrlCCount = 0; }, 2000);
+                setTimeout(() => {
+                    ctrlCCount = 0;
+                }, 2000);
                 prompt();
             } else {
                 console.log(chalk.yellow("\nGoodbye!\n"));
@@ -290,9 +298,12 @@ export const startCli = async (config: McpConfig, cliApiKey?: string, cliModel?:
                 if (cmdResult.output) {
                     // Handle special output signals
                     if (cmdResult.output === "__LIST_MODELS__") {
-                        const models = await listModels(session.providerName, resolveApiKey(session.providerName, session.cliApiKey, config));
+                        const models = await listModels(
+                            session.providerName,
+                            resolveApiKey(session.providerName, session.cliApiKey, config)
+                        );
                         console.log(chalk.cyan(`\n  Available models for ${session.providerName}:\n`));
-                        models.forEach(m => {
+                        models.forEach((m) => {
                             const marker = m === session.model ? chalk.green(" ← current") : "";
                             console.log(`    ${m}${marker}`);
                         });
@@ -300,13 +311,19 @@ export const startCli = async (config: McpConfig, cliApiKey?: string, cliModel?:
                     } else if (cmdResult.output.startsWith("__SWITCH_MODEL__")) {
                         const newModel = cmdResult.output.replace("__SWITCH_MODEL__", "");
                         session.model = newModel;
-                        session.provider = createProvider(session.providerName, resolveApiKey(session.providerName, session.cliApiKey, config), newModel);
+                        session.provider = createProvider(
+                            session.providerName,
+                            resolveApiKey(session.providerName, session.cliApiKey, config),
+                            newModel
+                        );
                         session.usage = new SessionUsage(newModel);
                         session.config.model = newModel;
                         session.configChanged = true;
                         console.log(chalk.green(`\n[✓] Switched model to: ${newModel}\n`));
                     } else if (cmdResult.output.startsWith("__SWITCH_PROVIDER__")) {
-                        const newProvider = cmdResult.output.replace("__SWITCH_PROVIDER__", "") as "openai" | "anthropic";
+                        const newProvider = cmdResult.output.replace("__SWITCH_PROVIDER__", "") as
+                            | "openai"
+                            | "anthropic";
                         const newKey = resolveApiKey(newProvider, session.cliApiKey, config);
                         if (!newKey) {
                             console.log(chalk.red(`\n[!] No API key configured for ${newProvider}.\n`));

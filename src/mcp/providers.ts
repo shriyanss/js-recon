@@ -158,16 +158,7 @@ export const createProvider = (provider: "openai" | "anthropic", apiKey: string,
  */
 export const listModels = async (provider: "openai" | "anthropic", apiKey: string): Promise<string[]> => {
     if (provider === "openai") {
-        return [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4.1",
-            "gpt-4.1-mini",
-            "gpt-4.1-nano",
-            "o1",
-            "o1-mini",
-            "o3-mini",
-        ];
+        return ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "o1", "o1-mini", "o3-mini"];
     } else {
         return [
             "claude-sonnet-4-20250514",

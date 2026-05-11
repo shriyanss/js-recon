@@ -157,7 +157,7 @@ export const getCommandNames = (): string[] => {
  */
 export const getCommandSuggestions = (partial: string): string[] => {
     const lower = partial.toLowerCase();
-    return Object.keys(commands).filter(cmd => cmd.startsWith(lower));
+    return Object.keys(commands).filter((cmd) => cmd.startsWith(lower));
 };
 
 /**
