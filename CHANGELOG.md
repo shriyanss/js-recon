@@ -6,6 +6,7 @@
 
 - Added MCP CLI support with model and provider configuration
 - Vue.js support to get JS files from the page source
+- Vue.js suppor to get JS files from runtime.js file
 
 ### Changed
 

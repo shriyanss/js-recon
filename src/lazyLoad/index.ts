@@ -237,8 +237,8 @@ const lazyLoad = async (
                  *  DO NOT PERMANENTLY DELETE IT
                  * ==========================
                  */
-                // const runtimeJsFiles = await vue_runtimeJs(url);
-                // jsFilesToDownload.push(...runtimeJsFiles);
+                const runtimeJsFiles = await vue_runtimeJs(url);
+                jsFilesToDownload.push(...runtimeJsFiles);
 
                 // another method: this is when the application only loads a single JS file
                 // everything is there right in that file
