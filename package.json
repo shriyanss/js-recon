@@ -57,6 +57,7 @@
     },
     "homepage": "https://github.com/shriyanss/js-recon#readme",
     "devDependencies": {
+        "@types/babel__traverse": "^7.28.0",
         "@types/better-sqlite3": "^7.6.13",
         "@types/blessed": "^0.1.25",
         "@types/node": "^24.5.2",

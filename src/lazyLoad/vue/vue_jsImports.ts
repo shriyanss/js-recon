@@ -8,6 +8,10 @@ const traverse = _traverse.default;
 const parseJsFile = async (url: string) => {
     let foundUrls: string[] = [];
     const req = await makeRequest(url);
+    if (req == null) {
+        console.log(chalk.red(`Failed to fetch ${url}`));
+        return foundUrls;
+    }
     const reqText = await req.text();
 
     const ast = parser.parse(reqText, {
