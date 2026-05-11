@@ -112,6 +112,40 @@ const checkVueJS = async ($, url: string) => {
         }
     }
 
+    if (detected) {
+        return { detected, evidence };
+    }
+
+    // collect script[src] and link[rel="modulepreload"][href] URLs
+    const assetURLs: string[] = [];
+    $("script[src]").each((_: number, el: import("domhandler").AnyNode) => {
+        const src = $(el).attr("src");
+        if (src) {
+            try {
+                assetURLs.push(new URL(src, url).href);
+            } catch {}
+        }
+    });
+    $('link[rel="modulepreload"][href]').each((_: number, el: import("domhandler").AnyNode) => {
+        const href = $(el).attr("href");
+        if (href) {
+            try {
+                assetURLs.push(new URL(href, url).href);
+            } catch {}
+        }
+    });
+
+    for (const assetURL of assetURLs) {
+        try {
+            const res = await makeRequest(assetURL);
+            if (!res) continue;
+            const content: string = await res.text();
+            if (content && content.toLowerCase().includes("__vue")) {
+                return { detected: true, evidence: `__vue in ${assetURL}` };
+            }
+        } catch {}
+    }
+
     return { detected, evidence };
 };
 
