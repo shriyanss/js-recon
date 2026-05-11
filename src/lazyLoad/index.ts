@@ -217,7 +217,7 @@ const lazyLoad = async (
 
                 let jsFilesToDownload: string[] = [];
 
-                // first, get all the JS files from the homepage 
+                // first, get all the JS files from the homepage
                 const getPageSrc = await vue_pageSrc(url);
                 jsFilesToDownload.push(...getPageSrc);
 

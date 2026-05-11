@@ -106,7 +106,10 @@ const findExportForFunction = (chunkCode: string, functionName: string, exportNa
                     // Pattern: exportName: function() { return functionName }
                     else if (value.type === "FunctionExpression" && value.body.type === "BlockStatement") {
                         const returnStmt = value.body.body.find((stmt: any) => stmt.type === "ReturnStatement");
-                        if ((returnStmt as any)?.argument?.type === "Identifier" && (returnStmt as any).argument.name === functionName) {
+                        if (
+                            (returnStmt as any)?.argument?.type === "Identifier" &&
+                            (returnStmt as any).argument.name === functionName
+                        ) {
                             foundExport = path.node.key.name;
                             path.stop();
                         }

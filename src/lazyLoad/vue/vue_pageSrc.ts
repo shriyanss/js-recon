@@ -49,6 +49,6 @@ const vue_pageSrc = async (url: string) => {
     });
 
     return toReturn;
-}
+};
 
 export default vue_pageSrc;

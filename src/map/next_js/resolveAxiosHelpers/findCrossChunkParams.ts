@@ -259,20 +259,18 @@ export const findCrossChunkParameters = (
                     // 6. Check for complex assignment patterns: b = async (e) => { (await (0, m.HE)(e)).result... }
                     const checkForComplexAssignments = () => {
                         // Find variable declarations or assignments that are functions
-                        const funcDecl = path.findParent(
-                            (p) => {
-                                const pn = p.node as any;
-                                return (
-                                    (p.isVariableDeclarator() || p.isAssignmentExpression()) &&
-                                    ((pn.init &&
-                                        (pn.init.type === "ArrowFunctionExpression" ||
-                                            pn.init.type === "FunctionExpression")) ||
-                                        (pn.right &&
-                                            (pn.right.type === "ArrowFunctionExpression" ||
-                                                pn.right.type === "FunctionExpression")))
-                                );
-                            }
-                        );
+                        const funcDecl = path.findParent((p) => {
+                            const pn = p.node as any;
+                            return (
+                                (p.isVariableDeclarator() || p.isAssignmentExpression()) &&
+                                ((pn.init &&
+                                    (pn.init.type === "ArrowFunctionExpression" ||
+                                        pn.init.type === "FunctionExpression")) ||
+                                    (pn.right &&
+                                        (pn.right.type === "ArrowFunctionExpression" ||
+                                            pn.right.type === "FunctionExpression")))
+                            );
+                        });
 
                         if (funcDecl) {
                             // This call is inside a function declaration

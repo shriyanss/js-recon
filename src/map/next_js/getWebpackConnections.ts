@@ -205,11 +205,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     const id = path.get("arguments.0");
                     if (id) {
                         const idNode = id.node as any;
-                        if (
-                            idNode.value !== undefined &&
-                            String(idNode.value).match(/^\d+$/) &&
-                            idNode.value !== ""
-                        ) {
+                        if (idNode.value !== undefined && String(idNode.value).match(/^\d+$/) && idNode.value !== "") {
                             chunks[key].imports.push(String(idNode.value));
                         }
                     }
