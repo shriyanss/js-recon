@@ -150,7 +150,9 @@ const vue_recursiveClientSidePathDownload = async (
     if (allJsFiles.size > 0) {
         console.log(
             chalk.green(
+                
                 `[✓] Recursive client-side discovery yielded ${allJsFiles.size} JS file(s) across ${visitedPaths.size} path(s)`
+            
             )
         );
     }
