@@ -20,7 +20,7 @@ export interface VueDiscoveryResult {
  * source-map reconstruction) into one reusable flow, and also surfaces the
  * client-side paths found in the discovered files so callers can recurse.
  */
-const vue_discoverJsFiles = async (url: string): Promise<VueDiscoveryResult> => {
+const vue_discoverJsFiles = async (url: string, maxJsSizeMb: number = 2): Promise<VueDiscoveryResult> => {
     let jsFiles: string[] = [];
 
     // first, get all the JS files from the page source
@@ -43,7 +43,7 @@ const vue_discoverJsFiles = async (url: string): Promise<VueDiscoveryResult> => 
     jsFiles.push(...fromSeveralJs);
 
     // walk the import graph of everything found so far
-    const fromImports = await vue_jsImports(url, jsFiles);
+    const fromImports = await vue_jsImports(url, jsFiles, maxJsSizeMb);
     jsFiles.push(...fromImports);
     if (fromImports.length > 0) {
         console.log(chalk.green(`[✓] Found ${fromImports.length} files from import statements`));
@@ -59,7 +59,7 @@ const vue_discoverJsFiles = async (url: string): Promise<VueDiscoveryResult> => 
     jsFiles = [...new Set(jsFiles)];
 
     // surface client-side paths so the caller can recurse into them
-    const clientSidePaths = await vue_getClientSidePaths(url, jsFiles);
+    const clientSidePaths = await vue_getClientSidePaths(url, jsFiles, maxJsSizeMb);
 
     return { jsFiles, clientSidePaths: [...new Set(clientSidePaths)] };
 };

@@ -6,7 +6,8 @@ import t from "@babel/types";
 
 const traverse = _traverse.default;
 
-const vue_getClientSidePaths = async (url: string, jsFiles: string[]): Promise<string[]> => {
+const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeMb: number = 2): Promise<string[]> => {
+    const MAX_JS_SIZE_BYTES = maxJsSizeMb * 1024 * 1024;
     let toReturn: string[] = [];
 
     console.log(chalk.cyan(`[i] Extracting client-side paths from ${jsFiles.length} JS files...`));
@@ -26,6 +27,11 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[]): Promise<s
         }
 
         const jsContent = await req.text();
+
+        if (jsContent.length > MAX_JS_SIZE_BYTES) {
+            console.log(chalk.yellow(`[!] Skipping large file (${(jsContent.length / 1024 / 1024).toFixed(1)} MB): ${jsFile}`));
+            continue;
+        }
 
         // load in ast
         let ast;
@@ -58,6 +64,62 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[]): Promise<s
                         toReturn.push(baseOrigin + linkVal);
                     } else if (linkVal.startsWith("http") && new URL(linkVal).origin === jsFileOrigin) {
                         toReturn.push(linkVal);
+                    }
+                }
+            },
+
+            CallExpression(path) {
+                const { callee, arguments: args } = path.node;
+
+                // Match Object.assign(...)
+                if (
+                    !t.isMemberExpression(callee) ||
+                    !t.isIdentifier(callee.object, { name: "Object" }) ||
+                    !t.isIdentifier(callee.property, { name: "assign" })
+                ) return;
+
+                if (args.length < 2) return;
+
+                const [firstArg, secondArg] = args;
+
+                // Match window.<something>.routes
+                if (
+                    !t.isMemberExpression(firstArg) ||
+                    !t.isIdentifier(firstArg.property, { name: "routes" }) ||
+                    !t.isMemberExpression(firstArg.object) ||
+                    !t.isIdentifier((firstArg.object as t.MemberExpression).object, { name: "window" })
+                ) return;
+
+                if (!t.isObjectExpression(secondArg)) return;
+
+                for (const routeEntry of secondArg.properties) {
+                    if (!t.isObjectProperty(routeEntry) || !t.isObjectExpression(routeEntry.value)) continue;
+
+                    for (const routeProp of routeEntry.value.properties) {
+                        if (
+                            !t.isObjectProperty(routeProp) ||
+                            !t.isIdentifier(routeProp.key, { name: "tokens" }) ||
+                            !t.isArrayExpression(routeProp.value)
+                        ) continue;
+
+                        for (const tokenEl of routeProp.value.elements) {
+                            if (!t.isArrayExpression(tokenEl)) continue;
+
+                            const [typeEl, valueEl] = tokenEl.elements;
+
+                            if (
+                                t.isStringLiteral(typeEl, { value: "text" }) &&
+                                t.isStringLiteral(valueEl)
+                            ) {
+                                const pathVal = valueEl.value;
+
+                                if (pathVal.startsWith("/")) {
+                                    toReturn.push(baseOrigin + pathVal);
+                                } else if (pathVal.startsWith("http") && new URL(pathVal).origin === jsFileOrigin) {
+                                    toReturn.push(pathVal);
+                                }
+                            }
+                        }
                     }
                 }
             },

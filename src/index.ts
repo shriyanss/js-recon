@@ -61,6 +61,7 @@ program
     .option("--research", "Enable research mode", false)
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
+    .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -84,7 +85,8 @@ program
             cmd.sourcemapDir,
             cmd.research,
             cmd.researchOutput,
-            Number(cmd.maxIterations)
+            Number(cmd.maxIterations),
+            Number(cmd.maxJsSize)
         );
     });
 
@@ -286,6 +288,7 @@ program
     .option("--research", "Enable research mode", false)
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
+    .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .action(async (cmd) => {
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);

@@ -112,7 +112,8 @@ const lazyLoad = async (
     sourcemapDir: string,
     research: boolean,
     researchOutput: string,
-    maxIterations: number
+    maxIterations: number,
+    maxJsSizeMb: number = 2
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -211,10 +212,10 @@ const lazyLoad = async (
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
                 // run the full discovery pipeline against the entry URL
-                const { jsFiles, clientSidePaths } = await vue_discoverJsFiles(url);
+                const { jsFiles, clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb);
 
                 // recurse the same pipeline through every client-side path we found
-                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(clientSidePaths, threads);
+                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb);
 
                 const jsFilesToDownload = [...new Set([...jsFiles, ...recursivelyDiscovered])];
 
