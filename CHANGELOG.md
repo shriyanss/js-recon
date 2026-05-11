@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Added try-catch for .map file bruteforce requests
+
 ## 1.2.2 - 2026.04.04
 
 ### Added
