@@ -39,9 +39,7 @@ const vue_recursiveClientSidePathDownload = async (clientSidePaths: string[]): P
                 }
             } catch (err) {
                 console.log(
-                    chalk.red(
-                        `[!] Failed to recurse into ${path}: ${err instanceof Error ? err.message : String(err)}`
-                    )
+                    chalk.red(`[!] Failed to recurse into ${path}: ${err instanceof Error ? err.message : String(err)}`)
                 );
             }
         }
@@ -49,7 +47,9 @@ const vue_recursiveClientSidePathDownload = async (clientSidePaths: string[]): P
 
     if (allJsFiles.size > 0) {
         console.log(
-            chalk.green(`[✓] Recursive client-side discovery yielded ${allJsFiles.size} JS file(s) across ${visitedPaths.size} path(s)`)
+            chalk.green(
+                `[✓] Recursive client-side discovery yielded ${allJsFiles.size} JS file(s) across ${visitedPaths.size} path(s)`
+            )
         );
     }
 
