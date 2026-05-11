@@ -113,7 +113,7 @@ export const handleAxiosCreate = (
 
         // get the arguments of this axios create. Like .create({})
         let axiosCreateBaseURL: string;
-        const axiosCreateArgs = path.parentPath.node.arguments;
+        const axiosCreateArgs = (path.parentPath.node as any).arguments;
 
         // iterate through it, and check if the first arg is an object
         if (axiosCreateArgs.length > 0 && axiosCreateArgs[0].type === "ObjectExpression") {

@@ -106,7 +106,7 @@ const findExportForFunction = (chunkCode: string, functionName: string, exportNa
                     // Pattern: exportName: function() { return functionName }
                     else if (value.type === "FunctionExpression" && value.body.type === "BlockStatement") {
                         const returnStmt = value.body.body.find((stmt: any) => stmt.type === "ReturnStatement");
-                        if (returnStmt?.argument?.type === "Identifier" && returnStmt.argument.name === functionName) {
+                        if ((returnStmt as any)?.argument?.type === "Identifier" && (returnStmt as any).argument.name === functionName) {
                             foundExport = path.node.key.name;
                             path.stop();
                         }
@@ -293,7 +293,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
         traverse(fileAst, {
             CallExpression(path) {
                 let isFetchCall = false;
-                const calleeName = path.node.callee.name;
+                const calleeName = (path.node.callee as any).name;
 
                 if (calleeName === "fetch") {
                     isFetchCall = true;

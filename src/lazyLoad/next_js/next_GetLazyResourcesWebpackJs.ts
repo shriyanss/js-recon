@@ -108,28 +108,28 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
         },
         FunctionExpression(path) {
             functions.push({
-                name: path.parent.id?.name || "(anonymous)",
+                name: (path.parent as any).id?.name || "(anonymous)",
                 type: "FunctionExpression",
                 source: webpack_js_source.slice(path.node.start, path.node.end),
             });
         },
         ArrowFunctionExpression(path) {
             functions.push({
-                name: path.parent.id?.name || "(anonymous)",
+                name: (path.parent as any).id?.name || "(anonymous)",
                 type: "ArrowFunctionExpression",
                 source: webpack_js_source.slice(path.node.start, path.node.end),
             });
         },
         ObjectMethod(path) {
             functions.push({
-                name: path.node.key.name,
+                name: (path.node.key as any).name,
                 type: "ObjectMethod",
                 source: webpack_js_source.slice(path.node.start, path.node.end),
             });
         },
         ClassMethod(path) {
             functions.push({
-                name: path.node.key.name,
+                name: (path.node.key as any).name,
                 type: "ClassMethod",
                 source: webpack_js_source.slice(path.node.start, path.node.end),
             });

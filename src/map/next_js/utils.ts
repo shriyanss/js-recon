@@ -1038,8 +1038,8 @@ export const resolveNodeValue = (
                 }
                 case "Identifier": {
                     const binding = scope.getBinding(currentNode.name);
-                    if (binding && binding.path.node.init) {
-                        currentNode = binding.path.node.init;
+                    if (binding && (binding.path.node as any).init) {
+                        currentNode = (binding.path.node as any).init;
                         continue;
                     }
                     return `[unresolved: ${currentNode.name}]`;
@@ -1282,7 +1282,7 @@ export const resolveNodeValue = (
                                     return;
                                 }
 
-                                let current = path.node;
+                                let current: any = path.node;
                                 while (
                                     current &&
                                     current.type === "CallExpression" &&

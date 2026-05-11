@@ -62,6 +62,7 @@ const client_jsFilesHref = async (directory: string): Promise<string[]> => {
                     } else if (
                         valueNode.type === "CallExpression" &&
                         valueNode.callee.type === "MemberExpression" &&
+                        valueNode.callee.property.type === "Identifier" &&
                         valueNode.callee.property.name === "concat"
                     ) {
                         // It's a .concat() call.
@@ -69,18 +70,18 @@ const client_jsFilesHref = async (directory: string): Promise<string[]> => {
                         const pathArg = valueNode.arguments.find(
                             (arg) =>
                                 arg.type === "StringLiteral" &&
-                                (arg.value.startsWith("/") || arg.value.startsWith("http"))
+                                ((arg as any).value.startsWith("/") || (arg as any).value.startsWith("http"))
                         );
 
-                        if (pathArg) {
+                        if (pathArg && pathArg.type === "StringLiteral") {
                             hrefValue = pathArg.value;
                         } else {
                             // Handle fallback case: e.g. "".concat(s || "/docs/guides")
                             const logicalExprArg = valueNode.arguments.find(
-                                (arg) => arg.type === "LogicalExpression" && arg.operator === "||"
+                                (arg) => arg.type === "LogicalExpression" && (arg as any).operator === "||"
                             );
-                            if (logicalExprArg && logicalExprArg.right.type === "StringLiteral") {
-                                hrefValue = logicalExprArg.right.value;
+                            if (logicalExprArg && (logicalExprArg as any).right?.type === "StringLiteral") {
+                                hrefValue = (logicalExprArg as any).right.value;
                             }
                         }
                     }

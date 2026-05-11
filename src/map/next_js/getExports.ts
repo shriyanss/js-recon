@@ -84,7 +84,9 @@ const getExports = async (chunks: Chunks): Promise<Chunks> => {
                 ) {
                     // get the names of the properties
                     node.arguments[1].properties.forEach((property) => {
-                        chunkExports.push(property.key.name);
+                        if (property.type !== "SpreadElement" && property.key.type === "Identifier") {
+                            chunkExports.push(property.key.name);
+                        }
                     });
                 }
             },

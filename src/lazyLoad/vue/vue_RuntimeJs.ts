@@ -67,7 +67,7 @@ const vue_runtimeJs = async (url: string) => {
 
     // now, traverse the ast, and find the right spot
     // Looking for: script.src = function(e) { ... }(e)
-    let scriptSrcAssignment: Node | null = null;
+    let scriptSrcAssignment: any = null;
     traverse(ast, {
         AssignmentExpression(path) {
             const { left, right } = path.node;
