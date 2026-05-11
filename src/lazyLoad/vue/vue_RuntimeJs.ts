@@ -145,8 +145,7 @@ const vue_runtimeJs = async (url: string): Promise<string[]> => {
     // public path value isn't needed -- chunks live alongside runtime.js, so
     // resolving the relative path against the runtime.js directory gives the
     // correct absolute URL.
-    const stubDecl =
-        publicPathObj && publicPathProp ? `var ${publicPathObj} = { ${publicPathProp}: "" };` : "";
+    const stubDecl = publicPathObj && publicPathProp ? `var ${publicPathObj} = { ${publicPathProp}: "" };` : "";
     const urlBuilderFunc = `(() => { ${stubDecl} return (${scriptSrcFuncSource}); })()`;
 
     const js_paths: string[] = [];
