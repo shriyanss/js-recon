@@ -5,6 +5,7 @@
 ### Added
 
 - Added MCP CLI support with model and provider configuration
+- Vue.js support to get JS files from the page source
 
 ### Changed
 

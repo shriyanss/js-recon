@@ -14,10 +14,15 @@ const parseJsFile = async (url: string) => {
     }
     const reqText = await req.text();
 
-    const ast = parser.parse(reqText, {
-        sourceType: "module",
-        plugins: ["importAssertions"],
-    });
+    let ast;
+    try {
+        ast = parser.parse(reqText, {
+            sourceType: "module",
+            plugins: ["importAssertions"],
+        });
+    } catch {
+        return foundUrls;
+    }
 
     // get all the import statements
     traverse(ast, {

@@ -30,7 +30,7 @@ import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
 import vue_singleJsFileOnHome from "./vue/vue_SingleJsFileOnHome.js";
 import vue_jsImports from "./vue/vue_jsImports.js";
 import vue_reconstructSourceMaps from "./vue/vue_reconstructSourceMaps.js";
-import vue_pageScriptSrc from "./vue/vue_pageScriptSrc.js";
+import vue_pageSrc from "./vue/vue_pageSrc.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -218,7 +218,8 @@ const lazyLoad = async (
                 let jsFilesToDownload: string[] = [];
 
                 // first, get all the JS files from the homepage 
-                const getFromPageSource = await vue_pageScriptSrc(url);
+                const getPageSrc = await vue_pageSrc(url);
+                jsFilesToDownload.push(...getPageSrc);
 
                 // according to the vibe-coded app with a few pages, there are
                 // just a few files, like 2-3, but that's not the case in prod
