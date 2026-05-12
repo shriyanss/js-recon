@@ -15,8 +15,12 @@ import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/g
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 import getExports from "./next_js/getExports.js";
 
+// Vue.JS
+import getViteConnections from "./vue_js/getViteConnections.js";
+
 const availableTech = {
     next: "Next.JS",
+    vue: "Vue.JS",
 };
 
 const availableFormats = {
@@ -130,6 +134,14 @@ const map = async (
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
             console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+        }
+    } else if (tech === "vue") {
+        let chunks: Chunks;
+
+        if (!existsSync(`${output}.json`)) {
+            chunks = await getViteConnections(directory, output, formats);
+        } else {
+            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
         }
     }
 };
