@@ -249,11 +249,7 @@ export default async (cmd: any): Promise<void> => {
             const thisTargetDir = `${cmd.output}/${hostDir}`;
 
             if (fs.existsSync(thisTargetDir)) {
-                console.log(
-                    chalk.red(
-                        `[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`
-                    )
-                );
+                console.log(chalk.red(`[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`));
                 console.log(
                     chalk.yellow(
                         `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
