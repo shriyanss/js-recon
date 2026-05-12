@@ -8,6 +8,7 @@
 - Vue.js support to get JS files from the page source
 - Vue.js suppor to get JS files from runtime.js file
 - Pass a URL list to `run -u`
+- Turbopack support for Next.js `map`
 
 ### Changed
 

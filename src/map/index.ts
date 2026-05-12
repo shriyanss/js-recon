@@ -3,6 +3,7 @@ import fs from "fs";
 
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
+import getTurbopackConnections from "./next_js/getTurbopackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
 import interactive from "./next_js/interactive.js";
@@ -93,6 +94,9 @@ const map = async (
         if (!allOutputFilesAvailable) {
             // skip regeneration if output file already exists
             chunks = await getWebpackConnections(directory, output, formats);
+
+            // also collect Turbopack chunks (Next.JS apps may be built with either bundler)
+            chunks = await getTurbopackConnections(directory, output, formats, chunks);
 
             // get the exports
             chunks = await getExports(chunks);
