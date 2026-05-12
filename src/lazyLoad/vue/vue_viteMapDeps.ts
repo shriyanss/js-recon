@@ -69,9 +69,7 @@ const vue_viteMapDeps = async (jsFiles: string[], maxJsSizeMb: number = 2): Prom
 
                     if (foundInThisFile.length > 0) {
                         console.log(
-                            chalk.green(
-                                `[✓] Found ${foundInThisFile.length} chunks from __vite__mapDeps in ${jsUrl}`
-                            )
+                            chalk.green(`[✓] Found ${foundInThisFile.length} chunks from __vite__mapDeps in ${jsUrl}`)
                         );
                         for (const u of foundInThisFile) discovered.add(u);
                     }
