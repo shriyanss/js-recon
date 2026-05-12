@@ -231,22 +231,9 @@ export default async (cmd: any): Promise<void> => {
             .split("\n")
             .filter((url) => url !== "");
 
-        // first of all, make a new directory for the tool output
-        const toolOutputDir = "js_recon_run_output";
-        if (fs.existsSync(toolOutputDir)) {
-            console.log(
-                chalk.red(
-                    `[!] Output directory ${toolOutputDir} already exists. Please switch to other directory or it might conflict with this process.`
-                )
-            );
-            console.log(
-                chalk.yellow(
-                    `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
-                )
-            );
-            process.exit(14);
+        if (!fs.existsSync(cmd.output)) {
+            fs.mkdirSync(cmd.output, { recursive: true });
         }
-        fs.mkdirSync(toolOutputDir);
 
         for (const url of urls) {
             // Validate URL only
@@ -258,12 +245,25 @@ export default async (cmd: any): Promise<void> => {
                 continue;
             }
 
-            const thisTargetWorkingDir = `${toolOutputDir}/${urlObj.host.replace(":", "_")}`;
-            if (!fs.existsSync(thisTargetWorkingDir)) {
-                fs.mkdirSync(thisTargetWorkingDir, { recursive: true });
+            const hostDir = urlObj.host.replace(":", "_");
+            const thisTargetDir = `${cmd.output}/${hostDir}`;
+
+            if (fs.existsSync(thisTargetDir)) {
+                console.log(
+                    chalk.red(
+                        `[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`
+                    )
+                );
+                console.log(
+                    chalk.yellow(
+                        `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
+                    )
+                );
+                continue;
             }
-            const outputDir = `${thisTargetWorkingDir}/output`;
-            await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
+
+            fs.mkdirSync(thisTargetDir, { recursive: true });
+            await processUrl(url, thisTargetDir, thisTargetDir, cmd, true);
         }
     }
 };

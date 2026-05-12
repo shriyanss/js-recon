@@ -263,7 +263,7 @@ program
 program
     .command("run")
     .description("Run all modules")
-    .requiredOption("-u, --url <url>", "Target URL")
+    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <directory>", "Output directory", "output")
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
