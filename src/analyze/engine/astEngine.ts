@@ -36,25 +36,45 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
             errorRecovery: true,
         });
 
-        let matchCount = 0;
-        let matchList: { [key: string]: { node: Node; scope: Node } } = {};
-        const completedSteps: string[] = [];
+        let matchList: { [key: string]: { node: Node; scope: Node; allNodes?: Node[] } } = {};
+        const completedSteps: Set<string> = new Set();
 
         // iterate through the steps in the rule
         for (const step of rule.steps) {
+            // honor `requires`: skip the step if any of its required steps did not complete
+            if (step.requires && step.requires.length > 0) {
+                const allRequiresMet = step.requires.every((r) => completedSteps.has(r));
+                if (!allRequiresMet) {
+                    continue;
+                }
+            }
+
             // if it is an esquery step, then only proceed
             if (step.esquery) {
                 const selector = step.esquery.query;
 
-                // match the query against what is there in the user defined config file
-                const matches: Node[] = esquery(ast, selector);
-
-                for (const node of matches) {
-                    // now that a match is found, push that node to the matchList
-                    matchList[step.name] = { node, scope: ast };
-                    matchCount++;
+                // determine the AST subtree to search. by default we search the whole chunk AST,
+                // but `inScopeOf` lets a step look only inside a previous match's subtree —
+                // useful for catching source/sink pairs in the same function rather than the same chunk.
+                let searchRoot: Node = ast;
+                if (step.esquery.inScopeOf) {
+                    const scopeMatch = matchList[step.esquery.inScopeOf];
+                    if (!scopeMatch) {
+                        // dependency didn't match — this step cannot apply
+                        continue;
+                    }
+                    searchRoot = scopeMatch.node;
                 }
-                completedSteps.push(step.name);
+
+                // match the query against what is there in the user defined config file
+                const matches: Node[] = esquery(searchRoot, selector);
+
+                if (matches.length > 0) {
+                    // store the first match as the "primary" node so later steps can reference it,
+                    // and keep the full match list available for tooling that wants it.
+                    matchList[step.name] = { node: matches[0], scope: ast, allNodes: matches };
+                    completedSteps.add(step.name);
+                }
             } else if (step.postMessageFuncResolve) {
                 // since this is asking to resolve to a function declaration, we'll first get the node for it
 
@@ -79,15 +99,8 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                                     const resolvedFunction = resolveFunctionIdentifier(functionIdentifier, ast);
 
                                     if (resolvedFunction) {
-                                        // console.log(
-                                        //     chalk.green(
-                                        //         "[✓] Successfully resolved function declaration:"
-                                        //     )
-                                        // );
-                                        // const { code } = generator(resolvedFunction);
                                         matchList[step.name] = { node: resolvedFunction, scope: ast };
-                                        matchCount++;
-                                        completedSteps.push(step.name);
+                                        completedSteps.add(step.name);
                                     }
                                 } else if (
                                     selectedNode.arguments[1].type === "FunctionExpression" ||
@@ -95,8 +108,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                                 ) {
                                     const functionExpression = selectedNode.arguments[1];
                                     matchList[step.name] = { node: functionExpression, scope: ast };
-                                    matchCount++;
-                                    completedSteps.push(step.name);
+                                    completedSteps.add(step.name);
                                 }
                             }
                         }
@@ -115,10 +127,8 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                     );
 
                     if (assignmentNode) {
-                        // store the matched assignment in matchList similar to earlier steps
                         matchList[step.name] = { node: assignmentNode, scope: ast };
-                        matchCount++;
-                        completedSteps.push(step.name);
+                        completedSteps.add(step.name);
                     }
                 } else if (selectedNode) {
                     const assignmentNode = findDirectAssignment(
@@ -127,17 +137,15 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                     );
 
                     if (assignmentNode) {
-                        // store the matched assignment in matchList similar to earlier steps
                         matchList[step.name] = { node: assignmentNode, scope: ast };
-                        matchCount++;
-                        completedSteps.push(step.name);
+                        completedSteps.add(step.name);
                     }
                 }
             }
         }
 
-        // now, check if the matchCount is equal to the length of the rule.steps
-        if (matchCount === rule.steps.length) {
+        // fire if every declared step has completed (matched) for this chunk
+        if (completedSteps.size === rule.steps.length) {
             const message = `[+] "${rule.name}" found in chunk ${chunk.id}`;
             const lastMatch = Object.values(matchList)[Object.keys(matchList).length - 1];
             const code = generator(lastMatch.node).code;

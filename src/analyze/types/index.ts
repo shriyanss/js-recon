@@ -39,6 +39,9 @@ export type RequestStep =
 export type EsqueryStep = {
     type: "esquery";
     query: string;
+    // optional: scope the esquery to the subtree rooted at a previously matched step's node.
+    // when set, esquery runs against `matchList[<name>].node` instead of the whole chunk AST.
+    inScopeOf?: string;
 };
 
 export type PostMessageFuncResolverStep = {

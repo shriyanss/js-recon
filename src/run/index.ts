@@ -152,6 +152,32 @@ const processUrl = async (
     await strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true);
     console.log(chalk.bgGreen("[+] Strings complete."));
 
+    // a second subsequent_requests pass: the first strings pass only sees initial chunks,
+    // so dynamic routes such as `/post/1` are only discovered after the first subsequent
+    // crawl + second strings extraction. Re-running subsequent_requests with the freshly
+    // updated paths picks up chunks for those dynamic routes (e.g. the post page).
+    console.log(chalk.bgCyan("[4.5/8] Re-running lazyload with subsequent requests for newly discovered paths..."));
+    await lazyLoad(
+        url,
+        outputDir,
+        cmd.strictScope,
+        cmd.scope.split(","),
+        cmd.threads,
+        true,
+        `${extractedUrlsFile}.json`,
+        cmd.insecure,
+        false,
+        cmd.sourcemapDir,
+        cmd.research,
+        cmd.researchOutput,
+        Number(cmd.maxIterations)
+    );
+    console.log(chalk.bgGreen("[+] Lazyload re-pass complete."));
+
+    console.log(chalk.bgCyan("[4.6/8] Re-running strings for chunks from the re-pass..."));
+    await strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true);
+    console.log(chalk.bgGreen("[+] Strings re-pass complete."));
+
     console.log(chalk.bgCyan("[5/8] Running map to find functions..."));
     globalsUtil.setOpenapi(true);
     if (isBatch) {
