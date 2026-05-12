@@ -6,6 +6,7 @@ import vue_severalJsFilesHome from "./vue_severalJsFilesHome.js";
 import vue_jsImports from "./vue_jsImports.js";
 import vue_reconstructSourceMaps from "./vue_reconstructSourceMaps.js";
 import vue_getClientSidePaths from "./vue_getClientSidePaths.js";
+import vue_viteMapDeps from "./vue_viteMapDeps.js";
 
 export interface VueDiscoveryResult {
     jsFiles: string[];
@@ -41,6 +42,13 @@ const vue_discoverJsFiles = async (url: string, maxJsSizeMb: number = 2): Promis
     // several JS files referenced directly on the page
     const fromSeveralJs = await vue_severalJsFilesHome(url);
     jsFiles.push(...fromSeveralJs);
+
+    // scan page-loaded JS files for Vite's __vite__mapDeps chunk manifest
+    const fromViteMapDeps = await vue_viteMapDeps(jsFiles, maxJsSizeMb);
+    jsFiles.push(...fromViteMapDeps);
+    if (fromViteMapDeps.length > 0) {
+        console.log(chalk.green(`[✓] Found ${fromViteMapDeps.length} files from __vite__mapDeps`));
+    }
 
     // walk the import graph of everything found so far
     const fromImports = await vue_jsImports(url, jsFiles, maxJsSizeMb);
