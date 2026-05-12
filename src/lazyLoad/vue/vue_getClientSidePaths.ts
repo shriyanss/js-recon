@@ -62,7 +62,9 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                 ) {
                     const linkVal = value.value;
 
-                    if (linkVal.startsWith("/")) {
+                    if (linkVal.startsWith("//")) {
+                        toReturn.push("https:" + linkVal);
+                    } else if (linkVal.startsWith("/")) {
                         toReturn.push(baseOrigin + linkVal);
                     } else if (linkVal.startsWith("http") && new URL(linkVal).origin === jsFileOrigin) {
                         toReturn.push(linkVal);
@@ -115,7 +117,9 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                             if (t.isStringLiteral(typeEl, { value: "text" }) && t.isStringLiteral(valueEl)) {
                                 const pathVal = valueEl.value;
 
-                                if (pathVal.startsWith("/")) {
+                                if (pathVal.startsWith("//")) {
+                                    toReturn.push("https:" + pathVal);
+                                } else if (pathVal.startsWith("/")) {
                                     toReturn.push(baseOrigin + pathVal);
                                 } else if (pathVal.startsWith("http") && new URL(pathVal).origin === jsFileOrigin) {
                                     toReturn.push(pathVal);

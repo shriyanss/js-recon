@@ -64,7 +64,7 @@ const vue_discoverJsFiles = async (url: string, maxJsSizeMb: number = 2): Promis
         console.log(chalk.green(`[✓] Found ${fromSourceMaps.length} files from reconstructing source maps`));
     }
 
-    jsFiles = [...new Set(jsFiles)];
+    jsFiles = [...new Set(jsFiles)].map((f) => (f.startsWith("//") ? "https:" + f : f));
 
     // surface client-side paths so the caller can recurse into them
     const clientSidePaths = await vue_getClientSidePaths(url, jsFiles, maxJsSizeMb);

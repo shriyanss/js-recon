@@ -269,6 +269,9 @@ const makeRequest = async (
     url: string,
     args?: Omit<RequestInit, "timeout"> & { timeout?: number }
 ): Promise<Response | null> => {
+    if (url.startsWith("//")) {
+        url = "https:" + url;
+    }
     const { timeout, ...restArgs } = args || {};
     const requestOptions: RequestInit = restArgs;
     const requestTimeout = timeout || globals.getRequestTimeout();
