@@ -216,8 +216,8 @@ const getTurbopackConnections = async (
     // optional AI descriptions for turbopack chunks (mirrors the webpack path)
     if (globals.getAi() && globals.getAi().includes("description")) {
         console.log(chalk.cyan("[i] Generating descriptions for turbopack chunks"));
-        const turbopackEntries = Object.entries(chunks).filter(([k, v]) =>
-            v.code.startsWith(`func_${k} = `) && v.description === "none"
+        const turbopackEntries = Object.entries(chunks).filter(
+            ([k, v]) => v.code.startsWith(`func_${k} = `) && v.description === "none"
         );
         const descriptionPromises = [];
         let activeThreads = 0;
@@ -236,9 +236,7 @@ const getTurbopackConnections = async (
                     const description = await getCompletion(value.code, systemPrompt);
                     return { key, description };
                 } catch (err) {
-                    console.log(
-                        chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`)
-                    );
+                    console.log(chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`));
                     return { key, description: "none" };
                 } finally {
                     activeThreads--;
