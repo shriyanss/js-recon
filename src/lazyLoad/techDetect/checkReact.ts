@@ -27,6 +27,10 @@ const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detecte
                         detected = true;
                         evidence = `Found "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED" and "__REACT_DEVTOOLS_GLOBAL_HOOK__" in ${src}`;
                         break;
+                    } else if (body.includes("__reactRouterVersion")) {
+                        detected = true;
+                        evidence = `Found "__reactRouterVersion" in ${src}`;
+                        break;
                     }
                 }
             }
