@@ -29,6 +29,9 @@ import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 import vue_discoverJsFiles from "./vue/vue_discoverJsFiles.js";
 import vue_recursiveClientSidePathDownload from "./vue/vue_recursiveClientSidePathDownload.js";
 
+// React
+import react_getScriptTags from "./react/react_getScriptTags.js";
+
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
@@ -306,6 +309,17 @@ const lazyLoad = async (
             } else if (tech.name === "react") {
                 console.log(chalk.green("[✓] React detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload = [];
+
+                // get the files from the page source
+                const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb);
+                jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
             } else {
                 console.log(chalk.red("[!] Framework not detected :("));
                 console.log(chalk.magenta(CONFIG.notFoundMessage));

@@ -14,6 +14,7 @@
 - Added interactive mode support `-i` for vue
 - Use `puppeteer-extra` rather than `puppeteer`
 - Added React Support
+- Added Cloudfront firewall bypass
 
 ### Changed
 
