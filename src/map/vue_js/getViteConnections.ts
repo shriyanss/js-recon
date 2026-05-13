@@ -7,6 +7,8 @@ import chalk from "chalk";
 
 import { Chunks } from "../../utility/interfaces.js";
 import { File } from "@babel/types";
+import * as globals from "../../utility/globals.js";
+import { getCompletion } from "../../utility/ai.js";
 
 const FUNC_NAME_RE = /^[a-zA-Z_]{2}$/;
 
@@ -35,6 +37,37 @@ const getViteConnections = async (
     output: string,
     formats: string[]
 ): Promise<Chunks> => {
+    const maxAiThreads = globals.getAiThreads();
+    if (globals.getAi().length > 0) {
+        console.log(
+            chalk.yellow(
+                "[!] AI integration is enabled. This may incur costs. By using this feature, you agree to the AI provider's terms of service, and accept the risk of incurring unexpected costs due to huge codebase."
+            )
+        );
+        const provider = globals.getAiServiceProvider();
+        if (provider === "openai") {
+            const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
+            if (!apiKey) {
+                console.log(
+                    chalk.red(
+                        "[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."
+                    )
+                );
+                process.exit(19);
+            }
+        }
+        console.log(chalk.cyan(`[i] AI provider "${provider}" initialized.`));
+    }
+
+    // skip regeneration when an AI-tagged JSON already exists, since it would burn $$$
+    if (fs.existsSync(`${output}.json`) && globals.getAi().length > 0) {
+        console.log(
+            chalk.yellow(`[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`)
+        );
+        const chunks = JSON.parse(fs.readFileSync(`${output}.json`, "utf8"));
+        return chunks;
+    }
+
     console.log(chalk.cyan("[i] Getting Vite (Vue.JS) connections"));
 
     let files = fs.readdirSync(directory, {
@@ -237,6 +270,47 @@ const getViteConnections = async (
     }
 
     console.log(chalk.green(`[✓] Found ${Object.keys(chunks).length} Vue.JS functions`));
+
+    // if AI description is enabled, generate descriptions for each chunk in parallel batches
+    if (globals.getAi() && globals.getAi().includes("description")) {
+        console.log(chalk.cyan("[i] Generating descriptions for chunks"));
+        const chunkEntries = Object.entries(chunks);
+        const descriptionPromises: Promise<{ key: string; description: string }>[] = [];
+        let activeThreads = 0;
+        const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        const systemPrompt =
+            "You are a code analyzer. You will be given a function from a Vite-bundled Vue.JS application. You have to generate a one-liner description of what the function does.";
+
+        for (const [key, value] of chunkEntries) {
+            while (activeThreads >= maxAiThreads) {
+                await sleep(Math.floor(Math.random() * 451) + 50);
+            }
+
+            activeThreads++;
+            const promise = (async () => {
+                try {
+                    const description = await getCompletion(value.code, systemPrompt);
+                    return { key, description };
+                } catch (err) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    console.log(chalk.red(`[!] Error generating description for chunk ${key}: ${msg}`));
+                    return { key, description: "none" };
+                } finally {
+                    activeThreads--;
+                }
+            })();
+            descriptionPromises.push(promise);
+        }
+
+        const results = await Promise.all(descriptionPromises);
+
+        results.forEach(({ key, description }) => {
+            if (chunks[key]) {
+                chunks[key].description = description || "none";
+                console.log(chalk.green(`[✓] Generated description for ${key}: ${chunks[key].description}`));
+            }
+        });
+    }
 
     if (formats.includes("json")) {
         const chunksJson = JSON.stringify(chunks, null, 2);

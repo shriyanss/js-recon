@@ -100,12 +100,26 @@ const processUrl = async (
         process.exit(10);
     }
 
-    if (!["next"].includes(globalsUtil.getTech())) {
+    if (!["next", "vue"].includes(globalsUtil.getTech())) {
         console.log(
             chalk.bgYellow(
-                `[!] The tool only supports Next.JS ('next') fully. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+                `[!] The tool only supports Next.JS ('next') and Vue.JS ('vue') in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
             )
         );
+        return;
+    }
+
+    if (globalsUtil.getTech() === "vue") {
+        // Vue.JS pipeline: lazyload (done) + map. Other stages aren't Vue-ready yet.
+        // Scan the whole download directory: Vue builds frequently spread chunks
+        // across multiple asset hosts, and relative imports resolve within each tree.
+        const mappedFileVue = isBatch ? `${workingDir}/mapped` : "mapped";
+
+        console.log(chalk.bgCyan("[2/2] Running map to find functions..."));
+        await map(outputDir, mappedFileVue, ["json"], "vue", false, false);
+        console.log(chalk.bgGreen("[+] Map complete."));
+
+        console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
         return;
     }
 

@@ -17,6 +17,7 @@ import getExports from "./next_js/getExports.js";
 
 // Vue.JS
 import getViteConnections from "./vue_js/getViteConnections.js";
+import vueInteractive from "./vue_js/interactive.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -142,6 +143,10 @@ const map = async (
             chunks = await getViteConnections(directory, output, formats);
         } else {
             chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
+        }
+
+        if (interactive_mode) {
+            await vueInteractive(chunks, `${output}.json`);
         }
     }
 };
