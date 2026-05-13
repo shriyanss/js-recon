@@ -37,40 +37,86 @@ const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFile
             });
 
             // find arrow functions that look like webpack chunk path builders:
-            // x.x = (e) => "prefix/" + ({...}[e] || e) + "." + {...}[e] + ".js"
+            // pattern 1: x.x = (e) => "prefix/" + ({...}[e] || e) + "." + {...}[e] + ".js"
+            // pattern 2: x.x = (e) => { if (N === e) return "file.js"; ... }
             traverse(ast, {
                 ArrowFunctionExpression(path) {
                     const start = path.node.start ?? 0;
                     const end = path.node.end ?? jsContent.length;
                     const source = jsContent.slice(start, end);
-                    if (!source.match(/"\.js".{0,15}$/)) return;
 
-                    console.log(chalk.green(`[✓] Found webpack chunk path builder in ${jsFile}`));
+                    if (source.match(/"\.js".{0,15}$/)) {
+                        // pattern 1: expression body returning computed path
+                        console.log(chalk.green(`[✓] Found webpack chunk path builder in ${jsFile}`));
+                        console.log(chalk.yellow(source.slice(0, 200) + (source.length > 200 ? "..." : "")));
+
+                        const urlBuilderFunc = `(() => (${source}))()`;
+                        const integers = source.match(/\d+/g);
+                        if (!integers) return;
+
+                        for (const i of integers) {
+                            try {
+                                let output = execFunc(urlBuilderFunc, parseInt(i));
+                                if (typeof output !== "string" || output.includes("undefined")) continue;
+
+                                if (
+                                    !(
+                                        output.startsWith("/") ||
+                                        output.startsWith("http") ||
+                                        output.startsWith("./") ||
+                                        output.startsWith("../")
+                                    )
+                                ) {
+                                    output = "../" + output;
+                                }
+                                const finalUrl = new URL(output, jsFile).href;
+                                toReturn.push(finalUrl);
+                            } catch {
+                                // skip integers that cause errors in sandboxed execution
+                            }
+                        }
+                        return;
+                    }
+
+                    // pattern 2: block body with if-chain of literal filename returns
+                    const body = path.node.body;
+                    if (body.type !== "BlockStatement") return;
+
+                    const filenames: string[] = [];
+                    for (const stmt of body.body) {
+                        if (stmt.type !== "IfStatement") continue;
+                        const test = stmt.test;
+                        if (test.type !== "BinaryExpression" || test.operator !== "===") continue;
+                        const { left, right } = test;
+                        const isNumericEqParam =
+                            (left.type === "NumericLiteral" && right.type === "Identifier") ||
+                            (right.type === "NumericLiteral" && left.type === "Identifier");
+                        if (!isNumericEqParam) continue;
+                        const consequent = stmt.consequent;
+                        if (consequent.type !== "ReturnStatement" || !consequent.argument) continue;
+                        const arg = consequent.argument;
+                        if (arg.type !== "StringLiteral" || !arg.value.endsWith(".js")) continue;
+                        filenames.push(arg.value);
+                    }
+
+                    if (filenames.length < 3) return;
+
+                    console.log(chalk.green(`[✓] Found webpack if-chain chunk path builder in ${jsFile}`));
                     console.log(chalk.yellow(source.slice(0, 200) + (source.length > 200 ? "..." : "")));
 
-                    const urlBuilderFunc = `(() => (${source}))()`;
-                    const integers = source.match(/\d+/g);
-                    if (!integers) return;
-
-                    for (const i of integers) {
+                    for (const filename of filenames) {
                         try {
-                            let output = execFunc(urlBuilderFunc, parseInt(i));
-                            if (typeof output !== "string" || output.includes("undefined")) continue;
-
-                            if (
-                                !(
-                                    output.startsWith("/") ||
-                                    output.startsWith("http") ||
-                                    output.startsWith("./") ||
-                                    output.startsWith("../")
-                                )
-                            ) {
-                                output = "../" + output;
-                            }
+                            const output =
+                                filename.startsWith("/") ||
+                                filename.startsWith("http") ||
+                                filename.startsWith("./") ||
+                                filename.startsWith("../")
+                                    ? filename
+                                    : filename;
                             const finalUrl = new URL(output, jsFile).href;
                             toReturn.push(finalUrl);
                         } catch {
-                            // skip integers that cause errors in sandboxed execution
+                            // skip filenames that fail URL resolution
                         }
                     }
                 },
