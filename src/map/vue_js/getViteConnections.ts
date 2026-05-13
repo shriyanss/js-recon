@@ -32,11 +32,7 @@ const parseFilename = (filename: string): FileMeta | null => {
     return { something, hash };
 };
 
-const getViteConnections = async (
-    directory: string,
-    output: string,
-    formats: string[]
-): Promise<Chunks> => {
+const getViteConnections = async (directory: string, output: string, formats: string[]): Promise<Chunks> => {
     const maxAiThreads = globals.getAiThreads();
     if (globals.getAi().length > 0) {
         console.log(
@@ -197,9 +193,7 @@ const getViteConnections = async (
                 for (const spec of node.specifiers) {
                     if (spec.type === "ImportSpecifier") {
                         const importedName =
-                            spec.imported.type === "Identifier"
-                                ? spec.imported.name
-                                : spec.imported.value;
+                            spec.imported.type === "Identifier" ? spec.imported.name : spec.imported.value;
                         importMap.set(spec.local.name, { source, original: importedName });
                     } else if (spec.type === "ImportDefaultSpecifier") {
                         importMap.set(spec.local.name, { source, original: "default" });
@@ -211,10 +205,7 @@ const getViteConnections = async (
                 for (const spec of node.specifiers) {
                     if (spec.type !== "ExportSpecifier") continue;
                     const localName = spec.local.name;
-                    const exportedAs =
-                        spec.exported.type === "Identifier"
-                            ? spec.exported.name
-                            : spec.exported.value;
+                    const exportedAs = spec.exported.type === "Identifier" ? spec.exported.name : spec.exported.value;
                     const arr = exportMap.get(localName) ?? [];
                     arr.push(exportedAs);
                     exportMap.set(localName, arr);
@@ -242,18 +233,9 @@ const getViteConnections = async (
                         if (!importMap.has(idName)) return;
                         // skip identifiers that aren't references (property names, etc.)
                         const parent = idPath.parent;
-                        if (
-                            parent.type === "MemberExpression" &&
-                            parent.property === idPath.node &&
-                            !parent.computed
-                        )
+                        if (parent.type === "MemberExpression" && parent.property === idPath.node && !parent.computed)
                             return;
-                        if (
-                            parent.type === "ObjectProperty" &&
-                            parent.key === idPath.node &&
-                            !parent.computed
-                        )
-                            return;
+                        if (parent.type === "ObjectProperty" && parent.key === idPath.node && !parent.computed) return;
                         const { source, original } = importMap.get(idName)!;
                         const resolvedFile = resolveImportSource(file, source);
                         if (!resolvedFile) return;
