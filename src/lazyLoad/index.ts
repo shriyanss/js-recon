@@ -5,7 +5,6 @@ import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
-import makeRequest from "../utility/makeReq.js";
 import * as cheerio from "cheerio";
 
 // Next.js
@@ -32,6 +31,7 @@ import vue_recursiveClientSidePathDownload from "./vue/vue_recursiveClientSidePa
 // React
 import react_getScriptTags from "./react/react_getScriptTags.js";
 import react_webpackChunkPaths from "./react/react_webpackChunkPaths.js";
+import react_sourcemapUrls from "./react/react_sourcemapUrls.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -321,10 +321,16 @@ const lazyLoad = async (
                 const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesToDownload);
                 jsFilesToDownload.push(...getWebpackChunkPaths);
 
+                // check existing JS files for inline sourcemap references
+                const sourcemapUrls = await react_sourcemapUrls(jsFilesToDownload);
+                jsFilesToDownload.push(...sourcemapUrls);
+
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 await downloadFiles(jsFilesToDownload, output);
+
+                extractSourceMaps(output, sourcemapDir);
             } else {
                 console.log(chalk.red("[!] Framework not detected :("));
                 console.log(chalk.magenta(CONFIG.notFoundMessage));
