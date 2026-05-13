@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import puppeteer from "puppeteer";
+import puppeteer from "../../utility/puppeteerInstance.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;

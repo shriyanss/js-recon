@@ -12,6 +12,8 @@
 - Added an `inScopeOf` option to AST `esquery` steps so a rule can scope a query to the subtree of a previous match — useful for requiring source and sink to live inside the same function rather than just the same chunk.
 - Added a re-pass of the subsequent-requests crawl after the second strings extraction in `run` so dynamic-route paths (e.g. `/post/1`, `/profile/2`) that are only discovered after the first crawl + strings extraction get their chunks downloaded.
 - Added interactive mode support `-i` for vue
+- Use `puppeteer-extra` rather than `puppeteer`
+- Added React Support
 
 ### Changed
 

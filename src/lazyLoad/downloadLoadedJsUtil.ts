@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import puppeteer from "puppeteer";
 import * as globalsUtil from "../utility/globals.js";
+import puppeteer from "../utility/puppeteerInstance.js";
 
 /**
  * Downloads all the lazy loaded JS files from a given URL.

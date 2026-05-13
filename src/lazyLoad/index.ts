@@ -303,6 +303,9 @@ const lazyLoad = async (
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 await downloadFiles(jsFilesToDownload, output);
+            } else if (tech.name === "react") {
+                console.log(chalk.green("[✓] React detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
             } else {
                 console.log(chalk.red("[!] Framework not detected :("));
                 console.log(chalk.magenta(CONFIG.notFoundMessage));

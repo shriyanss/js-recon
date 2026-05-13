@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import puppeteer from "puppeteer";
+import puppeteer from "./puppeteerInstance.js";
 import * as globals from "./globals.js";
 import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
