@@ -5,7 +5,6 @@ import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 import { URL } from "url";
-import makeRequest from "../utility/makeReq.js";
 import * as cheerio from "cheerio";
 
 // Next.js
@@ -26,10 +25,13 @@ import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
 import angular_getFromMainJs from "./angular/angular_getFromMainJs.js";
 
 // Vue
-import vue_runtimeJs from "./vue/vue_RuntimeJs.js";
-import vue_singleJsFileOnHome from "./vue/vue_SingleJsFileOnHome.js";
-import vue_jsImports from "./vue/vue_jsImports.js";
-import vue_reconstructSourceMaps from "./vue/vue_reconstructSourceMaps.js";
+import vue_discoverJsFiles from "./vue/vue_discoverJsFiles.js";
+import vue_recursiveClientSidePathDownload from "./vue/vue_recursiveClientSidePathDownload.js";
+
+// React
+import react_getScriptTags from "./react/react_getScriptTags.js";
+import react_webpackChunkPaths from "./react/react_webpackChunkPaths.js";
+import react_sourcemapUrls from "./react/react_sourcemapUrls.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -44,8 +46,6 @@ import { extractSources } from "./sourcemap.js";
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
-import { string } from "zod";
-import vue_severalJsFilesHome from "./vue/vue_severalJsFilesHome.js";
 
 const getMapFilesRecursively = (dir: string): string[] => {
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -116,7 +116,8 @@ const lazyLoad = async (
     sourcemapDir: string,
     research: boolean,
     researchOutput: string,
-    maxIterations: number
+    maxIterations: number,
+    maxJsSizeMb: number = 2
 ) => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -214,63 +215,17 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload: string[] = [];
+                // run the full discovery pipeline against the entry URL
+                const { jsFiles, clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb);
 
-                // according to the vibe-coded app with a few pages, there are
-                // just a few files, like 2-3, but that's not the case in prod
+                // recurse the same pipeline through every client-side path we found
+                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(
+                    clientSidePaths,
+                    threads,
+                    maxJsSizeMb
+                );
 
-                // okay, found something from real apps :/
-                // maybe vibes aren't enough xD
-
-                // method 1: through runtime.<hash>.js
-
-                // for this, first get the contents of `/`, and find runtime.<hash>.js file
-
-                /* ==========================
-                 *  IMPORTANT: THE FOLLOWING MODULE IS INCOMPLETE
-                 *  JUST NEED TO COMPLETE IT
-                 *  DO NOT PERMANENTLY DELETE IT
-                 * ==========================
-                 */
-                // const runtimeJsFiles = await vue_runtimeJs(url);
-                // jsFilesToDownload.push(...runtimeJsFiles);
-
-                // another method: this is when the application only loads a single JS file
-                // everything is there right in that file
-
-                // the following method was tested on an app running in dev mode
-                // effectiveness in prod mode is unknown atm
-                const jsFilesFromSingleJsFile = await vue_singleJsFileOnHome(url);
-                jsFilesToDownload.push(...jsFilesFromSingleJsFile);
-                if (jsFilesFromSingleJsFile.length > 0) {
-                    console.log(
-                        chalk.green(`[✓] Found ${jsFilesFromSingleJsFile.length} files from the single JS file on home`)
-                    );
-                }
-
-                // if there are more than one JS file on the homepage, the above one will not detect those. So, the following method is used
-                const severalJsFilesHome = await vue_severalJsFilesHome(url);
-                jsFilesToDownload.push(...severalJsFilesHome);
-
-                // now, get the import statements from the JS files
-                const foundJsFilesFromImport = await vue_jsImports(url, jsFilesToDownload);
-                jsFilesToDownload.push(...foundJsFilesFromImport);
-                if (foundJsFilesFromImport.length > 0) {
-                    console.log(chalk.green(`[✓] Found ${foundJsFilesFromImport.length} files from import statements`));
-                }
-
-                // check if those have sourcemaps
-
-                const reconstructSourceMaps = await vue_reconstructSourceMaps(url, jsFilesToDownload);
-                jsFilesToDownload.push(...reconstructSourceMaps);
-                if (reconstructSourceMaps.length > 0) {
-                    console.log(
-                        chalk.green(`[✓] Found ${reconstructSourceMaps.length} files from reconstructing source maps`)
-                    );
-                }
-
-                // dedupe the list
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+                const jsFilesToDownload = [...new Set([...jsFiles, ...recursivelyDiscovered])];
 
                 // finally, download these
                 await downloadFiles(jsFilesToDownload, output);
@@ -352,6 +307,30 @@ const lazyLoad = async (
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
 
                 await downloadFiles(jsFilesToDownload, output);
+            } else if (tech.name === "react") {
+                console.log(chalk.green("[✓] React detected"));
+                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                let jsFilesToDownload = [];
+
+                // get the files from the page source
+                const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb);
+                jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // find the webpack chunk path builder function
+                const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesToDownload);
+                jsFilesToDownload.push(...getWebpackChunkPaths);
+
+                // check existing JS files for inline sourcemap references
+                const sourcemapUrls = await react_sourcemapUrls(jsFilesToDownload);
+                jsFilesToDownload.push(...sourcemapUrls);
+
+                // dedupe the files
+                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+
+                await downloadFiles(jsFilesToDownload, output);
+
+                extractSourceMaps(output, sourcemapDir);
             } else {
                 console.log(chalk.red("[!] Framework not detected :("));
                 console.log(chalk.magenta(CONFIG.notFoundMessage));

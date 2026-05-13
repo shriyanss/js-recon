@@ -50,7 +50,7 @@ const checkHref = async (files, url) => {
                 }
 
                 // traverse the ast, and find the objects with href, and external
-                let finds = [];
+                let finds: any[] = [];
                 traverse(ast, {
                     ObjectExpression(path) {
                         const properties = path.node.properties;
@@ -61,16 +61,23 @@ const checkHref = async (files, url) => {
                         let externalValue = null;
 
                         for (const prop of properties) {
+                            if (prop.type === "SpreadElement") continue;
                             const prop_name = jsCode.substring(prop.key.start, prop.key.end);
                             if (prop_name === '"href"') {
                                 hasHrefOrUrl = true;
-                                hrefValue = jsCode.substring(prop.value.start, prop.value.end).replace(/^"|"$/g, "");
+                                if (prop.type === "ObjectProperty") {
+                                    hrefValue = jsCode
+                                        .substring(prop.value.start, prop.value.end)
+                                        .replace(/^"|"$/g, "");
+                                }
                             }
                             if (prop_name === '"external"') {
                                 hasExternal = true;
-                                externalValue = jsCode
-                                    .substring(prop.value.start, prop.value.end)
-                                    .replace(/^"|"$/g, "");
+                                if (prop.type === "ObjectProperty") {
+                                    externalValue = jsCode
+                                        .substring(prop.value.start, prop.value.end)
+                                        .replace(/^"|"$/g, "");
+                                }
                             }
                             if (prop_name === '"children"') {
                                 hasChildren = true;

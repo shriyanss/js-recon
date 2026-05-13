@@ -46,7 +46,7 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                         // Check if the object of the push call is an assignment expression
                         if (obj.type === "AssignmentExpression" && obj.left.type === "MemberExpression") {
                             const assignment = obj;
-                            const memberExpr = assignment.left;
+                            const memberExpr = assignment.left as any;
 
                             // Check for window.__NEXT_P
                             if (

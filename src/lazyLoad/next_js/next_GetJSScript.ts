@@ -69,7 +69,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
             // to get these, simply regex from the JS script
 
             const js_script = $(scriptTag).html();
-            const matches = js_script.match(/static\/chunks\/[a-zA-Z0-9_\-]+\.js/g);
+            const matches = js_script.match(/static\/chunks\/[a-zA-Z0-9_\-~.]+\.js/g);
 
             if (matches) {
                 const uniqueMatches = [...new Set(matches)];

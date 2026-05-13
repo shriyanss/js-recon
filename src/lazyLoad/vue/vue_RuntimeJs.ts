@@ -1,107 +1,185 @@
-/**
- * ==============================================
- * ==============================================
- * ==============================================
- *
- *            !!!INCOMPLETE MODULE!!!
- *
- *             WILL RETURN BLANK LIST
- *
- * ==============================================
- * ==============================================
- * ==============================================
- */
-
+import chalk from "chalk";
 import makeRequest from "../../utility/makeReq.js";
 import * as cheerio from "cheerio";
-import path from "path";
 import * as parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
+import inquirer from "inquirer";
+import CONFIG from "../../globalConfig.js";
+import execFunc from "../../utility/runSandboxed.js";
+import * as globals from "../../utility/globals.js";
 
-const vue_runtimeJs = async (url: string) => {
-    let discovered_urls: string[] = [];
-
-    const rootHtml: string = await makeRequest(url).then((res) => res.text());
+const vue_runtimeJs = async (url: string): Promise<string[]> => {
+    const rootHtmlRes = await makeRequest(url);
+    if (!rootHtmlRes) {
+        console.log(chalk.red(`[!] Failed to fetch ${url}`));
+        return [];
+    }
+    const rootHtml: string = await rootHtmlRes.text();
 
     let runtimeJsUrl: string | undefined;
 
-    // iterate through the HTML, and find all script tags.
-    // from those, find the one that has runtime.<hash>.js
-
-    // DEBUG: base64 decode the HTML
     const $ = cheerio.load(rootHtml);
-    // const $ = cheerio.load(Buffer.from(rootHtml, "base64").toString("utf-8"));
     $("script").each((_, el) => {
-        const tag = $(el).get(0).tagName;
         const attribs = el.attribs;
         if (attribs) {
             for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "src") {
-                    // @ts-ignore
-                    if (attrValue.match(/runtime\..+\.js/)) {
-                        // @ts-ignore
-                        runtimeJsUrl = attrValue;
-                    }
+                // Match webpack runtime filename specifically: /runtime.<hex>.js
+                // Exclude things like /vue.runtime.2.7.20.min.js
+                if (attrName === "src" && attrValue.match(/\/runtime\.[a-f0-9]+\.js(?:$|\?)/)) {
+                    runtimeJsUrl = attrValue;
                 }
             }
         }
     });
 
-    if (runtimeJsUrl) {
-        // if it starts with HTTP, then great. else, construct using path.join
-        if (!runtimeJsUrl.startsWith("http")) {
-            runtimeJsUrl = new URL(runtimeJsUrl, url).href;
-        }
+    if (!runtimeJsUrl) {
+        console.log(chalk.red("[!] No runtime JS file found in page source"));
+        console.log(chalk.magenta(CONFIG.notFoundMessage));
+        return [];
     }
 
-    // now, get the contents of the runtime.<hash>.js file
-    const runtimeJsContent: string = await makeRequest(runtimeJsUrl).then((res) => res.text());
+    if (!runtimeJsUrl.startsWith("http")) {
+        runtimeJsUrl = new URL(runtimeJsUrl, url).href;
+    }
 
-    // ast parser goes brrrr
+    const runtimeJsRes = await makeRequest(runtimeJsUrl);
+    if (!runtimeJsRes) {
+        console.log(chalk.red(`[!] Failed to fetch ${runtimeJsUrl}`));
+        return [];
+    }
+    const runtimeJsContent: string = await runtimeJsRes.text();
+
     const ast = parser.parse(runtimeJsContent, {
         sourceType: "unambiguous",
         plugins: ["jsx", "typescript"],
         errorRecovery: true,
     });
 
-    // now, traverse the ast, and find the right spot
-    // Looking for: script.src = function(e) { ... }(e)
-    let scriptSrcAssignment: Node | null = null;
+    let scriptSrcFuncSource: string | undefined;
+    let publicPathObj: string | undefined;
+    let publicPathProp: string | undefined;
+
     traverse(ast, {
         AssignmentExpression(path) {
             const { left, right } = path.node;
 
-            // Check if left side is `script.src`
+            // Anchor on the always-present pattern: script.src = function(e){...}(e)
             if (
                 left.type === "MemberExpression" &&
                 left.object.type === "Identifier" &&
-                left.object.name === "script" &&
+                (left.object as any).name === "script" &&
                 left.property.type === "Identifier" &&
-                left.property.name === "src"
+                (left.property as any).name === "src" &&
+                right.type === "CallExpression" &&
+                right.callee.type === "FunctionExpression"
             ) {
-                // Check if right side is a CallExpression (IIFE pattern)
-                // i.e., function(e) { ... }(e)
-                if (right.type === "CallExpression" && right.callee.type === "FunctionExpression") {
-                    // Found the pattern! Extract the function body
-                    const funcExpr = right.callee;
+                const funcExpr: any = right.callee;
+                if (funcExpr.start !== null && funcExpr.end !== null) {
+                    scriptSrcFuncSource = runtimeJsContent.slice(funcExpr.start, funcExpr.end);
+                }
 
-                    // Get the source code for this node
-                    const start = path.node.start;
-                    const end = path.node.end;
-                    if (start !== null && end !== null) {
-                        const sourceCode = runtimeJsContent.slice(start, end);
-                        console.log("Found script.src assignment:", sourceCode);
-                        scriptSrcAssignment = path.node;
-                        // TODO: Process the function body to extract chunk mappings
-                        // The function typically contains object mappings for chunk names and hashes
+                // The public-path variable is whatever sits leftmost in the
+                // concatenation chain of the return statement. The webpack
+                // template emits any short <obj>.<prop> identifier here, not
+                // necessarily `c.p`.
+                const returnStmt = funcExpr.body?.body?.find((s: any) => s.type === "ReturnStatement");
+                if (returnStmt && returnStmt.argument) {
+                    let cursor: any = returnStmt.argument;
+                    while (cursor && cursor.type === "BinaryExpression") {
+                        cursor = cursor.left;
+                    }
+                    if (
+                        cursor &&
+                        cursor.type === "MemberExpression" &&
+                        !cursor.computed &&
+                        cursor.object.type === "Identifier" &&
+                        cursor.property.type === "Identifier"
+                    ) {
+                        publicPathObj = cursor.object.name;
+                        publicPathProp = cursor.property.name;
                     }
                 }
             }
         },
     });
 
-    // TODO: Add the rest of the logic from the code
+    if (!scriptSrcFuncSource) {
+        console.log(chalk.red("[!] Could not find chunk URL builder function in runtime JS"));
+        console.log(chalk.magenta(CONFIG.notFoundMessage));
+        return [];
+    }
+
+    console.log(chalk.green("[✓] Found chunk URL builder function"));
+    console.log(chalk.yellow(scriptSrcFuncSource));
+
+    if (publicPathObj && publicPathProp) {
+        console.log(chalk.green(`[✓] Public-path variable detected: ${publicPathObj}.${publicPathProp}`));
+    } else {
+        console.log(
+            chalk.yellow(
+                "[!] Could not detect public-path variable; will resolve chunk paths against runtime.js directory regardless"
+            )
+        );
+    }
+
+    if (!globals.getYes()) {
+        const { confirmed } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "confirmed",
+                message: "Is this the correct function?",
+                default: true,
+            },
+        ]);
+        if (!confirmed) {
+            console.log(chalk.red("[!] Not executing function."));
+            return [];
+        }
+    }
+
+    console.log(chalk.cyan("[i] Proceeding with the selected function to fetch files"));
+
+    // Stub the public-path variable with empty string so the function returns
+    // just the relative chunk path (e.g. "pages/index.<hash>.js"). The real
+    // public path value isn't needed -- chunks live alongside runtime.js, so
+    // resolving the relative path against the runtime.js directory gives the
+    // correct absolute URL.
+    const stubDecl = publicPathObj && publicPathProp ? `var ${publicPathObj} = { ${publicPathProp}: "" };` : "";
+    const urlBuilderFunc = `(() => { ${stubDecl} return (${scriptSrcFuncSource}); })()`;
+
+    const js_paths: string[] = [];
+    try {
+        const integers = scriptSrcFuncSource.match(/\d+/g);
+        if (integers) {
+            for (const i of integers) {
+                const output = execFunc(urlBuilderFunc, parseInt(i));
+                if (output !== null && output !== undefined && !String(output).includes("undefined")) {
+                    js_paths.push(String(output));
+                }
+            }
+        }
+    } catch (err) {
+        console.error(chalk.red("Unsafe or invalid code:", err instanceof Error ? err.message : String(err)));
+        return [];
+    }
+
+    const unique_paths = [...new Set(js_paths)];
+
+    if (unique_paths.length > 0) {
+        console.log(chalk.green(`[✓] Found ${unique_paths.length} JS chunks`));
+    }
+
+    const runtimeDir = runtimeJsUrl.split("/").slice(0, -1).join("/") + "/";
+
+    const discovered_urls: string[] = [];
+    for (const js_path of unique_paths) {
+        if (js_path.startsWith("http")) {
+            discovered_urls.push(js_path);
+        } else {
+            discovered_urls.push(new URL(js_path, runtimeDir).href);
+        }
+    }
 
     return discovered_urls;
 };

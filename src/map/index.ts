@@ -3,6 +3,7 @@ import fs from "fs";
 
 // Next.JS
 import getWebpackConnections from "./next_js/getWebpackConnections.js";
+import getTurbopackConnections from "./next_js/getTurbopackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
 import interactive from "./next_js/interactive.js";
@@ -14,8 +15,13 @@ import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/g
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 import getExports from "./next_js/getExports.js";
 
+// Vue.JS
+import getViteConnections from "./vue_js/getViteConnections.js";
+import vueInteractive from "./vue_js/interactive.js";
+
 const availableTech = {
     next: "Next.JS",
+    vue: "Vue.JS",
 };
 
 const availableFormats = {
@@ -94,6 +100,9 @@ const map = async (
             // skip regeneration if output file already exists
             chunks = await getWebpackConnections(directory, output, formats);
 
+            // also collect Turbopack chunks (Next.JS apps may be built with either bundler)
+            chunks = await getTurbopackConnections(directory, output, formats, chunks);
+
             // get the exports
             chunks = await getExports(chunks);
 
@@ -126,6 +135,18 @@ const map = async (
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
             console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+        }
+    } else if (tech === "vue") {
+        let chunks: Chunks;
+
+        if (!existsSync(`${output}.json`)) {
+            chunks = await getViteConnections(directory, output, formats);
+        } else {
+            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
+        }
+
+        if (interactive_mode) {
+            await vueInteractive(chunks, `${output}.json`);
         }
     }
 };

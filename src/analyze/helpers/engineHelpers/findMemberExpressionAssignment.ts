@@ -10,7 +10,7 @@ const traverse = _traverse.default;
  * @param scope The scope of the traverse.
  * @returns The assignment expression node if found, otherwise undefined.
  */
-export const findMemberExpressionAssignment = (node: Node, toMatch: string, scope: Node): Node | undefined => {
+export const findMemberExpressionAssignment = (node: Node, toMatch: string, scope: any): Node | undefined => {
     let foundNode: Node | undefined;
 
     traverse(

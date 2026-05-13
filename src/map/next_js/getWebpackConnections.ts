@@ -103,7 +103,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     return;
                 }
 
-                let object = callee.get("object");
+                let object: any = callee.get("object");
                 if (object.isAssignmentExpression()) {
                     object = object.get("left");
                 }
@@ -112,7 +112,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     !(
                         object.isMemberExpression() &&
                         object.get("property").isIdentifier() &&
-                        object.get("property").node.name.startsWith("webpackChunk")
+                        (object.get("property").node as any).name.startsWith("webpackChunk")
                     )
                 ) {
                     return;
@@ -179,13 +179,13 @@ const getWebpackConnections = async (directory, output, formats) => {
             FunctionDeclaration(path) {
                 const args = path.get("params");
                 if (args.length === 3) {
-                    thirdArgName = args[2].node.name;
+                    thirdArgName = (args[2].node as any).name;
                 }
             },
             ArrowFunctionExpression(path) {
                 const args = path.get("params");
                 if (args.length === 3) {
-                    thirdArgName = args[2].node.name;
+                    thirdArgName = (args[2].node as any).name;
                 }
             },
         });
@@ -204,12 +204,9 @@ const getWebpackConnections = async (directory, output, formats) => {
                     // the id of the function
                     const id = path.get("arguments.0");
                     if (id) {
-                        if (
-                            id.node.value !== undefined &&
-                            String(id.node.value).match(/^\d+$/) &&
-                            id.node.value !== ""
-                        ) {
-                            chunks[key].imports.push(String(id.node.value));
+                        const idNode = id.node as any;
+                        if (idNode.value !== undefined && String(idNode.value).match(/^\d+$/) && idNode.value !== "") {
+                            chunks[key].imports.push(String(idNode.value));
                         }
                     }
                 }

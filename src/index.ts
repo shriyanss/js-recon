@@ -13,6 +13,7 @@ import chalk from "chalk";
 import analyze from "./analyze/index.js";
 import report from "./report/index.js";
 import configureSandbox from "./utility/configureSandbox.js";
+import mcp from "./mcp/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -60,6 +61,7 @@ program
     .option("--research", "Enable research mode", false)
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
+    .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -83,7 +85,8 @@ program
             cmd.sourcemapDir,
             cmd.research,
             cmd.researchOutput,
-            Number(cmd.maxIterations)
+            Number(cmd.maxIterations),
+            Number(cmd.maxJsSize)
         );
     });
 
@@ -260,7 +263,7 @@ program
 program
     .command("run")
     .description("Run all modules")
-    .requiredOption("-u, --url <url>", "Target URL")
+    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <directory>", "Output directory", "output")
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
@@ -285,6 +288,7 @@ program
     .option("--research", "Enable research mode", false)
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
+    .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .action(async (cmd) => {
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
@@ -307,6 +311,18 @@ program
             }
         }
         await run(cmd);
+    });
+
+program
+    .command("mcp")
+    .description("Interactive AI-powered CLI for js-recon modules")
+    .option("--cli", "Start interactive CLI mode", false)
+    .option("--config <file>", "Path to MCP config file", undefined)
+    .option("--api-key <key>", "API key for the LLM provider")
+    .option("--model <model>", "AI model to use (e.g. gpt-4o-mini, claude-sonnet-4-20250514)")
+    .option("--provider <provider>", "LLM provider to use (openai, anthropic)")
+    .action(async (cmd) => {
+        await mcp(cmd.cli, cmd.config, cmd.apiKey, cmd.model, cmd.provider);
     });
 
 program.parse(process.argv);

@@ -11,10 +11,14 @@ const next_bruteForceJsFiles = async (urls: string[]) => {
     for (const mapFile of mapFiles) {
         const req = await makeRequest(mapFile);
 
-        const status = req.status;
+        if (req) {
+            const status = req.status;
 
-        if (status === 200) {
-            foundSourceMaps.push(mapFile);
+            if (status === 200) {
+                foundSourceMaps.push(mapFile);
+            }
+        } else {
+            console.log(chalk.red(`[!] Failed to request ${mapFile}`));
         }
     }
 

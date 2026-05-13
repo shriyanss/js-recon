@@ -50,28 +50,28 @@ const nuxt_astParse = async (url: string) => {
         },
         FunctionExpression(path) {
             functions.push({
-                name: path.parent.id?.name || "(anonymous)",
+                name: (path.parent as any).id?.name || "(anonymous)",
                 type: "FunctionExpression",
                 source: body.slice(path.node.start, path.node.end),
             });
         },
         ArrowFunctionExpression(path) {
             functions.push({
-                name: path.parent.id?.name || "(anonymous)",
+                name: (path.parent as any).id?.name || "(anonymous)",
                 type: "ArrowFunctionExpression",
                 source: body.slice(path.node.start, path.node.end),
             });
         },
         ObjectMethod(path) {
             functions.push({
-                name: path.node.key.name,
+                name: (path.node.key as any).name,
                 type: "ObjectMethod",
                 source: body.slice(path.node.start, path.node.end),
             });
         },
         ClassMethod(path) {
             functions.push({
-                name: path.node.key.name,
+                name: (path.node.key as any).name,
                 type: "ClassMethod",
                 source: body.slice(path.node.start, path.node.end),
             });

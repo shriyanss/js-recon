@@ -87,7 +87,8 @@ const processUrl = async (
         cmd.sourcemapDir,
         cmd.research,
         cmd.researchOutput,
-        Number(cmd.maxIterations)
+        Number(cmd.maxIterations),
+        Number(cmd.maxJsSize)
     );
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
@@ -99,12 +100,26 @@ const processUrl = async (
         process.exit(10);
     }
 
-    if (!["next"].includes(globalsUtil.getTech())) {
+    if (!["next", "vue"].includes(globalsUtil.getTech())) {
         console.log(
             chalk.bgYellow(
-                `[!] The tool only supports Next.JS ('next') fully. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+                `[!] The tool only supports Next.JS ('next') and Vue.JS ('vue') in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
             )
         );
+        return;
+    }
+
+    if (globalsUtil.getTech() === "vue") {
+        // Vue.JS pipeline: lazyload (done) + map. Other stages aren't Vue-ready yet.
+        // Scan the whole download directory: Vue builds frequently spread chunks
+        // across multiple asset hosts, and relative imports resolve within each tree.
+        const mappedFileVue = isBatch ? `${workingDir}/mapped` : "mapped";
+
+        console.log(chalk.bgCyan("[2/2] Running map to find functions..."));
+        await map(outputDir, mappedFileVue, ["json"], "vue", false, false);
+        console.log(chalk.bgGreen("[+] Map complete."));
+
+        console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
         return;
     }
 
@@ -142,13 +157,40 @@ const processUrl = async (
         cmd.sourcemapDir,
         cmd.research,
         cmd.researchOutput,
-        Number(cmd.maxIterations)
+        Number(cmd.maxIterations),
+        Number(cmd.maxJsSize)
     );
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 
     console.log(chalk.bgCyan("[4/8] Running strings again to extract endpoints..."));
     await strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true);
     console.log(chalk.bgGreen("[+] Strings complete."));
+
+    // a second subsequent_requests pass: the first strings pass only sees initial chunks,
+    // so dynamic routes such as `/post/1` are only discovered after the first subsequent
+    // crawl + second strings extraction. Re-running subsequent_requests with the freshly
+    // updated paths picks up chunks for those dynamic routes (e.g. the post page).
+    console.log(chalk.bgCyan("[4.5/8] Re-running lazyload with subsequent requests for newly discovered paths..."));
+    await lazyLoad(
+        url,
+        outputDir,
+        cmd.strictScope,
+        cmd.scope.split(","),
+        cmd.threads,
+        true,
+        `${extractedUrlsFile}.json`,
+        cmd.insecure,
+        false,
+        cmd.sourcemapDir,
+        cmd.research,
+        cmd.researchOutput,
+        Number(cmd.maxIterations)
+    );
+    console.log(chalk.bgGreen("[+] Lazyload re-pass complete."));
+
+    console.log(chalk.bgCyan("[4.6/8] Re-running strings for chunks from the re-pass..."));
+    await strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true);
+    console.log(chalk.bgGreen("[+] Strings re-pass complete."));
 
     console.log(chalk.bgCyan("[5/8] Running map to find functions..."));
     globalsUtil.setOpenapi(true);
@@ -229,22 +271,9 @@ export default async (cmd: any): Promise<void> => {
             .split("\n")
             .filter((url) => url !== "");
 
-        // first of all, make a new directory for the tool output
-        const toolOutputDir = "js_recon_run_output";
-        if (fs.existsSync(toolOutputDir)) {
-            console.log(
-                chalk.red(
-                    `[!] Output directory ${toolOutputDir} already exists. Please switch to other directory or it might conflict with this process.`
-                )
-            );
-            console.log(
-                chalk.yellow(
-                    `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
-                )
-            );
-            process.exit(14);
+        if (!fs.existsSync(cmd.output)) {
+            fs.mkdirSync(cmd.output, { recursive: true });
         }
-        fs.mkdirSync(toolOutputDir);
 
         for (const url of urls) {
             // Validate URL only
@@ -256,12 +285,21 @@ export default async (cmd: any): Promise<void> => {
                 continue;
             }
 
-            const thisTargetWorkingDir = `${toolOutputDir}/${urlObj.host.replace(":", "_")}`;
-            if (!fs.existsSync(thisTargetWorkingDir)) {
-                fs.mkdirSync(thisTargetWorkingDir, { recursive: true });
+            const hostDir = urlObj.host.replace(":", "_");
+            const thisTargetDir = `${cmd.output}/${hostDir}`;
+
+            if (fs.existsSync(thisTargetDir)) {
+                console.log(chalk.red(`[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`));
+                console.log(
+                    chalk.yellow(
+                        `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
+                    )
+                );
+                continue;
             }
-            const outputDir = `${thisTargetWorkingDir}/output`;
-            await processUrl(url, outputDir, thisTargetWorkingDir, cmd, true);
+
+            fs.mkdirSync(thisTargetDir, { recursive: true });
+            await processUrl(url, thisTargetDir, thisTargetDir, cmd, true);
         }
     }
 };

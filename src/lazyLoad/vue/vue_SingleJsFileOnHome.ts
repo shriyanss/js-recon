@@ -11,6 +11,10 @@ const vue_singleJsFileOnHome = async (url: string) => {
 
     // first, get the home page content
     const req = await makeRequest(url, {});
+    if (req == null) {
+        console.log(chalk.red(`Failed to fetch ${url}`));
+        return jsFilesFound;
+    }
     const homePageContent = await req.text();
 
     // load the home page content into cheerio

@@ -1,277 +1,15 @@
 import chalk from "chalk";
 import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
-import puppeteer from "puppeteer";
+import puppeteer from "../../utility/puppeteerInstance.js";
 import * as globalsUtil from "../../utility/globals.js";
 import path from "path";
-
-/**
- * Checks if a webpage uses Next.js by iterating through all HTML tags and checking if any src, srcset, or imageSrcSet attribute value starts with "/_next/".
- * @returns {Promise<{detected: boolean, evidence: string}>}
- *   A promise that resolves to an object with two properties:
- *   - detected: A boolean indicating whether Next.js was detected.
- *   - evidence: A string with the evidence of the detection, or an empty string
- *     if Next.js was not detected.
- */
-const checkNextJS = async ($) => {
-    let detected = false;
-    let evidence = "";
-    // iterate through each HTML tag, and file tag value that starts with `/_next/`
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-
-        // check the value of three attributes
-        const src = $(el).attr("src");
-        const srcSet = $(el).attr("srcset");
-        const imageSrcSet = $(el).attr("imageSrcSet");
-
-        if (src || srcSet || imageSrcSet) {
-            if (src && src.includes("/_next/")) {
-                detected = true;
-                evidence = `${tag} :: ${src}`;
-            } else if (srcSet && srcSet.includes("/_next/")) {
-                detected = true;
-                evidence = `${tag} :: ${srcSet}`;
-            } else if (imageSrcSet && imageSrcSet.includes("/_next/")) {
-                detected = true;
-                evidence = `${tag} :: ${imageSrcSet}`;
-            }
-        }
-    });
-
-    return { detected, evidence };
-};
-
-/**
- * Checks if a webpage uses Vue.js by iterating through all HTML tags and checking if any attribute name starts with "data-v-".
- * @returns {Promise<{detected: boolean, evidence: string}>}
- *   A promise that resolves to an object with two properties:
- *   - detected: A boolean indicating whether Vue.js was detected.
- *   - evidence: A string with the evidence of the detection, or an empty string
- *     if Vue.js was not detected.
- */
-const checkVueJS = async ($, url: string) => {
-    let detected = false;
-    let evidence = "";
-
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName.startsWith("data-v-")) {
-                    detected = true;
-                    evidence = `${tag} :: ${attrName}`;
-                } else if (attrName.startsWith("data-vue-")) {
-                    detected = true;
-                    evidence = `${tag} :: ${attrName}`;
-                }
-            }
-        }
-    });
-    if (detected) {
-        return { detected, evidence };
-    }
-
-    // now, iterate through all the script tags, and find something like `app.js`
-    let appJsURL: string | undefined;
-    $("script").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "src") {
-                    // @ts-ignore
-                    if (attrValue.includes("app.js")) {
-                        // get the URL of the app.js file
-                        // @ts-ignore
-                        if (attrValue.startsWith("/")) {
-                            // @ts-ignore
-                            appJsURL = new URL(attrValue, url).href;
-                            // @ts-ignore
-                        } else if (attrValue.startsWith("http")) {
-                            // @ts-ignore
-                            appJsURL = attrValue;
-                        } else {
-                            // @ts-ignore
-                            appJsURL = new URL(attrValue, url).href;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    if (appJsURL) {
-        const appJsContent: string = await makeRequest(appJsURL).then((res) => res.text());
-        if (appJsContent) {
-            if (appJsContent.includes("Vue.component(")) {
-                detected = true;
-                evidence = `${appJsURL} :: Vue.component()`;
-            }
-        }
-    }
-
-    return { detected, evidence };
-};
-
-/**
- * Detects if a webpage uses Nuxt.js by checking for "/_nuxt" paths in src or href attributes.
- *
- * @param $ - The Cheerio API object containing the parsed HTML
- * @returns Promise that resolves to an object with detection status and evidence
- */
-const checkNuxtJS = async ($: cheerio.CheerioAPI) => {
-    let detected = false;
-    let evidence = "";
-
-    // go through the page source, and check for "/_nuxt" in the src or href attribute
-    $("*").each((_, el) => {
-        // @ts-ignore
-        const tag = $(el).get(0).tagName;
-        // @ts-ignore
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "src" || attrName === "href") {
-                    // @ts-ignore
-                    if (attrValue.includes("/_nuxt")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
-        }
-    });
-
-    return { detected, evidence };
-};
-
-/**
- * Detects if a webpage uses Svelte/SvelteKit by checking for Svelte-specific attributes.
- *
- * Looks for svelte- prefixed class names, IDs, and SvelteKit-specific attributes
- * like data-sveltekit-reload to identify Svelte applications.
- *
- * @param $ - The Cheerio API object containing the parsed HTML
- * @returns Promise that resolves to an object with detection status and evidence
- */
-const checkSvelte = async ($) => {
-    let detected = false;
-    let evidence = "";
-
-    // go through the page source, and check for all the class names of all HTML tags
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "class") {
-                    // @ts-ignore
-                    if (attrValue.includes("svelte-")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
-        }
-    });
-
-    // now, search for the svelte- id of all elements
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "id") {
-                    // @ts-ignore
-                    if (attrValue.includes("svelte-")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
-        }
-    });
-
-    // now, check for the data-sveltekit-reload attribute
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "data-sveltekit-reload") {
-                    detected = true;
-                    evidence = `${attrName} :: ${attrValue}`;
-                }
-            }
-        }
-    });
-
-    return { detected, evidence };
-};
-
-const checkAngularJS = async ($: cheerio.CheerioAPI, url: string) => {
-    let detected = false;
-    let evidence = "";
-
-    // to detect angular js, first check if it has something like `main-*.js` or `main.js` in script src
-    let hasMainJs = false;
-    let mainJsURL: string | undefined = undefined;
-    $("script").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "src") {
-                    // @ts-ignore
-                    if (attrValue.includes("main-")) {
-                        hasMainJs = true;
-
-                        // if the url starts with `main-...`, then build the full url
-                        if (!attrValue.startsWith("http")) {
-                            mainJsURL = new URL(attrValue, url).href;
-                        } else {
-                            mainJsURL = attrValue;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    // now, get the contents of the main.js file
-    if (hasMainJs) {
-        const mainJsRes = await makeRequest(mainJsURL, {});
-        const mainJsBody = await mainJsRes.text();
-
-        // check if the traces of angular js are present
-        // using regex for this, as this is simple and fast
-
-        // check: isAngularZone(), "isAngularZone", this.ngZone
-        // if lazyload enabled, need to check routerlink: `["routerLink",`
-        const isAngularZoneRegex = /isAngularZone\(\)/;
-        const isAngularZoneRegex2 = /"isAngularZone"/;
-        const ngZoneRegex = /this\.ngZone/;
-        const routerLinkRegex = /"routerLink"/;
-
-        if (isAngularZoneRegex.test(mainJsBody)) {
-            detected = true;
-            evidence = "isAngularZone()";
-        } else if (isAngularZoneRegex2.test(mainJsBody)) {
-            detected = true;
-            evidence = '"isAngularZone"';
-        } else if (ngZoneRegex.test(mainJsBody)) {
-            detected = true;
-            evidence = "this.ngZone";
-        } else if (routerLinkRegex.test(mainJsBody)) {
-            detected = true;
-            evidence = "routerLink";
-        }
-    }
-
-    return { detected, evidence };
-};
+import { checkNextJS } from "./checkNextJS.js";
+import { checkNuxtJS } from "./checkNuxtJS.js";
+import { checkSvelte } from "./checkSvelte.js";
+import { checkVueJS } from "./checkVueJS.js";
+import { checkAngularJS } from "./checkAngularJS.js";
+import { checkReact } from "./checkReact.js";
 
 /**
  * Detects the front-end framework used in a webpage.
@@ -291,7 +29,6 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
 
     // get the page source in the browser
     const browser = await puppeteer.launch({
-        headless: true,
         args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
     });
     const page = await browser.newPage();
@@ -330,12 +67,15 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     const result_checkVueJS = await checkVueJS($, url);
     const result_checkSvelte = await checkSvelte($);
     const result_checkAngular = await checkAngularJS($, url);
+    const result_checkReact = await checkReact($, url);
 
     // now, also check with the res response
     let result_checkNextJS_res = { detected: false, evidence: "" };
     let result_checkVueJS_res = { detected: false, evidence: "" };
     let result_checkSvelte_res = { detected: false, evidence: "" };
     let result_checkAngularJS_res = { detected: false, evidence: "" };
+    let result_checkReact_res = { detected: false, evidence: "" };
+
     let $res;
     // if network error was caused, then return
     if (res === null) {
@@ -347,6 +87,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         result_checkVueJS_res = await checkVueJS($res, url);
         result_checkSvelte_res = await checkSvelte($res);
         result_checkAngularJS_res = await checkAngularJS($res, url);
+        result_checkReact_res = await checkReact($res, url);
     }
 
     if (result_checkNextJS.detected === true || result_checkNextJS_res.detected === true) {
@@ -374,6 +115,10 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         const evidence =
             result_checkAngular.evidence !== "" ? result_checkAngular.evidence : result_checkAngularJS_res.evidence;
         return { name: "angular", evidence };
+    } else if (result_checkReact.detected === true || result_checkReact_res.detected === true) {
+        const evidence =
+            result_checkReact.evidence !== "" ? result_checkReact.evidence : result_checkReact_res.evidence;
+        return { name: "react", evidence };
     }
 
     return null;

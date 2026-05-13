@@ -220,9 +220,10 @@ export const findCrossChunkParameters = (
                         if (!parentCall) return false;
 
                         // Check if any of the arguments to the parent function is a call to our export
-                        if (parentCall.node.arguments) {
-                            for (let i = 0; i < parentCall.node.arguments.length; i++) {
-                                const arg = parentCall.node.arguments[i];
+                        const parentCallNode = parentCall.node as any;
+                        if (parentCallNode.arguments) {
+                            for (let i = 0; i < parentCallNode.arguments.length; i++) {
+                                const arg = parentCallNode.arguments[i];
 
                                 // Check if the argument is an object with properties
                                 if (arg.type === "ObjectExpression") {
@@ -258,16 +259,18 @@ export const findCrossChunkParameters = (
                     // 6. Check for complex assignment patterns: b = async (e) => { (await (0, m.HE)(e)).result... }
                     const checkForComplexAssignments = () => {
                         // Find variable declarations or assignments that are functions
-                        const funcDecl = path.findParent(
-                            (p) =>
+                        const funcDecl = path.findParent((p) => {
+                            const pn = p.node as any;
+                            return (
                                 (p.isVariableDeclarator() || p.isAssignmentExpression()) &&
-                                ((p.node.init &&
-                                    (p.node.init.type === "ArrowFunctionExpression" ||
-                                        p.node.init.type === "FunctionExpression")) ||
-                                    (p.node.right &&
-                                        (p.node.right.type === "ArrowFunctionExpression" ||
-                                            p.node.right.type === "FunctionExpression")))
-                        );
+                                ((pn.init &&
+                                    (pn.init.type === "ArrowFunctionExpression" ||
+                                        pn.init.type === "FunctionExpression")) ||
+                                    (pn.right &&
+                                        (pn.right.type === "ArrowFunctionExpression" ||
+                                            pn.right.type === "FunctionExpression")))
+                            );
+                        });
 
                         if (funcDecl) {
                             // This call is inside a function declaration

@@ -1,5 +1,30 @@
 # Change Log
 
+## 1.3.1-alpha.1 - 2026.05.13
+
+### Added
+
+- Added MCP CLI support with model and provider configuration
+- Vue.js support to get JS files from the page source
+- Vue.js suppor to get JS files from runtime.js file
+- Pass a URL list to `run -u`
+- Turbopack support for Next.js `map`
+- Added an `inScopeOf` option to AST `esquery` steps so a rule can scope a query to the subtree of a previous match — useful for requiring source and sink to live inside the same function rather than just the same chunk.
+- Added a re-pass of the subsequent-requests crawl after the second strings extraction in `run` so dynamic-route paths (e.g. `/post/1`, `/profile/2`) that are only discovered after the first crawl + strings extraction get their chunks downloaded.
+- Added interactive mode support `-i` for vue
+- Use `puppeteer-extra` rather than `puppeteer`
+- Added React Support
+- Added Cloudfront firewall bypass
+
+### Changed
+
+- AST rules now fire when every declared step matches at least once in the chunk (counted as distinct completed steps), instead of requiring an exact total count of matches — multiple matches in a single step no longer prevent the rule from firing.
+
+### Fixed
+
+- Added try-catch for .map file bruteforce requests
+- Subsequent-request chunk discovery regexes now accept the `~` character so Turbopack content-hashed filenames such as `static/chunks/18865ghy~7gi9.js` are picked up.
+
 ## 1.2.2 - 2026.04.04
 
 ### Added

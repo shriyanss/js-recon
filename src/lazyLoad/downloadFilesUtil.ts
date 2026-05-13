@@ -17,106 +17,107 @@ import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max
  * @param {string} output - The directory where the downloaded JS chunks should be written.
  * @returns {Promise<void>} - Resolves once all eligible files have been downloaded and saved.
  */
+// Files larger than this skip Prettier — minified bundles gain nothing from formatting
+// and Prettier's internal AST for a 2 MB file can consume hundreds of MB.
+const PRETTIER_SIZE_LIMIT = 500 * 1024; // 500 KB
+
 const downloadFiles = async (urls: string[], output: string) => {
     console.log(chalk.cyan(`[i] Attempting to download ${urls.length} JS chunks`));
     fs.mkdirSync(output, { recursive: true });
 
-    // to store ignored JS domain
-    let ignoredJSFiles = [];
-    let ignoredJSDomains = [];
-
+    const ignoredJSFiles: string[] = [];
+    const ignoredJSDomains: string[] = [];
     let download_count = 0;
-    let queue = 0;
+    let cursor = 0;
+    const concurrency = Math.max(1, getMaxReqQueue());
 
-    const downloadPromises = urls.map(async (url) => {
+    const processOne = async (url: string) => {
         try {
-            await new Promise((resolve) => setTimeout(resolve, Math.random() * 4950 + 50));
-            if (url.match(/(\.js|\.json|\.js\.map)/)) {
-                // get the directory of the url
-                const { host, directory } = getURLDirectory(url);
-
-                // check scope of file. Only if in scope, download it
-                if (!getScope().includes("*")) {
-                    if (!getScope().includes(host)) {
-                        ignoredJSFiles.push(url);
-                        if (!ignoredJSDomains.includes(host)) {
-                            ignoredJSDomains.push(host);
-                        }
-                        return;
-                    }
-                }
-
-                // make the directory inside the output folder
-                const childDir = path.join(output, host, directory);
-                fs.mkdirSync(childDir, { recursive: true });
-
-                let res;
-                try {
-                    // Wait until there is an available slot in the request queue
-                    while (queue >= getMaxReqQueue()) {
-                        await new Promise((resolve) => setTimeout(resolve, Math.random() * 250 + 50));
-                    }
-                    queue++; // acquire a slot in the queue
-
-                    res = await makeRequest(url, {});
-                } catch (err) {
-                    console.error(chalk.red(`[!] Failed to download: ${url}`));
-                } finally {
-                    queue--;
-                }
-
-                // only push it if the file is a JS file
-                let file;
-                if (!url.match(/\.json/)) {
-                    file = `// File Source: ${url}\n${await res.text()}`;
-                } else {
-                    file = await res.text();
-                }
-                let filename;
-                try {
-                    filename = url
-                        .split("/")
-                        .pop()
-                        .match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)[0];
-                } catch (err) {
-                    // split the URL into multiple chunks. then iterate
-                    // through it, and find whatever matches with JS or JSON ext
-                    const chunks = url.split("/");
-                    for (const chunk of chunks) {
-                        if (chunk.match(/\.js(on)?$/)) {
-                            filename = chunk;
-                            break;
-                        }
-                    }
-                }
-
-                if (!filename) {
-                    // Handle cases where filename might not be found
-                    console.warn(chalk.yellow(`[!] Could not determine filename for URL: ${url}. Skipping.`));
-                    return;
-                }
-
-                const filePath = path.join(childDir, filename);
-                try {
-                    // if it's json, then use different parser
-                    if (url.match(/\.json/) || url.match(/\.js\.map/)) {
-                        fs.writeFileSync(filePath, await prettier.format(file, { parser: "json" }));
-                    } else {
-                        fs.writeFileSync(filePath, await prettier.format(file, { parser: "babel" }));
-                    }
-                } catch (err) {
-                    console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
-                }
-                download_count++;
-            } else {
+            if (!url.match(/(\.js|\.json|\.js\.map)/)) {
                 console.log(chalk.yellow(`[i] Ignored ${url}`));
+                return;
             }
+
+            const { host, directory } = getURLDirectory(url);
+
+            if (!getScope().includes("*") && !getScope().includes(host)) {
+                ignoredJSFiles.push(url);
+                if (!ignoredJSDomains.includes(host)) {
+                    ignoredJSDomains.push(host);
+                }
+                return;
+            }
+
+            const childDir = path.join(output, host, directory);
+            fs.mkdirSync(childDir, { recursive: true });
+
+            let res;
+            try {
+                res = await makeRequest(url, {});
+            } catch (err) {
+                console.error(chalk.red(`[!] Failed to download: ${url}`));
+                return;
+            }
+
+            if (!res) {
+                console.error(chalk.red(`[!] Failed to download: ${url}`));
+                return;
+            }
+
+            const rawText = await res.text();
+            const file = url.match(/\.json/) ? rawText : `// File Source: ${url}\n${rawText}`;
+
+            let filename: string | undefined;
+            try {
+                filename = url
+                    .split("/")
+                    .pop()
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)?.[0];
+            } catch {
+                for (const chunk of url.split("/")) {
+                    if (chunk.match(/\.js(on)?$/)) {
+                        filename = chunk;
+                        break;
+                    }
+                }
+            }
+
+            if (!filename) {
+                console.warn(chalk.yellow(`[!] Could not determine filename for URL: ${url}. Skipping.`));
+                return;
+            }
+
+            const filePath = path.join(childDir, filename);
+            try {
+                if (url.match(/\.json/) || url.match(/\.js\.map/)) {
+                    const formatted =
+                        file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "json" }) : file;
+                    fs.writeFileSync(filePath, formatted);
+                } else {
+                    const formatted =
+                        file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "babel" }) : file;
+                    fs.writeFileSync(filePath, formatted);
+                }
+            } catch {
+                console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
+            }
+            download_count++;
         } catch (err) {
             console.error(chalk.red(`[!] Failed to download: ${url} : ${err}`));
         }
-    });
+    };
 
-    await Promise.all(downloadPromises);
+    // Worker pool: each worker processes one file end-to-end before taking the next.
+    // This bounds peak memory to (concurrency × largest_file) rather than all files at once.
+    const worker = async () => {
+        while (true) {
+            const idx = cursor++;
+            if (idx >= urls.length) break;
+            await processOne(urls[idx]);
+        }
+    };
+
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
     if (ignoredJSFiles.length > 0) {
         console.log(

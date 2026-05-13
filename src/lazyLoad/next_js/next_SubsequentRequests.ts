@@ -15,7 +15,9 @@ let max_queue;
  */
 const findStaticFiles = async (js_content) => {
     // do some regex-ing
-    const matches = [...js_content.matchAll(/\/?static\/chunks\/[a-zA-Z0-9\._\-\/]+\.js/g)];
+    // include `~` because Turbopack content-hashed filenames use it as a separator
+    // (e.g. `static/chunks/18865ghy~7gi9.js`)
+    const matches = [...js_content.matchAll(/\/?static\/chunks\/[a-zA-Z0-9\._\-\/~]+\.js/g)];
     // return matches
 
     let toReturn = [];
@@ -138,7 +140,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
         const resText = await req.text();
         const $ = cheerio.load(resText);
 
-        const extract_regex = /static\/chunks\/[a-zA-Z0-9_\-]+\.js/g;
+        const extract_regex = /static\/chunks\/[a-zA-Z0-9_\-~.]+\.js/g;
 
         // find all script tags
         $("script").each((_, script) => {

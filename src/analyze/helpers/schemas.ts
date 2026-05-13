@@ -21,6 +21,7 @@ const requestStepSchema = z.union([
 const esqueryStepSchema = z.object({
     type: z.literal("esquery"),
     query: z.string(),
+    inScopeOf: z.string().optional(),
 });
 
 const PostMessageFuncResolverStepSchema = z.object({

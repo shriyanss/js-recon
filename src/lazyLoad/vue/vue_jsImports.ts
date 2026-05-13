@@ -5,31 +5,38 @@ import chalk from "chalk";
 
 const traverse = _traverse.default;
 
-const parseJsFile = async (url: string) => {
-    let foundUrls: string[] = [];
+const parseJsFile = async (url: string, maxJsSizeMb: number) => {
+    const MAX_JS_SIZE_BYTES = maxJsSizeMb * 1024 * 1024;
+    const foundUrls = new Set<string>();
     const req = await makeRequest(url);
+    if (req == null) {
+        console.log(chalk.red(`Failed to fetch ${url}`));
+        return foundUrls;
+    }
     const reqText = await req.text();
 
-    const ast = parser.parse(reqText, {
-        sourceType: "module",
-        plugins: ["importAssertions"],
-    });
+    if (reqText.length > MAX_JS_SIZE_BYTES) {
+        return foundUrls;
+    }
+
+    let ast;
+    try {
+        ast = parser.parse(reqText, {
+            sourceType: "module",
+            plugins: ["importAssertions"],
+        });
+    } catch {
+        return foundUrls;
+    }
 
     // get all the import statements
     traverse(ast, {
         ImportDeclaration(path) {
             const source = path.node.source.value;
 
-            if (source.startsWith("./")) {
-                if (!foundUrls.includes(new URL(source, url).href)) {
-                    foundUrls.push(new URL(source, url).href);
-                }
-            } else if (source.startsWith("../")) {
-                if (!foundUrls.includes(new URL(source, url).href)) {
-                    foundUrls.push(new URL(source, url).href);
-                }
+            if (source.startsWith("./") || source.startsWith("../") || source.startsWith("/")) {
+                foundUrls.add(new URL(source, url).href);
             } else {
-                // DEBUG
                 console.log(chalk.red(`Found import statement but can't resolve it: ${source} - on ${url}`));
             }
         },
@@ -38,32 +45,30 @@ const parseJsFile = async (url: string) => {
     return foundUrls;
 };
 
-const vue_jsImports = async (url: string, foundJsFiles: string[]) => {
-    let foundUrls: string[] = [];
-    let crawledUrls: string[] = [];
+const vue_jsImports = async (url: string, foundJsFiles: string[], maxJsSizeMb: number = 2) => {
+    const allDiscoveredUrls = new Set<string>();
+    const crawledUrls = new Set<string>(foundJsFiles);
 
-    // iterate through URLs, and get the contents of those
     for (const jsfile of foundJsFiles) {
-        const foundUrlsParsed = await parseJsFile(jsfile);
-        foundUrls.push(...foundUrlsParsed);
-        if (!crawledUrls.includes(jsfile)) {
-            crawledUrls.push(jsfile);
-        }
+        const discovered = await parseJsFile(jsfile, maxJsSizeMb);
+        for (const u of discovered) allDiscoveredUrls.add(u);
     }
 
-    // continue crawling until no new URLs are found
-    while (foundUrls.some((url) => !crawledUrls.includes(url))) {
-        // iterate through foundUrls
-        for (const url of foundUrls) {
-            if (!crawledUrls.includes(url)) {
-                crawledUrls.push(url);
-                const foundUrlsParsed = await parseJsFile(url);
-                foundUrls.push(...foundUrlsParsed);
+    // crawl newly found URLs until no uncrawled ones remain
+    let foundNew = true;
+    while (foundNew) {
+        foundNew = false;
+        for (const u of [...allDiscoveredUrls]) {
+            if (!crawledUrls.has(u)) {
+                foundNew = true;
+                crawledUrls.add(u);
+                const discovered = await parseJsFile(u, maxJsSizeMb);
+                for (const newU of discovered) allDiscoveredUrls.add(newU);
             }
         }
     }
 
-    return foundUrls;
+    return [...allDiscoveredUrls];
 };
 
 export default vue_jsImports;
