@@ -39,7 +39,62 @@ const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFile
             // find arrow functions that look like webpack chunk path builders:
             // pattern 1: x.x = (e) => "prefix/" + ({...}[e] || e) + "." + {...}[e] + ".js"
             // pattern 2: x.x = (e) => { if (N === e) return "file.js"; ... }
+            // pattern 3: x.x = function(e) { return ({N: "name", ...}[e] || e) + ".js"; }
             traverse(ast, {
+                FunctionExpression(path) {
+                    const start = path.node.start ?? 0;
+                    const end = path.node.end ?? jsContent.length;
+                    const source = jsContent.slice(start, end);
+
+                    if (!source.match(/\|\|\s*e/) || !source.includes('".js"')) return;
+
+                    const chunkMap: Array<[number, string]> = [];
+
+                    path.traverse({
+                        ObjectExpression(objPath) {
+                            const props = objPath.node.properties;
+                            if (props.length < 3) return;
+
+                            const entries: Array<[number, string]> = [];
+                            for (const prop of props) {
+                                if (prop.type !== "ObjectProperty") continue;
+                                const key = prop.key;
+                                const value = prop.value;
+                                if (value.type !== "StringLiteral") continue;
+
+                                let keyNum: number | null = null;
+                                if (key.type === "NumericLiteral") keyNum = key.value;
+                                else if (key.type === "StringLiteral" && /^\d+$/.test(key.value))
+                                    keyNum = parseInt(key.value);
+                                else if (key.type === "Identifier" && /^\d+$/.test(key.name))
+                                    keyNum = parseInt(key.name);
+
+                                if (keyNum === null) continue;
+                                entries.push([keyNum, value.value]);
+                            }
+
+                            if (entries.length >= 3) {
+                                chunkMap.push(...entries);
+                                objPath.stop();
+                            }
+                        },
+                    });
+
+                    if (chunkMap.length === 0) return;
+
+                    console.log(chalk.green(`[✓] Found webpack object-map chunk path builder in ${jsFile}`));
+                    console.log(chalk.yellow(source.slice(0, 200) + (source.length > 200 ? "..." : "")));
+
+                    for (const [, chunkName] of chunkMap) {
+                        try {
+                            const output = "../" + chunkName + ".js";
+                            const finalUrl = new URL(output, jsFile).href;
+                            toReturn.push(finalUrl);
+                        } catch {
+                            // skip filenames that fail URL resolution
+                        }
+                    }
+                },
                 ArrowFunctionExpression(path) {
                     const start = path.node.start ?? 0;
                     const end = path.node.end ?? jsContent.length;
@@ -112,7 +167,7 @@ const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFile
                                 filename.startsWith("./") ||
                                 filename.startsWith("../")
                                     ? filename
-                                    : filename;
+                                    : "../" + filename;
                             const finalUrl = new URL(output, jsFile).href;
                             toReturn.push(finalUrl);
                         } catch {
