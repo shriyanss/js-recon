@@ -31,6 +31,7 @@ import vue_recursiveClientSidePathDownload from "./vue/vue_recursiveClientSidePa
 
 // React
 import react_getScriptTags from "./react/react_getScriptTags.js";
+import react_webpackChunkPaths from "./react/react_webpackChunkPaths.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -315,6 +316,10 @@ const lazyLoad = async (
                 // get the files from the page source
                 const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb);
                 jsFilesToDownload.push(...jsFilesFromPageSource);
+
+                // find the webpack chunk path builder function
+                const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesToDownload);
+                jsFilesToDownload.push(...getWebpackChunkPaths);
 
                 // dedupe the files
                 jsFilesToDownload = [...new Set(jsFilesToDownload)];
