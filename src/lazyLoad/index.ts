@@ -331,15 +331,15 @@ const lazyLoad = async (
                 await downloadFiles(jsFilesToDownload, output);
 
                 extractSourceMaps(output, sourcemapDir);
-            } else {
-                console.log(chalk.red("[!] Framework not detected :("));
-                console.log(chalk.magenta(CONFIG.notFoundMessage));
-                console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-                const js_urls = await downloadLoadedJs(url);
-                if (js_urls && js_urls.length > 0) {
-                    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-                    await downloadFiles(js_urls, output);
-                }
+            }
+        } else {
+            console.log(chalk.red("[!] Framework not detected :("));
+            console.log(chalk.magenta(CONFIG.notFoundMessage));
+            console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+            const js_urls = await downloadLoadedJs(url);
+            if (js_urls && js_urls.length > 0) {
+                console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+                await downloadFiles(js_urls, output);
             }
         }
     }

@@ -42,6 +42,11 @@ export type EsqueryStep = {
     // optional: scope the esquery to the subtree rooted at a previously matched step's node.
     // when set, esquery runs against `matchList[<name>].node` instead of the whole chunk AST.
     inScopeOf?: string;
+    // optional: require the matched node to actually consume a value tainted from the
+    // matches of the named source step (data-flow check). When set, esquery matches
+    // are filtered to only those whose value-side subtree references a tainted
+    // binding/member-chain or directly contains a source subtree.
+    taintFrom?: string;
 };
 
 export type PostMessageFuncResolverStep = {

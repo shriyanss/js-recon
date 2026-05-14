@@ -1,5 +1,17 @@
 # Change Log
 
+## 1.3.1-alpha.2 - (unreleased)
+
+### Added
+
+- Added taint analysis in the `analyze` engine for Next.js
+
+### Changed
+
+### Fixed
+
+- Invalidate request cache if the memory is full
+
 ## 1.3.1-alpha.1 - 2026.05.13
 
 ### Added
