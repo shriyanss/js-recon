@@ -56,9 +56,9 @@ const expressionIsTainted = (path: NodePath, taint: TaintInfo): boolean => {
                 parent &&
                 ((parent.type === "MemberExpression" && parent.property === p.node && !parent.computed) ||
                     (parent.type === "ObjectProperty" && parent.key === p.node && !parent.computed) ||
-                    parent.type === "VariableDeclarator" && (parent as any).id === p.node ||
-                    parent.type === "FunctionDeclaration" && (parent as any).id === p.node ||
-                    parent.type === "ClassDeclaration" && (parent as any).id === p.node)
+                    (parent.type === "VariableDeclarator" && (parent as any).id === p.node) ||
+                    (parent.type === "FunctionDeclaration" && (parent as any).id === p.node) ||
+                    (parent.type === "ClassDeclaration" && (parent as any).id === p.node))
             ) {
                 return;
             }

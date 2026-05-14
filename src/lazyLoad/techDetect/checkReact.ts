@@ -16,7 +16,7 @@ const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detecte
                     const src = attrValue;
 
                     // get the content of the src file
-                    const res = await makeRequest((new URL(src, url)).href, {});
+                    const res = await makeRequest(new URL(src, url).href, {});
                     const body = await res.text();
 
                     // check if the body contains "react" or "react-dom"
