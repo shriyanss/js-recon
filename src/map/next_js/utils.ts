@@ -13,6 +13,30 @@ const traverse = _traverse.default;
  * @param depth - Current recursion depth to prevent infinite loops
  * @returns The resolved value or a placeholder if unresolved
  */
+/**
+ * Returns true if the given path is nested inside a loop statement.
+ * Used to skip loop-internal variable assignments that would shadow the
+ * top-level declaration we are interested in.
+ */
+const isInsideLoop = (p: any): boolean => {
+    let current = p.parentPath;
+    while (current) {
+        if (
+            current.isForStatement() ||
+            current.isForInStatement() ||
+            current.isForOfStatement() ||
+            current.isWhileStatement() ||
+            current.isDoWhileStatement()
+        ) {
+            return true;
+        }
+        // Don't cross function boundaries
+        if (current.isFunction()) break;
+        current = current.parentPath;
+    }
+    return false;
+};
+
 export const resolveVariableInChunk = (varName: string, chunkCode: string, depth: number = 0): any => {
     if (depth > 5) {
         return `[max recursion depth for ${varName}]`;
@@ -30,6 +54,10 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
         traverse(ast, {
             // Find variable declarations: let/const/var varName = ...
             VariableDeclarator(path) {
+                // Skip declarations that are inside loops — they are loop counters or
+                // temporaries and would shadow the top-level variable we care about.
+                if (isInsideLoop(path)) return;
+
                 if (path.node.id.type === "Identifier" && path.node.id.name === varName && path.node.init) {
                     const init = path.node.init;
 
@@ -104,6 +132,9 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
             },
             // Find assignments: varName = ...
             AssignmentExpression(path) {
+                // Skip assignments inside loops for the same reason as above
+                if (isInsideLoop(path)) return;
+
                 if (path.node.left.type === "Identifier" && path.node.left.name === varName) {
                     const right = path.node.right;
 
@@ -398,12 +429,21 @@ export const substituteVariablesInString = (
         const varName = match[1];
         const resolvedValue = resolveVariableInChunk(varName, chunkCode);
 
-        // Only substitute if we got a clean value (not an error/unresolved placeholder)
+        // Only substitute if we got a clean value (not an error/unresolved placeholder).
+        // Also reject values that contain placeholder-style brackets (they are not fully
+        // resolved), pure numbers (likely loop counters, not URL segments), very long
+        // strings (likely resolved to code, not a URL component), or strings containing
+        // ANSI escape sequences (leaked from logging utilities in the bundle).
         if (
             typeof resolvedValue === "string" &&
             !resolvedValue.startsWith("[unresolved:") &&
             !resolvedValue.startsWith("[error") &&
-            !resolvedValue.startsWith("[max recursion")
+            !resolvedValue.startsWith("[max recursion") &&
+            !resolvedValue.includes("[") &&
+            !/^\d+$/.test(resolvedValue) &&
+            !/^\d+:\d+$/.test(resolvedValue) &&
+            !resolvedValue.includes("\x1b") &&
+            resolvedValue.length <= 500
         ) {
             result = result.replace(`[var ${varName}]`, resolvedValue);
         }
@@ -1039,7 +1079,13 @@ export const resolveNodeValue = (
                 case "Identifier": {
                     const binding = scope.getBinding(currentNode.name);
                     if (binding && (binding.path.node as any).init) {
-                        currentNode = (binding.path.node as any).init;
+                        const initNode = (binding.path.node as any).init;
+                        // Update nodeCode to the actual source of the init so that concat
+                        // patterns (e.g. "".concat(x, "/path")) are re-parsed correctly
+                        if (chunkCode && typeof (initNode as any).start === "number" && typeof (initNode as any).end === "number") {
+                            nodeCode = chunkCode.slice((initNode as any).start, (initNode as any).end).replace(/\n\s*/g, "");
+                        }
+                        currentNode = initNode;
                         continue;
                     }
                     return `[unresolved: ${currentNode.name}]`;
@@ -1242,7 +1288,7 @@ export const resolveNodeValue = (
                     // .concat() with varying arguments end up here. They needs to be resolved as a string
 
                     // first, match as regex
-                    if (nodeCode.replace(/\n\s*/g, "").match(/^"[\d\w\/]*"(\.concat\(.+\))+$/)) {
+                    if (nodeCode.replace(/\n\s*/g, "").match(/^"[^"]*"(\.concat\(.+\))+$/)) {
                         // parse it separately with ast
                         const ast = parser.parse(nodeCode, {
                             sourceType: "unambiguous",
@@ -1320,6 +1366,10 @@ export const resolveNodeValue = (
                     }
 
                     return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
+                }
+                case "AwaitExpression": {
+                    currentNode = (currentNode as any).argument;
+                    continue;
                 }
                 case "NewExpression": {
                     if (
