@@ -5,6 +5,7 @@ import * as fs from "fs";
 import chalk from "chalk";
 import { resolveNodeValue, resolveStringOps, substituteVariablesInString } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
+import { resolveBodyArg } from "./traceBody.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
 import { getThirdArg } from "../resolveAxios.js";
@@ -72,9 +73,14 @@ export const processDirectAxiosCall = (
             }
         }
 
-        if (args.length > 1) {
+        // Axios calling convention is method-dependent. For body-less methods
+        // (GET/DELETE/HEAD/OPTIONS) `args[1]` is the config, not a body — surfacing
+        // it as "Body" misclassifies headers and query params as request payloads.
+        const bodyBearingMethods = new Set(["POST", "PUT", "PATCH"]);
+        const methodHasBodyArg = bodyBearingMethods.has(callMethod);
+        if (methodHasBodyArg && args.length > 1) {
             const axiosSecondArg = args[1];
-            callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
+            callBody = resolveBodyArg(axiosSecondArg, path.parentPath, ast, chunkCode, chunks, chunkName);
         }
 
         if (args.length > 2) {

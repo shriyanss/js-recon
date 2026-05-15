@@ -5,6 +5,7 @@ import * as fs from "fs";
 import chalk from "chalk";
 import { resolveNodeValue, substituteVariablesInString } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
+import { resolveBodyArg } from "./traceBody.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
 import { handleAxiosCreate } from "./handleAxiosCreate.js";
@@ -76,6 +77,17 @@ export const processAxiosCall = (
     // Get the webpack require function name (third arg) for enhanced resolution
     const thirdArgName = getThirdArg(ast);
 
+    // Axios HTTP-method calling conventions:
+    //   axios.get(url[, config])           — body lives only inside config.data (rare)
+    //   axios.delete(url[, config])        — same as get
+    //   axios.head/options(url[, config])  — same as get
+    //   axios.post(url[, body[, config]])  — body is the 2nd argument
+    //   axios.put/patch(url, body, config) — same as post
+    // For body-less methods we must treat arg[1] as config, not body, otherwise we
+    // mislabel query/header params as request bodies.
+    const bodyBearingMethods = new Set(["POST", "PUT", "PATCH"]);
+    const methodHasBodyArg = bodyBearingMethods.has(callMethod);
+
     if (path.parentPath.isCallExpression()) {
         const args = path.parentPath.node.arguments;
         if (args.length > 0) {
@@ -116,6 +128,8 @@ export const processAxiosCall = (
         if (args.length > 1) {
             const axiosSecondArg = args[1];
             if (axiosSecondArg.type === "ObjectExpression") {
+                // For body-less methods this whole object IS the config; for body-bearing
+                // methods only the inner `data` property is the body.
                 const headersProp = axiosSecondArg.properties.find(
                     (p) => p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "headers"
                 );
@@ -147,8 +161,8 @@ export const processAxiosCall = (
                 }
 
                 if (dataProp && dataProp.type === "ObjectProperty") {
-                    callBody = astNodeToJsonString(dataProp.value, chunkCode);
-                } else if (!dataProp) {
+                    callBody = resolveBodyArg(dataProp.value, path.parentPath, ast, chunkCode, chunks, chunkName);
+                } else if (!dataProp && methodHasBodyArg) {
                     const otherProps = axiosSecondArg.properties.filter(
                         (p) => !(p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "headers")
                     );
@@ -157,8 +171,8 @@ export const processAxiosCall = (
                         callBody = astNodeToJsonString(bodyObject, chunkCode);
                     }
                 }
-            } else {
-                callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
+            } else if (methodHasBodyArg) {
+                callBody = resolveBodyArg(axiosSecondArg, path.parentPath, ast, chunkCode, chunks, chunkName);
             }
         }
     }
