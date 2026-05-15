@@ -5,6 +5,8 @@
 ### Added
 
 - Added taint analysis in the `analyze` engine for Next.js
+- Download JS files as soon as they are discovered (`lazyload`)
+- Recursively resolve HTTP requests in Next.js (`map`)
 
 ### Changed
 
