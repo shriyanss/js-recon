@@ -8,7 +8,7 @@ import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import { resolveBodyArg } from "./traceBody.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
-import { getThirdArg } from "../resolveAxios.js";
+import { getThirdArg, getGlobalInterceptorHeaders } from "../resolveAxios.js";
 
 const getHttpMethod = (methodName: string): string | null => {
     const upperCaseMethod = methodName.toUpperCase();
@@ -124,6 +124,9 @@ export const processDirectAxiosCall = (
         }
     }
 
+    const interceptorHeaders = getGlobalInterceptorHeaders();
+    const mergedHeaders: { [key: string]: string } = { ...interceptorHeaders, ...callHeaders };
+
     console.log(
         chalk.blue(`[+] Found direct axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`)
     );
@@ -132,15 +135,15 @@ export const processDirectAxiosCall = (
     if (callBody) {
         console.log(chalk.green(`    Body: ${callBody}`));
     }
-    if (Object.keys(callHeaders).length > 0) {
-        console.log(chalk.green(`    Headers: ${JSON.stringify(callHeaders)}`));
+    if (Object.keys(mergedHeaders).length > 0) {
+        console.log(chalk.green(`    Headers: ${JSON.stringify(mergedHeaders)}`));
     }
 
     globals.addOpenapiOutput({
         url: callUrl || "",
         method: callMethod || "",
         path: callUrl || "",
-        headers: callHeaders || {},
+        headers: mergedHeaders || {},
         body: callBody || "",
         chunkId: chunkName,
         functionFile: functionFile,

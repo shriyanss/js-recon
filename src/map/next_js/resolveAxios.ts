@@ -8,6 +8,13 @@ import { processAxiosCall } from "./resolveAxiosHelpers/processAxiosCall.js";
 import { ArrowFunctionExpression, FunctionDeclaration, Node } from "@babel/types";
 import { handleZDotCreate, processZDotCreateCall } from "./resolveAxiosHelpers/handleZDotCreate.js";
 import { directCallsWithoutAssignment } from "./resolveAxiosHelpers/directCallsWithoutAssignment.js";
+import { collectInterceptorHeaders } from "./resolveAxiosHelpers/interceptorHeaders.js";
+
+// Headers injected globally by axios request interceptors. Populated once at
+// the start of `resolveAxios` and read by the per-call processors so every
+// emitted endpoint reflects them.
+let globalInterceptorHeaders: { [key: string]: string } = {};
+export const getGlobalInterceptorHeaders = (): { [key: string]: string } => globalInterceptorHeaders;
 
 const traverse = _traverse.default;
 
@@ -46,6 +53,18 @@ export const getThirdArg = (ast: Node): string => {
  */
 const resolveAxios = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving axios instances"));
+
+    // Discover headers added by axios request interceptors up-front. The same
+    // set applies to every request that flows through the shared axios client,
+    // so we attach it to each emitted endpoint below.
+    globalInterceptorHeaders = collectInterceptorHeaders(chunks);
+    if (Object.keys(globalInterceptorHeaders).length > 0) {
+        console.log(
+            chalk.cyan(
+                `[i] Detected ${Object.keys(globalInterceptorHeaders).length} interceptor-injected header(s): ${Object.keys(globalInterceptorHeaders).join(", ")}`
+            )
+        );
+    }
 
     const { axiosExportedFrom, axiosImportedTo } = findAxiosClients(chunks);
 

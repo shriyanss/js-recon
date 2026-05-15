@@ -98,176 +98,507 @@ const objectExpressionToBody = (node: any, scopePath: NodePath): string => {
     return `{${props.join(", ")}}`;
 };
 
-/**
- * Discovers a zod-style schema in the chunk (e.g. `let w = x.z.object({...})`) and
- * converts it to a JSON-like body shape.
- *
- * Preference order:
- *   1. The schema referenced via an `objectSchema:` or `resolver:` JSX prop in the
- *      chunk (these point to the schema actually wired to the active form).
- *   2. The first standalone `z.object({...})` definition in the chunk.
- */
-const findZodSchemaInChunk = (ast: Node): string | null => {
-    let preferredSchemaVar: string | null = null;
+type SchemaRef =
+    | { kind: "local"; name: string }
+    | { kind: "cross"; importVar: string; exportName: string };
 
+/**
+ * Walks any zod-style schema initializer to extract the keys that will end up in
+ * the parsed value, even when the schema is composed of chained builder calls
+ * (extend / merge / pick / omit / partial / required / passthrough / strict / etc.).
+ *
+ * Supports cross-chunk references when `chunks` + `chunkId` + `thirdArgName` are
+ * supplied: `let x = thirdArg(NNN); x.SCHEMA.extend(...)`.
+ */
+const buildSchemaFromInitNode = (
+    initNode: any,
+    ast: Node,
+    chunks: Chunks | undefined,
+    chunkId: string | undefined,
+    thirdArgName: string | null,
+    visited: Set<string> = new Set(),
+    depth: number = 0,
+): { fields: Map<string, any>; pickKeys?: Set<string>; omitKeys?: Set<string> } | null => {
+    if (depth > 8) return null;
+    if (!initNode) return null;
+
+    // Schema reference: an Identifier pointing to another schema variable in this chunk.
+    if (initNode.type === "Identifier") {
+        return resolveSchemaVarToFields(initNode.name, ast, chunks, chunkId, thirdArgName, visited, depth + 1);
+    }
+
+    // Cross-chunk reference: `x.SCHEMA` where `x = thirdArg(NNN)`.
+    if (
+        initNode.type === "MemberExpression" &&
+        initNode.property.type === "Identifier" &&
+        initNode.object.type === "Identifier"
+    ) {
+        const result = resolveCrossChunkSchemaRef(
+            initNode.object.name,
+            initNode.property.name,
+            ast,
+            chunks,
+            chunkId,
+            thirdArgName,
+            visited,
+            depth + 1,
+        );
+        if (result) return result;
+    }
+
+    if (initNode.type === "CallExpression" && initNode.callee.type === "MemberExpression") {
+        const methodName =
+            initNode.callee.property.type === "Identifier" ? initNode.callee.property.name : null;
+        const base = initNode.callee.object;
+        const arg0 = initNode.arguments[0];
+
+        // <X>.object({ ... }) — terminal: the keys are the object literal's properties.
+        if (methodName === "object" && arg0 && arg0.type === "ObjectExpression") {
+            const fields = new Map<string, any>();
+            for (const prop of arg0.properties) {
+                if (prop.type !== "ObjectProperty") continue;
+                let key = "";
+                if ((prop.key as any).type === "Identifier") key = (prop.key as any).name;
+                else if ((prop.key as any).type === "StringLiteral") key = (prop.key as any).value;
+                else continue;
+                fields.set(key, prop.value);
+            }
+            return { fields };
+        }
+
+        // <base>.extend({ ... }) or <base>.merge(<schema>) — accumulate the base's
+        // fields then add the extension's.
+        if (methodName === "extend" || methodName === "merge") {
+            const baseResult =
+                buildSchemaFromInitNode(base, ast, chunks, chunkId, thirdArgName, visited, depth + 1) ?? {
+                    fields: new Map(),
+                };
+
+            if (arg0 && arg0.type === "ObjectExpression") {
+                for (const prop of arg0.properties) {
+                    if (prop.type !== "ObjectProperty") continue;
+                    let key = "";
+                    if ((prop.key as any).type === "Identifier") key = (prop.key as any).name;
+                    else if ((prop.key as any).type === "StringLiteral") key = (prop.key as any).value;
+                    else continue;
+                    baseResult.fields.set(key, prop.value);
+                }
+            } else if (arg0) {
+                const extResult = buildSchemaFromInitNode(
+                    arg0,
+                    ast,
+                    chunks,
+                    chunkId,
+                    thirdArgName,
+                    visited,
+                    depth + 1,
+                );
+                if (extResult) {
+                    for (const [k, v] of extResult.fields) baseResult.fields.set(k, v);
+                }
+            }
+            return baseResult;
+        }
+
+        // <base>.pick({ keyA: true, keyB: true }) / .omit(...) — narrow the field set.
+        // The pick/omit spec may be an inline ObjectExpression *or* an Identifier
+        // pointing to a `let spec = { keyA: !0, ... }` declaration earlier in the chunk.
+        if (methodName === "pick" || methodName === "omit") {
+            let specObj: any = null;
+            if (arg0 && arg0.type === "ObjectExpression") {
+                specObj = arg0;
+            } else if (arg0 && arg0.type === "Identifier") {
+                traverse(ast as any, {
+                    VariableDeclarator(p) {
+                        if (specObj) return;
+                        if (
+                            p.node.id.type === "Identifier" &&
+                            p.node.id.name === arg0.name &&
+                            p.node.init &&
+                            p.node.init.type === "ObjectExpression"
+                        ) {
+                            specObj = p.node.init;
+                            p.stop();
+                        }
+                    },
+                });
+            }
+            if (!specObj) {
+                return buildSchemaFromInitNode(base, ast, chunks, chunkId, thirdArgName, visited, depth + 1);
+            }
+            const keys = new Set<string>();
+            for (const prop of specObj.properties) {
+                if (prop.type !== "ObjectProperty") continue;
+                let key = "";
+                if ((prop.key as any).type === "Identifier") key = (prop.key as any).name;
+                else if ((prop.key as any).type === "StringLiteral") key = (prop.key as any).value;
+                else continue;
+                keys.add(key);
+            }
+            const baseResult = buildSchemaFromInitNode(
+                base,
+                ast,
+                chunks,
+                chunkId,
+                thirdArgName,
+                visited,
+                depth + 1,
+            );
+            if (!baseResult) return { fields: new Map(), [methodName === "pick" ? "pickKeys" : "omitKeys"]: keys };
+            if (methodName === "pick") {
+                const filtered = new Map<string, any>();
+                for (const [k, v] of baseResult.fields) {
+                    if (keys.has(k)) filtered.set(k, v);
+                }
+                return { fields: filtered };
+            } else {
+                const filtered = new Map<string, any>();
+                for (const [k, v] of baseResult.fields) {
+                    if (!keys.has(k)) filtered.set(k, v);
+                }
+                return { fields: filtered };
+            }
+        }
+
+        // Pass-through wrappers — schema stays the same.
+        if (
+            methodName === "partial" ||
+            methodName === "required" ||
+            methodName === "passthrough" ||
+            methodName === "strict" ||
+            methodName === "strip" ||
+            methodName === "describe" ||
+            methodName === "refine" ||
+            methodName === "superRefine" ||
+            methodName === "transform" ||
+            methodName === "default" ||
+            methodName === "optional" ||
+            methodName === "nullable" ||
+            methodName === "nullish" ||
+            methodName === "readonly" ||
+            methodName === "brand" ||
+            methodName === "catch" ||
+            methodName === "innerType" ||
+            methodName === "unwrap" ||
+            methodName === "removeDefault" ||
+            methodName === "removeCatch" ||
+            methodName === "promise" ||
+            methodName === "array"
+        ) {
+            return buildSchemaFromInitNode(base, ast, chunks, chunkId, thirdArgName, visited, depth + 1);
+        }
+    }
+
+    return null;
+};
+
+/**
+ * Resolves a local schema variable name to its keys, recursively chasing through
+ * builder chains and aliases.
+ */
+const resolveSchemaVarToFields = (
+    varName: string,
+    ast: Node,
+    chunks: Chunks | undefined,
+    chunkId: string | undefined,
+    thirdArgName: string | null,
+    visited: Set<string>,
+    depth: number,
+): { fields: Map<string, any> } | null => {
+    const cycleKey = `${chunkId ?? "_"}:${varName}`;
+    if (visited.has(cycleKey)) return null;
+    visited.add(cycleKey);
+
+    let initNode: any = null;
     traverse(ast as any, {
-        ObjectProperty(p) {
-            if (preferredSchemaVar) return;
-            const key = p.node.key as any;
-            const keyName = key.type === "Identifier" ? key.name : key.type === "StringLiteral" ? key.value : null;
-            if (keyName === "objectSchema") {
-                if (p.node.value.type === "Identifier") {
-                    preferredSchemaVar = p.node.value.name;
-                }
-            } else if (keyName === "resolver") {
-                const v: any = p.node.value;
-                if (v.type === "CallExpression" && v.arguments.length > 0 && v.arguments[0].type === "Identifier") {
-                    preferredSchemaVar = v.arguments[0].name;
-                }
+        VariableDeclarator(p) {
+            if (initNode) return;
+            if (p.node.id.type === "Identifier" && p.node.id.name === varName && p.node.init) {
+                initNode = p.node.init;
+                p.stop();
+            }
+        },
+    });
+    if (!initNode) return null;
+
+    const built = buildSchemaFromInitNode(initNode, ast, chunks, chunkId, thirdArgName, visited, depth);
+    return built ? { fields: built.fields } : null;
+};
+
+/**
+ * Resolves `<importVar>.<exportName>` where `<importVar> = <thirdArg>(<chunkId>)`,
+ * locating the corresponding schema in the imported chunk.
+ */
+const resolveCrossChunkSchemaRef = (
+    importVar: string,
+    exportName: string,
+    ast: Node,
+    chunks: Chunks | undefined,
+    _chunkId: string | undefined,
+    thirdArgName: string | null,
+    visited: Set<string>,
+    depth: number,
+): { fields: Map<string, any> } | null => {
+    if (!chunks || !thirdArgName) return null;
+
+    // Identify which chunk `importVar` points to in the current chunk.
+    let targetChunkId: string | null = null;
+    traverse(ast as any, {
+        VariableDeclarator(p) {
+            if (targetChunkId) return;
+            if (
+                p.node.id.type === "Identifier" &&
+                p.node.id.name === importVar &&
+                p.node.init &&
+                p.node.init.type === "CallExpression" &&
+                p.node.init.callee.type === "Identifier" &&
+                p.node.init.callee.name === thirdArgName &&
+                p.node.init.arguments.length === 1 &&
+                p.node.init.arguments[0].type === "NumericLiteral"
+            ) {
+                targetChunkId = String((p.node.init.arguments[0] as any).value);
+                p.stop();
             }
         },
     });
 
-    const resolveSchemaVar = (varName: string, depth: number = 0): any => {
-        if (depth > 6) return null;
-        let initNode: any = null;
-        traverse(ast as any, {
-            VariableDeclarator(p) {
-                if (initNode) return;
-                if (p.node.id.type === "Identifier" && p.node.id.name === varName && p.node.init) {
-                    initNode = p.node.init;
-                    p.stop();
-                }
-            },
-        });
-        if (!initNode) return null;
+    if (!targetChunkId || !chunks[targetChunkId]) return null;
 
-        if (
-            initNode.type === "CallExpression" &&
-            initNode.callee.type === "MemberExpression" &&
-            initNode.callee.property.type === "Identifier" &&
-            initNode.callee.property.name === "object" &&
-            initNode.arguments.length === 1 &&
-            initNode.arguments[0].type === "ObjectExpression"
-        ) {
-            return initNode.arguments[0];
-        }
+    const targetChunk = chunks[targetChunkId];
+    const targetAst = parseChunkAst(targetChunkId, targetChunk.code);
+    if (!targetAst) return null;
 
-        if (
-            initNode.type === "CallExpression" &&
-            initNode.callee.type === "MemberExpression" &&
-            initNode.callee.property.type === "Identifier" &&
-            (initNode.callee.property.name === "extend" || initNode.callee.property.name === "merge")
-        ) {
-            const baseObj = initNode.callee.object;
-            if (baseObj.type === "Identifier") {
-                return resolveSchemaVar(baseObj.name, depth + 1);
+    // Find which local variable backs the requested export.
+    let exportVarName: string | null = null;
+    traverse(targetAst, {
+        CallExpression(p) {
+            if (exportVarName) return;
+            const callee = p.node.callee;
+            if (
+                callee.type !== "MemberExpression" ||
+                callee.property.type !== "Identifier" ||
+                callee.property.name !== "d" ||
+                p.node.arguments.length !== 2 ||
+                p.node.arguments[1].type !== "ObjectExpression"
+            ) {
+                return;
             }
-        }
-
-        if (initNode.type === "Identifier") {
-            return resolveSchemaVar(initNode.name, depth + 1);
-        }
-
-        return null;
-    };
-
-    let schemaNode: any = null;
-
-    if (preferredSchemaVar) {
-        schemaNode = resolveSchemaVar(preferredSchemaVar);
-    }
-
-    if (!schemaNode) {
-        traverse(ast as any, {
-            CallExpression(p) {
-                if (schemaNode) return;
-                const callee = p.node.callee;
+            for (const prop of (p.node.arguments[1] as any).properties) {
                 if (
-                    callee.type === "MemberExpression" &&
-                    callee.property.type === "Identifier" &&
-                    callee.property.name === "object" &&
-                    p.node.arguments.length === 1 &&
-                    p.node.arguments[0].type === "ObjectExpression"
+                    prop.type !== "ObjectProperty" ||
+                    prop.key.type !== "Identifier" ||
+                    prop.key.name !== exportName
                 ) {
-                    schemaNode = p.node.arguments[0];
-                    p.stop();
+                    continue;
                 }
-            },
-        });
+                const value = prop.value;
+                if (value.type !== "FunctionExpression" && value.type !== "ArrowFunctionExpression") continue;
+                let returnNode: any = null;
+                if (value.type === "ArrowFunctionExpression" && value.body.type !== "BlockStatement") {
+                    returnNode = value.body;
+                } else if (value.body.type === "BlockStatement") {
+                    const ret = value.body.body.find((s: any) => s.type === "ReturnStatement");
+                    if (ret) returnNode = (ret as any).argument;
+                }
+                if (returnNode && returnNode.type === "Identifier") {
+                    exportVarName = returnNode.name;
+                    return;
+                }
+            }
+        },
+    });
+    if (!exportVarName) return null;
+
+    const targetThirdArg = findThirdArgInAst(targetAst);
+    return resolveSchemaVarToFields(exportVarName, targetAst, chunks, targetChunkId, targetThirdArg, visited, depth);
+};
+
+const zodTypeToPlaceholder = (valueNode: any): string => {
+    if (!valueNode) return `"<unknown>"`;
+    let cur = valueNode;
+    while (
+        cur &&
+        cur.type === "CallExpression" &&
+        cur.callee.type === "MemberExpression" &&
+        cur.callee.property.type === "Identifier" &&
+        ["optional", "nullable", "nullish", "min", "max", "length", "email", "url", "uuid", "regex", "trim", "default", "describe", "refine", "transform", "superRefine"].includes(
+            cur.callee.property.name,
+        )
+    ) {
+        cur = cur.callee.object;
     }
+
+    if (
+        cur &&
+        cur.type === "CallExpression" &&
+        cur.callee.type === "MemberExpression" &&
+        cur.callee.property.type === "Identifier"
+    ) {
+        const name = cur.callee.property.name;
+        switch (name) {
+            case "string":
+                return `"<string>"`;
+            case "number":
+                return `"<number>"`;
+            case "boolean":
+                return `"<boolean>"`;
+            case "bigint":
+                return `"<bigint>"`;
+            case "date":
+                return `"<date>"`;
+            case "array":
+                return `["<array>"]`;
+            case "object":
+                if (cur.arguments.length === 1 && cur.arguments[0].type === "ObjectExpression") {
+                    return fieldsObjectToString(cur.arguments[0]);
+                }
+                return `"<object>"`;
+            case "enum":
+                return `"<enum>"`;
+            case "literal":
+                if (cur.arguments.length === 1 && cur.arguments[0].type === "StringLiteral") {
+                    return JSON.stringify(cur.arguments[0].value);
+                }
+                return `"<literal>"`;
+            case "coerce":
+                return `"<coerce>"`;
+            default:
+                return `"<${name}>"`;
+        }
+    }
+
+    return `"<unknown>"`;
+};
+
+const fieldsObjectToString = (objNode: any): string => {
+    const parts = objNode.properties
+        .map((prop: any) => {
+            if (prop.type !== "ObjectProperty") return null;
+            let key = "";
+            if (prop.key.type === "Identifier") key = prop.key.name;
+            else if (prop.key.type === "StringLiteral") key = prop.key.value;
+            else return null;
+            return `"${key}": ${zodTypeToPlaceholder(prop.value)}`;
+        })
+        .filter(Boolean);
+    return `{${parts.join(", ")}}`;
+};
+
+const fieldsMapToString = (fields: Map<string, any>): string => {
+    const parts: string[] = [];
+    for (const [k, v] of fields) {
+        parts.push(`"${k}": ${zodTypeToPlaceholder(v)}`);
+    }
+    return `{${parts.join(", ")}}`;
+};
+
+/**
+ * Discovers zod-style schemas in the chunk (e.g. `let w = x.z.object({...})`,
+ * `objectSchema: o.VG`) and converts them to a JSON-like body shape.
+ *
+ * Preference order:
+ *   1. Schemas referenced via `objectSchema:` or `resolver:` JSX props. Supports
+ *      both local Identifiers and cross-chunk MemberExpressions (`o.VG`).
+ *      Multiple matches are merged so multi-step forms whose final POST body is
+ *      the union of all step schemas come out closer to reality.
+ *   2. The first standalone `z.object({...})` definition in the chunk.
+ */
+const findZodSchemaInChunk = (
+    ast: Node,
+    chunks?: Chunks,
+    chunkId?: string,
+    thirdArgName?: string | null,
+): string | null => {
+    const schemaRefs: SchemaRef[] = [];
+
+    traverse(ast as any, {
+        ObjectProperty(p) {
+            const key = p.node.key as any;
+            const keyName = key.type === "Identifier" ? key.name : key.type === "StringLiteral" ? key.value : null;
+            const value: any = p.node.value;
+            const captureFromValue = (v: any) => {
+                if (!v) return;
+                if (v.type === "Identifier") {
+                    schemaRefs.push({ kind: "local", name: v.name });
+                } else if (
+                    v.type === "MemberExpression" &&
+                    v.object.type === "Identifier" &&
+                    v.property.type === "Identifier"
+                ) {
+                    schemaRefs.push({ kind: "cross", importVar: v.object.name, exportName: v.property.name });
+                }
+            };
+            if (keyName === "objectSchema") {
+                captureFromValue(value);
+            } else if (keyName === "resolver" && value.type === "CallExpression" && value.arguments.length > 0) {
+                captureFromValue(value.arguments[0]);
+            }
+        },
+    });
+
+    const resolvedFieldMaps: Map<string, any>[] = [];
+    const seen = new Set<string>();
+    for (const ref of schemaRefs) {
+        const key = ref.kind === "local" ? `L:${ref.name}` : `X:${ref.importVar}.${ref.exportName}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        // Each top-level schema ref starts with a fresh visited set — otherwise
+        // resolving the first schema would block the second from following
+        // shared base schemas (e.g. multi-step forms where every step extends
+        // the same `p`).
+        const refVisited = new Set<string>();
+        let resolved: { fields: Map<string, any> } | null = null;
+        if (ref.kind === "local") {
+            resolved = resolveSchemaVarToFields(ref.name, ast, chunks, chunkId, thirdArgName ?? null, refVisited, 0);
+        } else {
+            resolved = resolveCrossChunkSchemaRef(
+                ref.importVar,
+                ref.exportName,
+                ast,
+                chunks,
+                chunkId,
+                thirdArgName ?? null,
+                refVisited,
+                0,
+            );
+        }
+        if (resolved && resolved.fields.size > 0) {
+            resolvedFieldMaps.push(resolved.fields);
+        }
+    }
+
+    if (resolvedFieldMaps.length > 0) {
+        // Merge fields from all referenced schemas. For multi-step forms this gives
+        // the union — the final POST body is generally the accumulated form state.
+        const merged = new Map<string, any>();
+        for (const fields of resolvedFieldMaps) {
+            for (const [k, v] of fields) merged.set(k, v);
+        }
+        return fieldsMapToString(merged);
+    }
+
+    // Fallback: the first standalone `<X>.object({...})` in the chunk.
+    let schemaNode: any = null;
+    traverse(ast as any, {
+        CallExpression(p) {
+            if (schemaNode) return;
+            const callee = p.node.callee;
+            if (
+                callee.type === "MemberExpression" &&
+                callee.property.type === "Identifier" &&
+                callee.property.name === "object" &&
+                p.node.arguments.length === 1 &&
+                p.node.arguments[0].type === "ObjectExpression"
+            ) {
+                schemaNode = p.node.arguments[0];
+                p.stop();
+            }
+        },
+    });
 
     if (!schemaNode) return null;
-
-    const zodTypeToPlaceholder = (valueNode: any): string => {
-        let cur = valueNode;
-        while (
-            cur &&
-            cur.type === "CallExpression" &&
-            cur.callee.type === "MemberExpression" &&
-            cur.callee.property.type === "Identifier" &&
-            ["optional", "nullable", "nullish", "min", "max", "length", "email", "url", "uuid", "regex", "trim", "default", "describe", "refine", "transform"].includes(
-                cur.callee.property.name,
-            )
-        ) {
-            cur = cur.callee.object;
-        }
-
-        if (
-            cur &&
-            cur.type === "CallExpression" &&
-            cur.callee.type === "MemberExpression" &&
-            cur.callee.property.type === "Identifier"
-        ) {
-            const name = cur.callee.property.name;
-            switch (name) {
-                case "string":
-                    return `"<string>"`;
-                case "number":
-                    return `"<number>"`;
-                case "boolean":
-                    return `"<boolean>"`;
-                case "bigint":
-                    return `"<bigint>"`;
-                case "date":
-                    return `"<date>"`;
-                case "array":
-                    return `["<array>"]`;
-                case "object":
-                    if (cur.arguments.length === 1 && cur.arguments[0].type === "ObjectExpression") {
-                        return buildSchemaBody(cur.arguments[0]);
-                    }
-                    return `"<object>"`;
-                case "enum":
-                    return `"<enum>"`;
-                case "literal":
-                    if (cur.arguments.length === 1 && cur.arguments[0].type === "StringLiteral") {
-                        return JSON.stringify(cur.arguments[0].value);
-                    }
-                    return `"<literal>"`;
-                default:
-                    return `"<${name}>"`;
-            }
-        }
-
-        return `"<unknown>"`;
-    };
-
-    const buildSchemaBody = (objNode: any): string => {
-        const parts = objNode.properties
-            .map((prop: any) => {
-                if (prop.type !== "ObjectProperty") return null;
-                let key = "";
-                if (prop.key.type === "Identifier") key = prop.key.name;
-                else if (prop.key.type === "StringLiteral") key = prop.key.value;
-                else return null;
-                return `"${key}": ${zodTypeToPlaceholder(prop.value)}`;
-            })
-            .filter(Boolean);
-        return `{${parts.join(", ")}}`;
-    };
-
-    return buildSchemaBody(schemaNode);
+    return fieldsObjectToString(schemaNode);
 };
 
 /**
@@ -474,7 +805,31 @@ export const traceIdentifierBody = (
 
     const binding = path.scope.getBinding(paramName);
     if (!binding) return null;
-    if (binding.kind !== "param") return null;
+
+    // Non-parameter bindings (let / const / var) can still have a useful initializer
+    // — most commonly `let r = { reportType: n.type, ...e }` immediately before an
+    // axios call. Render the initializer's ObjectExpression directly when we have one.
+    if (binding.kind !== "param") {
+        if (binding.path.isVariableDeclarator() && binding.path.node.init) {
+            const init: any = binding.path.node.init;
+            if (init.type === "ObjectExpression") {
+                return objectExpressionToBody(init, binding.path as NodePath);
+            }
+            if (init.type === "Identifier") {
+                return traceIdentifierBody(
+                    init.name,
+                    binding.path as NodePath,
+                    ast,
+                    chunkCode,
+                    chunks,
+                    visited,
+                    depth + 1,
+                    chunkId,
+                );
+            }
+        }
+        return null;
+    }
 
     const funcPath = binding.path.find((p) => p.isFunction()) as NodePath | null;
     if (!funcPath) return null;
@@ -497,8 +852,10 @@ export const traceIdentifierBody = (
         }
     }
 
+    const localThirdArg = findThirdArgInAst(ast);
+
     if (!funcName) {
-        return findZodSchemaInChunk(ast);
+        return findZodSchemaInChunk(ast, chunks, chunkId, localThirdArg);
     }
 
     const cycleKey = `${chunkId ?? "_"}:${funcName}:${paramIndex}`;
@@ -564,11 +921,14 @@ export const traceIdentifierBody = (
         if (crossChunk) return crossChunk;
     }
 
-    if (directCallCount === 0) {
-        return findZodSchemaInChunk(ast);
-    }
-
-    return null;
+    // Schema fallback. Used when:
+    //   - the function is never called directly (only passed as a callback to a
+    //     form/library), or
+    //   - it *is* called locally but with state/non-traceable identifiers (so the
+    //     local callsite gave us nothing).
+    // The schema search prefers `objectSchema:` / `resolver:` JSX props, which
+    // are usually the right wiring even when the handler's data flow is opaque.
+    return findZodSchemaInChunk(ast, chunks, chunkId, localThirdArg);
 };
 
 /**

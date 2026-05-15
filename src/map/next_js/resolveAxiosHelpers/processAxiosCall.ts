@@ -9,7 +9,7 @@ import { resolveBodyArg } from "./traceBody.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
 import { handleAxiosCreate } from "./handleAxiosCreate.js";
-import { getThirdArg } from "../resolveAxios.js";
+import { getThirdArg, getGlobalInterceptorHeaders } from "../resolveAxios.js";
 
 /**
  * Gets the HTTP method from a method name.
@@ -188,21 +188,26 @@ export const processAxiosCall = (
         }
     }
 
+    // Merge globally-applied interceptor headers with per-call headers. Per-call
+    // values win on overlap since they're explicit overrides.
+    const interceptorHeaders = getGlobalInterceptorHeaders();
+    const mergedHeaders: { [key: string]: string } = { ...interceptorHeaders, ...callHeaders };
+
     console.log(chalk.blue(`[+] Found axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`));
     console.log(chalk.green(`    URL: ${callUrl}`));
     console.log(chalk.green(`    Method: ${callMethod}`));
     if (callBody) {
         console.log(chalk.green(`    Body: ${callBody}`));
     }
-    if (Object.keys(callHeaders).length > 0) {
-        console.log(chalk.green(`    Headers: ${JSON.stringify(callHeaders)}`));
+    if (Object.keys(mergedHeaders).length > 0) {
+        console.log(chalk.green(`    Headers: ${JSON.stringify(mergedHeaders)}`));
     }
 
     globals.addOpenapiOutput({
         url: callUrl || "",
         method: callMethod || "",
         path: callUrl || "",
-        headers: callHeaders || {},
+        headers: mergedHeaders || {},
         body: callBody || "",
         chunkId: chunkName,
         functionFile: functionFile,
