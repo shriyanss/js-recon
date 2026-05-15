@@ -130,10 +130,7 @@ export const collectInterceptorHeaders = (chunks: Chunks): { [key: string]: stri
         if (!methodNode?.body?.body) return null;
         for (const stmt of methodNode.body.body) {
             if (stmt.type === "ReturnStatement" && stmt.argument) {
-                if (
-                    stmt.argument.type === "FunctionExpression" ||
-                    stmt.argument.type === "ArrowFunctionExpression"
-                ) {
+                if (stmt.argument.type === "FunctionExpression" || stmt.argument.type === "ArrowFunctionExpression") {
                     return stmt.argument;
                 }
                 if (stmt.argument.type === "Identifier") {
@@ -173,10 +170,7 @@ export const collectInterceptorHeaders = (chunks: Chunks): { [key: string]: stri
 
                 if (arg.type === "CallExpression") {
                     const argCallee = arg.callee;
-                    if (
-                        argCallee.type === "MemberExpression" &&
-                        argCallee.property?.type === "Identifier"
-                    ) {
+                    if (argCallee.type === "MemberExpression" && argCallee.property?.type === "Identifier") {
                         const methodName = argCallee.property.name;
                         const matches = staticMethodIndex.get(methodName);
                         if (matches) {

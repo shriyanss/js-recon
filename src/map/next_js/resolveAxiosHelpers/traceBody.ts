@@ -98,9 +98,7 @@ const objectExpressionToBody = (node: any, scopePath: NodePath): string => {
     return `{${props.join(", ")}}`;
 };
 
-type SchemaRef =
-    | { kind: "local"; name: string }
-    | { kind: "cross"; importVar: string; exportName: string };
+type SchemaRef = { kind: "local"; name: string } | { kind: "cross"; importVar: string; exportName: string };
 
 /**
  * Walks any zod-style schema initializer to extract the keys that will end up in
@@ -117,7 +115,7 @@ const buildSchemaFromInitNode = (
     chunkId: string | undefined,
     thirdArgName: string | null,
     visited: Set<string> = new Set(),
-    depth: number = 0,
+    depth: number = 0
 ): { fields: Map<string, any>; pickKeys?: Set<string>; omitKeys?: Set<string> } | null => {
     if (depth > 8) return null;
     if (!initNode) return null;
@@ -141,14 +139,13 @@ const buildSchemaFromInitNode = (
             chunkId,
             thirdArgName,
             visited,
-            depth + 1,
+            depth + 1
         );
         if (result) return result;
     }
 
     if (initNode.type === "CallExpression" && initNode.callee.type === "MemberExpression") {
-        const methodName =
-            initNode.callee.property.type === "Identifier" ? initNode.callee.property.name : null;
+        const methodName = initNode.callee.property.type === "Identifier" ? initNode.callee.property.name : null;
         const base = initNode.callee.object;
         const arg0 = initNode.arguments[0];
 
@@ -169,10 +166,17 @@ const buildSchemaFromInitNode = (
         // <base>.extend({ ... }) or <base>.merge(<schema>) — accumulate the base's
         // fields then add the extension's.
         if (methodName === "extend" || methodName === "merge") {
-            const baseResult =
-                buildSchemaFromInitNode(base, ast, chunks, chunkId, thirdArgName, visited, depth + 1) ?? {
-                    fields: new Map(),
-                };
+            const baseResult = buildSchemaFromInitNode(
+                base,
+                ast,
+                chunks,
+                chunkId,
+                thirdArgName,
+                visited,
+                depth + 1
+            ) ?? {
+                fields: new Map(),
+            };
 
             if (arg0 && arg0.type === "ObjectExpression") {
                 for (const prop of arg0.properties) {
@@ -184,15 +188,7 @@ const buildSchemaFromInitNode = (
                     baseResult.fields.set(key, prop.value);
                 }
             } else if (arg0) {
-                const extResult = buildSchemaFromInitNode(
-                    arg0,
-                    ast,
-                    chunks,
-                    chunkId,
-                    thirdArgName,
-                    visited,
-                    depth + 1,
-                );
+                const extResult = buildSchemaFromInitNode(arg0, ast, chunks, chunkId, thirdArgName, visited, depth + 1);
                 if (extResult) {
                     for (const [k, v] of extResult.fields) baseResult.fields.set(k, v);
                 }
@@ -235,15 +231,7 @@ const buildSchemaFromInitNode = (
                 else continue;
                 keys.add(key);
             }
-            const baseResult = buildSchemaFromInitNode(
-                base,
-                ast,
-                chunks,
-                chunkId,
-                thirdArgName,
-                visited,
-                depth + 1,
-            );
+            const baseResult = buildSchemaFromInitNode(base, ast, chunks, chunkId, thirdArgName, visited, depth + 1);
             if (!baseResult) return { fields: new Map(), [methodName === "pick" ? "pickKeys" : "omitKeys"]: keys };
             if (methodName === "pick") {
                 const filtered = new Map<string, any>();
@@ -303,7 +291,7 @@ const resolveSchemaVarToFields = (
     chunkId: string | undefined,
     thirdArgName: string | null,
     visited: Set<string>,
-    depth: number,
+    depth: number
 ): { fields: Map<string, any> } | null => {
     const cycleKey = `${chunkId ?? "_"}:${varName}`;
     if (visited.has(cycleKey)) return null;
@@ -337,7 +325,7 @@ const resolveCrossChunkSchemaRef = (
     _chunkId: string | undefined,
     thirdArgName: string | null,
     visited: Set<string>,
-    depth: number,
+    depth: number
 ): { fields: Map<string, any> } | null => {
     if (!chunks || !thirdArgName) return null;
 
@@ -384,11 +372,7 @@ const resolveCrossChunkSchemaRef = (
                 return;
             }
             for (const prop of (p.node.arguments[1] as any).properties) {
-                if (
-                    prop.type !== "ObjectProperty" ||
-                    prop.key.type !== "Identifier" ||
-                    prop.key.name !== exportName
-                ) {
+                if (prop.type !== "ObjectProperty" || prop.key.type !== "Identifier" || prop.key.name !== exportName) {
                     continue;
                 }
                 const value = prop.value;
@@ -421,9 +405,24 @@ const zodTypeToPlaceholder = (valueNode: any): string => {
         cur.type === "CallExpression" &&
         cur.callee.type === "MemberExpression" &&
         cur.callee.property.type === "Identifier" &&
-        ["optional", "nullable", "nullish", "min", "max", "length", "email", "url", "uuid", "regex", "trim", "default", "describe", "refine", "transform", "superRefine"].includes(
-            cur.callee.property.name,
-        )
+        [
+            "optional",
+            "nullable",
+            "nullish",
+            "min",
+            "max",
+            "length",
+            "email",
+            "url",
+            "uuid",
+            "regex",
+            "trim",
+            "default",
+            "describe",
+            "refine",
+            "transform",
+            "superRefine",
+        ].includes(cur.callee.property.name)
     ) {
         cur = cur.callee.object;
     }
@@ -507,7 +506,7 @@ const findZodSchemaInChunk = (
     ast: Node,
     chunks?: Chunks,
     chunkId?: string,
-    thirdArgName?: string | null,
+    thirdArgName?: string | null
 ): string | null => {
     const schemaRefs: SchemaRef[] = [];
 
@@ -560,7 +559,7 @@ const findZodSchemaInChunk = (
                 chunkId,
                 thirdArgName ?? null,
                 refVisited,
-                0,
+                0
             );
         }
         if (resolved && resolved.fields.size > 0) {
@@ -681,7 +680,7 @@ const crossChunkTrace = (
     currentAst: Node,
     chunks: Chunks,
     visited: Set<string>,
-    depth: number,
+    depth: number
 ): string | null => {
     const exportName = findExportNameForFunc(currentAst, funcName);
     if (!exportName) return null;
@@ -758,7 +757,7 @@ const crossChunkTrace = (
                         chunks,
                         visited,
                         depth + 1,
-                        otherChunkId,
+                        otherChunkId
                     );
                     if (traced) {
                         resolved = traced;
@@ -799,7 +798,7 @@ export const traceIdentifierBody = (
     chunks: Chunks | undefined,
     visited: Set<string> = new Set(),
     depth: number = 0,
-    chunkId?: string,
+    chunkId?: string
 ): string | null => {
     if (depth > 6) return null;
 
@@ -824,7 +823,7 @@ export const traceIdentifierBody = (
                     chunks,
                     visited,
                     depth + 1,
-                    chunkId,
+                    chunkId
                 );
             }
         }
@@ -835,9 +834,7 @@ export const traceIdentifierBody = (
     if (!funcPath) return null;
 
     const funcNode: any = funcPath.node;
-    const paramIndex = funcNode.params.findIndex(
-        (p: any) => p.type === "Identifier" && p.name === paramName,
-    );
+    const paramIndex = funcNode.params.findIndex((p: any) => p.type === "Identifier" && p.name === paramName);
     if (paramIndex === -1) return null;
 
     let funcName: string | null = null;
@@ -900,7 +897,7 @@ export const traceIdentifierBody = (
                         chunks,
                         visited,
                         depth + 1,
-                        chunkId,
+                        chunkId
                     );
                     if (traced) {
                         resolved = traced;
@@ -941,7 +938,7 @@ export const maybeTraceBodyForIdentifier = (
     ast: Node,
     chunkCode: string,
     chunks: Chunks | undefined,
-    chunkId?: string,
+    chunkId?: string
 ): string | null => {
     if (!bodyArgNode || bodyArgNode.type !== "Identifier") return null;
     const idName = (bodyArgNode as any).name as string;
@@ -958,7 +955,7 @@ export const resolveBodyArg = (
     ast: Node,
     chunkCode: string,
     chunks: Chunks | undefined,
-    chunkId?: string,
+    chunkId?: string
 ): string => {
     if (bodyArgNode && bodyArgNode.type === "Identifier") {
         const traced = maybeTraceBodyForIdentifier(bodyArgNode, parentCallPath, ast, chunkCode, chunks, chunkId);
