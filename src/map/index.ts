@@ -14,6 +14,7 @@ import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
 import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
+import { generatePostmanCollection } from "../utility/postmanGenerator.js";
 import getExports from "./next_js/getExports.js";
 
 // Vue.JS
@@ -139,6 +140,17 @@ const map = async (
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
             console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+
+            // Also emit a Postman Collection v2.1 — Bruno/Insomnia/Postman use its
+            // nested `item` arrays to render real folder hierarchies on import,
+            // which a flat OpenAPI tag list can't represent.
+            const postmanCollection = generatePostmanCollection(getOpenapiOutput());
+            const openapiOutputFile = getOpenapiOutputFile();
+            const postmanOutputFile = openapiOutputFile.endsWith(".json")
+                ? openapiOutputFile.replace(/\.json$/, ".postman_collection.json")
+                : `${openapiOutputFile}.postman_collection.json`;
+            fs.writeFileSync(postmanOutputFile, JSON.stringify(postmanCollection, null, 2));
+            console.log(chalk.green(`[✓] Generated Postman Collection at ${postmanOutputFile}`));
         }
     } else if (tech === "vue") {
         let chunks: Chunks;

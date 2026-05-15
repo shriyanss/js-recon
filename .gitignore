@@ -143,6 +143,7 @@ extracted_urls*
 .vscode/*
 output*/
 mapped.json
+mapped-openapi.postman_collection.json
 endpoints.json
 endpoints.txt
 test.js
