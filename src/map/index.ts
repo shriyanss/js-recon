@@ -6,6 +6,7 @@ import getWebpackConnections from "./next_js/getWebpackConnections.js";
 import getTurbopackConnections from "./next_js/getTurbopackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
+import resolveNewRequest from "./next_js/resolveNewRequest.js";
 import interactive from "./next_js/interactive.js";
 import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
@@ -121,6 +122,9 @@ const map = async (
 
         // also, the axios instances
         await resolveAxios(chunks, directory);
+
+        // wrapper-class HTTP requests:  new X({url, method, ...})
+        await resolveNewRequest(chunks, directory);
 
         if (interactive_mode) {
             await interactive(chunks, `${output}.json`);

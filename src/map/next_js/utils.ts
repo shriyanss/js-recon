@@ -659,6 +659,18 @@ export const resolveWebpackChunkImport = (
         const convertAstToValue = (node: Node, remainingPath: string[] = []): any => {
             if (!node) return null;
 
+            // Unwrap Object.freeze({...}) and similar one-arg wrappers that return their first arg.
+            if (
+                node.type === "CallExpression" &&
+                (node as any).callee?.type === "MemberExpression" &&
+                (node as any).callee.property?.type === "Identifier" &&
+                ((node as any).callee.property.name === "freeze" ||
+                    (node as any).callee.property.name === "assign") &&
+                (node as any).arguments?.length > 0
+            ) {
+                return convertAstToValue((node as any).arguments[0], remainingPath);
+            }
+
             if (node.type === "ObjectExpression") {
                 const obj: { [key: string]: any } = {};
                 for (const prop of node.properties) {
@@ -987,7 +999,7 @@ export const resolveNodeValue = (
     initialNode: Node,
     scope: Scope,
     nodeCode: string,
-    callType: "fetch" | "axios",
+    callType: "fetch" | "axios" | "new",
     chunkCode?: string,
     chunks?: Chunks,
     thirdArgName?: string
@@ -1149,38 +1161,46 @@ export const resolveNodeValue = (
                     return obj;
                 }
                 case "MemberExpression": {
-                    // Handle webpack chunk imports first - try to resolve directly
-                    if (
-                        currentNode.object.type === "Identifier" &&
-                        currentNode.property.type === "Identifier" &&
-                        !currentNode.computed &&
-                        chunkCode &&
-                        chunks &&
-                        thirdArgName
-                    ) {
-                        const identifierName = currentNode.object.name;
-                        const propertyName = currentNode.property.name;
-
-                        // Try webpack chunk import resolution directly
-                        try {
-                            const webpackResult = resolveWebpackChunkImport(
-                                identifierName,
-                                chunkCode,
-                                chunks,
-                                thirdArgName,
-                                [propertyName]
-                            );
-
-                            if (
-                                webpackResult &&
-                                typeof webpackResult === "string" &&
-                                !webpackResult.startsWith("[unresolved") &&
-                                !webpackResult.startsWith("[error")
-                            ) {
-                                return webpackResult;
+                    // Handle deeply-nested webpack chunk imports by flattening the chain:
+                    //   s.h.NEXT_OKTA_VALIDATE_USER  ->  resolveWebpackChunkImport("s", ..., ["h", "NEXT_OKTA_VALIDATE_USER"])
+                    if (chunkCode && chunks && thirdArgName && !currentNode.computed) {
+                        const chain: string[] = [];
+                        let walker: any = currentNode;
+                        let rootIdent: string | null = null;
+                        while (walker) {
+                            if (walker.type === "MemberExpression" && !walker.computed && walker.property.type === "Identifier") {
+                                chain.unshift(walker.property.name);
+                                walker = walker.object;
+                            } else if (walker.type === "Identifier") {
+                                rootIdent = walker.name;
+                                break;
+                            } else {
+                                break;
                             }
-                        } catch (e) {
-                            // Fall through to normal resolution
+                        }
+                        if (rootIdent && chain.length > 0) {
+                            try {
+                                const webpackResult = resolveWebpackChunkImport(
+                                    rootIdent,
+                                    chunkCode,
+                                    chunks,
+                                    thirdArgName,
+                                    chain
+                                );
+                                if (
+                                    webpackResult !== null &&
+                                    webpackResult !== undefined &&
+                                    typeof webpackResult === "string" &&
+                                    !webpackResult.startsWith("[unresolved") &&
+                                    !webpackResult.startsWith("[error") &&
+                                    !webpackResult.startsWith("[unsupported") &&
+                                    !webpackResult.startsWith("[max_depth")
+                                ) {
+                                    return webpackResult;
+                                }
+                            } catch (e) {
+                                // fall through
+                            }
                         }
                     }
 
