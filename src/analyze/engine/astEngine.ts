@@ -31,11 +31,16 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
 
     for (const chunk of Object.values(mappedJsonData)) {
         // first of all, load the code in ast
-        const ast = parser.parse(chunk.code, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let ast;
+        try {
+            ast = parser.parse(chunk.code, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
 
         let matchList: { [key: string]: { node: Node; scope: Node; allNodes?: Node[] } } = {};
         const completedSteps: Set<string> = new Set();

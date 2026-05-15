@@ -38,11 +38,16 @@ export const findCrossChunkParameters = (
     // Process each importing chunk
     for (const [importingChunkName, importingChunk] of importingChunks) {
         const chunkCode = importingChunk.code;
-        const ast = parser.parse(chunkCode, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let ast;
+        try {
+            ast = parser.parse(chunkCode, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
 
         // Step 1: Find the third parameter in function declarations
         let thirdArg = "";

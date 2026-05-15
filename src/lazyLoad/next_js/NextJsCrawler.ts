@@ -21,6 +21,8 @@ interface NextJsCrawlerOptions {
     threads: number;
     research: boolean;
     maxIterations: number;
+    /** Called with newly discovered downloadable URLs as they are found. */
+    onUrlsDiscovered?: (urls: string[]) => void;
 }
 
 /**
@@ -50,6 +52,9 @@ class NextJsCrawler {
     /** Maximum number of recursive passes before giving up. */
     private MAX_ITERATIONS: number;
 
+    /** Callback invoked with newly discovered downloadable URLs. */
+    private readonly onUrlsDiscovered?: (urls: string[]) => void;
+
     constructor(options: NextJsCrawlerOptions) {
         this.url = options.url;
         this.output = options.output;
@@ -58,6 +63,7 @@ class NextJsCrawler {
         this.threads = options.threads;
         this.research = options.research;
         this.MAX_ITERATIONS = options.maxIterations;
+        this.onUrlsDiscovered = options.onUrlsDiscovered;
 
         this.discoveredUrls = new Set();
         this.visitedPageUrls = new Set();
@@ -78,6 +84,20 @@ class NextJsCrawler {
         return newUrls;
     }
 
+    /** Emit newly discovered downloadable assets to the onUrlsDiscovered callback. */
+    private emitDownloadable(urls: string[]): void {
+        if (!this.onUrlsDiscovered) return;
+        const downloadable = urls.filter((u) => {
+            try {
+                const p = new URL(u).pathname;
+                return p.endsWith(".js") || p.endsWith(".js.map");
+            } catch {
+                return false;
+            }
+        });
+        if (downloadable.length > 0) this.onUrlsDiscovered(downloadable);
+    }
+
     /** Snapshot the current size so we can detect growth. */
     private get size(): number {
         return this.discoveredUrls.size;
@@ -96,7 +116,7 @@ class NextJsCrawler {
             ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
             ...jsFromScriptTag,
         ];
-        this.registerUrls(jsFromScriptTag);
+        this.emitDownloadable(this.registerUrls(jsFromScriptTag));
         this.visitedPageUrls.add(this.url);
 
         // 1b. Client-side paths from <a href> tags on the landing page.
@@ -107,19 +127,19 @@ class NextJsCrawler {
             ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
             ...pathsFromAnchors,
         ];
-        this.registerUrls(pathsFromAnchors);
+        this.emitDownloadable(this.registerUrls(pathsFromAnchors));
 
         // 2. Webpack runtime analysis (puppeteer – expensive, run once)
         const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
         this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
         lazyLoadGlobals.pushToJsUrls(jsFromWebpack);
-        this.registerUrls(jsFromWebpack);
+        this.emitDownloadable(this.registerUrls(jsFromWebpack));
 
         // 3. _buildManifest.js
         const jsFromBuildManifest = await next_getLazyResourcesBuildManifestJs(this.url);
         this.techniqueEfficiencyMapping["next_getLazyResourcesBuildManifestJs"] = jsFromBuildManifest;
         lazyLoadGlobals.pushToJsUrls(jsFromBuildManifest);
-        this.registerUrls(jsFromBuildManifest);
+        this.emitDownloadable(this.registerUrls(jsFromBuildManifest));
 
         // 4. Subsequent requests (RSC / script-tags on known endpoints)
         if (this.subsequentRequestsFlag) {
@@ -131,17 +151,17 @@ class NextJsCrawler {
                 lazyLoadGlobals.getJsUrls()
             );
             this.techniqueEfficiencyMapping["subsequentRequests"] = [...jsFromSubsequent];
-            this.registerUrls([...jsFromSubsequent]);
+            this.emitDownloadable(this.registerUrls([...jsFromSubsequent]));
 
             const jsFromScriptTagsSR = await next_scriptTagsSubsequentRequests(this.url, this.urlsFile);
             this.techniqueEfficiencyMapping["next_scriptTagsSubsequentRequests"] = jsFromScriptTagsSR;
             lazyLoadGlobals.pushToJsUrls(jsFromScriptTagsSR);
-            this.registerUrls(jsFromScriptTagsSR);
+            this.emitDownloadable(this.registerUrls(jsFromScriptTagsSR));
         }
 
         // Also pull in anything the globals accumulated
-        this.registerUrls(lazyLoadGlobals.getJsUrls());
-        this.registerUrls(lazyLoadGlobals.getJsonUrls());
+        this.emitDownloadable(this.registerUrls(lazyLoadGlobals.getJsUrls()));
+        this.emitDownloadable(this.registerUrls(lazyLoadGlobals.getJsonUrls()));
     }
 
     // ── recursive discovery ──────────────────────────────────────────────
@@ -162,7 +182,9 @@ class NextJsCrawler {
             ...(this.techniqueEfficiencyMapping["next_promiseResolve"] || []),
             ...jsFromPromise,
         ];
-        newInThisPass.push(...this.registerUrls(jsFromPromise));
+        const newFromPromise = this.registerUrls(jsFromPromise);
+        this.emitDownloadable(newFromPromise);
+        newInThisPass.push(...newFromPromise);
 
         // Layout.js parsing → discovers new client-side page paths → visits them
         const jsFromLayout = await next_parseLayoutJs(this.url, jsUrls);
@@ -170,7 +192,9 @@ class NextJsCrawler {
             ...(this.techniqueEfficiencyMapping["next_parseLayoutJs"] || []),
             ...jsFromLayout,
         ];
-        newInThisPass.push(...this.registerUrls(jsFromLayout));
+        const newFromLayout = this.registerUrls(jsFromLayout);
+        this.emitDownloadable(newFromLayout);
+        newInThisPass.push(...newFromLayout);
 
         // Build a queue of unvisited page URLs to walk. Seed it with:
         //   - unvisited page URLs from the input batch (anchor-derived URLs
@@ -221,6 +245,7 @@ class NextJsCrawler {
             ];
 
             const newFromScripts = this.registerUrls(extra);
+            this.emitDownloadable(newFromScripts);
             newInThisPass.push(...newFromScripts);
             for (const x of newFromScripts) enqueueIfPage(x);
 
@@ -232,6 +257,7 @@ class NextJsCrawler {
                 ...morePaths,
             ];
             const newFromAnchors = this.registerUrls(morePaths);
+            this.emitDownloadable(newFromAnchors);
             newInThisPass.push(...newFromAnchors);
             for (const x of newFromAnchors) enqueueIfPage(x);
         }
@@ -282,7 +308,7 @@ class NextJsCrawler {
         const allJsUrls = [...this.discoveredUrls].filter((u) => u.endsWith(".js") || u.endsWith(".js.map"));
         const jsFromBrute = await next_bruteForceJsFiles(allJsUrls);
         this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;
-        this.registerUrls(jsFromBrute);
+        this.emitDownloadable(this.registerUrls(jsFromBrute));
 
         // Only return downloadable assets. Anchor-derived page URLs live in
         // discoveredUrls to drive the crawl, but must not reach downloadFiles.

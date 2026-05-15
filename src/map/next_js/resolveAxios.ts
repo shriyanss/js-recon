@@ -64,11 +64,16 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
         const chunkCode = chunk.code;
         let axiosCallsFound = false;
 
-        const ast = parser.parse(chunkCode, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let ast;
+        try {
+            ast = parser.parse(chunkCode, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
 
         // First, check for the n(...).Z.create() pattern
         const zDotCreateInstances: { [key: string]: string } = {};

@@ -85,11 +85,16 @@ const findAxiosInstanceExport = (chunkId: string, axiosVarName: string, chunks: 
     }
 
     const chunkCode = chunk.code;
-    const ast = parser.parse(chunkCode, {
-        sourceType: "unambiguous",
-        plugins: ["jsx", "typescript"],
-        errorRecovery: true,
-    });
+    let ast;
+    try {
+        ast = parser.parse(chunkCode, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch {
+        return null;
+    }
 
     let foundExportName: string | null = null;
 
@@ -180,11 +185,16 @@ const processImportingChunk = (
     }
 
     const chunkCode = importingChunk.code;
-    const ast = parser.parse(chunkCode, {
-        sourceType: "unambiguous",
-        plugins: ["jsx", "typescript"],
-        errorRecovery: true,
-    });
+    let ast;
+    try {
+        ast = parser.parse(chunkCode, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch {
+        return;
+    }
 
     // Get the third argument (import function)
     const thirdArg = getThirdArg(ast);

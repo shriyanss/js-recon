@@ -51,11 +51,16 @@ const getFetchInstances = async (chunks: Chunks, output: string, formats: string
 
     //   iterate through the chunks, and check fetch instances
     for (let chunk of Object.values(chunks)) {
-        const chunkAst = parser.parse(chunk.code, {
-            sourceType: "module",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let chunkAst;
+        try {
+            chunkAst = parser.parse(chunk.code, {
+                sourceType: "module",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
         const fetchAliases = new Set();
         const fetchCalls = new Set();
         traverse(chunkAst, {

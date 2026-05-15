@@ -560,11 +560,16 @@ export const resolveWebpackChunkImport = (
         }
 
         // Parse the target chunk
-        const targetAst = parser.parse(targetChunk.code, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let targetAst;
+        try {
+            targetAst = parser.parse(targetChunk.code, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            return `[webpack_import: chunk_${targetChunkId}]`;
+        }
 
         // Find the export for the first property in memberPath
         const firstProperty = memberPath[0];
@@ -1319,11 +1324,16 @@ export const resolveNodeValue = (
                     // first, match as regex
                     if (nodeCode.replace(/\n\s*/g, "").match(/^"[^"]*"(\.concat\(.+\))+$/)) {
                         // parse it separately with ast
-                        const ast = parser.parse(nodeCode, {
-                            sourceType: "unambiguous",
-                            plugins: ["jsx", "typescript"],
-                            errorRecovery: true,
-                        });
+                        let ast;
+                        try {
+                            ast = parser.parse(nodeCode, {
+                                sourceType: "unambiguous",
+                                plugins: ["jsx", "typescript"],
+                                errorRecovery: true,
+                            });
+                        } catch {
+                            break;
+                        }
 
                         // get all the concat calls first. Like .concat(...)
                         // I want to only get concat() and nothing else. Also, it doesn't matter how many times they are called
