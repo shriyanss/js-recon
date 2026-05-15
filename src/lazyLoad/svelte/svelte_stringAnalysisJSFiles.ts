@@ -97,8 +97,9 @@ const svelte_stringAnalysisJSFiles = async (url) => {
                 if (analyzedFiles.includes(resolvedPath)) {
                     continue;
                 }
-                pushToJsUrls(resolvedPath);
-                filesFound.push(resolvedPath);
+                if (pushToJsUrls(resolvedPath) > 0) {
+                    filesFound.push(resolvedPath);
+                }
             }
 
             analyzedFiles.push(js_url);
