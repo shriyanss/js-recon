@@ -239,10 +239,7 @@ const traceFetchFunctionCalls = (
  * single module's code. Used to resolve URL placeholders when the fetch
  * wrapper is a non-exported (module-internal) function.
  */
-const traceInternalFunctionCalls = (
-    functionName: string,
-    moduleCode: string
-): any[] => {
+const traceInternalFunctionCalls = (functionName: string, moduleCode: string): any[] => {
     try {
         const ast = parser.parse(moduleCode, {
             sourceType: "module",
@@ -372,7 +369,15 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                         // extract the whole code from the main file just in case the resolution fails
                         const argText = fileContent.slice(args[0].start, args[0].end).replace(/\n\s*/g, "");
 
-                        let url = resolveNodeValue(args[0], path.scope, argText, "fetch", fileContent, chunks, thirdArgName);
+                        let url = resolveNodeValue(
+                            args[0],
+                            path.scope,
+                            argText,
+                            "fetch",
+                            fileContent,
+                            chunks,
+                            thirdArgName
+                        );
 
                         // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk.
                         // Use chunk.code (module-scoped) rather than the entire fileContent to prevent
@@ -398,13 +403,27 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                 const internalCallArgs = traceInternalFunctionCalls(wrapperName, chunk.code);
                                 if (internalCallArgs.length > 0) {
                                     // Use the first resolved arg as a representative URL component
-                                    const firstArgResolved = resolveNodeValue(internalCallArgs[0], path.scope, "", "fetch", fileContent, chunks, thirdArgName);
-                                    if (firstArgResolved && typeof firstArgResolved === "string" && !firstArgResolved.startsWith("[")) {
+                                    const firstArgResolved = resolveNodeValue(
+                                        internalCallArgs[0],
+                                        path.scope,
+                                        "",
+                                        "fetch",
+                                        fileContent,
+                                        chunks,
+                                        thirdArgName
+                                    );
+                                    if (
+                                        firstArgResolved &&
+                                        typeof firstArgResolved === "string" &&
+                                        !firstArgResolved.startsWith("[")
+                                    ) {
                                         // Replace [var X] with the resolved caller argument
                                         const varMatch = url.match(/\[var ([^\]]+)\]/);
                                         if (varMatch) {
                                             url = url.replace(varMatch[0], firstArgResolved);
-                                            console.log(chalk.cyan(`    [i] Resolved URL from internal caller: ${url}`));
+                                            console.log(
+                                                chalk.cyan(`    [i] Resolved URL from internal caller: ${url}`)
+                                            );
                                         }
                                     }
                                 }
@@ -547,14 +566,24 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                             directory
                                         );
                                         if (actualCallArg) {
-                                            const callerUrl = resolveNodeValue(actualCallArg, path.scope, "", "fetch", fileContent, chunks, thirdArgName);
+                                            const callerUrl = resolveNodeValue(
+                                                actualCallArg,
+                                                path.scope,
+                                                "",
+                                                "fetch",
+                                                fileContent,
+                                                chunks,
+                                                thirdArgName
+                                            );
                                             if (
                                                 callerUrl &&
                                                 typeof callerUrl === "string" &&
                                                 !callerUrl.startsWith("[unresolved") &&
                                                 !callerUrl.startsWith("[error")
                                             ) {
-                                                console.log(chalk.cyan(`    [i] Resolved URL from caller: ${callerUrl}`));
+                                                console.log(
+                                                    chalk.cyan(`    [i] Resolved URL from caller: ${callerUrl}`)
+                                                );
                                                 resolvedUrl = callerUrl;
                                             }
                                         }

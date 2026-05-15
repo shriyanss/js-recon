@@ -77,11 +77,7 @@ const findWrapperClasses = (chunks: Chunks): Map<string, Set<string>> => {
                     path.node.arguments[1].type === "ObjectExpression"
                 ) {
                     for (const prop of path.node.arguments[1].properties) {
-                        if (
-                            prop.type !== "ObjectProperty" ||
-                            prop.key.type !== "Identifier"
-                        )
-                            continue;
+                        if (prop.type !== "ObjectProperty" || prop.key.type !== "Identifier") continue;
                         const exportName = prop.key.name;
                         const value = prop.value;
                         // Pattern: A: () => E
@@ -182,10 +178,7 @@ const findNewExpressionsWithUrl = (ast: any): any[] => {
 
             // Must have a `url` property (heuristic for HTTP config)
             const hasUrl = first.properties.some(
-                (p: any) =>
-                    p.type === "ObjectProperty" &&
-                    p.key.type === "Identifier" &&
-                    p.key.name === "url"
+                (p: any) => p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "url"
             );
             if (!hasUrl) return;
 
@@ -264,17 +257,10 @@ const resolveCalleeToWrapperChunk = (
  * Extract a known string field (e.g., "method") from the first ObjectExpression
  * argument of a `new` call. Returns the raw value (uppercased for methods) or null.
  */
-const extractObjectField = (
-    objExpr: any,
-    fieldName: string
-): { rawNode: any; stringValue: string | null } | null => {
+const extractObjectField = (objExpr: any, fieldName: string): { rawNode: any; stringValue: string | null } | null => {
     if (!objExpr || objExpr.type !== "ObjectExpression") return null;
     for (const prop of objExpr.properties) {
-        if (
-            prop.type === "ObjectProperty" &&
-            prop.key.type === "Identifier" &&
-            prop.key.name === fieldName
-        ) {
+        if (prop.type === "ObjectProperty" && prop.key.type === "Identifier" && prop.key.name === fieldName) {
             let val: string | null = null;
             if (prop.value.type === "StringLiteral") val = prop.value.value;
             return { rawNode: prop.value, stringValue: val };
@@ -362,10 +348,7 @@ const findFactoryDoCallArg = (factoryName: string, ast: any): any | null => {
                     return;
                 }
                 // Case B: instance.do(arg) where instance came from factoryName()
-                if (
-                    callee.object.type === "Identifier" &&
-                    instanceVars.has(callee.object.name)
-                ) {
+                if (callee.object.type === "Identifier" && instanceVars.has(callee.object.name)) {
                     result = p.node.arguments[0];
                     p.stop();
                     return;
@@ -420,8 +403,12 @@ const traceDoCallAcrossChunks = (
                     p.node.id.type === "Identifier"
                 ) {
                     const arg = init.arguments[0];
-                    const argVal = arg.type === "NumericLiteral" ? String(arg.value)
-                                 : arg.type === "StringLiteral" ? arg.value : null;
+                    const argVal =
+                        arg.type === "NumericLiteral"
+                            ? String(arg.value)
+                            : arg.type === "StringLiteral"
+                              ? arg.value
+                              : null;
                     if (argVal === sourceChunkId) {
                         localBinding = p.node.id.name;
                     }
@@ -442,7 +429,8 @@ const traceDoCallAcrossChunks = (
                 c.object.name === localBinding &&
                 c.property.type === "Identifier" &&
                 c.property.name === factoryExportName
-            ) return true;
+            )
+                return true;
             // (0, localBinding.factoryExportName)(...)
             if (c.type === "SequenceExpression" && c.expressions.length === 2) {
                 const last = c.expressions[1];
@@ -452,7 +440,8 @@ const traceDoCallAcrossChunks = (
                     last.object.name === localBinding &&
                     last.property.type === "Identifier" &&
                     last.property.name === factoryExportName
-                ) return true;
+                )
+                    return true;
             }
             return false;
         };
@@ -515,7 +504,8 @@ const traceDoCallAcrossChunks = (
                     callee.property.type !== "Identifier" ||
                     !DO_METHODS.has(callee.property.name) ||
                     p.node.arguments.length === 0
-                ) return;
+                )
+                    return;
 
                 const recv = callee.object;
 
@@ -575,11 +565,7 @@ const resolveNewRequest = async (chunks: Chunks, directory: string) => {
     }
 
     for (const [chunkId, exports] of wrappers.entries()) {
-        console.log(
-            chalk.green(
-                `    [✓] Wrapper class chunk ${chunkId} exports: ${Array.from(exports).join(", ")}`
-            )
-        );
+        console.log(chalk.green(`    [✓] Wrapper class chunk ${chunkId} exports: ${Array.from(exports).join(", ")}`));
     }
 
     // Also collect, per wrapper chunk, the set of "factory" export bindings
@@ -724,11 +710,7 @@ const resolveNewRequest = async (chunks: Chunks, directory: string) => {
 
             const lineNo = findLineInFile(fileContent, chunk.code, newPath.node);
 
-            console.log(
-                chalk.blue(
-                    `[+] Found wrapped HTTP request in chunk ${chunk.id} ("${filePath}":${lineNo})`
-                )
-            );
+            console.log(chalk.blue(`[+] Found wrapped HTTP request in chunk ${chunk.id} ("${filePath}":${lineNo})`));
             // For dataType="query", attach the resolved arg keys as a query string
             // to the URL so the OpenAPI generator surfaces them as `in: query` params.
             let finalUrl = typeof url === "string" ? url : String(url ?? "");

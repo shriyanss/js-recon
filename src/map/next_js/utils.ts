@@ -664,8 +664,7 @@ export const resolveWebpackChunkImport = (
                 node.type === "CallExpression" &&
                 (node as any).callee?.type === "MemberExpression" &&
                 (node as any).callee.property?.type === "Identifier" &&
-                ((node as any).callee.property.name === "freeze" ||
-                    (node as any).callee.property.name === "assign") &&
+                ((node as any).callee.property.name === "freeze" || (node as any).callee.property.name === "assign") &&
                 (node as any).arguments?.length > 0
             ) {
                 return convertAstToValue((node as any).arguments[0], remainingPath);
@@ -1094,8 +1093,14 @@ export const resolveNodeValue = (
                         const initNode = (binding.path.node as any).init;
                         // Update nodeCode to the actual source of the init so that concat
                         // patterns (e.g. "".concat(x, "/path")) are re-parsed correctly
-                        if (chunkCode && typeof (initNode as any).start === "number" && typeof (initNode as any).end === "number") {
-                            nodeCode = chunkCode.slice((initNode as any).start, (initNode as any).end).replace(/\n\s*/g, "");
+                        if (
+                            chunkCode &&
+                            typeof (initNode as any).start === "number" &&
+                            typeof (initNode as any).end === "number"
+                        ) {
+                            nodeCode = chunkCode
+                                .slice((initNode as any).start, (initNode as any).end)
+                                .replace(/\n\s*/g, "");
                         }
                         currentNode = initNode;
                         continue;
@@ -1168,7 +1173,11 @@ export const resolveNodeValue = (
                         let walker: any = currentNode;
                         let rootIdent: string | null = null;
                         while (walker) {
-                            if (walker.type === "MemberExpression" && !walker.computed && walker.property.type === "Identifier") {
+                            if (
+                                walker.type === "MemberExpression" &&
+                                !walker.computed &&
+                                walker.property.type === "Identifier"
+                            ) {
                                 chain.unshift(walker.property.name);
                                 walker = walker.object;
                             } else if (walker.type === "Identifier") {
