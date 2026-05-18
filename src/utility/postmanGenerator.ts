@@ -116,7 +116,16 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
     const seen = new Set<string>();
 
     for (const item of items) {
-        const rawPath = typeof item.path === "string" ? item.path : "";
+        let rawPath = typeof item.path === "string" ? item.path : "";
+        // If path is an absolute URL, extract just the pathname so we don't
+        // prepend {{baseUrl}} to an already-complete URL.
+        try {
+            if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
+                rawPath = new URL(rawPath).pathname;
+            }
+        } catch {
+            // leave rawPath as-is if URL parsing fails
+        }
         const normalized = replacePlaceholders(rawPath.startsWith("/") ? rawPath : `/${rawPath}`);
         const method = typeof item.method === "string" ? item.method.toUpperCase() : "GET";
         const dedupeKey = `${method} ${normalized}`;
@@ -166,11 +175,22 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         };
 
         if (item.body && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-            request.body = {
-                mode: "raw",
-                raw: buildBodyExample(item.body) ?? item.body,
-                options: { raw: { language: "json" } },
-            };
+            const bodyRaw = buildBodyExample(item.body) ?? item.body;
+            // Skip bodies that are empty objects — they only contain unresolvable spread artifacts.
+            let isEmptyObject = false;
+            try {
+                const parsed = JSON.parse(bodyRaw);
+                isEmptyObject = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && Object.keys(parsed).length === 0;
+            } catch {}
+            if (!isEmptyObject) {
+                request.body = {
+                    mode: "raw",
+                    raw: bodyRaw,
+                    options: { raw: { language: "json" } },
+                };
+            } else {
+                request.body = { mode: "none" };
+            }
         } else {
             request.body = { mode: "none" };
         }

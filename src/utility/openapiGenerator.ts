@@ -145,7 +145,13 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     };
 
     for (const item of items) {
-        const pathKeyBeforeQuery = typeof item.path === "string" ? item.path.split("?")[0] : "";
+        let rawItemPath = typeof item.path === "string" ? item.path : "";
+        try {
+            if (rawItemPath.startsWith("http://") || rawItemPath.startsWith("https://")) {
+                rawItemPath = new URL(rawItemPath).pathname;
+            }
+        } catch {}
+        const pathKeyBeforeQuery = rawItemPath.split("?")[0];
         const pathKey = replacePlaceholders(
             pathKeyBeforeQuery.startsWith("/") ? pathKeyBeforeQuery : `/${pathKeyBeforeQuery}`
         );

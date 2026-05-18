@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import cliProgress from "cli-progress";
 import fs from "fs";
 import frameworkDetect from "./techDetect/index.js";
 import CONFIG from "../globalConfig.js";
@@ -218,47 +217,21 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                const downloadBar = new cliProgress.SingleBar(
-                    {
-                        format:
-                            chalk.cyan("[i] Downloading JS files ") +
-                            "[{bar}] {percentage}% | {value}/{total} | {downloaded} downloaded",
-                        barCompleteChar: "█",
-                        barIncompleteChar: "░",
-                        hideCursor: true,
-                        clearOnComplete: false,
-                        stopOnComplete: false,
-                    },
-                    cliProgress.Presets.shades_classic
-                );
-                let downloadBarStarted = false;
-
-                const queue = new DownloadQueue(output, threads, {
-                    onProgress: (processed, total, downloaded) => {
-                        if (!downloadBarStarted) {
-                            downloadBar.start(total, processed, { downloaded });
-                            downloadBarStarted = true;
-                        } else {
-                            downloadBar.setTotal(total);
-                            downloadBar.update(processed, { downloaded });
-                        }
-                    },
-                });
+                const queue = new DownloadQueue(output, threads);
+                const onFilesDiscovered = (files: string[]) => queue.push(files);
 
                 // run the full discovery pipeline against the entry URL
-                const { jsFiles, clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb);
-                queue.push(jsFiles);
+                const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered);
 
                 // recurse the same pipeline through every client-side path we found
-                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(
+                await vue_recursiveClientSidePathDownload(
                     clientSidePaths,
                     threads,
-                    maxJsSizeMb
+                    maxJsSizeMb,
+                    onFilesDiscovered
                 );
-                queue.push(recursivelyDiscovered);
 
                 await queue.drain();
-                if (downloadBarStarted) downloadBar.stop();
                 queue.printSummary();
 
                 // extract the source maps

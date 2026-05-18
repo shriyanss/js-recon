@@ -62,7 +62,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
                 "[{bar}] {percentage}% | {value}/{total} | {phase}",
             barCompleteChar: "█",
             barIncompleteChar: "░",
-            hideCursor: true,
+            hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
         },

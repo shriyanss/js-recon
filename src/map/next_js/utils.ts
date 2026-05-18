@@ -1063,7 +1063,22 @@ export const resolveNodeValue = (
                                         prop.value.callee.property.type === "Identifier" &&
                                         prop.value.callee.property.name === "stringify"
                                     ) {
-                                        obj[key] = "[call to object...]";
+                                        // Nested JSON.stringify(expr) — resolve expr so we show what's being serialized.
+                                        const innerArgs = prop.value.arguments;
+                                        if (innerArgs.length > 0) {
+                                            obj[key] =
+                                                resolveNodeValue(
+                                                    innerArgs[0] as Node,
+                                                    scope,
+                                                    "",
+                                                    callType,
+                                                    chunkCode,
+                                                    chunks,
+                                                    thirdArgName
+                                                ) ?? "[call to object...]";
+                                        } else {
+                                            obj[key] = "[call to object...]";
+                                        }
                                     } else {
                                         obj[key] = resolveNodeValue(
                                             prop.value,
@@ -1076,14 +1091,26 @@ export const resolveNodeValue = (
                                         ) ?? `[${prop.value.type}]`;
                                     }
                                 } else if (prop.type === "SpreadElement") {
-                                    const argName =
-                                        prop.argument.type === "Identifier"
-                                            ? prop.argument.name
-                                            : prop.argument.type;
-                                    obj["...spread"] = `[spread:${argName}]`;
+                                    // Skip unresolvable spread elements — they're code artifacts,
+                                    // not actual body fields.
                                 }
                             }
                             return obj;
+                        } else if (args.length > 0) {
+                            // Argument isn't a literal object — try resolving it (handles Identifier,
+                            // ConditionalExpression, etc.) so we can surface the actual body shape.
+                            const resolved = resolveNodeValue(
+                                args[0] as Node,
+                                scope,
+                                nodeCode,
+                                callType,
+                                chunkCode,
+                                chunks,
+                                thirdArgName
+                            );
+                            if (resolved !== null && resolved !== undefined && resolved !== "[call_stack_exceeded_use_better_machine]") {
+                                return resolved;
+                            }
                         }
                     }
                 }
@@ -1476,6 +1503,62 @@ export const resolveNodeValue = (
                         currentNode = currentNode.arguments[0];
                         continue;
                     }
+                    if (
+                        currentNode.callee.type === "Identifier" &&
+                        currentNode.callee.name === "URLSearchParams" &&
+                        currentNode.arguments.length > 0
+                    ) {
+                        const spArg = currentNode.arguments[0];
+                        if (spArg.type === "ObjectExpression") {
+                            const params: string[] = [];
+                            for (const prop of spArg.properties) {
+                                if (prop.type !== "ObjectProperty") continue;
+                                const key =
+                                    prop.key.type === "Identifier"
+                                        ? prop.key.name
+                                        : prop.key.type === "StringLiteral"
+                                          ? prop.key.value
+                                          : null;
+                                if (!key) continue;
+                                const val = resolveNodeValue(
+                                    prop.value,
+                                    scope,
+                                    nodeCode,
+                                    callType,
+                                    chunkCode,
+                                    chunks,
+                                    thirdArgName
+                                );
+                                if (val === "[call_stack_exceeded_use_better_machine]") return val;
+                                // Use the literal value when fully resolved; otherwise use {key} as placeholder.
+                                const valStr =
+                                    val !== null &&
+                                    val !== undefined &&
+                                    !String(val).startsWith("[")
+                                        ? encodeURIComponent(String(val))
+                                        : `{${key}}`;
+                                params.push(`${key}=${valStr}`);
+                            }
+                            if (params.length > 0) return params.join("&");
+                        }
+                        // Non-object arg — try to resolve it directly
+                        const spResolved = resolveNodeValue(
+                            spArg,
+                            scope,
+                            nodeCode,
+                            callType,
+                            chunkCode,
+                            chunks,
+                            thirdArgName
+                        );
+                        if (
+                            spResolved !== null &&
+                            spResolved !== undefined &&
+                            spResolved !== "[call_stack_exceeded_use_better_machine]"
+                        ) {
+                            return String(spResolved);
+                        }
+                    }
                     return `[unresolved new expression]`;
                 }
                 case "LogicalExpression": {
@@ -1539,19 +1622,72 @@ export const resolveNodeValue = (
                     if (right === "[call_stack_exceeded_use_better_machine]") {
                         return right;
                     }
-                    if (
-                        left !== null &&
-                        right !== null &&
-                        !String(left).startsWith("[") &&
-                        !String(right).startsWith("[")
-                    ) {
-                        // eslint-disable-next-line default-case
-                        switch (currentNode.operator) {
-                            case "+":
-                                return left + right;
+                    if (currentNode.operator === "+") {
+                        const leftOk = left !== null && left !== undefined;
+                        const rightOk = right !== null && right !== undefined;
+                        // Fully resolved — concatenate directly.
+                        if (
+                            leftOk &&
+                            rightOk &&
+                            !String(left).startsWith("[") &&
+                            !String(right).startsWith("[")
+                        ) {
+                            return left + right;
                         }
+                        // Partially resolved — concatenate what we have so the caller
+                        // at least sees the resolvable fragments alongside the placeholders.
+                        if (leftOk && rightOk) {
+                            return `${left}${right}`;
+                        }
+                        if (leftOk) return String(left);
+                        if (rightOk) return String(right);
                     }
                     return `[unresolved binary expression: ${currentNode.operator}]`;
+                }
+                case "ArrayExpression": {
+                    const elements: any[] = [];
+                    for (const element of currentNode.elements) {
+                        if (element === null) {
+                            elements.push(null);
+                            continue;
+                        }
+                        const resolved = resolveNodeValue(
+                            element,
+                            scope,
+                            nodeCode,
+                            callType,
+                            chunkCode,
+                            chunks,
+                            thirdArgName
+                        );
+                        if (resolved === "[call_stack_exceeded_use_better_machine]") return resolved;
+                        elements.push(resolved);
+                    }
+                    return elements;
+                }
+                case "UnaryExpression": {
+                    if (currentNode.operator === "void") return null;
+                    const operand = resolveNodeValue(
+                        (currentNode as any).argument,
+                        scope,
+                        nodeCode,
+                        callType,
+                        chunkCode,
+                        chunks,
+                        thirdArgName
+                    );
+                    if (operand === "[call_stack_exceeded_use_better_machine]") return operand;
+                    if (currentNode.operator === "!") {
+                        if (typeof operand === "boolean") return !operand;
+                        if (typeof operand === "number") return operand === 0;
+                        return "<boolean>";
+                    }
+                    if (currentNode.operator === "-") {
+                        if (typeof operand === "number") return -operand;
+                        return "<number>";
+                    }
+                    if (currentNode.operator === "typeof") return "<string>";
+                    return "<unknown>";
                 }
                 default:
                     return `[unsupported node type: ${currentNode.type}]`;

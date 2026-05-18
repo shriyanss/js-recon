@@ -20,7 +20,7 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                 "[{bar}] {percentage}% | {value}/{total} files | {paths} paths | {skipped} skipped",
             barCompleteChar: "█",
             barIncompleteChar: "░",
-            hideCursor: true,
+            hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
         },

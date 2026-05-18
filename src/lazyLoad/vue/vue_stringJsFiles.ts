@@ -119,7 +119,7 @@ const vue_stringJsFiles = async (knownJsFiles: string[], maxJsSizeMb: number = 2
                 "[{bar}] {percentage}% | {value}/{total} files | {refs} refs found",
             barCompleteChar: "█",
             barIncompleteChar: "░",
-            hideCursor: true,
+            hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
         },
