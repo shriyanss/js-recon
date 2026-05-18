@@ -14,6 +14,10 @@ import { extractStrings } from "../../strings/index.js";
  */
 const resolveJsString = (str: string, jsFileUrl: string): string | null => {
     try {
+        if (str.startsWith("http://") || str.startsWith("https://")) {
+            return new URL(str).href;
+        }
+
         const fileUrl = new URL(jsFileUrl);
 
         if (str.startsWith("./") || str.startsWith("../")) {
