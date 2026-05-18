@@ -5,6 +5,8 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls } from "../globals.js";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Scrapes all lazy-loaded JavaScript file URLs from the provided Next.js page.
  *
@@ -18,8 +20,15 @@ import { getJsUrls } from "../globals.js";
  */
 const next_getJSScript = async (url: string): Promise<string[]> => {
     const toReturn: string[] = [];
-    // get the page source
-    const res = await makeRequest(url, {});
+    // get the page source — retry until the request succeeds
+    let res: Response | null = null;
+    while (!res) {
+        res = await makeRequest(url, {});
+        if (!res) {
+            console.log(chalk.yellow(`[!] Request to ${url} failed, retrying...`));
+            await sleep(1000);
+        }
+    }
     const pageSource = await res.text();
 
     // cheerio to parse the page source
@@ -69,7 +78,7 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
             // to get these, simply regex from the JS script
 
             const js_script = $(scriptTag).html();
-            const matches = js_script.match(/static\/chunks\/[a-zA-Z0-9_\-~.]+\.js/g);
+            const matches = js_script?.match(/static\/chunks\/[a-zA-Z0-9_\-~.]+\.js/g);
 
             if (matches) {
                 const uniqueMatches = [...new Set(matches)];

@@ -18,7 +18,15 @@ const next_scriptTagsSubsequentRequests = async (url: string, endpointsFile: str
 
     // go through all endpoints, and parse them
     for (const endpoint of endpoints) {
-        const reqUrl = new URL(endpoint, url).href;
+        // skip anything that isn't a valid relative path or absolute URL
+        if (!/^(\/|https?:\/\/)/.test(endpoint)) continue;
+
+        let reqUrl: string;
+        try {
+            reqUrl = new URL(endpoint, url).href;
+        } catch {
+            continue;
+        }
         const jsUrlsFromEndpoint = await next_getJSScript(reqUrl);
         jsUrls.push(...jsUrlsFromEndpoint);
     }
