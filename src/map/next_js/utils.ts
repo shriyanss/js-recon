@@ -664,15 +664,49 @@ export const resolveWebpackChunkImport = (
         const convertAstToValue = (node: Node, remainingPath: string[] = []): any => {
             if (!node) return null;
 
-            // Unwrap Object.freeze({...}) and similar one-arg wrappers that return their first arg.
+            // Unwrap Object.freeze({...}) — single-arg wrapper that returns its first arg.
             if (
                 node.type === "CallExpression" &&
                 (node as any).callee?.type === "MemberExpression" &&
                 (node as any).callee.property?.type === "Identifier" &&
-                ((node as any).callee.property.name === "freeze" || (node as any).callee.property.name === "assign") &&
+                (node as any).callee.property.name === "freeze" &&
                 (node as any).arguments?.length > 0
             ) {
                 return convertAstToValue((node as any).arguments[0], remainingPath);
+            }
+
+            // Unwrap Object.assign(target, ...sources) by merging each arg's properties
+            // so downstream remainingPath lookups can resolve keys contributed by sources.
+            if (
+                node.type === "CallExpression" &&
+                (node as any).callee?.type === "MemberExpression" &&
+                (node as any).callee.property?.type === "Identifier" &&
+                (node as any).callee.property.name === "assign" &&
+                (node as any).arguments?.length > 0
+            ) {
+                const merged: { [key: string]: any } = {};
+                for (const arg of (node as any).arguments) {
+                    const value = convertAstToValue(arg, []);
+                    if (value && typeof value === "object" && !Array.isArray(value)) {
+                        Object.assign(merged, value);
+                    }
+                }
+                if (remainingPath.length === 0) return merged;
+                const [next, ...rest] = remainingPath;
+                if (next in merged) {
+                    const v = merged[next];
+                    if (rest.length === 0) return v;
+                    if (v && typeof v === "object") {
+                        let cur: any = v;
+                        for (const k of rest) {
+                            if (cur && typeof cur === "object" && k in cur) cur = cur[k];
+                            else return null;
+                        }
+                        return cur;
+                    }
+                    return null;
+                }
+                return null;
             }
 
             if (node.type === "ObjectExpression") {
