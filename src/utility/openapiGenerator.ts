@@ -155,7 +155,10 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
         const pathKey = replacePlaceholders(
             pathKeyBeforeQuery.startsWith("/") ? pathKeyBeforeQuery : `/${pathKeyBeforeQuery}`
         );
-        const method = typeof item.method === "string" ? item.method.toLowerCase() : "unknown";
+        const VALID_METHODS = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"]);
+        const rawMethod = typeof item.method === "string" ? item.method.toLowerCase() : "";
+        const methodIsValid = VALID_METHODS.has(rawMethod);
+        const method = methodIsValid ? rawMethod : "get";
 
         if (!spec.paths[pathKey]) {
             spec.paths[pathKey] = {};
@@ -222,6 +225,10 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             },
             tags: globalsUtil.getOpenapiChunkTag() ? [item.chunkId] : [],
         };
+
+        if (!methodIsValid) {
+            (operationObject as any).description = `Note: original HTTP method ${JSON.stringify(item.method)} could not be determined; defaulted to GET — verify before use.`;
+        }
 
         if (parameters.length > 0) {
             operationObject.parameters = parameters;
