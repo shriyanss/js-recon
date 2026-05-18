@@ -157,7 +157,7 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
         });
 
         processed++;
-        if (toReturn.length !== pathsBefore) skipped = Math.max(0, skipped);
+        if (toReturn.length === pathsBefore) skipped++;
         bar.update(processed, { paths: toReturn.length, skipped });
     }
 
