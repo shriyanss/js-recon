@@ -1039,7 +1039,24 @@ export const resolveNodeValue = (
                                 if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                                     const key = prop.key.name;
                                     if (prop.value.type === "Identifier") {
-                                        obj[key] = prop.value.name;
+                                        // Try to resolve via scope; fall back to [param:name] for params
+                                        const valBinding = scope.getBinding(prop.value.name);
+                                        if (valBinding && (valBinding.path.node as any).init) {
+                                            const resolved = resolveNodeValue(
+                                                prop.value,
+                                                scope,
+                                                "",
+                                                callType,
+                                                chunkCode,
+                                                chunks,
+                                                thirdArgName
+                                            );
+                                            obj[key] = resolved;
+                                        } else if (valBinding && valBinding.kind === "param") {
+                                            obj[key] = `[param:${prop.value.name}]`;
+                                        } else {
+                                            obj[key] = prop.value.name;
+                                        }
                                     } else if (
                                         prop.value.type === "CallExpression" &&
                                         prop.value.callee.type === "MemberExpression" &&
@@ -1048,13 +1065,22 @@ export const resolveNodeValue = (
                                     ) {
                                         obj[key] = "[call to object...]";
                                     } else {
-                                        // For other types of values, you might want to add more handling
-                                        // For now, we'll just represent them as a string of their type.
-                                        obj[key] = `[${prop.value.type}]`;
+                                        obj[key] = resolveNodeValue(
+                                            prop.value,
+                                            scope,
+                                            "",
+                                            callType,
+                                            chunkCode,
+                                            chunks,
+                                            thirdArgName
+                                        ) ?? `[${prop.value.type}]`;
                                     }
                                 } else if (prop.type === "SpreadElement") {
-                                    // Handle spread elements if necessary, e.g., by adding a placeholder
-                                    obj["...spread"] = `[${prop.argument.type}]`;
+                                    const argName =
+                                        prop.argument.type === "Identifier"
+                                            ? prop.argument.name
+                                            : prop.argument.type;
+                                    obj["...spread"] = `[spread:${argName}]`;
                                 }
                             }
                             return obj;
@@ -1109,6 +1135,9 @@ export const resolveNodeValue = (
                         }
                         currentNode = initNode;
                         continue;
+                    }
+                    if (binding && binding.kind === "param") {
+                        return `[param:${currentNode.name}]`;
                     }
                     return `[unresolved: ${currentNode.name}]`;
                 }
@@ -1252,6 +1281,22 @@ export const resolveNodeValue = (
                         return object[propertyName];
                     }
 
+                    // Build a readable path like [member:e.Rut.toString] for unresolved member expressions
+                    const memberParts: string[] = [];
+                    let memberWalker: any = currentNode;
+                    while (
+                        memberWalker &&
+                        memberWalker.type === "MemberExpression" &&
+                        !memberWalker.computed &&
+                        memberWalker.property.type === "Identifier"
+                    ) {
+                        memberParts.unshift(memberWalker.property.name);
+                        memberWalker = memberWalker.object;
+                    }
+                    if (memberWalker && memberWalker.type === "Identifier" && memberParts.length > 0) {
+                        memberParts.unshift(memberWalker.name);
+                        return `[member:${memberParts.join(".")}]`;
+                    }
                     return `[unresolved member expression]`;
                 }
                 case "CallExpression": {
@@ -1404,7 +1449,19 @@ export const resolveNodeValue = (
                         }
                     }
 
-                    return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
+                    // Build a readable callee label for the placeholder
+                    let calleeLabel = calleeName !== "[unknown]" ? calleeName : "";
+                    if (!calleeLabel && currentNode.callee.type === "MemberExpression") {
+                        const parts: string[] = [];
+                        let c: any = currentNode.callee;
+                        while (c.type === "MemberExpression" && !c.computed && c.property.type === "Identifier") {
+                            parts.unshift(c.property.name);
+                            c = c.object;
+                        }
+                        if (c.type === "Identifier") parts.unshift(c.name);
+                        calleeLabel = parts.join(".");
+                    }
+                    return `[call:${calleeLabel || "?"}()]`;
                 }
                 case "AwaitExpression": {
                     currentNode = (currentNode as any).argument;
