@@ -26,8 +26,8 @@ export const astNodeToJsonString = (node: Node, code: string): string => {
                         const value = astNodeToJsonString(prop.value, code);
                         return `${key}: ${value}`;
                     } else if (prop.type === "SpreadElement") {
-                        // Handle spread elements by trying to resolve them, or returning a placeholder
-                        return `"...${astNodeToJsonString(prop.argument, code)}"`;
+                        // Skip spread elements — they're code artifacts, not real body keys.
+                        return null;
                     }
                     return null; // Or handle other property types if necessary
                 })

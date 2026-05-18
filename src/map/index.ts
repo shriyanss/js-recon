@@ -6,6 +6,7 @@ import getWebpackConnections from "./next_js/getWebpackConnections.js";
 import getTurbopackConnections from "./next_js/getTurbopackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
+import resolveNewRequest from "./next_js/resolveNewRequest.js";
 import interactive from "./next_js/interactive.js";
 import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
@@ -13,11 +14,13 @@ import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
 import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
+import { generatePostmanCollection } from "../utility/postmanGenerator.js";
 import getExports from "./next_js/getExports.js";
 
 // Vue.JS
 import getViteConnections from "./vue_js/getViteConnections.js";
 import vueInteractive from "./vue_js/interactive.js";
+import vue_resolveFetch from "./vue_js/vue_resolveFetch.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -122,6 +125,9 @@ const map = async (
         // also, the axios instances
         await resolveAxios(chunks, directory);
 
+        // wrapper-class HTTP requests:  new X({url, method, ...})
+        await resolveNewRequest(chunks, directory);
+
         if (interactive_mode) {
             await interactive(chunks, `${output}.json`);
         }
@@ -135,6 +141,17 @@ const map = async (
             // write to file
             fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
             console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+
+            // Also emit a Postman Collection v2.1 — Bruno/Insomnia/Postman use its
+            // nested `item` arrays to render real folder hierarchies on import,
+            // which a flat OpenAPI tag list can't represent.
+            const postmanCollection = generatePostmanCollection(getOpenapiOutput());
+            const openapiOutputFile = getOpenapiOutputFile();
+            const postmanOutputFile = openapiOutputFile.endsWith(".json")
+                ? openapiOutputFile.replace(/\.json$/, ".postman_collection.json")
+                : `${openapiOutputFile}.postman_collection.json`;
+            fs.writeFileSync(postmanOutputFile, JSON.stringify(postmanCollection, null, 2));
+            console.log(chalk.green(`[✓] Generated Postman Collection at ${postmanOutputFile}`));
         }
     } else if (tech === "vue") {
         let chunks: Chunks;
@@ -145,8 +162,27 @@ const map = async (
             chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
         }
 
+        // Resolve fetch instances across all Vue.JS files
+        await vue_resolveFetch(directory);
+
         if (interactive_mode) {
             await vueInteractive(chunks, `${output}.json`);
+        }
+
+        // Generate OpenAPI spec and Postman collection if enabled
+        if (getOpenapi() === true) {
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
+            const openapiJson = JSON.stringify(openapiSpec, null, 2);
+            fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
+            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+
+            const postmanCollection = generatePostmanCollection(getOpenapiOutput());
+            const openapiOutputFile = getOpenapiOutputFile();
+            const postmanOutputFile = openapiOutputFile.endsWith(".json")
+                ? openapiOutputFile.replace(/\.json$/, ".postman_collection.json")
+                : `${openapiOutputFile}.postman_collection.json`;
+            fs.writeFileSync(postmanOutputFile, JSON.stringify(postmanCollection, null, 2));
+            console.log(chalk.green(`[✓] Generated Postman Collection at ${postmanOutputFile}`));
         }
     }
 };

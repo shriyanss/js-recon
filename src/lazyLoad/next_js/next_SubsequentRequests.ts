@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import cliProgress from "cli-progress";
 import fs from "fs";
 import path from "path";
 import { getURLDirectory } from "../../utility/urlUtils.js";
@@ -42,8 +43,6 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
     max_queue = threads;
     let staticJSURLs = [];
 
-    console.log(chalk.cyan(`[i] Fetching JS files from subsequent requests`));
-
     // open the urls file, and load the paths (JSON)
     if (!fs.existsSync(urlsFile)) {
         console.log(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
@@ -55,6 +54,21 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
 
     // add `/` to endpoints
     endpoints.push("/");
+
+    const progressBar = new cliProgress.SingleBar(
+        {
+            format:
+                chalk.cyan("[i] Fetching JS files from subsequent requests ") +
+                "[{bar}] {percentage}% | {value}/{total} | {phase}",
+            barCompleteChar: "█",
+            barIncompleteChar: "░",
+            hideCursor: false,
+            clearOnComplete: false,
+            stopOnComplete: false,
+        },
+        cliProgress.Presets.shades_classic
+    );
+    progressBar.start(endpoints.length * 2, 0, { phase: "RSC" });
 
     let js_contents = {};
 
@@ -74,7 +88,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
                 },
             });
 
-            if (res && res.status === 200 && res.headers.get("content-type").includes("text/x-component")) {
+            if (res && res.status === 200 && res.headers.get("content-type")?.includes("text/x-component")) {
                 const text = await res.text();
                 js_contents[endpoint] = text;
 
@@ -120,6 +134,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
             queue--;
             console.log(chalk.red(`[!] Error fetching ${reqUrl}: ${e}`));
         }
+        progressBar.increment(1, { phase: "RSC" });
     });
 
     await Promise.all(reqPromises);
@@ -137,6 +152,10 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
         // make the request to get the contents of the webpage
 
         const req = await makeRequest(reqUrl);
+        if (!req) {
+            progressBar.increment(1, { phase: "HTML" });
+            continue;
+        }
         const resText = await req.text();
         const $ = cheerio.load(resText);
 
@@ -161,7 +180,10 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
                 }
             }
         });
+        progressBar.increment(1, { phase: "HTML" });
     }
+
+    progressBar.stop();
 
     // build the full URL from path
     jsFilesFromPageHtml = jsFilesFromPageHtml.map((file) => {

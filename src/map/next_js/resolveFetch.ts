@@ -234,11 +234,61 @@ const traceFetchFunctionCalls = (
  * @param {Chunks} chunks - A dictionary of chunk names to chunk objects.
  * @param {string} directory - The directory of the chunk file.
  */
+/**
+ * Finds all call-site first-arguments for a given function name within a
+ * single module's code. Used to resolve URL placeholders when the fetch
+ * wrapper is a non-exported (module-internal) function.
+ */
+const traceInternalFunctionCalls = (functionName: string, moduleCode: string): any[] => {
+    try {
+        const ast = parser.parse(moduleCode, {
+            sourceType: "module",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+        const firstArgs: any[] = [];
+        traverse(ast, {
+            CallExpression(path) {
+                const callee = path.node.callee;
+                if (callee.type === "Identifier" && callee.name === functionName && path.node.arguments.length > 0) {
+                    firstArgs.push(path.node.arguments[0]);
+                }
+            },
+        });
+        return firstArgs;
+    } catch {
+        return [];
+    }
+};
+
+/**
+ * Returns true when the chunk's code looks like a Next.js framework-internal
+ * module (RSC router, Server Actions reducer, etc.) that should not be
+ * reported as user-defined API endpoints.
+ */
+const isNextJsFrameworkChunk = (code: string): boolean => {
+    // RSC navigation / router internals
+    if (code.includes("NEXT_RSC_UNION_QUERY") || code.includes("setCacheBustingSearchParam")) {
+        return true;
+    }
+    // Server Actions reducer exported by the Next.js runtime
+    if (code.includes('"serverActionReducer"') || code.includes("serverActionReducer:")) {
+        return true;
+    }
+    return false;
+};
+
 const resolveFetch = async (chunks: Chunks, directory: string) => {
     console.log(chalk.cyan("[i] Resolving fetch instances"));
 
     for (const chunk of Object.values(chunks)) {
         if (!chunk.containsFetch || !chunk.file) {
+            continue;
+        }
+
+        // Skip Next.js framework-internal chunks to avoid noise
+        if (isNextJsFrameworkChunk(chunk.code || "")) {
+            console.log(chalk.gray(`    [i] Skipping Next.js framework chunk ${chunk.id}`));
             continue;
         }
 
@@ -319,16 +369,64 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                         // extract the whole code from the main file just in case the resolution fails
                         const argText = fileContent.slice(args[0].start, args[0].end).replace(/\n\s*/g, "");
 
-                        let url = resolveNodeValue(args[0], path.scope, argText, "fetch");
+                        let url = resolveNodeValue(
+                            args[0],
+                            path.scope,
+                            argText,
+                            "fetch",
+                            fileContent,
+                            chunks,
+                            thirdArgName
+                        );
 
-                        // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk
+                        // Substitute any [var X] or [MemberExpression -> X] placeholders with actual values from the chunk.
+                        // Use chunk.code (module-scoped) rather than the entire fileContent to prevent
+                        // cross-module variable name collisions from polluting the resolved value.
                         if (typeof url === "string" && (url.includes("[var ") || url.includes("[MemberExpression"))) {
-                            const substitutedUrl = substituteVariablesInString(url, fileContent, chunks, thirdArgName);
+                            const substitutedUrl = substituteVariablesInString(url, chunk.code, chunks, thirdArgName);
                             if (substitutedUrl !== url) {
                                 console.log(
                                     chalk.cyan(`    [i] Resolved variables in URL: ${url} -> ${substitutedUrl}`)
                                 );
                                 url = substitutedUrl;
+                            }
+                        }
+
+                        // If the URL still has unresolved [var X] placeholders, try to
+                        // resolve them by tracing internal (non-exported) callers within
+                        // the same module. This handles patterns like:
+                        //   function J(e, t) { fetch("".concat(t.basePath, "/").concat(e)) }
+                        //   J("session", Y)  →  resolved e = "session"
+                        if (typeof url === "string" && url.includes("[var ")) {
+                            const wrapperName = getFunctionNameForFetchCall(path);
+                            if (wrapperName) {
+                                const internalCallArgs = traceInternalFunctionCalls(wrapperName, chunk.code);
+                                if (internalCallArgs.length > 0) {
+                                    // Use the first resolved arg as a representative URL component
+                                    const firstArgResolved = resolveNodeValue(
+                                        internalCallArgs[0],
+                                        path.scope,
+                                        "",
+                                        "fetch",
+                                        fileContent,
+                                        chunks,
+                                        thirdArgName
+                                    );
+                                    if (
+                                        firstArgResolved &&
+                                        typeof firstArgResolved === "string" &&
+                                        !firstArgResolved.startsWith("[")
+                                    ) {
+                                        // Replace [var X] with the resolved caller argument
+                                        const varMatch = url.match(/\[var ([^\]]+)\]/);
+                                        if (varMatch) {
+                                            url = url.replace(varMatch[0], firstArgResolved);
+                                            console.log(
+                                                chalk.cyan(`    [i] Resolved URL from internal caller: ${url}`)
+                                            );
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -440,6 +538,66 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                 path: callUrl || "",
                                 headers: callHeaders || {},
                                 body: callBody || "",
+                                chunkId: chunk.id,
+                                functionFile: filePath,
+                                functionFileLine: functionFileLine,
+                            });
+                        } else {
+                            // Single-argument fetch(url) — implicit GET request.
+                            // Try to resolve the URL from callers when the direct resolution
+                            // left an unresolved function-parameter placeholder.
+                            let resolvedUrl = callUrl || "";
+
+                            if (resolvedUrl.startsWith("[unresolved:") || resolvedUrl === "") {
+                                const functionName = getFunctionNameForFetchCall(path);
+                                if (functionName && chunk.exports && chunk.exports.length > 0) {
+                                    const exportName = findExportForFunction(fileContent, functionName, chunk.exports);
+                                    if (exportName) {
+                                        console.log(
+                                            chalk.cyan(
+                                                `    [i] Fetch is wrapped in function '${functionName}', checking for exports...`
+                                            )
+                                        );
+                                        const actualCallArg = traceFetchFunctionCalls(
+                                            chunk.id,
+                                            exportName,
+                                            functionName,
+                                            chunks,
+                                            directory
+                                        );
+                                        if (actualCallArg) {
+                                            const callerUrl = resolveNodeValue(
+                                                actualCallArg,
+                                                path.scope,
+                                                "",
+                                                "fetch",
+                                                fileContent,
+                                                chunks,
+                                                thirdArgName
+                                            );
+                                            if (
+                                                callerUrl &&
+                                                typeof callerUrl === "string" &&
+                                                !callerUrl.startsWith("[unresolved") &&
+                                                !callerUrl.startsWith("[error")
+                                            ) {
+                                                console.log(
+                                                    chalk.cyan(`    [i] Resolved URL from caller: ${callerUrl}`)
+                                                );
+                                                resolvedUrl = callerUrl;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            console.log(chalk.green(`    Method: GET`));
+                            globals.addOpenapiOutput({
+                                url: resolvedUrl,
+                                method: "GET",
+                                path: resolvedUrl,
+                                headers: {},
+                                body: "",
                                 chunkId: chunk.id,
                                 functionFile: filePath,
                                 functionFileLine: functionFileLine,

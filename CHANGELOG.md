@@ -1,5 +1,32 @@
 # Change Log
 
+## 1.3.1-alpha.2 - 2026-05-18
+
+### Added
+
+- Added taint analysis in the `analyze` engine for Next.js
+- Download JS files as soon as they are discovered (`lazyload`)
+- Recursively resolve HTTP requests in Next.js (`map`)
+- Stream JS file downloads during Vue.js discovery — downloads start as soon as each discovery step finds files instead of waiting for the full pipeline (`lazyload`)
+- Resolve `UnaryExpression` nodes (`!x`, `void 0`, `-x`, `typeof x`) so request bodies surface real boolean/null values instead of `[unsupported node type: UnaryExpression]` (`map`)
+- Resolve `ArrayExpression` nodes recursively so array body fields render their element shape instead of `[unsupported node type: ArrayExpression]` (`map`)
+- Resolve `JSON.stringify(variable)` calls by tracing the argument, replacing the opaque `[call:JSON.stringify()]` placeholder (`map`)
+- Resolve `new URLSearchParams({...})` to a real query string, using `{key}` placeholders for values that can't be statically resolved (`map`)
+- Partial-concatenation fallback for binary `+` expressions so resolvable fragments are preserved when one side is unresolved (`map`)
+
+### Changed
+
+- Nested `JSON.stringify(expr)` inside a body object now resolves `expr` instead of emitting `[call to object...]` (`map`)
+
+### Fixed
+
+- Invalidate request cache if the memory is full
+- Progress bars no longer hide the terminal cursor permanently when they exit without a clean `stop()` — all bars now use `hideCursor: false` (`lazyload`)
+- Removed the concurrent download progress bar in the Vue.js section that was causing display corruption — discovery `console.log` calls no longer collide with the bar's render line (`lazyload`)
+- API spec / Postman collection URLs no longer get `{{baseUrl}}` prepended to already-absolute URLs — full URLs are now reduced to their pathname (`map`)
+- Spread elements that can't be resolved are now skipped instead of being emitted as fake `"...spread": "[spread:e]"` body fields (`map`)
+- Request bodies that reduce to an empty `{}` after resolution are now omitted from the Postman collection (`map`)
+
 ## 1.3.1-alpha.1 - 2026.05.13
 
 ### Added

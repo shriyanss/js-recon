@@ -13,6 +13,30 @@ const traverse = _traverse.default;
  * @param depth - Current recursion depth to prevent infinite loops
  * @returns The resolved value or a placeholder if unresolved
  */
+/**
+ * Returns true if the given path is nested inside a loop statement.
+ * Used to skip loop-internal variable assignments that would shadow the
+ * top-level declaration we are interested in.
+ */
+const isInsideLoop = (p: any): boolean => {
+    let current = p.parentPath;
+    while (current) {
+        if (
+            current.isForStatement() ||
+            current.isForInStatement() ||
+            current.isForOfStatement() ||
+            current.isWhileStatement() ||
+            current.isDoWhileStatement()
+        ) {
+            return true;
+        }
+        // Don't cross function boundaries
+        if (current.isFunction()) break;
+        current = current.parentPath;
+    }
+    return false;
+};
+
 export const resolveVariableInChunk = (varName: string, chunkCode: string, depth: number = 0): any => {
     if (depth > 5) {
         return `[max recursion depth for ${varName}]`;
@@ -30,6 +54,10 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
         traverse(ast, {
             // Find variable declarations: let/const/var varName = ...
             VariableDeclarator(path) {
+                // Skip declarations that are inside loops — they are loop counters or
+                // temporaries and would shadow the top-level variable we care about.
+                if (isInsideLoop(path)) return;
+
                 if (path.node.id.type === "Identifier" && path.node.id.name === varName && path.node.init) {
                     const init = path.node.init;
 
@@ -104,6 +132,9 @@ export const resolveVariableInChunk = (varName: string, chunkCode: string, depth
             },
             // Find assignments: varName = ...
             AssignmentExpression(path) {
+                // Skip assignments inside loops for the same reason as above
+                if (isInsideLoop(path)) return;
+
                 if (path.node.left.type === "Identifier" && path.node.left.name === varName) {
                     const right = path.node.right;
 
@@ -398,12 +429,21 @@ export const substituteVariablesInString = (
         const varName = match[1];
         const resolvedValue = resolveVariableInChunk(varName, chunkCode);
 
-        // Only substitute if we got a clean value (not an error/unresolved placeholder)
+        // Only substitute if we got a clean value (not an error/unresolved placeholder).
+        // Also reject values that contain placeholder-style brackets (they are not fully
+        // resolved), pure numbers (likely loop counters, not URL segments), very long
+        // strings (likely resolved to code, not a URL component), or strings containing
+        // ANSI escape sequences (leaked from logging utilities in the bundle).
         if (
             typeof resolvedValue === "string" &&
             !resolvedValue.startsWith("[unresolved:") &&
             !resolvedValue.startsWith("[error") &&
-            !resolvedValue.startsWith("[max recursion")
+            !resolvedValue.startsWith("[max recursion") &&
+            !resolvedValue.includes("[") &&
+            !/^\d+$/.test(resolvedValue) &&
+            !/^\d+:\d+$/.test(resolvedValue) &&
+            !resolvedValue.includes("\x1b") &&
+            resolvedValue.length <= 500
         ) {
             result = result.replace(`[var ${varName}]`, resolvedValue);
         }
@@ -520,11 +560,16 @@ export const resolveWebpackChunkImport = (
         }
 
         // Parse the target chunk
-        const targetAst = parser.parse(targetChunk.code, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let targetAst;
+        try {
+            targetAst = parser.parse(targetChunk.code, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            return `[webpack_import: chunk_${targetChunkId}]`;
+        }
 
         // Find the export for the first property in memberPath
         const firstProperty = memberPath[0];
@@ -618,6 +663,51 @@ export const resolveWebpackChunkImport = (
         // Convert AST node to JavaScript object
         const convertAstToValue = (node: Node, remainingPath: string[] = []): any => {
             if (!node) return null;
+
+            // Unwrap Object.freeze({...}) — single-arg wrapper that returns its first arg.
+            if (
+                node.type === "CallExpression" &&
+                (node as any).callee?.type === "MemberExpression" &&
+                (node as any).callee.property?.type === "Identifier" &&
+                (node as any).callee.property.name === "freeze" &&
+                (node as any).arguments?.length > 0
+            ) {
+                return convertAstToValue((node as any).arguments[0], remainingPath);
+            }
+
+            // Unwrap Object.assign(target, ...sources) by merging each arg's properties
+            // so downstream remainingPath lookups can resolve keys contributed by sources.
+            if (
+                node.type === "CallExpression" &&
+                (node as any).callee?.type === "MemberExpression" &&
+                (node as any).callee.property?.type === "Identifier" &&
+                (node as any).callee.property.name === "assign" &&
+                (node as any).arguments?.length > 0
+            ) {
+                const merged: { [key: string]: any } = {};
+                for (const arg of (node as any).arguments) {
+                    const value = convertAstToValue(arg, []);
+                    if (value && typeof value === "object" && !Array.isArray(value)) {
+                        Object.assign(merged, value);
+                    }
+                }
+                if (remainingPath.length === 0) return merged;
+                const [next, ...rest] = remainingPath;
+                if (next in merged) {
+                    const v = merged[next];
+                    if (rest.length === 0) return v;
+                    if (v && typeof v === "object") {
+                        let cur: any = v;
+                        for (const k of rest) {
+                            if (cur && typeof cur === "object" && k in cur) cur = cur[k];
+                            else return null;
+                        }
+                        return cur;
+                    }
+                    return null;
+                }
+                return null;
+            }
 
             if (node.type === "ObjectExpression") {
                 const obj: { [key: string]: any } = {};
@@ -947,7 +1037,7 @@ export const resolveNodeValue = (
     initialNode: Node,
     scope: Scope,
     nodeCode: string,
-    callType: "fetch" | "axios",
+    callType: "fetch" | "axios" | "new",
     chunkCode?: string,
     chunks?: Chunks,
     thirdArgName?: string
@@ -983,25 +1073,83 @@ export const resolveNodeValue = (
                                 if (prop.type === "ObjectProperty" && prop.key.type === "Identifier") {
                                     const key = prop.key.name;
                                     if (prop.value.type === "Identifier") {
-                                        obj[key] = prop.value.name;
+                                        // Try to resolve via scope; fall back to [param:name] for params
+                                        const valBinding = scope.getBinding(prop.value.name);
+                                        if (valBinding && (valBinding.path.node as any).init) {
+                                            const resolved = resolveNodeValue(
+                                                prop.value,
+                                                scope,
+                                                "",
+                                                callType,
+                                                chunkCode,
+                                                chunks,
+                                                thirdArgName
+                                            );
+                                            obj[key] = resolved;
+                                        } else if (valBinding && valBinding.kind === "param") {
+                                            obj[key] = `[param:${prop.value.name}]`;
+                                        } else {
+                                            obj[key] = prop.value.name;
+                                        }
                                     } else if (
                                         prop.value.type === "CallExpression" &&
                                         prop.value.callee.type === "MemberExpression" &&
                                         prop.value.callee.property.type === "Identifier" &&
                                         prop.value.callee.property.name === "stringify"
                                     ) {
-                                        obj[key] = "[call to object...]";
+                                        // Nested JSON.stringify(expr) — resolve expr so we show what's being serialized.
+                                        const innerArgs = prop.value.arguments;
+                                        if (innerArgs.length > 0) {
+                                            obj[key] =
+                                                resolveNodeValue(
+                                                    innerArgs[0] as Node,
+                                                    scope,
+                                                    "",
+                                                    callType,
+                                                    chunkCode,
+                                                    chunks,
+                                                    thirdArgName
+                                                ) ?? "[call to object...]";
+                                        } else {
+                                            obj[key] = "[call to object...]";
+                                        }
                                     } else {
-                                        // For other types of values, you might want to add more handling
-                                        // For now, we'll just represent them as a string of their type.
-                                        obj[key] = `[${prop.value.type}]`;
+                                        obj[key] =
+                                            resolveNodeValue(
+                                                prop.value,
+                                                scope,
+                                                "",
+                                                callType,
+                                                chunkCode,
+                                                chunks,
+                                                thirdArgName
+                                            ) ?? `[${prop.value.type}]`;
                                     }
                                 } else if (prop.type === "SpreadElement") {
-                                    // Handle spread elements if necessary, e.g., by adding a placeholder
-                                    obj["...spread"] = `[${prop.argument.type}]`;
+                                    // Skip unresolvable spread elements — they're code artifacts,
+                                    // not actual body fields.
                                 }
                             }
                             return obj;
+                        } else if (args.length > 0) {
+                            // Argument isn't a literal object — try resolving it (handles Identifier,
+                            // ConditionalExpression, etc.) so we can surface the actual body shape.
+                            const resolved = resolveNodeValue(
+                                args[0] as Node,
+                                scope,
+                                nodeCode,
+                                callType,
+                                chunkCode,
+                                chunks,
+                                thirdArgName
+                            );
+                            if (
+                                resolved !== null &&
+                                resolved !== undefined &&
+                                resolved !== "[call_stack_exceeded_use_better_machine]"
+                            ) {
+                                return resolved;
+                            }
                         }
                     }
                 }
@@ -1039,8 +1187,23 @@ export const resolveNodeValue = (
                 case "Identifier": {
                     const binding = scope.getBinding(currentNode.name);
                     if (binding && (binding.path.node as any).init) {
-                        currentNode = (binding.path.node as any).init;
+                        const initNode = (binding.path.node as any).init;
+                        // Update nodeCode to the actual source of the init so that concat
+                        // patterns (e.g. "".concat(x, "/path")) are re-parsed correctly
+                        if (
+                            chunkCode &&
+                            typeof (initNode as any).start === "number" &&
+                            typeof (initNode as any).end === "number"
+                        ) {
+                            nodeCode = chunkCode
+                                .slice((initNode as any).start, (initNode as any).end)
+                                .replace(/\n\s*/g, "");
+                        }
+                        currentNode = initNode;
                         continue;
+                    }
+                    if (binding && binding.kind === "param") {
+                        return `[param:${currentNode.name}]`;
                     }
                     return `[unresolved: ${currentNode.name}]`;
                 }
@@ -1103,38 +1266,50 @@ export const resolveNodeValue = (
                     return obj;
                 }
                 case "MemberExpression": {
-                    // Handle webpack chunk imports first - try to resolve directly
-                    if (
-                        currentNode.object.type === "Identifier" &&
-                        currentNode.property.type === "Identifier" &&
-                        !currentNode.computed &&
-                        chunkCode &&
-                        chunks &&
-                        thirdArgName
-                    ) {
-                        const identifierName = currentNode.object.name;
-                        const propertyName = currentNode.property.name;
-
-                        // Try webpack chunk import resolution directly
-                        try {
-                            const webpackResult = resolveWebpackChunkImport(
-                                identifierName,
-                                chunkCode,
-                                chunks,
-                                thirdArgName,
-                                [propertyName]
-                            );
-
+                    // Handle deeply-nested webpack chunk imports by flattening the chain:
+                    //   s.h.NEXT_OKTA_VALIDATE_USER  ->  resolveWebpackChunkImport("s", ..., ["h", "NEXT_OKTA_VALIDATE_USER"])
+                    if (chunkCode && chunks && thirdArgName && !currentNode.computed) {
+                        const chain: string[] = [];
+                        let walker: any = currentNode;
+                        let rootIdent: string | null = null;
+                        while (walker) {
                             if (
-                                webpackResult &&
-                                typeof webpackResult === "string" &&
-                                !webpackResult.startsWith("[unresolved") &&
-                                !webpackResult.startsWith("[error")
+                                walker.type === "MemberExpression" &&
+                                !walker.computed &&
+                                walker.property.type === "Identifier"
                             ) {
-                                return webpackResult;
+                                chain.unshift(walker.property.name);
+                                walker = walker.object;
+                            } else if (walker.type === "Identifier") {
+                                rootIdent = walker.name;
+                                break;
+                            } else {
+                                break;
                             }
-                        } catch (e) {
-                            // Fall through to normal resolution
+                        }
+                        if (rootIdent && chain.length > 0) {
+                            try {
+                                const webpackResult = resolveWebpackChunkImport(
+                                    rootIdent,
+                                    chunkCode,
+                                    chunks,
+                                    thirdArgName,
+                                    chain
+                                );
+                                if (
+                                    webpackResult !== null &&
+                                    webpackResult !== undefined &&
+                                    typeof webpackResult === "string" &&
+                                    !webpackResult.startsWith("[unresolved") &&
+                                    !webpackResult.startsWith("[error") &&
+                                    !webpackResult.startsWith("[unsupported") &&
+                                    !webpackResult.startsWith("[max_depth")
+                                ) {
+                                    return webpackResult;
+                                }
+                            } catch (e) {
+                                // fall through
+                            }
                         }
                     }
 
@@ -1172,6 +1347,22 @@ export const resolveNodeValue = (
                         return object[propertyName];
                     }
 
+                    // Build a readable path like [member:e.Rut.toString] for unresolved member expressions
+                    const memberParts: string[] = [];
+                    let memberWalker: any = currentNode;
+                    while (
+                        memberWalker &&
+                        memberWalker.type === "MemberExpression" &&
+                        !memberWalker.computed &&
+                        memberWalker.property.type === "Identifier"
+                    ) {
+                        memberParts.unshift(memberWalker.property.name);
+                        memberWalker = memberWalker.object;
+                    }
+                    if (memberWalker && memberWalker.type === "Identifier" && memberParts.length > 0) {
+                        memberParts.unshift(memberWalker.name);
+                        return `[member:${memberParts.join(".")}]`;
+                    }
                     return `[unresolved member expression]`;
                 }
                 case "CallExpression": {
@@ -1242,13 +1433,18 @@ export const resolveNodeValue = (
                     // .concat() with varying arguments end up here. They needs to be resolved as a string
 
                     // first, match as regex
-                    if (nodeCode.replace(/\n\s*/g, "").match(/^"[\d\w\/]*"(\.concat\(.+\))+$/)) {
+                    if (nodeCode.replace(/\n\s*/g, "").match(/^"[^"]*"(\.concat\(.+\))+$/)) {
                         // parse it separately with ast
-                        const ast = parser.parse(nodeCode, {
-                            sourceType: "unambiguous",
-                            plugins: ["jsx", "typescript"],
-                            errorRecovery: true,
-                        });
+                        let ast;
+                        try {
+                            ast = parser.parse(nodeCode, {
+                                sourceType: "unambiguous",
+                                plugins: ["jsx", "typescript"],
+                                errorRecovery: true,
+                            });
+                        } catch {
+                            break;
+                        }
 
                         // get all the concat calls first. Like .concat(...)
                         // I want to only get concat() and nothing else. Also, it doesn't matter how many times they are called
@@ -1319,7 +1515,23 @@ export const resolveNodeValue = (
                         }
                     }
 
-                    return `[unresolved call to ${calleeName || "function"} -> ${nodeCode?.replace(/\n\s*/g, "")}]`;
+                    // Build a readable callee label for the placeholder
+                    let calleeLabel = calleeName !== "[unknown]" ? calleeName : "";
+                    if (!calleeLabel && currentNode.callee.type === "MemberExpression") {
+                        const parts: string[] = [];
+                        let c: any = currentNode.callee;
+                        while (c.type === "MemberExpression" && !c.computed && c.property.type === "Identifier") {
+                            parts.unshift(c.property.name);
+                            c = c.object;
+                        }
+                        if (c.type === "Identifier") parts.unshift(c.name);
+                        calleeLabel = parts.join(".");
+                    }
+                    return `[call:${calleeLabel || "?"}()]`;
+                }
+                case "AwaitExpression": {
+                    currentNode = (currentNode as any).argument;
+                    continue;
                 }
                 case "NewExpression": {
                     if (
@@ -1329,6 +1541,60 @@ export const resolveNodeValue = (
                     ) {
                         currentNode = currentNode.arguments[0];
                         continue;
+                    }
+                    if (
+                        currentNode.callee.type === "Identifier" &&
+                        currentNode.callee.name === "URLSearchParams" &&
+                        currentNode.arguments.length > 0
+                    ) {
+                        const spArg = currentNode.arguments[0];
+                        if (spArg.type === "ObjectExpression") {
+                            const params: string[] = [];
+                            for (const prop of spArg.properties) {
+                                if (prop.type !== "ObjectProperty") continue;
+                                const key =
+                                    prop.key.type === "Identifier"
+                                        ? prop.key.name
+                                        : prop.key.type === "StringLiteral"
+                                          ? prop.key.value
+                                          : null;
+                                if (!key) continue;
+                                const val = resolveNodeValue(
+                                    prop.value,
+                                    scope,
+                                    nodeCode,
+                                    callType,
+                                    chunkCode,
+                                    chunks,
+                                    thirdArgName
+                                );
+                                if (val === "[call_stack_exceeded_use_better_machine]") return val;
+                                // Use the literal value when fully resolved; otherwise use {key} as placeholder.
+                                const valStr =
+                                    val !== null && val !== undefined && !String(val).startsWith("[")
+                                        ? encodeURIComponent(String(val))
+                                        : `{${key}}`;
+                                params.push(`${key}=${valStr}`);
+                            }
+                            if (params.length > 0) return params.join("&");
+                        }
+                        // Non-object arg — try to resolve it directly
+                        const spResolved = resolveNodeValue(
+                            spArg,
+                            scope,
+                            nodeCode,
+                            callType,
+                            chunkCode,
+                            chunks,
+                            thirdArgName
+                        );
+                        if (
+                            spResolved !== null &&
+                            spResolved !== undefined &&
+                            spResolved !== "[call_stack_exceeded_use_better_machine]"
+                        ) {
+                            return String(spResolved);
+                        }
                     }
                     return `[unresolved new expression]`;
                 }
@@ -1393,19 +1659,67 @@ export const resolveNodeValue = (
                     if (right === "[call_stack_exceeded_use_better_machine]") {
                         return right;
                     }
-                    if (
-                        left !== null &&
-                        right !== null &&
-                        !String(left).startsWith("[") &&
-                        !String(right).startsWith("[")
-                    ) {
-                        // eslint-disable-next-line default-case
-                        switch (currentNode.operator) {
-                            case "+":
-                                return left + right;
+                    if (currentNode.operator === "+") {
+                        const leftOk = left !== null && left !== undefined;
+                        const rightOk = right !== null && right !== undefined;
+                        // Fully resolved — concatenate directly.
+                        if (leftOk && rightOk && !String(left).startsWith("[") && !String(right).startsWith("[")) {
+                            return left + right;
                         }
+                        // Partially resolved — concatenate what we have so the caller
+                        // at least sees the resolvable fragments alongside the placeholders.
+                        if (leftOk && rightOk) {
+                            return `${left}${right}`;
+                        }
+                        if (leftOk) return String(left);
+                        if (rightOk) return String(right);
                     }
                     return `[unresolved binary expression: ${currentNode.operator}]`;
+                }
+                case "ArrayExpression": {
+                    const elements: any[] = [];
+                    for (const element of currentNode.elements) {
+                        if (element === null) {
+                            elements.push(null);
+                            continue;
+                        }
+                        const resolved = resolveNodeValue(
+                            element,
+                            scope,
+                            nodeCode,
+                            callType,
+                            chunkCode,
+                            chunks,
+                            thirdArgName
+                        );
+                        if (resolved === "[call_stack_exceeded_use_better_machine]") return resolved;
+                        elements.push(resolved);
+                    }
+                    return elements;
+                }
+                case "UnaryExpression": {
+                    if (currentNode.operator === "void") return null;
+                    const operand = resolveNodeValue(
+                        (currentNode as any).argument,
+                        scope,
+                        nodeCode,
+                        callType,
+                        chunkCode,
+                        chunks,
+                        thirdArgName
+                    );
+                    if (operand === "[call_stack_exceeded_use_better_machine]") return operand;
+                    if (currentNode.operator === "!") {
+                        if (typeof operand === "boolean") return !operand;
+                        if (typeof operand === "number") return operand === 0;
+                        return "<boolean>";
+                    }
+                    if (currentNode.operator === "-") {
+                        if (typeof operand === "number") return -operand;
+                        return "<number>";
+                    }
+                    if (currentNode.operator === "typeof") return "<string>";
+                    return "<unknown>";
                 }
                 default:
                     return `[unsupported node type: ${currentNode.type}]`;

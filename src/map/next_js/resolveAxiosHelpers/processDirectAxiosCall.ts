@@ -5,9 +5,10 @@ import * as fs from "fs";
 import chalk from "chalk";
 import { resolveNodeValue, resolveStringOps, substituteVariablesInString } from "../utils.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
+import { resolveBodyArg } from "./traceBody.js";
 import * as globals from "../../../utility/globals.js";
 import globalConfig from "../../../globalConfig.js";
-import { getThirdArg } from "../resolveAxios.js";
+import { getThirdArg, getGlobalInterceptorHeaders } from "../resolveAxios.js";
 
 const getHttpMethod = (methodName: string): string | null => {
     const upperCaseMethod = methodName.toUpperCase();
@@ -72,9 +73,14 @@ export const processDirectAxiosCall = (
             }
         }
 
-        if (args.length > 1) {
+        // Axios calling convention is method-dependent. For body-less methods
+        // (GET/DELETE/HEAD/OPTIONS) `args[1]` is the config, not a body — surfacing
+        // it as "Body" misclassifies headers and query params as request payloads.
+        const bodyBearingMethods = new Set(["POST", "PUT", "PATCH"]);
+        const methodHasBodyArg = bodyBearingMethods.has(callMethod);
+        if (methodHasBodyArg && args.length > 1) {
             const axiosSecondArg = args[1];
-            callBody = astNodeToJsonString(axiosSecondArg, chunkCode);
+            callBody = resolveBodyArg(axiosSecondArg, path.parentPath, ast, chunkCode, chunks, chunkName);
         }
 
         if (args.length > 2) {
@@ -118,6 +124,9 @@ export const processDirectAxiosCall = (
         }
     }
 
+    const interceptorHeaders = getGlobalInterceptorHeaders();
+    const mergedHeaders: { [key: string]: string } = { ...interceptorHeaders, ...callHeaders };
+
     console.log(
         chalk.blue(`[+] Found direct axios call in chunk ${chunkName} ("${functionFile}":${functionFileLine})`)
     );
@@ -126,15 +135,15 @@ export const processDirectAxiosCall = (
     if (callBody) {
         console.log(chalk.green(`    Body: ${callBody}`));
     }
-    if (Object.keys(callHeaders).length > 0) {
-        console.log(chalk.green(`    Headers: ${JSON.stringify(callHeaders)}`));
+    if (Object.keys(mergedHeaders).length > 0) {
+        console.log(chalk.green(`    Headers: ${JSON.stringify(mergedHeaders)}`));
     }
 
     globals.addOpenapiOutput({
         url: callUrl || "",
         method: callMethod || "",
         path: callUrl || "",
-        headers: callHeaders || {},
+        headers: mergedHeaders || {},
         body: callBody || "",
         chunkId: chunkName,
         functionFile: functionFile,

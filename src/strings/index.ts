@@ -12,7 +12,7 @@ import openapi from "./openapi.js";
  * @param {object} node - The AST node to extract strings from
  * @returns {string[]} An array of extracted string literals
  */
-const extractStrings = (node: object): string[] => {
+export const extractStrings = (node: object): string[] => {
     const strings: Set<string> = new Set();
     const seen = new WeakSet();
 
@@ -209,6 +209,10 @@ const strings = async (
                 }
                 if (string.startsWith("./") || string.startsWith("../")) {
                     // like "./path/to/resource" or "../path/to/resource"
+                    paths.push(string);
+                }
+                if (string.match(/^.+\.js$/)) {
+                    // like "assets/app.abc.js"
                     paths.push(string);
                 }
             }

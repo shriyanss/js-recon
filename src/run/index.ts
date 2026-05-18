@@ -110,12 +110,17 @@ const processUrl = async (
     }
 
     if (globalsUtil.getTech() === "vue") {
-        // Vue.JS pipeline: lazyload (done) + map. Other stages aren't Vue-ready yet.
+        // Vue.JS pipeline: lazyload (done) + map + OpenAPI/Postman output.
         // Scan the whole download directory: Vue builds frequently spread chunks
         // across multiple asset hosts, and relative imports resolve within each tree.
         const mappedFileVue = isBatch ? `${workingDir}/mapped` : "mapped";
+        const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
 
-        console.log(chalk.bgCyan("[2/2] Running map to find functions..."));
+        console.log(chalk.bgCyan("[2/3] Running map to find functions and API calls..."));
+        globalsUtil.setOpenapi(true);
+        if (isBatch) {
+            globalsUtil.setOpenapiOutputFile(openapiFile);
+        }
         await map(outputDir, mappedFileVue, ["json"], "vue", false, false);
         console.log(chalk.bgGreen("[+] Map complete."));
 

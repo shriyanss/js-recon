@@ -12,6 +12,7 @@ import { highlight } from "cli-highlight";
 import { resolveFunctionIdentifier } from "../helpers/engineHelpers/resolveFunctionIdentifier.js";
 import { findMemberExpressionAssignment } from "../helpers/engineHelpers/findMemberExpressionAssignment.js";
 import { findDirectAssignment } from "../helpers/engineHelpers/findDirectAssignment.js";
+import { computeTaint, sinkConsumesTaint, TaintInfo } from "../helpers/engineHelpers/taintFlow.js";
 import { EngineOutput } from "../helpers/outputHelper.js";
 
 /**
@@ -30,14 +31,22 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
 
     for (const chunk of Object.values(mappedJsonData)) {
         // first of all, load the code in ast
-        const ast = parser.parse(chunk.code, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let ast;
+        try {
+            ast = parser.parse(chunk.code, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
 
         let matchList: { [key: string]: { node: Node; scope: Node; allNodes?: Node[] } } = {};
         const completedSteps: Set<string> = new Set();
+        // Cache taint info per "source step name" so we don't recompute when several
+        // sink steps share the same source step.
+        const taintCache: { [sourceStep: string]: TaintInfo } = {};
 
         // iterate through the steps in the rule
         for (const step of rule.steps) {
@@ -67,7 +76,26 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                 }
 
                 // match the query against what is there in the user defined config file
-                const matches: Node[] = esquery(searchRoot, selector);
+                let matches: Node[] = esquery(searchRoot, selector);
+
+                // Optional data-flow filter: only keep matches whose value-side actually
+                // consumes a value tainted by the named source step's matches. This is
+                // what distinguishes a real source→sink finding from accidental
+                // source-and-sink-in-the-same-bundle co-occurrence.
+                if (matches.length > 0 && step.esquery.taintFrom) {
+                    const sourceStepName = step.esquery.taintFrom;
+                    const sourceMatch = matchList[sourceStepName];
+                    if (!sourceMatch) {
+                        // No source matched — nothing can be tainted from it.
+                        continue;
+                    }
+                    if (!taintCache[sourceStepName]) {
+                        const sourceNodes = sourceMatch.allNodes || [sourceMatch.node];
+                        taintCache[sourceStepName] = computeTaint(ast, sourceNodes);
+                    }
+                    const taint = taintCache[sourceStepName];
+                    matches = matches.filter((m) => sinkConsumesTaint(ast, m, taint));
+                }
 
                 if (matches.length > 0) {
                     // store the first match as the "primary" node so later steps can reference it,

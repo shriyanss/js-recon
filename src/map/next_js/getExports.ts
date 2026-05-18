@@ -21,11 +21,16 @@ const getExports = async (chunks: Chunks): Promise<Chunks> => {
         const chunkCode = chunk.code;
 
         // parse it with ast
-        const ast = parser.parse(chunkCode, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
+        let ast;
+        try {
+            ast = parser.parse(chunkCode, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
 
         // declare the exportname var
         let chunkSecondArg: string;

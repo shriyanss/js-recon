@@ -24,8 +24,23 @@ import { checkReact } from "./checkReact.js";
 const frameworkDetect = async (url: string): Promise<{ name: string; evidence: string }> => {
     console.log(chalk.cyan("[i] Detecting front-end framework"));
 
-    // get the page source
+    // get the page source. Drain the body immediately into a string — if we
+    // wait until after the puppeteer + downstream check* calls, the Response
+    // body gets invalidated (undici flips bodyUsed=true mid-flight when the
+    // response is held idle alongside other in-flight fetches).
     const res = await makeRequest(url, {});
+    let resBody: string | null = null;
+    if (res !== null) {
+        try {
+            resBody = await res.text();
+        } catch (err) {
+            console.log(
+                chalk.yellow(
+                    `[!] Could not read fetch response body for ${url} (${(err as any)?.message || err}); using browser-rendered source only.`
+                )
+            );
+        }
+    }
 
     // get the page source in the browser
     const browser = await puppeteer.launch({
@@ -80,8 +95,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     // if network error was caused, then return
     if (res === null) {
         console.log(chalk.red("[!] Fetch request failed after retries"));
-    } else {
-        const resBody = await res.text();
+    } else if (resBody !== null) {
         $res = cheerio.load(resBody);
         result_checkNextJS_res = await checkNextJS($res);
         result_checkVueJS_res = await checkVueJS($res, url);
@@ -98,7 +112,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         console.log(chalk.green("[✓] Vue.js detected"));
         console.log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
         const result_checkNuxtJS = await checkNuxtJS($);
-        const result_checkNuxtJS_res = await checkNuxtJS($res);
+        const result_checkNuxtJS_res = $res ? await checkNuxtJS($res) : { detected: false, evidence: "" };
         if (result_checkNuxtJS.detected === true || result_checkNuxtJS_res.detected === true) {
             const evidence =
                 result_checkNuxtJS.evidence !== "" ? result_checkNuxtJS.evidence : result_checkNuxtJS_res.evidence;

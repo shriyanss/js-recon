@@ -1,6 +1,7 @@
 import makeRequest from "../../utility/makeReq.js";
 import _traverse from "@babel/traverse";
 import chalk from "chalk";
+import cliProgress from "cli-progress";
 import parser from "@babel/parser";
 import t from "@babel/types";
 
@@ -10,28 +11,49 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
     const MAX_JS_SIZE_BYTES = maxJsSizeMb * 1024 * 1024;
     let toReturn: string[] = [];
 
-    console.log(chalk.cyan(`[i] Extracting client-side paths from ${jsFiles.length} JS files...`));
-
     const baseOrigin = new URL(url).origin;
+
+    const bar = new cliProgress.SingleBar(
+        {
+            format:
+                chalk.cyan("[i] Extracting client-side paths ") +
+                "[{bar}] {percentage}% | {value}/{total} files | {paths} paths | {skipped} skipped",
+            barCompleteChar: "█",
+            barIncompleteChar: "░",
+            hideCursor: false,
+            clearOnComplete: false,
+            stopOnComplete: false,
+        },
+        cliProgress.Presets.shades_classic
+    );
+
+    let processed = 0;
+    let skipped = 0;
+    bar.start(jsFiles.length, 0, { paths: 0, skipped: 0 });
 
     // iterate through all those
     for (const jsFile of jsFiles) {
         if (!jsFile.endsWith(".js")) {
+            processed++;
+            skipped++;
+            bar.update(processed, { paths: toReturn.length, skipped });
             continue;
         }
         const req = await makeRequest(jsFile);
 
         if (req == null) {
-            console.log(chalk.red(`[!] Failed to fetch ${jsFile}`));
+            processed++;
+            skipped++;
+            bar.update(processed, { paths: toReturn.length, skipped });
             continue;
         }
 
         const jsContent = await req.text();
 
         if (jsContent.length > MAX_JS_SIZE_BYTES) {
-            console.log(
-                chalk.yellow(`[!] Skipping large file (${(jsContent.length / 1024 / 1024).toFixed(1)} MB): ${jsFile}`)
-            );
+            processed++;
+            skipped++;
+            bar.update(processed, { paths: toReturn.length, skipped });
             continue;
         }
 
@@ -45,11 +67,14 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                 errorRecovery: true,
             });
         } catch {
-            console.log(chalk.red(`[!] Failed to parse ${jsFile}`));
+            processed++;
+            skipped++;
+            bar.update(processed, { paths: toReturn.length, skipped });
             continue;
         }
 
         const jsFileOrigin = new URL(jsFile).origin;
+        const pathsBefore = toReturn.length;
 
         traverse(ast, {
             ObjectProperty(path) {
@@ -130,7 +155,13 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                 }
             },
         });
+
+        processed++;
+        if (toReturn.length === pathsBefore) skipped++;
+        bar.update(processed, { paths: toReturn.length, skipped });
     }
+
+    bar.stop();
 
     if (toReturn.length > 0) {
         console.log(chalk.green(`[+] Found ${toReturn.length} client-side paths from JS files!`));

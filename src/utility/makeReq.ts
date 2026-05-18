@@ -72,6 +72,15 @@ const readCache = async (url: string, headers: {}): Promise<Response | null> => 
  * @returns Promise that resolves when caching is complete
  */
 const writeCache = async (url: string, headers: {}, response: Response): Promise<void> => {
+    try {
+        await writeCacheUnsafe(url, headers, response);
+    } catch (err) {
+        // Caching must never break a request. Log and move on.
+        console.log(chalk.yellow(`[!] Failed to write response cache for ${url}: ${err?.message || err}`));
+    }
+};
+
+const writeCacheUnsafe = async (url: string, headers: {}, response: Response): Promise<void> => {
     // clone the response
     const clonedResponse = response.clone();
 
@@ -87,7 +96,8 @@ const writeCache = async (url: string, headers: {}, response: Response): Promise
         cache[url] = {};
     }
 
-    const body = Buffer.from(await clonedResponse.arrayBuffer()).toString("base64");
+    const bodyBuffer = Buffer.from(await clonedResponse.arrayBuffer());
+    const body = bodyBuffer.toString("base64");
     const status = clonedResponse.status;
     const resp_headers = clonedResponse.headers;
     if (headers["RSC"]) {
@@ -107,7 +117,34 @@ const writeCache = async (url: string, headers: {}, response: Response): Promise
         };
         // console.log("normal", url);
     }
-    fs.writeFileSync(globals.getRespCacheFile(), JSON.stringify(cache));
+    let serialized: string;
+    try {
+        // so, the cache is the response body for the URL
+        serialized = JSON.stringify(cache);
+    } catch (err) {
+        if (err instanceof RangeError) {
+            // console.log(
+            //     chalk.yellow(
+            //         `[!] Response cache too large to serialize; dropping entry for ${url} and skipping cache write`
+            //     )
+            // );
+            // // Roll back the entry we just added so future writes don't keep retrying.
+            // if (headers["RSC"]) {
+            //     delete cache[url].rsc;
+            // } else {
+            //     delete cache[url].normal;
+            // }
+            // if (!cache[url].rsc && !cache[url].normal) {
+            //     delete cache[url];
+            // }
+            // return;
+
+            console.log(chalk.yellow(`[!] Cache too big... Emptying cache`));
+            serialized = JSON.stringify({}); // empty cache
+        }
+        // throw err;
+    }
+    fs.writeFileSync(globals.getRespCacheFile(), serialized);
     // console.log("wrote cache for ", url);
 };
 
@@ -284,19 +321,39 @@ const makeRequest = async (
         }
         return response;
     } else {
-        // Helper to read response once and store data for reuse
+        // Helper to read response once and store data for reuse.
+        // We copy the bytes into a Buffer that owns its own ArrayBuffer so the
+        // stored body cannot be invalidated by undici recycling its internal
+        // buffer after we consume the response.
         const consumeResponse = async (
             res: Response | null
-        ): Promise<{ body: ArrayBuffer; status: number; headers: Headers; ok: boolean; text: string } | null> => {
+        ): Promise<{ body: Buffer; status: number; headers: Headers; ok: boolean; text: string } | null> => {
             if (!res) return null;
-            const body = await res.arrayBuffer();
-            const text = new TextDecoder().decode(body);
-            return { body, status: res.status, headers: res.headers, ok: res.ok, text };
+            const ab = await res.arrayBuffer();
+            const body = Buffer.alloc(ab.byteLength);
+            body.set(new Uint8Array(ab));
+            const text = body.toString("utf-8");
+            // Snapshot headers as a plain object so we can rebuild a fresh
+            // Headers instance per Response instead of sharing state.
+            const headers = new Headers(res.headers);
+            return { body, status: res.status, headers, ok: res.ok, text };
         };
 
-        // Helper to create Response from stored data
-        const createResponse = (data: { body: ArrayBuffer; status: number; headers: Headers }): Response => {
-            return new Response(data.body, { status: data.status, headers: data.headers });
+        // Helper to create Response from stored data. Pass the body as an
+        // immutable string so each Response gets a fully independent backing
+        // store; undici has been known to flag Responses as already-consumed
+        // when buffer-backed bodies share underlying memory. Strip headers
+        // that no longer match the decoded body (content-length / encoding).
+        const createResponse = (data: { body: Buffer; status: number; headers: Headers; text?: string }): Response => {
+            // Copy bytes into a fresh Uint8Array so each Response owns its
+            // backing memory — text decoding would corrupt binary payloads.
+            const bodyCopy = new Uint8Array(data.body.byteLength);
+            bodyCopy.set(data.body);
+            const headers = new Headers(data.headers);
+            headers.delete("content-length");
+            headers.delete("content-encoding");
+            headers.delete("transfer-encoding");
+            return new Response(bodyCopy, { status: data.status, headers });
         };
 
         // When using default headers, try both with and without Referer/Origin

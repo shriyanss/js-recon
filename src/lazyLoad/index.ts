@@ -36,6 +36,7 @@ import react_sourcemapUrls from "./react/react_sourcemapUrls.js";
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
+import { DownloadQueue } from "./downloadQueue.js";
 
 // for rebuilding source maps
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs";
@@ -74,8 +75,10 @@ const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
     let counter = 0;
 
     for (const mapFile of mapFiles) {
-        // read the file while skipping the first line
-        const mapContent = readFileSync(mapFile, "utf-8").split("\n").slice(1).join("\n");
+        const raw = readFileSync(mapFile, "utf-8");
+        // Older runs prepended a `// File Source: ...` banner to .js.map files;
+        // current runs write pure JSON. Strip the leading banner if present.
+        const mapContent = raw.startsWith("//") ? raw.split("\n").slice(1).join("\n") : raw;
         const { files } = extractSources(mapContent);
 
         for (const file of files) {
@@ -170,6 +173,8 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Next.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
+                const queue = new DownloadQueue(output, threads);
+
                 const crawler = new NextJsCrawler({
                     url,
                     output,
@@ -178,13 +183,12 @@ const lazyLoad = async (
                     threads,
                     research,
                     maxIterations,
+                    onUrlsDiscovered: (urls) => queue.push(urls),
                 });
 
-                const jsFilesToDownload = await crawler.crawl();
-
-                // dedupe the files
-                const dedupedFiles = [...new Set(jsFilesToDownload)];
-                await downloadFiles(dedupedFiles, output);
+                await crawler.crawl();
+                await queue.drain();
+                queue.printSummary();
 
                 if (buildId) {
                     // get the buildId
@@ -215,20 +219,17 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
+                const queue = new DownloadQueue(output, threads);
+                const onFilesDiscovered = (files: string[]) => queue.push(files);
+
                 // run the full discovery pipeline against the entry URL
-                const { jsFiles, clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb);
+                const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered);
 
                 // recurse the same pipeline through every client-side path we found
-                const recursivelyDiscovered = await vue_recursiveClientSidePathDownload(
-                    clientSidePaths,
-                    threads,
-                    maxJsSizeMb
-                );
+                await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb, onFilesDiscovered);
 
-                const jsFilesToDownload = [...new Set([...jsFiles, ...recursivelyDiscovered])];
-
-                // finally, download these
-                await downloadFiles(jsFilesToDownload, output);
+                await queue.drain();
+                queue.printSummary();
 
                 // extract the source maps
                 await extractSourceMaps(output, sourcemapDir);
@@ -236,62 +237,56 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload: string[] = [];
+                const queue = new DownloadQueue(output, threads);
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
-                const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
+                queue.push(jsFilesFromPageSource);
 
-                jsFilesToDownload.push(...jsFilesFromPageSource);
-                jsFilesToDownload.push(...jsFilesFromStringAnalysis);
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
+                const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
+                queue.push(jsFilesFromStringAnalysis);
+
+                const firstBatch = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
 
                 let jsFilesFromAST = [];
                 console.log(chalk.cyan("[i] Analyzing functions in the files found"));
-                for (const jsFile of jsFilesToDownload) {
+                for (const jsFile of firstBatch) {
                     jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
                 }
+                queue.push(jsFilesFromAST);
+                queue.push(lazyLoadGlobals.getJsUrls());
 
-                jsFilesToDownload.push(...jsFilesFromAST);
-
-                jsFilesToDownload.push(...lazyLoadGlobals.getJsUrls());
-
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-                await downloadFiles(jsFilesToDownload, output);
+                await queue.drain();
+                queue.printSummary();
             } else if (tech.name === "svelte") {
                 console.log(chalk.green("[✓] Svelte detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload = [];
+                const queue = new DownloadQueue(output, threads);
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await svelte_getFromPageSource(url);
-                jsFilesToDownload.push(...jsFilesFromPageSource);
+                queue.push(jsFilesFromPageSource);
 
                 // analyze the strings now
                 const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
-                jsFilesToDownload.push(...jsFilesFromStringAnalysis);
+                queue.push(jsFilesFromStringAnalysis);
 
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-                await downloadFiles(jsFilesToDownload, output);
+                await queue.drain();
+                queue.printSummary();
             } else if (tech.name === "angular") {
                 console.log(chalk.green("[✓] Angular detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload = [];
+                const queue = new DownloadQueue(output, threads);
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await angular_getFromPageSource(url);
-                jsFilesToDownload.push(...jsFilesFromPageSource);
+                queue.push(jsFilesFromPageSource);
 
                 // files using the main.js
                 let mainJsUrl: string | undefined;
-                for (const jsFile of jsFilesToDownload) {
+                for (const jsFile of jsFilesFromPageSource) {
                     if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
                         mainJsUrl = jsFile;
                         break;
@@ -300,46 +295,46 @@ const lazyLoad = async (
 
                 if (mainJsUrl) {
                     const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
-                    jsFilesToDownload.push(...jsFilesFromMainJs);
+                    queue.push(jsFilesFromMainJs);
                 }
 
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-                await downloadFiles(jsFilesToDownload, output);
+                await queue.drain();
+                queue.printSummary();
             } else if (tech.name === "react") {
                 console.log(chalk.green("[✓] React detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                let jsFilesToDownload = [];
+                const queue = new DownloadQueue(output, threads);
 
                 // get the files from the page source
                 const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb);
-                jsFilesToDownload.push(...jsFilesFromPageSource);
+                queue.push(jsFilesFromPageSource);
 
                 // find the webpack chunk path builder function
-                const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesToDownload);
-                jsFilesToDownload.push(...getWebpackChunkPaths);
+                const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource);
+                queue.push(getWebpackChunkPaths);
 
                 // check existing JS files for inline sourcemap references
-                const sourcemapUrls = await react_sourcemapUrls(jsFilesToDownload);
-                jsFilesToDownload.push(...sourcemapUrls);
+                const allDiscovered = [...new Set([...jsFilesFromPageSource, ...getWebpackChunkPaths])];
+                const sourcemapUrls = await react_sourcemapUrls(allDiscovered);
+                queue.push(sourcemapUrls);
 
-                // dedupe the files
-                jsFilesToDownload = [...new Set(jsFilesToDownload)];
-
-                await downloadFiles(jsFilesToDownload, output);
+                await queue.drain();
+                queue.printSummary();
 
                 extractSourceMaps(output, sourcemapDir);
-            } else {
-                console.log(chalk.red("[!] Framework not detected :("));
-                console.log(chalk.magenta(CONFIG.notFoundMessage));
-                console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-                const js_urls = await downloadLoadedJs(url);
-                if (js_urls && js_urls.length > 0) {
-                    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-                    await downloadFiles(js_urls, output);
-                }
+            }
+        } else {
+            console.log(chalk.red("[!] Framework not detected :("));
+            console.log(chalk.magenta(CONFIG.notFoundMessage));
+            console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+            const js_urls = await downloadLoadedJs(url);
+            if (js_urls && js_urls.length > 0) {
+                console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+                const queue = new DownloadQueue(output, threads);
+                queue.push(js_urls);
+                await queue.drain();
+                queue.printSummary();
             }
         }
     }

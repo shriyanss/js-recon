@@ -22,6 +22,7 @@ const esqueryStepSchema = z.object({
     type: z.literal("esquery"),
     query: z.string(),
     inScopeOf: z.string().optional(),
+    taintFrom: z.string().optional(),
 });
 
 const PostMessageFuncResolverStepSchema = z.object({

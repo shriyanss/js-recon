@@ -78,6 +78,32 @@ export interface OpenAPISpec {
  * @param value - The value to determine the OpenAPI type for
  * @returns The OpenAPI type string corresponding to the given value
  */
+// Zod-style placeholder strings emitted by traceBody (e.g. "<number>", "<date>",
+// "<array>") carry the field's real type even though they're stringified. Map
+// them back to an OpenAPI type so the spec doesn't collapse every body field
+// to `type: "string"`.
+const ZOD_PLACEHOLDER_TYPE_MAP: { [k: string]: string } = {
+    string: "string",
+    number: "number",
+    integer: "integer",
+    bigint: "integer",
+    boolean: "boolean",
+    date: "string",
+    array: "array",
+    object: "object",
+    enum: "string",
+    literal: "string",
+    unknown: "string",
+    coerce: "string",
+};
+
+export const getZodPlaceholderType = (value: any): string | null => {
+    if (typeof value !== "string") return null;
+    const match = /^<([a-zA-Z]+)>$/.exec(value);
+    if (!match) return null;
+    return ZOD_PLACEHOLDER_TYPE_MAP[match[1]] ?? null;
+};
+
 export const getOpenApiType = (value: any): string => {
     if (value === null) {
         return "string"; // OpenAPI 3.0 doesn't have a 'null' type, use nullable
@@ -85,6 +111,8 @@ export const getOpenApiType = (value: any): string => {
     if (Array.isArray(value)) {
         return "array";
     }
+    const placeholderType = getZodPlaceholderType(value);
+    if (placeholderType) return placeholderType;
     const jsType = typeof value;
     if (["string", "number", "boolean", "object"].includes(jsType)) {
         return jsType;
@@ -117,11 +145,20 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     };
 
     for (const item of items) {
-        const pathKeyBeforeQuery = typeof item.path === "string" ? item.path.split("?")[0] : "";
+        let rawItemPath = typeof item.path === "string" ? item.path : "";
+        try {
+            if (rawItemPath.startsWith("http://") || rawItemPath.startsWith("https://")) {
+                rawItemPath = new URL(rawItemPath).pathname;
+            }
+        } catch {}
+        const pathKeyBeforeQuery = rawItemPath.split("?")[0];
         const pathKey = replacePlaceholders(
             pathKeyBeforeQuery.startsWith("/") ? pathKeyBeforeQuery : `/${pathKeyBeforeQuery}`
         );
-        const method = item.method.toLowerCase();
+        const VALID_METHODS = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"]);
+        const rawMethod = typeof item.method === "string" ? item.method.toLowerCase() : "";
+        const methodIsValid = VALID_METHODS.has(rawMethod);
+        const method = methodIsValid ? rawMethod : "get";
 
         if (!spec.paths[pathKey]) {
             spec.paths[pathKey] = {};
@@ -188,6 +225,11 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             },
             tags: globalsUtil.getOpenapiChunkTag() ? [item.chunkId] : [],
         };
+
+        if (!methodIsValid) {
+            (operationObject as any).description =
+                `Note: original HTTP method ${JSON.stringify(item.method)} could not be determined; defaulted to GET — verify before use.`;
+        }
 
         if (parameters.length > 0) {
             operationObject.parameters = parameters;

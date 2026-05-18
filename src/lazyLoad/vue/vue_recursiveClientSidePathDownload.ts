@@ -19,7 +19,8 @@ const STAGNATION_LIMIT = 3;
 const vue_recursiveClientSidePathDownload = async (
     clientSidePaths: string[],
     threads: number = 1,
-    maxJsSizeMb: number = 2
+    maxJsSizeMb: number = 2,
+    onFilesDiscovered?: (files: string[]) => void
 ): Promise<string[]> => {
     const allJsFiles = new Set<string>();
     const visitedPaths = new Set<string>();
@@ -47,7 +48,7 @@ const vue_recursiveClientSidePathDownload = async (
                 "[{bar}] {percentage}% | {value}/{total} paths | round {round} | {jsFiles} JS files | {stagnant} stagnant",
             barCompleteChar: "█",
             barIncompleteChar: "░",
-            hideCursor: true,
+            hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
             etaBuffer: 50,
@@ -88,7 +89,11 @@ const vue_recursiveClientSidePathDownload = async (
                 while (cursor < batch.length) {
                     const path = batch[cursor++];
                     try {
-                        const { jsFiles, clientSidePaths: newPaths } = await vue_discoverJsFiles(path, maxJsSizeMb);
+                        const { jsFiles, clientSidePaths: newPaths } = await vue_discoverJsFiles(
+                            path,
+                            maxJsSizeMb,
+                            onFilesDiscovered
+                        );
 
                         for (const file of jsFiles) {
                             allJsFiles.add(file);
