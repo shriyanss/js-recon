@@ -227,7 +227,8 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
         };
 
         if (!methodIsValid) {
-            (operationObject as any).description = `Note: original HTTP method ${JSON.stringify(item.method)} could not be determined; defaulted to GET — verify before use.`;
+            (operationObject as any).description =
+                `Note: original HTTP method ${JSON.stringify(item.method)} could not be determined; defaulted to GET — verify before use.`;
         }
 
         if (parameters.length > 0) {

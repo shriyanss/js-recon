@@ -187,11 +187,7 @@ const findNewExpressionsWithUrl = (ast: any): any[] => {
             const hasUrl = first.properties.some((p: any) => {
                 if (p.type !== "ObjectProperty") return false;
                 const keyName =
-                    p.key.type === "Identifier"
-                        ? p.key.name
-                        : p.key.type === "StringLiteral"
-                          ? p.key.value
-                          : null;
+                    p.key.type === "Identifier" ? p.key.name : p.key.type === "StringLiteral" ? p.key.value : null;
                 return keyName === "url";
             });
             if (!hasUrl) return;
@@ -276,11 +272,7 @@ const extractObjectField = (objExpr: any, fieldName: string): { rawNode: any; st
     for (const prop of objExpr.properties) {
         if (prop.type !== "ObjectProperty") continue;
         const keyName =
-            prop.key.type === "Identifier"
-                ? prop.key.name
-                : prop.key.type === "StringLiteral"
-                  ? prop.key.value
-                  : null;
+            prop.key.type === "Identifier" ? prop.key.name : prop.key.type === "StringLiteral" ? prop.key.value : null;
         if (keyName !== fieldName) continue;
         let val: string | null = null;
         if (prop.value.type === "StringLiteral") val = prop.value.value;
