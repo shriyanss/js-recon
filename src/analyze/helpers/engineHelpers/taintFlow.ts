@@ -169,10 +169,15 @@ const getSinkValueNodes = (sink: Node): Node[] => {
             const args = (sink as any).arguments as Node[];
             return args.filter((a) => a && a.type !== "SpreadElement");
         }
-        case "ObjectProperty":
-            return [(sink as any).value as Node];
-        case "JSXAttribute":
-            return [(sink as any).value as Node];
+        case "ObjectProperty": {
+            const v = (sink as any).value as Node | null | undefined;
+            return v ? [v] : [];
+        }
+        case "JSXAttribute": {
+            // Boolean JSX attributes (e.g. `<div hidden />`) have no value node.
+            const v = (sink as any).value as Node | null | undefined;
+            return v ? [v] : [];
+        }
         default:
             return [sink];
     }
