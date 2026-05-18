@@ -7,6 +7,7 @@ import vue_jsImports from "./vue_jsImports.js";
 import vue_reconstructSourceMaps from "./vue_reconstructSourceMaps.js";
 import vue_getClientSidePaths from "./vue_getClientSidePaths.js";
 import vue_viteMapDeps from "./vue_viteMapDeps.js";
+import vue_stringJsFiles from "./vue_stringJsFiles.js";
 
 export interface VueDiscoveryResult {
     jsFiles: string[];
@@ -55,6 +56,13 @@ const vue_discoverJsFiles = async (url: string, maxJsSizeMb: number = 2): Promis
     jsFiles.push(...fromImports);
     if (fromImports.length > 0) {
         console.log(chalk.green(`[✓] Found ${fromImports.length} files from import statements`));
+    }
+
+    // scan string literals inside known JS files for .js references
+    const fromStringRefs = await vue_stringJsFiles(jsFiles, maxJsSizeMb);
+    jsFiles.push(...fromStringRefs);
+    if (fromStringRefs.length > 0) {
+        console.log(chalk.green(`[✓] Found ${fromStringRefs.length} files from string literal JS references`));
     }
 
     // reconstruct sourceMappingURL references

@@ -12,7 +12,7 @@ import openapi from "./openapi.js";
  * @param {object} node - The AST node to extract strings from
  * @returns {string[]} An array of extracted string literals
  */
-const extractStrings = (node: object): string[] => {
+export const extractStrings = (node: object): string[] => {
     const strings: Set<string> = new Set();
     const seen = new WeakSet();
 
