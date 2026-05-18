@@ -121,7 +121,8 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         // prepend {{baseUrl}} to an already-complete URL.
         try {
             if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) {
-                rawPath = new URL(rawPath).pathname;
+                const u = new URL(rawPath);
+                rawPath = u.pathname + (u.search || "");
             }
         } catch {
             // leave rawPath as-is if URL parsing fails
