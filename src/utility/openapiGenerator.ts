@@ -78,6 +78,32 @@ export interface OpenAPISpec {
  * @param value - The value to determine the OpenAPI type for
  * @returns The OpenAPI type string corresponding to the given value
  */
+// Zod-style placeholder strings emitted by traceBody (e.g. "<number>", "<date>",
+// "<array>") carry the field's real type even though they're stringified. Map
+// them back to an OpenAPI type so the spec doesn't collapse every body field
+// to `type: "string"`.
+const ZOD_PLACEHOLDER_TYPE_MAP: { [k: string]: string } = {
+    string: "string",
+    number: "number",
+    integer: "integer",
+    bigint: "integer",
+    boolean: "boolean",
+    date: "string",
+    array: "array",
+    object: "object",
+    enum: "string",
+    literal: "string",
+    unknown: "string",
+    coerce: "string",
+};
+
+export const getZodPlaceholderType = (value: any): string | null => {
+    if (typeof value !== "string") return null;
+    const match = /^<([a-zA-Z]+)>$/.exec(value);
+    if (!match) return null;
+    return ZOD_PLACEHOLDER_TYPE_MAP[match[1]] ?? null;
+};
+
 export const getOpenApiType = (value: any): string => {
     if (value === null) {
         return "string"; // OpenAPI 3.0 doesn't have a 'null' type, use nullable
@@ -85,6 +111,8 @@ export const getOpenApiType = (value: any): string => {
     if (Array.isArray(value)) {
         return "array";
     }
+    const placeholderType = getZodPlaceholderType(value);
+    if (placeholderType) return placeholderType;
     const jsType = typeof value;
     if (["string", "number", "boolean", "object"].includes(jsType)) {
         return jsType;

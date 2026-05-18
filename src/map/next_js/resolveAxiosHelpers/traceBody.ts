@@ -34,8 +34,28 @@ const parseChunkAst = (chunkId: string, code: string): any | null => {
  * we follow `e` to its declaration to find the real shape (e.g. another property of a state
  * value or a string literal).
  */
+// Reconstruct a dotted-path string for `a.b.c` / `a["b"]` / `this.x` chains so
+// downstream consumers see `"e.ssn"` instead of the raw `"[MemberExpression]"`
+// AST-tag fallback.
+const memberExpressionToString = (node: any): string => {
+    if (!node) return "?";
+    if (node.type === "Identifier") return node.name;
+    if (node.type === "ThisExpression") return "this";
+    if (node.type === "MemberExpression") {
+        const obj = memberExpressionToString(node.object);
+        if (node.computed) {
+            if (node.property.type === "StringLiteral") return `${obj}["${node.property.value}"]`;
+            if (node.property.type === "NumericLiteral") return `${obj}[${node.property.value}]`;
+            return `${obj}[?]`;
+        }
+        if (node.property.type === "Identifier") return `${obj}.${node.property.name}`;
+        return `${obj}.?`;
+    }
+    return "?";
+};
+
 const resolvePropertyValueNode = (node: Node, scopePath: NodePath, depth: number = 0): string => {
-    if (depth > 6) return `"[max depth]"`;
+    if (depth > 6) return `"<unknown>"`;
     if (!node) return `""`;
 
     if (node.type === "Identifier") {
@@ -43,7 +63,7 @@ const resolvePropertyValueNode = (node: Node, scopePath: NodePath, depth: number
         if (binding && binding.path.isVariableDeclarator() && binding.path.node.init) {
             return resolvePropertyValueNode(binding.path.node.init, binding.path, depth + 1);
         }
-        return `"[var ${node.name}]"`;
+        return `"<unknown>"`;
     }
 
     if (node.type === "ObjectExpression") {
@@ -71,7 +91,31 @@ const resolvePropertyValueNode = (node: Node, scopePath: NodePath, depth: number
     if (node.type === "BooleanLiteral") return String(node.value);
     if (node.type === "NullLiteral") return "null";
 
-    return `"[${node.type}]"`;
+    if (node.type === "MemberExpression") {
+        return JSON.stringify(memberExpressionToString(node));
+    }
+
+    // `new Date(...)` is the only NewExpression that shows up in practice (date
+    // pickers materializing `new Date(value)` before the POST). Treat it as a
+    // date placeholder; everything else degrades to "<unknown>".
+    if (node.type === "NewExpression") {
+        const callee: any = (node as any).callee;
+        if (callee && callee.type === "Identifier" && callee.name === "Date") return `"<date>"`;
+        return `"<unknown>"`;
+    }
+
+    if (node.type === "TemplateLiteral") return `"<string>"`;
+    if (node.type === "ArrayExpression") return `["<array>"]`;
+    if (node.type === "CallExpression") return `"<unknown>"`;
+    if (node.type === "ConditionalExpression") {
+        return resolvePropertyValueNode((node as any).consequent, scopePath, depth + 1);
+    }
+    if (node.type === "LogicalExpression") {
+        return resolvePropertyValueNode((node as any).left, scopePath, depth + 1);
+    }
+    if (node.type === "UnaryExpression" && (node as any).operator === "void") return `"<unknown>"`;
+
+    return `"<unknown>"`;
 };
 
 /**
@@ -949,6 +993,21 @@ export const maybeTraceBodyForIdentifier = (
  * Helper: rebuild the original astNodeToJsonString result, but for an Identifier-only
  * body, attempt to improve via taint trace.
  */
+/**
+ * Detects literal-undefined body arguments. Minified bundles emit `undefined` as
+ * the `void 0` shorthand (UnaryExpression with operator `void` over any operand),
+ * which axios treats as "no body". The bare identifier `undefined` is the same
+ * thing in any non-shadowed scope. Either form should map to an empty body so
+ * downstream consumers (openapi/postman) omit the request body entirely instead
+ * of rendering the literal string `"void 0"`.
+ */
+const isUndefinedBodyNode = (node: Node): boolean => {
+    if (!node) return false;
+    if (node.type === "UnaryExpression" && (node as any).operator === "void") return true;
+    if (node.type === "Identifier" && (node as any).name === "undefined") return true;
+    return false;
+};
+
 export const resolveBodyArg = (
     bodyArgNode: Node,
     parentCallPath: NodePath,
@@ -957,6 +1016,7 @@ export const resolveBodyArg = (
     chunks: Chunks | undefined,
     chunkId?: string
 ): string => {
+    if (isUndefinedBodyNode(bodyArgNode)) return "";
     if (bodyArgNode && bodyArgNode.type === "Identifier") {
         const traced = maybeTraceBodyForIdentifier(bodyArgNode, parentCallPath, ast, chunkCode, chunks, chunkId);
         if (traced) return traced;
