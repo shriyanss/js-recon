@@ -15,8 +15,18 @@ const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detecte
                     // get the src
                     const src = attrValue;
 
-                    // get the content of the src file
-                    const res = await makeRequest(new URL(src, url).href, {});
+                    // Resolve src against the page URL — skip if it's malformed
+                    // (e.g. `data:`, `javascript:` schemes, invalid URIs).
+                    let resolvedUrl: string;
+                    try {
+                        resolvedUrl = new URL(src, url).href;
+                    } catch {
+                        continue;
+                    }
+
+                    // makeRequest returns Response | null — skip when the fetch failed.
+                    const res = await makeRequest(resolvedUrl, {});
+                    if (!res) continue;
                     const body = await res.text();
 
                     // check if the body contains "react" or "react-dom"
