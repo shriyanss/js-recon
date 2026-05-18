@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import cliProgress from "cli-progress";
 import makeRequest from "../../utility/makeReq.js";
 import parser from "@babel/parser";
 import { extractStrings } from "../../strings/index.js";
@@ -111,24 +112,44 @@ const vue_stringJsFiles = async (knownJsFiles: string[], maxJsSizeMb: number = 2
     const allFound = new Set<string>();
     const crawled = new Set<string>(knownJsFiles);
 
-    for (const jsFile of knownJsFiles) {
-        const discovered = await fetchAndExtractJsStrings(jsFile, maxJsSizeMb);
-        for (const u of discovered) allFound.add(u);
-    }
+    const bar = new cliProgress.SingleBar(
+        {
+            format:
+                chalk.cyan("[i] Scanning JS string refs ") +
+                "[{bar}] {percentage}% | {value}/{total} files | {refs} refs found",
+            barCompleteChar: "█",
+            barIncompleteChar: "░",
+            hideCursor: true,
+            clearOnComplete: false,
+            stopOnComplete: false,
+        },
+        cliProgress.Presets.shades_classic
+    );
 
-    // crawl newly discovered URLs that weren't in the original set
-    let foundNew = true;
-    while (foundNew) {
-        foundNew = false;
-        for (const u of [...allFound]) {
+    let processed = 0;
+    const queue = [...knownJsFiles];
+
+    bar.start(queue.length, 0, { refs: 0 });
+
+    const processFile = async (url: string) => {
+        const discovered = await fetchAndExtractJsStrings(url, maxJsSizeMb);
+        for (const u of discovered) {
+            allFound.add(u);
             if (!crawled.has(u)) {
-                foundNew = true;
                 crawled.add(u);
-                const discovered = await fetchAndExtractJsStrings(u, maxJsSizeMb);
-                for (const newU of discovered) allFound.add(newU);
+                queue.push(u);
+                bar.setTotal(queue.length);
             }
         }
+        processed++;
+        bar.update(processed, { refs: allFound.size });
+    };
+
+    for (let i = 0; i < queue.length; i++) {
+        await processFile(queue[i]);
     }
+
+    bar.stop();
 
     return [...allFound];
 };

@@ -6,6 +6,11 @@ import makeRequest from "../utility/makeReq.js";
 import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope } from "./globals.js";
 
+export interface DownloadQueueOptions {
+    /** Called after each URL is processed (downloaded, ignored, or failed). */
+    onProgress?: (processed: number, total: number, downloaded: number) => void;
+}
+
 const PRETTIER_SIZE_LIMIT = 500 * 1024;
 
 /**
@@ -36,13 +41,21 @@ export class DownloadQueue {
 
     /** Stats */
     private downloadCount = 0;
+    private processedCount = 0;
     private ignoredFiles: string[] = [];
     private ignoredDomains: string[] = [];
 
-    constructor(output: string, concurrency: number) {
+    private readonly onProgress?: DownloadQueueOptions["onProgress"];
+
+    constructor(output: string, concurrency: number, options: DownloadQueueOptions = {}) {
         this.output = output;
         this.concurrency = Math.max(1, concurrency);
+        this.onProgress = options.onProgress;
         fs.mkdirSync(output, { recursive: true });
+    }
+
+    get totalEnqueued(): number {
+        return this.seen.size;
     }
 
     /**
@@ -182,6 +195,9 @@ export class DownloadQueue {
             this.downloadCount++;
         } catch (err) {
             console.error(chalk.red(`[!] Failed to download: ${url} : ${err}`));
+        } finally {
+            this.processedCount++;
+            this.onProgress?.(this.processedCount, this.seen.size, this.downloadCount);
         }
     }
 }
