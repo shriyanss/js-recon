@@ -155,7 +155,10 @@ export class DownloadQueue {
             }
 
             const rawText = await res.text();
-            const file = url.match(/\.json/) ? rawText : `// File Source: ${url}\n${rawText}`;
+            // .js.map payloads are JSON — adding a `//` banner would break strict
+            // JSON parsing later in the same function (parser: "json").
+            const file =
+                url.match(/\.json/) || url.match(/\.js\.map/) ? rawText : `// File Source: ${url}\n${rawText}`;
 
             let filename: string | undefined;
             try {

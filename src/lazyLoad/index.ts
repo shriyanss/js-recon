@@ -75,8 +75,10 @@ const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
     let counter = 0;
 
     for (const mapFile of mapFiles) {
-        // read the file while skipping the first line
-        const mapContent = readFileSync(mapFile, "utf-8").split("\n").slice(1).join("\n");
+        const raw = readFileSync(mapFile, "utf-8");
+        // Older runs prepended a `// File Source: ...` banner to .js.map files;
+        // current runs write pure JSON. Strip the leading banner if present.
+        const mapContent = raw.startsWith("//") ? raw.split("\n").slice(1).join("\n") : raw;
         const { files } = extractSources(mapContent);
 
         for (const file of files) {
