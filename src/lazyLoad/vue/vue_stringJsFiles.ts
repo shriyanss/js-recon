@@ -103,10 +103,7 @@ const fetchAndExtractJsStrings = async (url: string, maxJsSizeMb: number): Promi
  * known JS file for references that end in `.js` and resolving them against
  * the file's own URL.
  */
-const vue_stringJsFiles = async (
-    knownJsFiles: string[],
-    maxJsSizeMb: number = 2
-): Promise<string[]> => {
+const vue_stringJsFiles = async (knownJsFiles: string[], maxJsSizeMb: number = 2): Promise<string[]> => {
     const allFound = new Set<string>();
     const crawled = new Set<string>(knownJsFiles);
 

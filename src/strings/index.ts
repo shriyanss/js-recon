@@ -211,7 +211,7 @@ const strings = async (
                     // like "./path/to/resource" or "../path/to/resource"
                     paths.push(string);
                 }
-                if (string.match(/^.+\.js$/)){
+                if (string.match(/^.+\.js$/)) {
                     // like "assets/app.abc.js"
                     paths.push(string);
                 }
