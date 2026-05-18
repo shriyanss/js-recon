@@ -137,8 +137,14 @@ const isWrapperClassBody = (body: any): boolean => {
                     right.type === "ObjectExpression"
                 ) {
                     const keys = right.properties
-                        .filter((p: any) => p.type === "ObjectProperty" && p.key.type === "Identifier")
-                        .map((p: any) => p.key.name);
+                        .filter((p: any) => p.type === "ObjectProperty")
+                        .map((p: any) =>
+                            p.key.type === "Identifier"
+                                ? p.key.name
+                                : p.key.type === "StringLiteral"
+                                  ? p.key.value
+                                  : null
+                        );
                     if (keys.includes("url") && keys.includes("method")) {
                         found = true;
                         return;
@@ -176,10 +182,18 @@ const findNewExpressionsWithUrl = (ast: any): any[] => {
             const first = args[0];
             if (first.type !== "ObjectExpression") return;
 
-            // Must have a `url` property (heuristic for HTTP config)
-            const hasUrl = first.properties.some(
-                (p: any) => p.type === "ObjectProperty" && p.key.type === "Identifier" && p.key.name === "url"
-            );
+            // Must have a `url` property (heuristic for HTTP config).
+            // Accept both identifier (`url: ...`) and string-literal (`"url": ...`) keys.
+            const hasUrl = first.properties.some((p: any) => {
+                if (p.type !== "ObjectProperty") return false;
+                const keyName =
+                    p.key.type === "Identifier"
+                        ? p.key.name
+                        : p.key.type === "StringLiteral"
+                          ? p.key.value
+                          : null;
+                return keyName === "url";
+            });
             if (!hasUrl) return;
 
             results.push(path);
@@ -260,11 +274,17 @@ const resolveCalleeToWrapperChunk = (
 const extractObjectField = (objExpr: any, fieldName: string): { rawNode: any; stringValue: string | null } | null => {
     if (!objExpr || objExpr.type !== "ObjectExpression") return null;
     for (const prop of objExpr.properties) {
-        if (prop.type === "ObjectProperty" && prop.key.type === "Identifier" && prop.key.name === fieldName) {
-            let val: string | null = null;
-            if (prop.value.type === "StringLiteral") val = prop.value.value;
-            return { rawNode: prop.value, stringValue: val };
-        }
+        if (prop.type !== "ObjectProperty") continue;
+        const keyName =
+            prop.key.type === "Identifier"
+                ? prop.key.name
+                : prop.key.type === "StringLiteral"
+                  ? prop.key.value
+                  : null;
+        if (keyName !== fieldName) continue;
+        let val: string | null = null;
+        if (prop.value.type === "StringLiteral") val = prop.value.value;
+        return { rawNode: prop.value, stringValue: val };
     }
     return null;
 };
