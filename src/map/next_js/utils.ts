@@ -1080,15 +1080,16 @@ export const resolveNodeValue = (
                                             obj[key] = "[call to object...]";
                                         }
                                     } else {
-                                        obj[key] = resolveNodeValue(
-                                            prop.value,
-                                            scope,
-                                            "",
-                                            callType,
-                                            chunkCode,
-                                            chunks,
-                                            thirdArgName
-                                        ) ?? `[${prop.value.type}]`;
+                                        obj[key] =
+                                            resolveNodeValue(
+                                                prop.value,
+                                                scope,
+                                                "",
+                                                callType,
+                                                chunkCode,
+                                                chunks,
+                                                thirdArgName
+                                            ) ?? `[${prop.value.type}]`;
                                     }
                                 } else if (prop.type === "SpreadElement") {
                                     // Skip unresolvable spread elements — they're code artifacts,
@@ -1108,7 +1109,11 @@ export const resolveNodeValue = (
                                 chunks,
                                 thirdArgName
                             );
-                            if (resolved !== null && resolved !== undefined && resolved !== "[call_stack_exceeded_use_better_machine]") {
+                            if (
+                                resolved !== null &&
+                                resolved !== undefined &&
+                                resolved !== "[call_stack_exceeded_use_better_machine]"
+                            ) {
                                 return resolved;
                             }
                         }
@@ -1532,9 +1537,7 @@ export const resolveNodeValue = (
                                 if (val === "[call_stack_exceeded_use_better_machine]") return val;
                                 // Use the literal value when fully resolved; otherwise use {key} as placeholder.
                                 const valStr =
-                                    val !== null &&
-                                    val !== undefined &&
-                                    !String(val).startsWith("[")
+                                    val !== null && val !== undefined && !String(val).startsWith("[")
                                         ? encodeURIComponent(String(val))
                                         : `{${key}}`;
                                 params.push(`${key}=${valStr}`);
@@ -1626,12 +1629,7 @@ export const resolveNodeValue = (
                         const leftOk = left !== null && left !== undefined;
                         const rightOk = right !== null && right !== undefined;
                         // Fully resolved — concatenate directly.
-                        if (
-                            leftOk &&
-                            rightOk &&
-                            !String(left).startsWith("[") &&
-                            !String(right).startsWith("[")
-                        ) {
+                        if (leftOk && rightOk && !String(left).startsWith("[") && !String(right).startsWith("[")) {
                             return left + right;
                         }
                         // Partially resolved — concatenate what we have so the caller

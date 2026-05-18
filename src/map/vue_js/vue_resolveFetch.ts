@@ -96,13 +96,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                     .slice((args[0] as any).start, (args[0] as any).end)
                     .replace(/\n\s*/g, "");
 
-                let url: any = resolveNodeValue(
-                    args[0],
-                    callPath.scope,
-                    urlArgCode,
-                    "fetch",
-                    fileContent
-                );
+                let url: any = resolveNodeValue(args[0], callPath.scope, urlArgCode, "fetch", fileContent);
 
                 if (typeof url === "string" && (url.includes("[var ") || url.includes("[MemberExpression"))) {
                     const substituted = substituteVariablesInString(url, fileContent);
@@ -119,13 +113,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                 let body = "";
 
                 if (args.length > 1) {
-                    const options: any = resolveNodeValue(
-                        args[1],
-                        callPath.scope,
-                        "",
-                        "fetch",
-                        fileContent
-                    );
+                    const options: any = resolveNodeValue(args[1], callPath.scope, "", "fetch", fileContent);
 
                     if (typeof options === "object" && options !== null) {
                         method = options.method || "GET";
@@ -134,13 +122,9 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                             const resolvedHeaders: Record<string, string> = {};
                             for (const [k, v] of Object.entries(options.headers)) {
                                 const rk =
-                                    typeof k === "string"
-                                        ? substituteVariablesInString(k, fileContent)
-                                        : String(k);
+                                    typeof k === "string" ? substituteVariablesInString(k, fileContent) : String(k);
                                 const rv =
-                                    typeof v === "string"
-                                        ? substituteVariablesInString(v, fileContent)
-                                        : String(v);
+                                    typeof v === "string" ? substituteVariablesInString(v, fileContent) : String(v);
                                 resolvedHeaders[rk] = rv;
                             }
                             headers = resolvedHeaders;
@@ -148,9 +132,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
 
                         if (options.body) {
                             body =
-                                typeof options.body === "object"
-                                    ? JSON.stringify(options.body)
-                                    : String(options.body);
+                                typeof options.body === "object" ? JSON.stringify(options.body) : String(options.body);
                         }
 
                         console.log(chalk.green(`    Method: ${method}`));

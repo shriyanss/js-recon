@@ -180,7 +180,11 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
             let isEmptyObject = false;
             try {
                 const parsed = JSON.parse(bodyRaw);
-                isEmptyObject = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && Object.keys(parsed).length === 0;
+                isEmptyObject =
+                    typeof parsed === "object" &&
+                    parsed !== null &&
+                    !Array.isArray(parsed) &&
+                    Object.keys(parsed).length === 0;
             } catch {}
             if (!isEmptyObject) {
                 request.body = {

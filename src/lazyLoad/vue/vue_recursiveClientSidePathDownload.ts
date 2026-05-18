@@ -89,7 +89,11 @@ const vue_recursiveClientSidePathDownload = async (
                 while (cursor < batch.length) {
                     const path = batch[cursor++];
                     try {
-                        const { jsFiles, clientSidePaths: newPaths } = await vue_discoverJsFiles(path, maxJsSizeMb, onFilesDiscovered);
+                        const { jsFiles, clientSidePaths: newPaths } = await vue_discoverJsFiles(
+                            path,
+                            maxJsSizeMb,
+                            onFilesDiscovered
+                        );
 
                         for (const file of jsFiles) {
                             allJsFiles.add(file);
