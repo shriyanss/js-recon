@@ -345,12 +345,15 @@ const makeRequest = async (
         // when buffer-backed bodies share underlying memory. Strip headers
         // that no longer match the decoded body (content-length / encoding).
         const createResponse = (data: { body: Buffer; status: number; headers: Headers; text?: string }): Response => {
-            const text = data.text ?? data.body.toString("utf-8");
+            // Copy bytes into a fresh Uint8Array so each Response owns its
+            // backing memory — text decoding would corrupt binary payloads.
+            const bodyCopy = new Uint8Array(data.body.byteLength);
+            bodyCopy.set(data.body);
             const headers = new Headers(data.headers);
             headers.delete("content-length");
             headers.delete("content-encoding");
             headers.delete("transfer-encoding");
-            return new Response(text, { status: data.status, headers });
+            return new Response(bodyCopy, { status: data.status, headers });
         };
 
         // When using default headers, try both with and without Referer/Origin
