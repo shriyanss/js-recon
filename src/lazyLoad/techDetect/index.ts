@@ -60,7 +60,9 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
-            console.log(chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available"));
+            console.log(
+                chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available")
+            );
         } finally {
             await browser.close().catch(() => {});
         }

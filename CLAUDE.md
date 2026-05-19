@@ -13,17 +13,17 @@ npm run start -- <subcommand> [options]
 
 ## Subcommands
 
-| Command | Purpose |
-|---------|---------|
-| `lazyload` | Download JS chunks from a target URL |
-| `strings` | Extract strings/paths/secrets from JS files |
-| `map` | Parse webpack/turbopack bundles into a structured `mapped.json` |
-| `endpoints` | Extract client-side routes |
-| `analyze` | Run YAML rules against `mapped.json` / OpenAPI spec |
-| `report` | Generate HTML/SQLite report |
-| `run` | Run all of the above in sequence (primary interface) |
-| `api-gateway` | Manage AWS API Gateway for IP rotation |
-| `mcp` | Interactive AI-powered CLI |
+| Command       | Purpose                                                         |
+| ------------- | --------------------------------------------------------------- |
+| `lazyload`    | Download JS chunks from a target URL                            |
+| `strings`     | Extract strings/paths/secrets from JS files                     |
+| `map`         | Parse webpack/turbopack bundles into a structured `mapped.json` |
+| `endpoints`   | Extract client-side routes                                      |
+| `analyze`     | Run YAML rules against `mapped.json` / OpenAPI spec             |
+| `report`      | Generate HTML/SQLite report                                     |
+| `run`         | Run all of the above in sequence (primary interface)            |
+| `api-gateway` | Manage AWS API Gateway for IP rotation                          |
+| `mcp`         | Interactive AI-powered CLI                                      |
 
 ## Key source files
 
@@ -73,6 +73,7 @@ npm run start -- <subcommand> [options]
 ### Batch mode
 
 When `-u` points to a file of URLs, each line is processed sequentially. For each URL:
+
 - A subdirectory `output/<host>/` is created
 - `clearJsUrls()` / `clearJsonUrls()` reset the URL sets so previous targets don't bleed over
 - All output paths are prefixed with `workingDir/`
@@ -84,6 +85,7 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 3. If it needs to reach a downstream module (like `analyze`), thread it through `cmd` — `processUrl` receives the full `cmd` object and passes it to submodule calls
 
 **Example — `-r/--rules` flag (added in this codebase):**
+
 - Declared in `src/index.ts`: `.option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")`
 - In `src/run/index.ts` the `analyze` calls use `cmd.rules || ""` — empty string tells `analyze` to use the default rules cache
 
@@ -98,12 +100,14 @@ The `map -i` blessed UI dispatches user input through `interactive_helpers/comma
 ## Rules
 
 Rules are YAML files (`.yml`/`.yaml`) in two places:
+
 - **Workspace:** `../js-recon-rules/` (relative to this repo)
 - **Installed cache:** `~/.js-recon/rules`
 
 `initRules` downloads rules from GitHub when missing or when the cached version doesn't match the latest release. Rules may declare `js_recon_version: ">=X.Y.Z"`; incompatible rules are skipped with a warning. The version check strips prerelease suffixes (e.g. `1.3.1-alpha.3` → `[1,3,1]`).
 
 Rule categories:
+
 - `ast/` — AST-based pattern matching against chunk code (uses `@babel/parser` + `esquery`)
 - `request/` — OpenAPI/request-level checks against the resolved endpoint list
 

@@ -211,7 +211,10 @@ function normalizeCode(code: string): string {
                 target = program.body[0].expression;
             }
             const out = generator(target, { compact: true, comments: false }).code;
-            return out.replace(/^\(|\);?$/g, "").replace(/;+$/g, "").trim();
+            return out
+                .replace(/^\(|\);?$/g, "")
+                .replace(/;+$/g, "")
+                .trim();
         } catch {
             // try next strategy
         }

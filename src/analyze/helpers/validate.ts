@@ -25,13 +25,19 @@ const isVersionCompatible = (requirement: string, currentVersion: string): boole
     const required = parseVersion(reqVer);
     const cmp = compareVersions(current, required);
     switch (op) {
-        case ">=": return cmp >= 0;
-        case "<=": return cmp <= 0;
-        case ">": return cmp > 0;
-        case "<": return cmp < 0;
+        case ">=":
+            return cmp >= 0;
+        case "<=":
+            return cmp <= 0;
+        case ">":
+            return cmp > 0;
+        case "<":
+            return cmp < 0;
         case "=":
-        case "==": return cmp === 0;
-        default: return true;
+        case "==":
+            return cmp === 0;
+        default:
+            return true;
     }
 };
 

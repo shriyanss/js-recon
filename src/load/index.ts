@@ -22,10 +22,7 @@ interface CaidoEntry {
 
 const DEFAULT_PORTS: Record<string, number> = { "http:": 80, "https:": 443 };
 
-async function* streamCaidoEntries(
-    filePath: string,
-    rawFilter: (raw: string) => boolean
-): AsyncGenerator<CaidoEntry> {
+async function* streamCaidoEntries(filePath: string, rawFilter: (raw: string) => boolean): AsyncGenerator<CaidoEntry> {
     const stream = fs.createReadStream(filePath, { encoding: "utf8", highWaterMark: 1024 * 1024 });
     let depth = 0;
     let inString = false;
@@ -115,7 +112,9 @@ function parseHeaders(headerText: string): { firstLine: string; headers: Record<
 }
 
 function decodeBody(body: Buffer, headers: Record<string, string>): Buffer {
-    const enc = Object.entries(headers).find(([k]) => k.toLowerCase() === "content-encoding")?.[1]?.toLowerCase();
+    const enc = Object.entries(headers)
+        .find(([k]) => k.toLowerCase() === "content-encoding")?.[1]
+        ?.toLowerCase();
     if (!enc) return body;
     try {
         if (enc.includes("gzip")) return zlib.gunzipSync(body);
