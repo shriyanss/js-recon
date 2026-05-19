@@ -86,7 +86,7 @@ const analyze = async (
     }
 
     // now, validate all those files
-    const allValidated = await validateRules(ruleFiles);
+    const { allValid: allValidated, compatibleRuleFiles } = await validateRules(ruleFiles);
 
     if (!allValidated) {
         console.log(chalk.red("[!] Some rules are invalid"));
@@ -144,7 +144,7 @@ const analyze = async (
 
     // iterate over the ruleFiles
     let ruleFindings: EngineOutput[] = [];
-    for (const ruleFile of ruleFiles) {
+    for (const ruleFile of compatibleRuleFiles) {
         // load the rule
         const rule: Rule = yaml.parse(fs.readFileSync(ruleFile, "utf8"));
 

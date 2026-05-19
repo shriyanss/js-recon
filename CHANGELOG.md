@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.3.1-alpha.3 - (unreleased)
+
+### Added
+
+- Add version for rule templates
+
+### Changed
+
+### Fixed
+
 ## 1.3.1-alpha.2 - 2026-05-18
 
 ### Added
