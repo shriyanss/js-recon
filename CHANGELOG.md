@@ -6,8 +6,12 @@
 
 - Add version for rule templates
 - Add Vue js support for analyze module
+- `esquery` interactive command + headless `-c/--command` runner for `map` and `run`, with `&&` chaining (`map`)
+- Line-editor behavior in interactive mode: cursor movement (left/right/home/end/ctrl-a/ctrl-e), word-wise motion/delete (ctrl-w, ctrl-left/right), kill-to-start/end (ctrl-u/ctrl-k), delete-at-cursor, mid-string insertion so paste lands at the cursor, and horizontal scroll for long inputs (`map -i`)
 
 ### Changed
+
+- Removed `mouse: true` from the interactive output pane so terminal-native text selection/copy works in the output area (`map -i`)
 
 ### Fixed
 

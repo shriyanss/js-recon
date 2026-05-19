@@ -38,6 +38,7 @@ npm run start -- <subcommand> [options]
 - `src/map/next_js/getWebpackConnections.ts` — extracts chunk code from webpack bundles
 - `src/map/next_js/interactive_helpers/esqueryGen.ts` — `esquery` interactive command: minifies a pasted snippet, matches it against each chunk's minified AST nodes, prints loose/strict selectors. Vue's command handler imports the same module — keep it framework-agnostic.
 - `src/map/next_js/interactive.ts` / `src/map/vue_js/interactive.ts` — export both the blessed-backed `interactive()` entry and a headless `runCommands(chunks, mapFile, commands)` that pipes `outputBox.log` to stdout for `-c/--command` execution.
+- `src/map/next_js/interactive_helpers/inputPatch.ts` — `enableCursorInput(inputBox)` patches a blessed textbox instance to support cursor movement, mid-string insertion, and paste-at-cursor. It overrides `_listener`/`setValue`/`_updateCursor`/`clearValue` on the instance. **Don't try to remove blessed's listener after the fact** — blessed re-binds `this._listener` on every focus, so overriding `_listener` on the instance is the only race-free approach. Shared by Next.js and Vue interactive entries.
 - `src/globalConfig.ts` — current version string and tool-wide constants
 - `src/utility/globals.ts` — mutable global state (tech detection result, AI config, OpenAPI flag, etc.)
 
