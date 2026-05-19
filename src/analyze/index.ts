@@ -12,6 +12,7 @@ import { EngineOutput, generateEngineOutput } from "./helpers/outputHelper.js";
 
 const availableTechs = {
     next: "Next.js",
+    vue: "Vue.js",
 };
 
 /**
@@ -55,7 +56,7 @@ const getRuleFilesRecursive = (dir: string): string[] => {
 const analyze = async (
     rulesPath: string,
     mappedJson: string,
-    tech: "next",
+    tech: "next" | "vue",
     list: boolean,
     openapi: string,
     validate: boolean,

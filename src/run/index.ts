@@ -110,19 +110,38 @@ const processUrl = async (
     }
 
     if (globalsUtil.getTech() === "vue") {
-        // Vue.JS pipeline: lazyload (done) + map + OpenAPI/Postman output.
+        // Vue.JS pipeline: lazyload (done) + map + analyze + report.
         // Scan the whole download directory: Vue builds frequently spread chunks
         // across multiple asset hosts, and relative imports resolve within each tree.
         const mappedFileVue = isBatch ? `${workingDir}/mapped` : "mapped";
+        const mappedJsonFileVue = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
         const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
+        const analyzeFile = isBatch ? `${workingDir}/analyze.json` : "analyze.json";
+        const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
+        const reportFile = isBatch ? `${workingDir}/report` : "report";
+        const endpointsFile = isBatch ? `${workingDir}/endpoints` : "endpoints";
 
-        console.log(chalk.bgCyan("[2/3] Running map to find functions and API calls..."));
+        console.log(chalk.bgCyan("[2/4] Running map to find functions and API calls..."));
         globalsUtil.setOpenapi(true);
         if (isBatch) {
             globalsUtil.setOpenapiOutputFile(openapiFile);
         }
         await map(outputDir, mappedFileVue, ["json"], "vue", false, false);
         console.log(chalk.bgGreen("[+] Map complete."));
+
+        console.log(chalk.bgCyan("[3/4] Running analyze..."));
+        // @ts-ignore
+        await analyze(cmd.rules || "", mappedJsonFileVue, "vue", false, openapiFile, false, analyzeFile);
+        console.log(chalk.bgGreen("[+] Analyze complete."));
+
+        console.log(chalk.bgCyan("[4/4] Running report module..."));
+        // Endpoints extraction isn't implemented for Vue yet; pass an empty file if absent.
+        const endpointsJson = `${endpointsFile}.json`;
+        if (!fs.existsSync(endpointsJson)) {
+            fs.writeFileSync(endpointsJson, "[]");
+        }
+        await report(reportDbFile, mappedJsonFileVue, analyzeFile, endpointsJson, openapiFile, reportFile);
+        console.log(chalk.bgGreen("[+] Report complete."));
 
         console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
         return;
