@@ -36,6 +36,8 @@ npm run start -- <subcommand> [options]
 - `src/map/next_js/resolveFetch.ts` — resolves `fetch()` calls, detects Next.js framework chunks
 - `src/map/next_js/utils.ts` — `resolveNodeValue`, `resolveVariableInChunk`, `substituteVariablesInString`
 - `src/map/next_js/getWebpackConnections.ts` — extracts chunk code from webpack bundles
+- `src/map/next_js/interactive_helpers/esqueryGen.ts` — `esquery` interactive command: minifies a pasted snippet, matches it against each chunk's minified AST nodes, prints loose/strict selectors. Vue's command handler imports the same module — keep it framework-agnostic.
+- `src/map/next_js/interactive.ts` / `src/map/vue_js/interactive.ts` — export both the blessed-backed `interactive()` entry and a headless `runCommands(chunks, mapFile, commands)` that pipes `outputBox.log` to stdout for `-c/--command` execution.
 - `src/globalConfig.ts` — current version string and tool-wide constants
 - `src/utility/globals.ts` — mutable global state (tech detection result, AI config, OpenAPI flag, etc.)
 
@@ -83,6 +85,14 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 **Example — `-r/--rules` flag (added in this codebase):**
 - Declared in `src/index.ts`: `.option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")`
 - In `src/run/index.ts` the `analyze` calls use `cmd.rules || ""` — empty string tells `analyze` to use the default rules cache
+
+## Interactive-mode commands
+
+The `map -i` blessed UI dispatches user input through `interactive_helpers/commandHandler.ts`. The same handler runs headlessly when commands are supplied via `-c/--command`:
+
+- The `-c` option's commander coerce function splits each value on `&&` (with optional whitespace) and concatenates into a single command array. So `-c "list fetch && esquery * fetch"` is two commands; passing `-c` twice has the same effect.
+- `map`'s entry point checks `commands.length > 0` first — if non-empty, it calls `nextRunCommands` / `vueRunCommands` and skips the blessed UI even when `-i` is also set.
+- New commands should be added to **both** `next_js/interactive_helpers/commandHandler.ts` and `vue_js/interactive_helpers/commandHandler.ts`, plus the corresponding `helpMenu.ts` entry. When the implementation is framework-agnostic (e.g. `esquery`), put it under `next_js/interactive_helpers/` and import it from the Vue handler — don't duplicate.
 
 ## Rules
 

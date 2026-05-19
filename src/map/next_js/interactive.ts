@@ -45,4 +45,35 @@ const interactive = async (chunks: Chunks, map_file: string) => {
     ui.screen.render();
 };
 
+/**
+ * Run a list of interactive-mode commands non-interactively. The blessed UI is
+ * replaced by a thin shim that pipes `outputBox.log` to stdout, so a caller
+ * (e.g. `map -c ...` or `run -c ...`) can drive the same command surface
+ * without a TTY.
+ */
+const runCommands = async (chunks: Chunks, map_file: string, commands: string[]): Promise<void> => {
+    const state: State = {
+        chunks,
+        lastCommandStatus: true,
+        functionNavHistory: [],
+        functionNavHistoryIndex: -1,
+        funcWriteFile: undefined,
+        commandHistory: [],
+        commandHistoryIndex: -1,
+        writeimports: false,
+        mapFile: map_file,
+    };
+
+    const headlessUi: any = {
+        screen: { render: () => {} },
+        outputBox: { log: (s: string) => console.log(s), setText: () => {} },
+        inputBox: { clearValue: () => {}, focus: () => {} },
+    };
+
+    for (const command of commands) {
+        await handleCommand(command, state, headlessUi);
+    }
+};
+
+export { runCommands };
 export default interactive;

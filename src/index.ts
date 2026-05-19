@@ -183,6 +183,12 @@ program
     .option("-o, --output <file>", "Output file name (without extension)", "mapped")
     .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
     .option("-i, --interactive", "Interactive mode", false)
+    .option(
+        "-c, --command <command>",
+        "Run an interactive-mode command non-interactively. Can be passed multiple times, or chain several with `&&` inside a single value (e.g. -c 'list fetch && go to 1234'), to run several commands in sequence.",
+        (val: string, prev: string[]) => [...prev, ...val.split(/\s*&&\s*/).filter((c) => c.length > 0)],
+        [] as string[]
+    )
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
@@ -212,7 +218,15 @@ program
                 }
             }
         }
-        await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
+        await map(
+            cmd.directory,
+            cmd.output,
+            cmd.format.split(","),
+            cmd.tech,
+            cmd.list,
+            cmd.interactive,
+            cmd.command || []
+        );
     });
 
 program
@@ -265,6 +279,12 @@ program
     .description("Run all modules")
     .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")
+    .option(
+        "-c, --command <command>",
+        "Run an interactive-mode command on the mapped chunks non-interactively (forwarded to the map step). Can be passed multiple times, or chain several with `&&` inside a single value (e.g. -c 'list fetch && go to 1234').",
+        (val: string, prev: string[]) => [...prev, ...val.split(/\s*&&\s*/).filter((c) => c.length > 0)],
+        [] as string[]
+    )
     .option("-o, --output <directory>", "Output directory", "output")
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")

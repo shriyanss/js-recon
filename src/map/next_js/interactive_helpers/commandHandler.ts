@@ -3,6 +3,7 @@ import path from "path";
 import commandHelpers from "./commandHelpers.js";
 import { helpMenu } from "./helpMenu.js";
 import { printFunction } from "./printer.js";
+import { runEsqueryCommand } from "./esqueryGen.js";
 import { State } from "../interactive.js";
 import { Widgets } from "blessed";
 import fs from "fs";
@@ -224,6 +225,18 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 outputBox.log(chalk.red(option) + " is not a valid option");
                 state.lastCommandStatus = false;
             }
+        }
+    } else if (text.startsWith("esquery")) {
+        const usage = helpMenu.esquery;
+        const parts = text.split(" ");
+        if (parts.length < 3) {
+            outputBox.log(chalk.magenta(usage));
+            state.lastCommandStatus = false;
+        } else {
+            const chunkId = parts[1];
+            const search = parts.slice(2).join(" ");
+            outputBox.log(runEsqueryCommand(state.chunks, chunkId, search));
+            state.lastCommandStatus = true;
         }
     } else if (text.startsWith("trace")) {
         const usage = helpMenu.trace;

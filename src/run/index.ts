@@ -126,7 +126,7 @@ const processUrl = async (
         if (isBatch) {
             globalsUtil.setOpenapiOutputFile(openapiFile);
         }
-        await map(outputDir, mappedFileVue, ["json"], "vue", false, false);
+        await map(outputDir, mappedFileVue, ["json"], "vue", false, false, cmd.command || []);
         console.log(chalk.bgGreen("[+] Map complete."));
 
         console.log(chalk.bgCyan("[3/4] Running analyze..."));
@@ -221,7 +221,7 @@ const processUrl = async (
     if (isBatch) {
         globalsUtil.setOpenapiOutputFile(openapiFile);
     }
-    await map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false);
+    await map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false, cmd.command || []);
     console.log(chalk.bgGreen("[+] Map complete."));
 
     console.log(chalk.bgCyan("[6/8] Running endpoints to extract endpoints..."));
