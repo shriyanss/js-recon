@@ -5,6 +5,7 @@
 ### Added
 
 - Add version for rule templates
+- Add Vue js support for analyze module
 
 ### Changed
 
