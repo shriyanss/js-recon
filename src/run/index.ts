@@ -215,7 +215,7 @@ const processUrl = async (
 
     console.log(chalk.bgCyan("[7/8] Running analyze to extract endpoints..."));
     // @ts-ignore
-    await analyze("", mappedJsonFile, globalsUtil.getTech(), false, openapiFile, false, analyzeFile);
+    await analyze(cmd.rules || "", mappedJsonFile, globalsUtil.getTech(), false, openapiFile, false, analyzeFile);
     console.log(chalk.bgGreen("[+] Analyze complete."));
 
     console.log(chalk.bgCyan("[8/8] Running report module..."));
