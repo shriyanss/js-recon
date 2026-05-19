@@ -3,7 +3,7 @@ export interface Rule {
     name: string;
     author: string;
     description: string;
-    js_recon_version?: string;
+    js_recon_version: string;
     tech: ("next" | "all")[];
     severity: "info" | "low" | "medium" | "high";
     type: "request" | "ast";
