@@ -58,6 +58,18 @@ export const getRespCacheFile = (): string => {
     return respCacheFile;
 };
 
+// Cache-only Configuration
+/** When true, makeRequest never hits the network — only the cache is consulted */
+export let cacheOnly = false;
+
+export const setCacheOnly = (value: boolean): void => {
+    cacheOnly = value;
+};
+
+export const getCacheOnly = (): boolean => {
+    return cacheOnly;
+};
+
 // Sandbox Configuration
 /** Whether to disable the browser sandbox */
 export let disableSandbox = false;

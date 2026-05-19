@@ -4,6 +4,7 @@ import { URL } from "url";
 import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import { getJsUrls } from "../globals.js";
+import { getCacheOnly } from "../../utility/globals.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,16 +25,19 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
     const toReturn: string[] = [];
     // get the page source — bounded retry so an unreachable host can't hang the crawler
     let res: Response | null = null;
-    for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
+    const maxAttempts = getCacheOnly() ? 1 : MAX_FETCH_ATTEMPTS;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         res = await makeRequest(url, {});
         if (res) break;
-        if (attempt < MAX_FETCH_ATTEMPTS) {
-            console.log(chalk.yellow(`[!] Request to ${url} failed, retrying (${attempt}/${MAX_FETCH_ATTEMPTS})...`));
+        if (attempt < maxAttempts) {
+            console.log(chalk.yellow(`[!] Request to ${url} failed, retrying (${attempt}/${maxAttempts})...`));
             await sleep(1000);
         }
     }
     if (!res) {
-        console.log(chalk.red(`[!] Giving up on ${url} after ${MAX_FETCH_ATTEMPTS} attempts`));
+        if (!getCacheOnly()) {
+            console.log(chalk.red(`[!] Giving up on ${url} after ${maxAttempts} attempts`));
+        }
         return toReturn;
     }
     const pageSource = await res.text();

@@ -14,6 +14,7 @@ import analyze from "./analyze/index.js";
 import report from "./report/index.js";
 import configureSandbox from "./utility/configureSandbox.js";
 import mcp from "./mcp/index.js";
+import load from "./load/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -52,6 +53,7 @@ program
     .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
+    .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
@@ -67,6 +69,7 @@ program
         globalsUtil.setUseApiGateway(cmd.apiGateway);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
+        globalsUtil.setCacheOnly(cmd.cacheOnly);
         globalsUtil.setYes(cmd.yes);
         validateAndSetTimeout(cmd.timeout);
 
@@ -293,6 +296,7 @@ program
     .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
+    .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--secrets", "Scan for secrets", false)
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
@@ -319,6 +323,9 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+        globalsUtil.setDisableCache(cmd.disableCache);
+        globalsUtil.setRespCacheFile(cmd.cacheFile);
+        globalsUtil.setCacheOnly(cmd.cacheOnly);
 
         configureSandbox(cmd);
 
@@ -332,6 +339,17 @@ program
             }
         }
         await run(cmd);
+    });
+
+program
+    .command("load")
+    .description("Populate response cache from a Caido/Burp request history export")
+    .requiredOption("-c, --caido <file>", "Caido JSON export file")
+    .requiredOption("-u, --url <url>", "Target URL — only entries matching this host/port/scheme are loaded")
+    .option("--cache-file <file>", "Response cache file to write", ".resp_cache.json")
+    .action(async (cmd) => {
+        globalsUtil.setRespCacheFile(cmd.cacheFile);
+        await load(cmd.caido, cmd.url);
     });
 
 program
