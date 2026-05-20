@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.3.1-alpha.3 - (unreleased)
+## 1.3.1-alpha.3 - 2026-05-20
 
 ### Added
 
