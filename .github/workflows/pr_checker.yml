@@ -8,16 +8,17 @@ on:
 jobs:
   check-branch:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - name: Check source branch
-        if: github.head_ref != 'dev'
+      - name: Redirect PR to dev
+        if: github.head_ref != 'dev' || github.event.pull_request.head.repo.full_name != 'shriyanss/js-recon'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           BRANCH_NAME: ${{ github.head_ref }}
+          SOURCE_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          gh pr comment $PR_URL --body "This merge is not possible. Create a PR for $BRANCH_NAME -> dev"
-          gh pr close $PR_URL
+          gh pr edit $PR_NUMBER --base dev
+          gh pr comment $PR_NUMBER --body "This PR was targeting \`main\`, but only the \`dev\` branch of \`shriyanss/js-recon\` can merge directly into \`main\`. The target branch has been changed to \`dev\` (source: \`$SOURCE_REPO:$BRANCH_NAME\`)."
