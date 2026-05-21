@@ -40,7 +40,7 @@ export const engine = async (
             }
         }
 
-        if (techValid || tech === "all") {
+        if (techValid || tech === "all" || rule.tech.includes("all")) {
             findings.push(...(await requestEngine(rule, openapiData)));
         }
     } else if (rule.type === "ast") {
@@ -55,7 +55,7 @@ export const engine = async (
             }
         }
 
-        if (techValid || tech === "all") {
+        if (techValid || tech === "all" || rule.tech.includes("all")) {
             findings.push(...(await astEngine(rule, mappedJsonData)));
         }
     }
