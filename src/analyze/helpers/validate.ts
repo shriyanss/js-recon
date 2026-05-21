@@ -19,7 +19,7 @@ const compareVersions = (a: [number, number, number], b: [number, number, number
 
 const isVersionCompatible = (requirement: string, currentVersion: string): boolean => {
     const match = requirement.match(/^(>=|<=|>|<|==?)\s*(.+)/);
-    if (!match) return true;
+    if (!match) return false; // Invalid format
     const [, op, reqVer] = match;
     const current = parseVersion(currentVersion);
     const required = parseVersion(reqVer);
