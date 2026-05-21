@@ -3,7 +3,8 @@ export interface Rule {
     name: string;
     author: string;
     description: string;
-    tech: ("next" | "all")[];
+    js_recon_version: string;
+    tech: ("next" | "vue" | "all")[];
     severity: "info" | "low" | "medium" | "high";
     type: "request" | "ast";
     steps: Step[];

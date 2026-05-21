@@ -7,7 +7,7 @@ import getTurbopackConnections from "./next_js/getTurbopackConnections.js";
 import getFetchInstances from "./next_js/getFetchInstances.js";
 import resolveFetch from "./next_js/resolveFetch.js";
 import resolveNewRequest from "./next_js/resolveNewRequest.js";
-import interactive from "./next_js/interactive.js";
+import interactive, { runCommands as nextRunCommands } from "./next_js/interactive.js";
 import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import getAxiosInstances from "./next_js/getAxiosInstances.js";
@@ -19,7 +19,7 @@ import getExports from "./next_js/getExports.js";
 
 // Vue.JS
 import getViteConnections from "./vue_js/getViteConnections.js";
-import vueInteractive from "./vue_js/interactive.js";
+import vueInteractive, { runCommands as vueRunCommands } from "./vue_js/interactive.js";
 import vue_resolveFetch from "./vue_js/vue_resolveFetch.js";
 
 const availableTech = {
@@ -55,7 +55,8 @@ const map = async (
     formats: Array<keyof typeof availableFormats>,
     tech: string,
     list: boolean,
-    interactive_mode: boolean
+    interactive_mode: boolean,
+    commands: string[] = []
 ): Promise<void> => {
     console.log(chalk.cyan("[i] Running 'map' module"));
 
@@ -128,7 +129,9 @@ const map = async (
         // wrapper-class HTTP requests:  new X({url, method, ...})
         await resolveNewRequest(chunks, directory);
 
-        if (interactive_mode) {
+        if (commands.length > 0) {
+            await nextRunCommands(chunks, `${output}.json`, commands);
+        } else if (interactive_mode) {
             await interactive(chunks, `${output}.json`);
         }
 
@@ -165,7 +168,9 @@ const map = async (
         // Resolve fetch instances across all Vue.JS files
         await vue_resolveFetch(directory);
 
-        if (interactive_mode) {
+        if (commands.length > 0) {
+            await vueRunCommands(chunks, `${output}.json`, commands);
+        } else if (interactive_mode) {
             await vueInteractive(chunks, `${output}.json`);
         }
 

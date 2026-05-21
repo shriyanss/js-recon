@@ -22,7 +22,7 @@ export const engine = async (
     rule: Rule,
     mappedJsonData: Chunks | undefined,
     openapiData: OpenAPISpec | undefined,
-    tech: "next" | "all"
+    tech: "next" | "vue" | "all"
 ): Promise<EngineOutput[] | undefined> => {
     // first of all check what is rule type, and then check if the data for that is available or is undefined
 
@@ -40,7 +40,7 @@ export const engine = async (
             }
         }
 
-        if (techValid || tech === "all") {
+        if (techValid || tech === "all" || rule.tech.includes("all")) {
             findings.push(...(await requestEngine(rule, openapiData)));
         }
     } else if (rule.type === "ast") {
@@ -55,7 +55,7 @@ export const engine = async (
             }
         }
 
-        if (techValid || tech === "all") {
+        if (techValid || tech === "all" || rule.tech.includes("all")) {
             findings.push(...(await astEngine(rule, mappedJsonData)));
         }
     }

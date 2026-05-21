@@ -33,7 +33,7 @@ const downloadFiles = async (urls: string[], output: string) => {
 
     const processOne = async (url: string) => {
         try {
-            if (!url.match(/(\.js|\.json|\.js\.map)/)) {
+            if (!url.match(/(\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
                 console.log(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
@@ -72,10 +72,10 @@ const downloadFiles = async (urls: string[], output: string) => {
                 filename = url
                     .split("/")
                     .pop()
-                    ?.match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)?.[0];
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.(js(on)?(\.map)?|vue)/)?.[0];
             } catch {
                 for (const chunk of url.split("/")) {
-                    if (chunk.match(/\.js(on)?$/)) {
+                    if (chunk.match(/\.(js(on)?|vue)$/)) {
                         filename = chunk;
                         break;
                     }

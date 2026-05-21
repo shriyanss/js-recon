@@ -2,6 +2,7 @@ import chalk from "chalk";
 import path from "path";
 import nextCommandHelpers from "../../next_js/interactive_helpers/commandHelpers.js";
 import { printFunction } from "../../next_js/interactive_helpers/printer.js";
+import { runEsqueryCommand } from "../../next_js/interactive_helpers/esqueryGen.js";
 import vueCommandHelpers from "./commandHelpers.js";
 import { helpMenu } from "./helpMenu.js";
 import { State } from "../interactive.js";
@@ -230,6 +231,24 @@ async function handleCommand(text: string, state: State, ui: Screen) {
                 }
             } else {
                 outputBox.log(chalk.red(option) + " is not a valid option");
+                state.lastCommandStatus = false;
+            }
+        }
+    } else if (text.startsWith("esquery")) {
+        const usage = helpMenu.esquery;
+        const parts = text.split(" ");
+        if (parts.length < 3) {
+            outputBox.log(chalk.magenta(usage));
+            state.lastCommandStatus = false;
+        } else {
+            const chunkId = parts[1];
+            const search = parts.slice(2).join(" ");
+            try {
+                const result = runEsqueryCommand(state.chunks, chunkId, search);
+                outputBox.log(result);
+                state.lastCommandStatus = true;
+            } catch (err) {
+                outputBox.log(chalk.red(err instanceof Error ? err.message : String(err)));
                 state.lastCommandStatus = false;
             }
         }

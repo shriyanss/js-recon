@@ -123,7 +123,7 @@ export class DownloadQueue {
 
     private async processOne(url: string): Promise<void> {
         try {
-            if (!url.match(/(\.js|\.json|\.js\.map)/)) {
+            if (!url.match(/(\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
                 console.log(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
@@ -164,10 +164,10 @@ export class DownloadQueue {
                 filename = url
                     .split("/")
                     .pop()
-                    ?.match(/[a-zA-Z0-9\.\-_]+\.js(on)?(\.map)?/)?.[0];
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.(js(on)?(\.map)?|vue)/)?.[0];
             } catch {
                 for (const chunk of url.split("/")) {
-                    if (chunk.match(/\.js(on)?$/)) {
+                    if (chunk.match(/\.(js(on)?|vue)$/)) {
                         filename = chunk;
                         break;
                     }
@@ -184,6 +184,10 @@ export class DownloadQueue {
                 if (url.match(/\.json/) || url.match(/\.js\.map/)) {
                     const formatted =
                         file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "json" }) : file;
+                    fs.writeFileSync(filePath, formatted);
+                } else if (url.match(/\.vue$/)) {
+                    const formatted =
+                        file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "vue" }) : file;
                     fs.writeFileSync(filePath, formatted);
                 } else {
                     const formatted =

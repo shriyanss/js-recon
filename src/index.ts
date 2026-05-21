@@ -14,6 +14,7 @@ import analyze from "./analyze/index.js";
 import report from "./report/index.js";
 import configureSandbox from "./utility/configureSandbox.js";
 import mcp from "./mcp/index.js";
+import load from "./load/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -52,6 +53,7 @@ program
     .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
+    .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
@@ -67,6 +69,7 @@ program
         globalsUtil.setUseApiGateway(cmd.apiGateway);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
+        globalsUtil.setCacheOnly(cmd.cacheOnly);
         globalsUtil.setYes(cmd.yes);
         validateAndSetTimeout(cmd.timeout);
 
@@ -183,6 +186,12 @@ program
     .option("-o, --output <file>", "Output file name (without extension)", "mapped")
     .option("-f, --format <format>", "Output format for the results comma-separated (available: JSON)", "json")
     .option("-i, --interactive", "Interactive mode", false)
+    .option(
+        "-c, --command <command>",
+        "Run an interactive-mode command non-interactively. Can be passed multiple times, or chain several with `&&` inside a single value (e.g. -c 'list fetch && go to 1234'), to run several commands in sequence.",
+        (val: string, prev: string[]) => [...prev, ...val.split(/\s*&&\s*/).filter((c) => c.length > 0)],
+        [] as string[]
+    )
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
@@ -212,7 +221,15 @@ program
                 }
             }
         }
-        await map(cmd.directory, cmd.output, cmd.format.split(","), cmd.tech, cmd.list, cmd.interactive);
+        await map(
+            cmd.directory,
+            cmd.output,
+            cmd.format.split(","),
+            cmd.tech,
+            cmd.list,
+            cmd.interactive,
+            cmd.command || []
+        );
     });
 
 program
@@ -264,6 +281,13 @@ program
     .command("run")
     .description("Run all modules")
     .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")
+    .option(
+        "-c, --command <command>",
+        "Run an interactive-mode command on the mapped chunks non-interactively (forwarded to the map step). Can be passed multiple times, or chain several with `&&` inside a single value (e.g. -c 'list fetch && go to 1234').",
+        (val: string, prev: string[]) => [...prev, ...val.split(/\s*&&\s*/).filter((c) => c.length > 0)],
+        [] as string[]
+    )
     .option("-o, --output <directory>", "Output directory", "output")
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
@@ -272,6 +296,7 @@ program
     .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
+    .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--secrets", "Scan for secrets", false)
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
@@ -298,6 +323,9 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+        globalsUtil.setDisableCache(cmd.disableCache);
+        globalsUtil.setRespCacheFile(cmd.cacheFile);
+        globalsUtil.setCacheOnly(cmd.cacheOnly);
 
         configureSandbox(cmd);
 
@@ -311,6 +339,17 @@ program
             }
         }
         await run(cmd);
+    });
+
+program
+    .command("load")
+    .description("Populate response cache from a Caido/Burp request history export")
+    .requiredOption("-c, --caido <file>", "Caido JSON export file")
+    .requiredOption("-u, --url <url>", "Target URL — only entries matching this host/port/scheme are loaded")
+    .option("--cache-file <file>", "Response cache file to write", ".resp_cache.json")
+    .action(async (cmd) => {
+        globalsUtil.setRespCacheFile(cmd.cacheFile);
+        await load(cmd.caido, cmd.url);
     });
 
 program

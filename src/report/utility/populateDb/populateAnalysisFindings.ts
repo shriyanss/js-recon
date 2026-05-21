@@ -26,7 +26,7 @@ export const populateAnalysisFindings = async (db: Database.Database, findings: 
                 item.ruleType,
                 item.ruleDescription,
                 item.ruleAuthor,
-                item.ruleTech,
+                Array.isArray(item.ruleTech) ? item.ruleTech.join(",") : item.ruleTech,
                 item.severity,
                 item.message,
                 item.findingLocation

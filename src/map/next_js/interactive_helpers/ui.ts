@@ -59,7 +59,6 @@ function createUI() {
         },
         keys: true,
         vi: true,
-        mouse: true,
         scrollSpeed: 0.5,
     });
 

@@ -42,26 +42,30 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         }
     }
 
-    // get the page source in the browser
-    const browser = await puppeteer.launch({
-        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
-    });
-    const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(30000);
+    // get the page source in the browser (skipped in cache-only mode — no network allowed)
     let pageSource = "";
-    try {
-        await page.goto(url, {
-            waitUntil: "domcontentloaded",
-            timeout: 30000,
+    if (!globalsUtil.getCacheOnly()) {
+        const browser = await puppeteer.launch({
+            args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
         });
-        // Give client-side frameworks a brief window to render
-        await page.waitForSelector("html", { timeout: 10000 }).catch(() => {});
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        pageSource = await page.content();
-    } catch (err) {
-        console.log(chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available"));
-    } finally {
-        await browser.close().catch(() => {});
+        const page = await browser.newPage();
+        page.setDefaultNavigationTimeout(30000);
+        try {
+            await page.goto(url, {
+                waitUntil: "domcontentloaded",
+                timeout: 30000,
+            });
+            // Give client-side frameworks a brief window to render
+            await page.waitForSelector("html", { timeout: 10000 }).catch(() => {});
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            pageSource = await page.content();
+        } catch (err) {
+            console.log(
+                chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available")
+            );
+        } finally {
+            await browser.close().catch(() => {});
+        }
     }
 
     // if (res === null || res === undefined) {

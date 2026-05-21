@@ -5,6 +5,19 @@ import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
 import { EventEmitter } from "events";
 
+const reportedFailures = new Set<string>();
+
+const reportFailure = (url: string, err: unknown): void => {
+    if (reportedFailures.has(url)) return;
+    reportedFailures.add(url);
+    if (globals.getCacheOnly()) {
+        console.log(chalk.dim(`[!] Cache miss (cache-only mode): ${url}`));
+        return;
+    }
+    console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
+    console.log(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
+};
+
 // random user agents
 const UAs = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
@@ -196,8 +209,7 @@ const singleFetch = async (
                 return null;
             }
             if (counter > 10) {
-                console.log(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
-                console.log(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
+                reportFailure(url, err);
                 return null;
             }
             // sleep 0.5 s before retrying
@@ -283,11 +295,17 @@ const makeRequest = async (
         "Sec-Fetch-Dest": "empty",
     };
 
+    let parsedOrigin: string | null = null;
+    try {
+        parsedOrigin = new URL(url).origin;
+    } catch {
+        return null;
+    }
     if (!requestOptions.headers) {
         requestOptions.headers = {
             ...baseHeaders,
-            Referer: new URL(url).origin,
-            Origin: new URL(url).origin,
+            Referer: parsedOrigin,
+            Origin: parsedOrigin,
         };
     }
 
@@ -305,6 +323,11 @@ const makeRequest = async (
             }
             return cachedResponse;
         }
+    }
+
+    if (globals.getCacheOnly()) {
+        reportFailure(url, "cache miss in cache-only mode");
+        return null;
     }
 
     if (globals.useApiGateway) {

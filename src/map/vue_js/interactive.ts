@@ -1,6 +1,7 @@
 import { createUI } from "../next_js/interactive_helpers/ui.js";
 import { handleCommand } from "./interactive_helpers/commandHandler.js";
 import { setupKeybindings } from "../next_js/interactive_helpers/keybindings.js";
+import { enableCursorInput } from "../next_js/interactive_helpers/inputPatch.js";
 import { Chunks } from "../../utility/interfaces.js";
 
 export interface State {
@@ -40,9 +41,39 @@ const interactive = async (chunks: Chunks, map_file: string) => {
     });
 
     setupKeybindings(ui.screen, ui.inputBox, ui.outputBox, state as any);
+    enableCursorInput(ui.inputBox);
 
     ui.inputBox.focus();
     ui.screen.render();
 };
 
+/**
+ * Vue.JS counterpart of the Next.js `runCommands` helper — drives the
+ * interactive command handler non-interactively using a stdout-backed UI shim.
+ */
+const runCommands = async (chunks: Chunks, map_file: string, commands: string[]): Promise<void> => {
+    const state: State = {
+        chunks,
+        lastCommandStatus: true,
+        functionNavHistory: [],
+        functionNavHistoryIndex: -1,
+        funcWriteFile: undefined,
+        commandHistory: [],
+        commandHistoryIndex: -1,
+        writeimports: false,
+        mapFile: map_file,
+    };
+
+    const headlessUi: any = {
+        screen: { render: () => {} },
+        outputBox: { log: (s: string) => console.log(s), setText: () => {} },
+        inputBox: { clearValue: () => {}, focus: () => {} },
+    };
+
+    for (const command of commands) {
+        await handleCommand(command, state, headlessUi);
+    }
+};
+
+export { runCommands };
 export default interactive;

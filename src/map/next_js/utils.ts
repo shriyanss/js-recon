@@ -6,6 +6,57 @@ import { Chunks } from "../../utility/interfaces.js";
 const traverse = _traverse.default;
 
 /**
+ * Builds a dotted identifier path from a chain of MemberExpression nodes
+ * rooted at an Identifier. Returns null when the chain contains computed
+ * properties, non-Identifier nodes, or anything we can't render as `a.b.c`.
+ */
+export const memberChainToString = (node: any): string | null => {
+    if (!node) return null;
+    if (node.type === "Identifier") return node.name;
+    if (node.type === "MemberExpression" && !node.computed && node.property?.type === "Identifier") {
+        const obj = memberChainToString(node.object);
+        if (!obj) return null;
+        return `${obj}.${node.property.name}`;
+    }
+    return null;
+};
+
+/**
+ * Produces a short human-readable label for a spread argument we couldn't fully
+ * resolve. Identifiers keep their name; member chains collapse into `a.b.c`;
+ * call expressions show their callee name with `()`. Anything else falls back
+ * to the AST node type so the placeholder still signals *something* was there.
+ */
+const describeSpreadArg = (arg: any): string => {
+    if (!arg) return "unknown";
+    if (arg.type === "Identifier") return arg.name;
+    if (arg.type === "MemberExpression") {
+        const parts: string[] = [];
+        let walker: any = arg;
+        while (
+            walker &&
+            walker.type === "MemberExpression" &&
+            !walker.computed &&
+            walker.property?.type === "Identifier"
+        ) {
+            parts.unshift(walker.property.name);
+            walker = walker.object;
+        }
+        if (walker && walker.type === "Identifier") parts.unshift(walker.name);
+        if (parts.length > 0) return parts.join(".");
+        return "member";
+    }
+    if (arg.type === "CallExpression") {
+        if (arg.callee?.type === "Identifier") return `${arg.callee.name}()`;
+        if (arg.callee?.type === "MemberExpression" && arg.callee.property?.type === "Identifier") {
+            return `${arg.callee.property.name}()`;
+        }
+        return "call()";
+    }
+    return arg.type;
+};
+
+/**
  * Resolves a variable in a chunk by finding its declaration/assignment.
  *
  * @param varName - The name of the variable to resolve
@@ -1126,8 +1177,31 @@ export const resolveNodeValue = (
                                             ) ?? `[${prop.value.type}]`;
                                     }
                                 } else if (prop.type === "SpreadElement") {
-                                    // Skip unresolvable spread elements — they're code artifacts,
-                                    // not actual body fields.
+                                    // Resolve the spread argument; if it's a known object, merge its
+                                    // keys. Otherwise surface the spread as a sentinel key so the
+                                    // downstream body shape advertises that there are unresolvable
+                                    // additional fields, rather than silently shrinking the body.
+                                    const spreadResolved = resolveNodeValue(
+                                        prop.argument,
+                                        scope,
+                                        "",
+                                        callType,
+                                        chunkCode,
+                                        chunks,
+                                        thirdArgName
+                                    );
+                                    if (
+                                        spreadResolved &&
+                                        typeof spreadResolved === "object" &&
+                                        !Array.isArray(spreadResolved)
+                                    ) {
+                                        for (const [sk, sv] of Object.entries(spreadResolved)) {
+                                            if (!(sk in obj)) obj[sk] = sv;
+                                        }
+                                    } else {
+                                        const argName = describeSpreadArg(prop.argument);
+                                        obj[`...${argName}`] = "<spread>";
+                                    }
                                 }
                             }
                             return obj;
@@ -1260,6 +1334,11 @@ export const resolveNodeValue = (
                             const spreadObj = resolved;
                             if (typeof spreadObj === "object" && spreadObj !== null) {
                                 Object.assign(obj, spreadObj);
+                            } else {
+                                // Couldn't resolve to a concrete object — keep the spread visible
+                                // in the output so callers know fields are missing.
+                                const argName = describeSpreadArg(prop.argument);
+                                obj[`...${argName}`] = "<spread>";
                             }
                         }
                     }
@@ -1548,6 +1627,14 @@ export const resolveNodeValue = (
                         currentNode.arguments.length > 0
                     ) {
                         const spArg = currentNode.arguments[0];
+                        // If the argument is a plain MemberExpression like `a.b`,
+                        // emit a typed marker so the downstream caller-substitution
+                        // pass knows this part of the URL is a query expansion of
+                        // an object reference, not just an inert placeholder.
+                        const memberChain = memberChainToString(spArg);
+                        if (memberChain && spArg.type === "MemberExpression" && !(spArg as any).computed) {
+                            return `[urlsearchparams:${memberChain}]`;
+                        }
                         if (spArg.type === "ObjectExpression") {
                             const params: string[] = [];
                             for (const prop of spArg.properties) {

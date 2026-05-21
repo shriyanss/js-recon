@@ -71,7 +71,7 @@ const getViteConnections = async (directory: string, output: string, formats: st
         encoding: "utf8",
     }) as string[];
 
-    files = files.filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"));
+    files = files.filter((f) => (f.endsWith(".js") || f.endsWith(".vue")) && !f.includes("___subsequent_requests"));
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const fileMeta = new Map<string, FileMeta>();
@@ -96,7 +96,6 @@ const getViteConnections = async (directory: string, output: string, formats: st
     console.log(chalk.cyan(`[i] Scanning ${files.length} JS files for root functions`));
     for (const file of files) {
         const meta = fileMeta.get(file);
-        if (!meta) continue;
 
         const filePath = path.join(directory, file);
         let code: string;
@@ -123,6 +122,7 @@ const getViteConnections = async (directory: string, output: string, formats: st
         for (const node of ast.program.body) {
             if (node.type !== "FunctionDeclaration") continue;
             if (!node.id || !FUNC_NAME_RE.test(node.id.name)) continue;
+            if (!meta) continue;
             const funcName = node.id.name;
             const key = computeChunkKey(funcName, meta);
             if (chunks[key]) continue;
@@ -140,6 +140,31 @@ const getViteConnections = async (directory: string, output: string, formats: st
                 file: file,
             };
             fileFuncs.set(funcName, key);
+        }
+
+        // Fallback for Vite dev-mode / non-bundled files: production-style 2-char
+        // function chunking doesn't apply, so emit the whole file as a single chunk
+        // so the AST analysis engine still has something to scan.
+        if (fileFuncs.size === 0) {
+            const baseId = path.basename(file).replace(/[^a-zA-Z0-9]+/g, "_");
+            let key = baseId;
+            let suffix = 0;
+            while (chunks[key]) {
+                suffix++;
+                key = `${baseId}_${suffix}`;
+            }
+            chunks[key] = {
+                id: key,
+                description: "none",
+                loadedOn: [],
+                containsFetch: /\bfetch\s*\(/.test(code),
+                isAxiosLibrary: false,
+                exports: [],
+                callStack: [],
+                code: code,
+                imports: [],
+                file: file,
+            };
         }
     }
 
