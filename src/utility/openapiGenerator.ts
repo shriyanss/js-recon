@@ -144,6 +144,12 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
         paths: {},
     };
 
+    // Tracks how many times we've already seen the same (path, method) so a
+    // second callsite gets a disambiguating fragment on its path key rather than
+    // being silently dropped. OpenAPI paths are opaque strings so a `#N` suffix
+    // is preserved by tools that key on it.
+    const callsiteCounts = new Map<string, number>();
+
     for (const item of items) {
         let rawItemPath = typeof item.path === "string" ? item.path : "";
         try {
@@ -152,7 +158,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             }
         } catch {}
         const pathKeyBeforeQuery = rawItemPath.split("?")[0];
-        const pathKey = replacePlaceholders(
+        const basePathKey = replacePlaceholders(
             pathKeyBeforeQuery.startsWith("/") ? pathKeyBeforeQuery : `/${pathKeyBeforeQuery}`
         );
         const VALID_METHODS = new Set(["get", "post", "put", "patch", "delete", "head", "options", "trace"]);
@@ -160,11 +166,18 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
         const methodIsValid = VALID_METHODS.has(rawMethod);
         const method = methodIsValid ? rawMethod : "get";
 
+        const dedupeKey = `${method} ${basePathKey}`;
+        const seenBefore = callsiteCounts.get(dedupeKey) ?? 0;
+        const pathKey = seenBefore === 0 ? basePathKey : `${basePathKey}#${seenBefore + 1}`;
+        callsiteCounts.set(dedupeKey, seenBefore + 1);
+
         if (!spec.paths[pathKey]) {
             spec.paths[pathKey] = {};
         }
 
-        // Avoid overwriting if the same path & method already processed
+        // Avoid overwriting if the same path & method already processed (only
+        // possible now when two identical items collide on the disambiguated
+        // path — guard kept for safety).
         if (spec.paths[pathKey][method]) {
             continue;
         }

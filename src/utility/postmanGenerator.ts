@@ -111,9 +111,11 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         return parent;
     };
 
-    // Deduplicate (path, method) — the OpenAPI generator already does this; we
-    // mirror the behaviour here so reimporting doesn't produce duplicates.
-    const seen = new Set<string>();
+    // Track repeat (path, method) occurrences so duplicate callsites get a
+    // disambiguating suffix on their request name. We intentionally do NOT
+    // skip duplicates here — each distinct callsite is preserved so a reviewer
+    // can compare the headers/body shapes for the same endpoint.
+    const callsiteCounts = new Map<string, number>();
 
     for (const item of items) {
         let rawPath = typeof item.path === "string" ? item.path : "";
@@ -130,8 +132,8 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         const normalized = replacePlaceholders(rawPath.startsWith("/") ? rawPath : `/${rawPath}`);
         const method = typeof item.method === "string" ? item.method.toUpperCase() : "GET";
         const dedupeKey = `${method} ${normalized}`;
-        if (seen.has(dedupeKey)) continue;
-        seen.add(dedupeKey);
+        const occurrenceIndex = callsiteCounts.get(dedupeKey) ?? 0;
+        callsiteCounts.set(dedupeKey, occurrenceIndex + 1);
 
         const { segments, query } = splitPath(normalized);
 
@@ -202,9 +204,12 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
 
         // Friendly request label — keep the leaf in the name to disambiguate
         // siblings under the same parent (e.g. invoices vs invoices/latest).
+        // When the same (path, method) is hit by multiple callsites, append a
+        // counter so the second/third occurrences are distinguishable in tree views.
         const leafName = leaf || segments[segments.length - 1] || "/";
+        const suffix = occurrenceIndex > 0 ? ` #${occurrenceIndex + 1}` : "";
         const itemEntry: PMItem = {
-            name: `${method} ${leafName}`,
+            name: `${method} ${leafName}${suffix}`,
             request,
         };
 

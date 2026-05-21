@@ -12,8 +12,13 @@
 ### Changed
 
 - Removed `mouse: true` from the interactive output pane so terminal-native text selection/copy works in the output area (`map -i`)
+- Vue.js fetch resolver now walks back to the enclosing wrapper function's caller(s) so `URLSearchParams(param.subprop)` expands to real `?k1={k1}&k2={k2}` query strings and spread-header / member-value placeholders get substituted from the caller's object literal — including transitive resolution when the caller passes its own param through (`map`)
+- Vue.js fetch resolver recognises destructured fetch wrappers (e.g. `const { wrapperKey: x } = factory({ ... })`) and resolves their callsites as fetch calls, with positional-first-arg filtering to avoid mis-identifying object-shaped wrappers that construct the URL from a property of their input (`map`)
+- Distinct callsites for the same `(path, method)` are preserved in both the OpenAPI spec (path key gets a `#N` suffix) and the Postman collection (request name gets a `#N` suffix) instead of being collapsed to a single entry (`map`)
 
 ### Fixed
+
+- Spread elements in request bodies and option objects are no longer silently dropped when the spread argument is unresolvable — the output surfaces a sentinel key (e.g. `"...arg": "<spread>"`, `"...call()": "<spread>"`) so downstream readers know more fields exist at runtime (`map`)
 
 ## 1.3.1-alpha.2 - 2026-05-18
 
