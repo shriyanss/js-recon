@@ -185,6 +185,10 @@ export class DownloadQueue {
                     const formatted =
                         file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "json" }) : file;
                     fs.writeFileSync(filePath, formatted);
+                } else if (url.match(/\.vue$/)) {
+                    const formatted =
+                        file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "vue" }) : file;
+                    fs.writeFileSync(filePath, formatted);
                 } else {
                     const formatted =
                         file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "babel" }) : file;
