@@ -18,11 +18,7 @@ const traverse = _traverse.default;
  * RETURNS a fetch-wrapping arrow isn't itself classified as a wrapper — only
  * the arrow it returns is.
  */
-const NESTED_FN_TYPES = new Set([
-    "ArrowFunctionExpression",
-    "FunctionExpression",
-    "FunctionDeclaration",
-]);
+const NESTED_FN_TYPES = new Set(["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"]);
 
 /**
  * A function is treated as a "transparent" fetch wrapper only if its first
@@ -67,7 +63,13 @@ const bodyCallsFetch = (functionNode: any): boolean => {
             return;
         }
         for (const key of Object.keys(n)) {
-            if (key === "loc" || key === "start" || key === "end" || key === "leadingComments" || key === "trailingComments") {
+            if (
+                key === "loc" ||
+                key === "start" ||
+                key === "end" ||
+                key === "leadingComments" ||
+                key === "trailingComments"
+            ) {
                 continue;
             }
             visit(n[key], depth + 1);
@@ -78,7 +80,10 @@ const bodyCallsFetch = (functionNode: any): boolean => {
 };
 
 const isFunctionLike = (node: any): boolean =>
-    !!node && (node.type === "ArrowFunctionExpression" || node.type === "FunctionExpression" || node.type === "FunctionDeclaration");
+    !!node &&
+    (node.type === "ArrowFunctionExpression" ||
+        node.type === "FunctionExpression" ||
+        node.type === "FunctionDeclaration");
 
 interface EnclosingFn {
     bindingName: string | null;
@@ -126,7 +131,9 @@ const inferEnclosingFn = (callPath: any, file: string): EnclosingFn | null => {
     const firstParamName =
         fnNode.params && fnNode.params[0]?.type === "Identifier"
             ? fnNode.params[0].name
-            : fnNode.params && fnNode.params[0]?.type === "AssignmentPattern" && fnNode.params[0].left?.type === "Identifier"
+            : fnNode.params &&
+                fnNode.params[0]?.type === "AssignmentPattern" &&
+                fnNode.params[0].left?.type === "Identifier"
               ? fnNode.params[0].left.name
               : null;
 
@@ -197,7 +204,7 @@ const resolveParamProperty = (
     propPath: string[],
     enclosingFn: EnclosingFn | null,
     getCallers: (bindingName: string) => CallerInfo[],
-    depth: number = 0,
+    depth: number = 0
 ): { node: any; scope: any; fileContent: string } | null => {
     if (!enclosingFn || !enclosingFn.bindingName || depth > 6) return null;
     // Only the function's first parameter is supported for now — every observed
@@ -229,13 +236,7 @@ const resolveParamProperty = (
             // Case 3: caller passes its own first param straight through —
             // `outer = (p) => fn(p)`. Recurse up to that function's callers.
             if (caller.enclosingFn?.firstParamName === arg.name) {
-                const result = resolveParamProperty(
-                    arg.name,
-                    propPath,
-                    caller.enclosingFn,
-                    getCallers,
-                    depth + 1,
-                );
+                const result = resolveParamProperty(arg.name, propPath, caller.enclosingFn, getCallers, depth + 1);
                 if (result) return result;
             }
         }
@@ -254,11 +255,7 @@ const renderObjectAsQuery = (objExpr: any, scope: any, fileContent: string): str
     for (const prop of objExpr.properties) {
         if (prop.type !== "ObjectProperty") continue;
         const key =
-            prop.key.type === "Identifier"
-                ? prop.key.name
-                : prop.key.type === "StringLiteral"
-                  ? prop.key.value
-                  : null;
+            prop.key.type === "Identifier" ? prop.key.name : prop.key.type === "StringLiteral" ? prop.key.value : null;
         if (!key) continue;
         let valStr: string;
         try {
@@ -352,7 +349,7 @@ const renderValueNode = (node: any, scope: any, fileContent: string): string | n
 const substituteCallerPlaceholders = (
     input: string,
     enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[],
+    getCallers: (bindingName: string) => CallerInfo[]
 ): string => {
     if (!input || !enclosingFn) return input;
 
@@ -391,7 +388,7 @@ const substituteCallerPlaceholders = (
 const substituteCallerHeaders = (
     headers: Record<string, string>,
     enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[],
+    getCallers: (bindingName: string) => CallerInfo[]
 ): Record<string, string> => {
     if (!enclosingFn) return headers;
     const out: Record<string, string> = {};
@@ -478,12 +475,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                 const value: any = p.node.value;
                 if (!isFunctionLike(value)) return;
                 if (!bodyCallsFetch(value)) return;
-                const keyName =
-                    key.type === "Identifier"
-                        ? key.name
-                        : key.type === "StringLiteral"
-                          ? key.value
-                          : null;
+                const keyName = key.type === "Identifier" ? key.name : key.type === "StringLiteral" ? key.value : null;
                 if (keyName) wrapperKeyNames.add(keyName);
             },
         });
@@ -600,10 +592,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                                   ? prop.key.value
                                   : null;
                         if (!keyName || !wrapperKeyNames.has(keyName)) continue;
-                        const valueName =
-                            prop.value.type === "Identifier"
-                                ? prop.value.name
-                                : null;
+                        const valueName = prop.value.type === "Identifier" ? prop.value.name : null;
                         if (!valueName) continue;
                         const binding = p.scope.getBinding(valueName);
                         if (binding) fetchAliases.add(binding);

@@ -33,7 +33,12 @@ const describeSpreadArg = (arg: any): string => {
     if (arg.type === "MemberExpression") {
         const parts: string[] = [];
         let walker: any = arg;
-        while (walker && walker.type === "MemberExpression" && !walker.computed && walker.property?.type === "Identifier") {
+        while (
+            walker &&
+            walker.type === "MemberExpression" &&
+            !walker.computed &&
+            walker.property?.type === "Identifier"
+        ) {
             parts.unshift(walker.property.name);
             walker = walker.object;
         }
@@ -1627,11 +1632,7 @@ export const resolveNodeValue = (
                         // pass knows this part of the URL is a query expansion of
                         // an object reference, not just an inert placeholder.
                         const memberChain = memberChainToString(spArg);
-                        if (
-                            memberChain &&
-                            spArg.type === "MemberExpression" &&
-                            !(spArg as any).computed
-                        ) {
+                        if (memberChain && spArg.type === "MemberExpression" && !(spArg as any).computed) {
                             return `[urlsearchparams:${memberChain}]`;
                         }
                         if (spArg.type === "ObjectExpression") {
