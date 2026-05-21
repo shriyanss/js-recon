@@ -235,8 +235,14 @@ async function handleCommand(text: string, state: State, ui: Screen) {
         } else {
             const chunkId = parts[1];
             const search = parts.slice(2).join(" ");
-            outputBox.log(runEsqueryCommand(state.chunks, chunkId, search));
-            state.lastCommandStatus = true;
+            try {
+                const result = runEsqueryCommand(state.chunks, chunkId, search);
+                outputBox.log(result);
+                state.lastCommandStatus = true;
+            } catch (err) {
+                outputBox.log(chalk.red(err instanceof Error ? err.message : String(err)));
+                state.lastCommandStatus = false;
+            }
         }
     } else if (text.startsWith("trace")) {
         const usage = helpMenu.trace;
