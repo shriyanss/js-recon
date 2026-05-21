@@ -104,7 +104,7 @@ Rules are YAML files (`.yml`/`.yaml`) in two places:
 - **Workspace:** `../js-recon-rules/` (relative to this repo)
 - **Installed cache:** `~/.js-recon/rules`
 
-`initRules` downloads rules from GitHub when missing or when the cached version doesn't match the latest release. Rules may declare `js_recon_version: ">=X.Y.Z"`; incompatible rules are skipped with a warning. The version check strips prerelease suffixes (e.g. `1.3.1-alpha.3` → `[1,3,1]`).
+`initRules` downloads rules from GitHub when missing or when the cached version doesn't match the latest release. `js_recon_version` (required) must be declared in every rule (e.g. `js_recon_version: ">=X.Y.Z"`); `initRules` uses it to validate compatibility and skips incompatible rules with a warning. The version check strips prerelease suffixes (e.g. `1.3.1-alpha.3` → `[1,3,1]`).
 
 Rule categories:
 
