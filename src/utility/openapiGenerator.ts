@@ -227,8 +227,12 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunk
                 });
             });
         } catch (_e) {
-            // unparseable placeholder URLs 
-            console.log(chalk.red(`[!] Failed to parse: ${item.path} as URL for query parameter extraction, skipping query params.`));
+            // unparseable placeholder URLs
+            console.log(
+                chalk.red(
+                    `[!] Failed to parse: ${item.path} as URL for query parameter extraction, skipping query params.`
+                )
+            );
         }
 
         const operationObject: OperationObject = {
