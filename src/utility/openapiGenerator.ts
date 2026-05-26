@@ -2,6 +2,7 @@ import { OpenapiOutputItem } from "./globals.js";
 import { Chunks } from "./interfaces.js";
 import * as globalsUtil from "./globals.js";
 import replacePlaceholders from "./replaceUrlPlaceholders.js";
+import chalk from "chalk";
 
 export interface Parameter {
     name: string;
@@ -127,7 +128,7 @@ export const getOpenApiType = (value: any): string => {
  * @param chunks - The chunks of API endpoints that the items belong to
  * @returns The generated OpenAPI v3 spec
  */
-export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks): OpenAPISpec => {
+export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunks): OpenAPISpec => {
     const spec: OpenAPISpec = {
         openapi: "3.0.0",
         info: {
@@ -151,7 +152,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     const callsiteCounts = new Map<string, number>();
 
     for (const item of items) {
-        let rawItemPath = typeof item.path === "string" ? item.path : "";
+        let rawItemPath = typeof item.path === "string" ? replacePlaceholders(item.path) : "";
         try {
             if (rawItemPath.startsWith("http://") || rawItemPath.startsWith("https://")) {
                 rawItemPath = new URL(rawItemPath).pathname;
@@ -214,7 +215,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
 
         // Extract query parameters
         try {
-            const url = new URL(item.path, "http://dummybase");
+            const url = new URL(replacePlaceholders(item.path), "http://dummybase");
             const queryParams = url.searchParams;
 
             queryParams.forEach((value, name) => {
@@ -225,8 +226,9 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
                     schema: { type: "string", example: value },
                 });
             });
-        } catch (e) {
-            console.log(e);
+        } catch (_e) {
+            // unparseable placeholder URLs 
+            console.log(chalk.red(`[!] Failed to parse: ${item.path} as URL for query parameter extraction, skipping query params.`));
         }
 
         const operationObject: OperationObject = {

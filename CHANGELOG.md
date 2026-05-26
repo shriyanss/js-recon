@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.3.1-alpha.4 - (unreleased)
+
+### Added
+
+### Changed
+
+### Fixed
+
+- `[MemberExpression -> X]`, `[var X]`, and other unresolved placeholders in URLs are now substituted with their OpenAPI equivalents (`{X}`) before URL parsing in the OpenAPI spec generator, preventing spurious `Invalid URL` errors for placeholder-containing paths (`map`)
+- Silenced the `Invalid URL` catch in the OpenAPI query-parameter extractor — URLs that remain unparseable after placeholder substitution (e.g. absolute URLs with placeholder hostnames) are skipped silently, since this is expected behaviour (`map`)
+
 ## 1.3.1-alpha.3 - 2026-05-20
 
 ### Added
