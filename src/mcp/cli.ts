@@ -398,17 +398,25 @@ export const startCli = async (
                 session.history = [system, ...session.history.slice(-(config.history_limit - 1))];
             }
 
+            const spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let spinIdx = 0;
+            let spinnerInterval: ReturnType<typeof setInterval> | undefined;
+            const clearThinkingSpinner = () => {
+                if (spinnerInterval) {
+                    clearInterval(spinnerInterval);
+                    spinnerInterval = undefined;
+                }
+                process.stdout.write("\r" + " ".repeat(120) + "\r");
+            };
+
             try {
                 session.currentAbortController = new AbortController();
-                const spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-                let spinIdx = 0;
-                const spinnerInterval = setInterval(() => {
+                spinnerInterval = setInterval(() => {
                     process.stdout.write(`\r${chalk.cyan(spinner[spinIdx++ % spinner.length])} Thinking...`);
                 }, 80);
 
                 const response = await session.provider.chat(session.history);
-                clearInterval(spinnerInterval);
-                process.stdout.write("\r" + " ".repeat(20) + "\r");
+                clearThinkingSpinner();
                 session.currentAbortController = undefined;
 
                 usage.addUsage(response.promptTokens, response.completionTokens);
@@ -416,6 +424,7 @@ export const startCli = async (
 
                 console.log(chalk.white("\n" + response.content + "\n"));
             } catch (err: any) {
+                clearThinkingSpinner();
                 session.currentAbortController = undefined;
                 if (err.name !== "AbortError") {
                     console.log(chalk.red(`\n[!] ${err.message}\n`));
