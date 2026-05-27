@@ -210,11 +210,7 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         // each entry is immediately identifiable without a bare counter.
         // For plain endpoints that share a path/method, a #N counter is kept.
         const leafName = leaf || segments[segments.length - 1] || "/";
-        const disambig = item.summary
-            ? ` (${item.summary})`
-            : occurrenceIndex > 0
-              ? ` #${occurrenceIndex + 1}`
-              : "";
+        const disambig = item.summary ? ` (${item.summary})` : occurrenceIndex > 0 ? ` #${occurrenceIndex + 1}` : "";
         const descParts: string[] = [];
         if (item.functionFile) {
             descParts.push(`Defined in chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`);

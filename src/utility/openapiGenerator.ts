@@ -241,10 +241,9 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunk
         let locationDescription: string | undefined;
         if (item.serverActionCallFile || item.functionFile) {
             const defLoc = `chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`;
-            const callLoc =
-                item.serverActionCallFile
-                    ? `chunk ${item.serverActionCallChunkId} at ${item.serverActionCallFile}:${item.serverActionCallLine}`
-                    : undefined;
+            const callLoc = item.serverActionCallFile
+                ? `chunk ${item.serverActionCallChunkId} at ${item.serverActionCallFile}:${item.serverActionCallLine}`
+                : undefined;
             locationDescription = `Defined in ${defLoc}`;
             if (callLoc && callLoc !== `chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`) {
                 locationDescription += `\nArguments from ${callLoc}`;

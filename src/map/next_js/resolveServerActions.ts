@@ -104,16 +104,14 @@ const getArgHint = (node: any): string => {
 
         case "MemberExpression": {
             const prop = node.property;
-            const name =
-                prop.type === "Identifier" ? prop.name : prop.type === "StringLiteral" ? prop.value : null;
+            const name = prop.type === "Identifier" ? prop.name : prop.type === "StringLiteral" ? prop.value : null;
             return name ? `<string:${name}>` : "<string:member>";
         }
 
         case "CallExpression": {
             const { callee, arguments: callArgs } = node;
             if (callee.type === "MemberExpression") {
-                const methodName =
-                    callee.property.type === "Identifier" ? callee.property.name : null;
+                const methodName = callee.property.type === "Identifier" ? callee.property.name : null;
                 // e.get("key") → <string:key>
                 if (methodName === "get" && callArgs.length > 0 && callArgs[0].type === "StringLiteral") {
                     return `<string:${callArgs[0].value}>`;
@@ -239,12 +237,7 @@ interface CallSiteResult {
  * Searches a chunk's AST for direct calls to a named variable:
  *   varName(...)  or  (0, varName)(...)
  */
-const findInChunkCallArgs = (
-    ast: any,
-    varName: string,
-    chunkId: string,
-    absFile: string
-): CallSiteResult | null => {
+const findInChunkCallArgs = (ast: any, varName: string, chunkId: string, absFile: string): CallSiteResult | null => {
     let foundArgs: any[] | null = null;
     let foundLine = 0;
     traverse(ast, {
@@ -455,11 +448,7 @@ const resolveServerActions = async (chunks: Chunks, directory: string): Promise<
             if (callSite && callSite.args.length > 0) {
                 const hints = callSite.args.map(getArgHint);
                 body = JSON.stringify(hints);
-                console.log(
-                    chalk.cyan(
-                        `    [i] Args for '${entry.actionName || entry.actionId}': ${body}`
-                    )
-                );
+                console.log(chalk.cyan(`    [i] Args for '${entry.actionName || entry.actionId}': ${body}`));
             }
 
             const logLabel = entry.actionName ? `${entry.actionName} (${entry.actionId})` : entry.actionId;
