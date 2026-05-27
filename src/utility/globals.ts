@@ -311,6 +311,10 @@ export interface OpenapiOutputItem {
     functionFile: string;
     functionFileLine: number;
     crossChunkParams?: Array<{ chunkId: string; params: string; file: string; line: number }>;
+    summary?: string;
+    serverActionCallChunkId?: string;
+    serverActionCallFile?: string;
+    serverActionCallLine?: number;
 }
 /** Array of OpenAPI output items */
 export let openapiOutput: OpenapiOutputItem[] = [];

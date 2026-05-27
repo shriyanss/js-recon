@@ -34,6 +34,7 @@ npm run start -- <subcommand> [options]
 - `src/analyze/helpers/validate.ts` — validates rules and checks `js_recon_version` compatibility
 - `src/analyze/helpers/schemas.ts` — Zod schema for rule YAML files
 - `src/map/next_js/resolveFetch.ts` — resolves `fetch()` calls, detects Next.js framework chunks
+- `src/map/next_js/resolveServerActions.ts` — detects `createServerReference(actionId, ...)` calls, derives App Router routes from chunk file paths, traces argument call sites (same-chunk and cross-chunk), and emits POST endpoints with `next-action` headers and typed arg hints (e.g. `<string:userId>`) into the global OpenAPI output
 - `src/map/next_js/utils.ts` — `resolveNodeValue`, `resolveVariableInChunk`, `substituteVariablesInString`
 - `src/map/next_js/getWebpackConnections.ts` — extracts chunk code from webpack bundles
 - `src/map/next_js/interactive_helpers/esqueryGen.ts` — `esquery` interactive command: minifies a pasted snippet, matches it against each chunk's minified AST nodes, prints loose/strict selectors. Vue's command handler imports the same module — keep it framework-agnostic.
@@ -96,6 +97,7 @@ The `map -i` blessed UI dispatches user input through `interactive_helpers/comma
 - The `-c` option's commander coerce function splits each value on `&&` (with optional whitespace) and concatenates into a single command array. So `-c "list fetch && esquery * fetch"` is two commands; passing `-c` twice has the same effect.
 - `map`'s entry point checks `commands.length > 0` first — if non-empty, it calls `nextRunCommands` / `vueRunCommands` and skips the blessed UI even when `-i` is also set.
 - New commands should be added to **both** `next_js/interactive_helpers/commandHandler.ts` and `vue_js/interactive_helpers/commandHandler.ts`, plus the corresponding `helpMenu.ts` entry. When the implementation is framework-agnostic (e.g. `esquery`), put it under `next_js/interactive_helpers/` and import it from the Vue handler — don't duplicate.
+- `list server_actions` is intentionally Next.js-only (it reads from `getOpenapiOutput()` filtered by `next-action` header) and has no Vue counterpart.
 
 ## Rules
 

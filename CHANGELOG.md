@@ -4,6 +4,11 @@
 
 ### Added
 
+- Detect Next.js Server Actions registered via `createServerReference` and emit them as POST endpoints in the OpenAPI spec and Postman collection — includes `next-action` / `Accept` / `Content-Type` headers, route derived from App Router file path, and argument hints traced from the first call site (`map`)
+- Argument hints in Server Action request bodies carry the inferred type alongside the variable name (e.g. `<string:userId>`) instead of an opaque placeholder (`map`)
+- Location metadata for Server Actions: definition chunk + absolute file path + line and call-site chunk + absolute file path + line, surfaced as the `description` field in both the OpenAPI spec and Postman collection (`map`)
+- `list server_actions` interactive command — prints all discovered Server Actions with route, body args, and source locations (`map -i`)
+
 ### Changed
 
 ### Fixed

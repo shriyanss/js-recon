@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { Chunks } from "../../../utility/interfaces.js";
 import { State } from "../interactive.js";
 import prettier from "prettier";
+import { getOpenapiOutput } from "../../../utility/globals.js";
 
 const commandHelpers = {
     /**
@@ -204,6 +205,32 @@ const commandHelpers = {
         }
         if (count === 0) {
             returnText += chalk.yellow("- No functions with non-empty descriptions");
+        }
+        return returnText;
+    },
+    listServerActions: () => {
+        const items = getOpenapiOutput().filter((item) => item.headers?.["next-action"]);
+        if (items.length === 0) {
+            return chalk.yellow("No Server Actions discovered.");
+        }
+        let returnText = chalk.cyan(`Server Actions (${items.length})\n`);
+        for (const item of items) {
+            const actionId = item.headers["next-action"];
+            const name = item.summary ?? actionId;
+            returnText += chalk.green(`\n${name}`);
+            returnText += chalk.gray(` (${actionId})`);
+            returnText += `\n  Route:  ${chalk.white(item.path)}`;
+            returnText += `\n  Chunk:  ${chalk.white(item.chunkId)}`;
+            if (item.functionFile) {
+                returnText += `\n  Def:    ${chalk.white(`${item.functionFile}:${item.functionFileLine}`)}`;
+            }
+            if (item.serverActionCallFile) {
+                returnText += `\n  Args:   ${chalk.white(`${item.serverActionCallFile}:${item.serverActionCallLine}`)}`;
+            }
+            if (item.body) {
+                returnText += `\n  Body:   ${chalk.yellow(item.body)}`;
+            }
+            returnText += "\n";
         }
         return returnText;
     },

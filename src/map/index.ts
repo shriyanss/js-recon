@@ -16,6 +16,7 @@ import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/g
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 import { generatePostmanCollection } from "../utility/postmanGenerator.js";
 import getExports from "./next_js/getExports.js";
+import resolveServerActions from "./next_js/resolveServerActions.js";
 
 // Vue.JS
 import getViteConnections from "./vue_js/getViteConnections.js";
@@ -128,6 +129,9 @@ const map = async (
 
         // wrapper-class HTTP requests:  new X({url, method, ...})
         await resolveNewRequest(chunks, directory);
+
+        // Next.js Server Actions registered via createServerReference(...)
+        await resolveServerActions(chunks, directory);
 
         if (commands.length > 0) {
             await nextRunCommands(chunks, `${output}.json`, commands);

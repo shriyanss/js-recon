@@ -40,12 +40,14 @@ export interface Response {
 
 export interface OperationObject {
     summary: string;
+    description?: string;
     responses: {
         [statusCode: string]: Response;
     };
     parameters?: Parameter[];
     requestBody?: RequestBody;
     tags?: string[];
+    [key: string]: any; // allows x- extension fields
 }
 
 export interface PathItemObject {
@@ -235,8 +237,25 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunk
             );
         }
 
+        // Build a location description for server action entries.
+        let locationDescription: string | undefined;
+        if (item.serverActionCallFile || item.functionFile) {
+            const defLoc = `chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`;
+            const callLoc =
+                item.serverActionCallFile
+                    ? `chunk ${item.serverActionCallChunkId} at ${item.serverActionCallFile}:${item.serverActionCallLine}`
+                    : undefined;
+            locationDescription = `Defined in ${defLoc}`;
+            if (callLoc && callLoc !== `chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`) {
+                locationDescription += `\nArguments from ${callLoc}`;
+            } else if (callLoc) {
+                locationDescription += `\nArguments from ${callLoc}`;
+            }
+        }
+
         const operationObject: OperationObject = {
-            summary: `${pathKey}`,
+            summary: item.summary || `${pathKey}`,
+            ...(locationDescription ? { description: locationDescription } : {}),
             responses: {
                 "200": {
                     description: "Successful response. The actual response will vary.",
@@ -258,7 +277,19 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunk
             let requestBody: RequestBody;
             try {
                 const body = JSON.parse(item.body);
-                if (typeof body === "object" && body !== null) {
+                if (Array.isArray(body)) {
+                    // JSON-array body (e.g. Next.js Server Action arguments sent as
+                    // text/plain).  Represent as a raw string with the parsed array
+                    // as the example so tools show the actual expected shape.
+                    requestBody = {
+                        content: {
+                            "text/plain": {
+                                schema: { type: "string" },
+                                example: item.body,
+                            },
+                        },
+                    };
+                } else if (typeof body === "object" && body !== null) {
                     const properties: RequestBody["content"]["application/json"]["schema"]["properties"] = {};
                     for (const key in body) {
                         const value = body[key];

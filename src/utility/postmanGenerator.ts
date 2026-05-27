@@ -29,6 +29,7 @@ interface PMRequest {
 
 interface PMItem {
     name: string;
+    description?: string;
     request?: PMRequest;
     item?: PMItem[];
 }
@@ -204,12 +205,28 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
 
         // Friendly request label — keep the leaf in the name to disambiguate
         // siblings under the same parent (e.g. invoices vs invoices/latest).
-        // When the same (path, method) is hit by multiple callsites, append a
-        // counter so the second/third occurrences are distinguishable in tree views.
+        // When an action name is available (e.g. Next.js Server Actions) it is
+        // appended in parentheses and used as the primary disambiguator so
+        // each entry is immediately identifiable without a bare counter.
+        // For plain endpoints that share a path/method, a #N counter is kept.
         const leafName = leaf || segments[segments.length - 1] || "/";
-        const suffix = occurrenceIndex > 0 ? ` #${occurrenceIndex + 1}` : "";
+        const disambig = item.summary
+            ? ` (${item.summary})`
+            : occurrenceIndex > 0
+              ? ` #${occurrenceIndex + 1}`
+              : "";
+        const descParts: string[] = [];
+        if (item.functionFile) {
+            descParts.push(`Defined in chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`);
+        }
+        if (item.serverActionCallFile) {
+            descParts.push(
+                `Arguments from chunk ${item.serverActionCallChunkId} at ${item.serverActionCallFile}:${item.serverActionCallLine}`
+            );
+        }
         const itemEntry: PMItem = {
-            name: `${method} ${leafName}${suffix}`,
+            name: `${method} ${leafName}${disambig}`,
+            ...(descParts.length > 0 ? { description: descParts.join("\n") } : {}),
             request,
         };
 

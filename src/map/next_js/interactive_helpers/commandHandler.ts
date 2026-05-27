@@ -72,6 +72,9 @@ async function handleCommand(text: string, state: State, ui: Screen) {
             } else if (option === "nav") {
                 outputBox.log(commandHelpers.navHistory(state.chunks, state.functionNavHistory));
                 state.lastCommandStatus = true;
+            } else if (option === "server_actions") {
+                outputBox.log(commandHelpers.listServerActions());
+                state.lastCommandStatus = true;
             } else if (option === "exportnames") {
                 // get the chunk id
                 const chunkId = text.split(" ")[2];
