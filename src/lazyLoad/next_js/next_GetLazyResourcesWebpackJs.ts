@@ -90,11 +90,17 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const webpack_js_source = await res.text();
 
     // parse it with @babel/*
-    const ast = parser.parse(webpack_js_source, {
-        sourceType: "unambiguous",
-        plugins: ["jsx", "typescript"],
-        errorRecovery: true,
-    });
+    let ast;
+    try {
+        ast = parser.parse(webpack_js_source, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch (err) {
+        console.error(chalk.red("Error parsing webpack JS file:", err.message));
+        return [];
+    }
 
     const functions: ExtractedFunction[] = [];
 

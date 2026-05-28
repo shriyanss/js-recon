@@ -15,6 +15,7 @@
 
 - `[MemberExpression -> X]`, `[var X]`, and other unresolved placeholders in URLs are now substituted with their OpenAPI equivalents (`{X}`) before URL parsing in the OpenAPI spec generator, preventing spurious `Invalid URL` errors for placeholder-containing paths (`map`)
 - Silenced the `Invalid URL` catch in the OpenAPI query-parameter extractor — URLs that remain unparseable after placeholder substitution (e.g. absolute URLs with placeholder hostnames) are skipped silently, since this is expected behaviour (`map`)
+- Add error handling if webpack JS file is not valid
 
 ## 1.3.1-alpha.3 - 2026-05-20
 
