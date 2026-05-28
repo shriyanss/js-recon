@@ -1,48 +1,60 @@
 import makeRequest from "../../utility/makeReq.js";
 import * as cheerio from "cheerio";
 
+const REACT_MARKERS = [
+    "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED",
+    "__REACT_DEVTOOLS_GLOBAL_HOOK__",
+    "react-jsx-runtime.production",
+    "react-dom.production",
+    "__reactRouterVersion",
+] as const;
+
+const matchesReact = (body: string): string | null => {
+    for (const marker of REACT_MARKERS) {
+        if (body.includes(marker)) return marker;
+    }
+    return null;
+};
+
 const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detected: boolean; evidence: string }> => {
     let detected = false;
     let evidence = "";
 
-    // to detect react, first go through all the <script src>
-
     for (const el of $("script").get()) {
         const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "src") {
-                    // get the src
-                    const src = attrValue;
+        if (!attribs) continue;
 
-                    // Resolve src against the page URL — skip if it's malformed
-                    // (e.g. `data:`, `javascript:` schemes, invalid URIs).
-                    let resolvedUrl: string;
-                    try {
-                        resolvedUrl = new URL(src, url).href;
-                    } catch {
-                        continue;
-                    }
+        const src = attribs["src"];
 
-                    // makeRequest returns Response | null — skip when the fetch failed.
-                    const res = await makeRequest(resolvedUrl, {});
-                    if (!res) continue;
-                    const body = await res.text();
+        if (src) {
+            // External script — fetch and scan its content
+            let resolvedUrl: string;
+            try {
+                resolvedUrl = new URL(src, url).href;
+            } catch {
+                continue;
+            }
 
-                    // check if the body contains "react" or "react-dom"
-                    if (
-                        body.includes("__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED") &&
-                        body.includes("__REACT_DEVTOOLS_GLOBAL_HOOK__")
-                    ) {
-                        detected = true;
-                        evidence = `Found "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED" and "__REACT_DEVTOOLS_GLOBAL_HOOK__" in ${src}`;
-                        break;
-                    } else if (body.includes("__reactRouterVersion")) {
-                        detected = true;
-                        evidence = `Found "__reactRouterVersion" in ${src}`;
-                        break;
-                    }
-                }
+            const res = await makeRequest(resolvedUrl, {});
+            if (!res) continue;
+            const body = await res.text();
+
+            const marker = matchesReact(body);
+            if (marker) {
+                detected = true;
+                evidence = `Found "${marker}" in ${src}`;
+                break;
+            }
+        } else {
+            // Inline script — scan the text content directly (Vite bundles, etc.)
+            const inlineContent = $(el).text();
+            if (!inlineContent) continue;
+
+            const marker = matchesReact(inlineContent);
+            if (marker) {
+                detected = true;
+                evidence = `Found "${marker}" in inline <script> on ${url}`;
+                break;
             }
         }
     }

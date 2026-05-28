@@ -306,8 +306,8 @@ const lazyLoad = async (
 
                 const queue = new DownloadQueue(output, threads);
 
-                // get the files from the page source
-                const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb);
+                // get external script URLs and save any inline scripts to the output dir
+                const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb, output);
                 queue.push(jsFilesFromPageSource);
 
                 // find the webpack chunk path builder function
