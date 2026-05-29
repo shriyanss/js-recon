@@ -42,10 +42,8 @@ const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
 };
 
 const writeResults = (results: FingerprintResult[], outputFile: string, formats: OutputFormat[]): void => {
-    const multiFormat = formats.length > 1;
-
     for (const format of formats) {
-        const filePath = multiFormat ? deriveOutputPath(outputFile, format) : outputFile;
+        const filePath = deriveOutputPath(outputFile, format);
 
         if (format === "csv") {
             const lines = ["framework,url"];
