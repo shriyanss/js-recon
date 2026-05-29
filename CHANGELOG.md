@@ -25,6 +25,10 @@
 - Silenced the `Invalid URL` catch in the OpenAPI query-parameter extractor — URLs that remain unparseable after placeholder substitution (e.g. absolute URLs with placeholder hostnames) are skipped silently, since this is expected behaviour (`map`)
 - Add error handling if webpack JS file is not valid
 - `getRuleFilesRecursive` now skips hidden directories (e.g. `.github`) so GitHub Actions workflow YAML files are not loaded as rules (`analyze`)
+- `run` now deletes stale map artifacts (`mapped.json`, `mapped-openapi.json`, `mapped-openapi.postman_collection.json`) before invoking `map`, preventing a leftover file from a previous run being reused when the output directory has been cleared without a full `cleanup` — which caused `resolveFetch` to look up file paths from the wrong target (`run`)
+- `regexMatch` engine step now collects all matching string/template-literal nodes instead of stopping at the first hit; each matched node emits its own finding, so all hardcoded secrets in a single chunk are reported individually rather than only the first one (`analyze`)
+- Taint propagation now follows callback parameters: when a tainted value is passed alongside an inline function argument in a call (e.g. Vue `watch(source, cb)`), the parameters of the inline function are marked tainted, fixing false-negatives where the callback param received a tainted value at runtime but was not tracked (`analyze`)
+- CSPT rule no longer treats `route.params.*` and `useParams()` as taint sources — route segment params are validated against the router's path pattern and cannot carry arbitrary `../` traversal strings; only query params (`route.query`, `URLSearchParams`, `location.search/hash`) are high-confidence CSPT sources (`analyze`)
 
 ## 1.3.1-alpha.3 - 2026-05-20
 
