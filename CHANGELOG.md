@@ -8,14 +8,23 @@
 - Argument hints in Server Action request bodies carry the inferred type alongside the variable name (e.g. `<string:userId>`) instead of an opaque placeholder (`map`)
 - Location metadata for Server Actions: definition chunk + absolute file path + line and call-site chunk + absolute file path + line, surfaced as the `description` field in both the OpenAPI spec and Postman collection (`map`)
 - `list server_actions` interactive command — prints all discovered Server Actions with route, body args, and source locations (`map -i`)
+- React (Vite/Rolldown) framework detection via `<link rel="modulepreload">` elements and fast-path filename matching, in addition to inline `<script>` tags (`lazyload`)
+- Recursive ESM import following for React bundles — static imports, dynamic `import()`, and Vite `__vite_mapDeps` arrays are parsed from each downloaded file so all referenced chunks are fetched transitively (`lazyload`)
+- `map` and `analyze` pipeline support for React (Vite/Rolldown) applications, using the same fetch-resolver and analyze engine as Vue with vendor-chunk filtering (`map`, `analyze`, `run`)
+- `regexMatch` step type in the AST rule engine — matches string and template literals against a regex pattern, enabling rules that detect hardcoded credentials and other value-pattern findings (`analyze`)
+- React tech added to all tech-gated type definitions and rule schemas (`analyze`)
 
 ### Changed
+
+- Fetch resolution log lines now include the resolved URL, method, headers, and body immediately after the `[+] Found fetch call in "file":line` line instead of being grouped at the end (`map`)
+- Fetch resolution logs correctly label the framework ("React" or "Vue.JS") in the start and summary messages (`map`)
 
 ### Fixed
 
 - `[MemberExpression -> X]`, `[var X]`, and other unresolved placeholders in URLs are now substituted with their OpenAPI equivalents (`{X}`) before URL parsing in the OpenAPI spec generator, preventing spurious `Invalid URL` errors for placeholder-containing paths (`map`)
 - Silenced the `Invalid URL` catch in the OpenAPI query-parameter extractor — URLs that remain unparseable after placeholder substitution (e.g. absolute URLs with placeholder hostnames) are skipped silently, since this is expected behaviour (`map`)
 - Add error handling if webpack JS file is not valid
+- `getRuleFilesRecursive` now skips hidden directories (e.g. `.github`) so GitHub Actions workflow YAML files are not loaded as rules (`analyze`)
 
 ## 1.3.1-alpha.3 - 2026-05-20
 
