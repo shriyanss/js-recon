@@ -273,6 +273,17 @@ const lazyLoad = async (
                 const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
                 queue.push(jsFilesFromStringAnalysis);
 
+                // recursively follow ESM static imports (import ... from "./chunk.js")
+                const visited = new Set<string>();
+                let toFollow = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
+                while (toFollow.length > 0) {
+                    const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                    if (newFiles.length === 0) break;
+                    console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
+                    queue.push(newFiles);
+                    toFollow = newFiles;
+                }
+
                 await queue.drain();
                 queue.printSummary();
             } else if (tech.name === "angular") {

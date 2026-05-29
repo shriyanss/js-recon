@@ -51,6 +51,19 @@ const svelte_getFromPageSource = async (url) => {
         }
     }
 
+    // parse astro-island component-url attributes (Astro island hydration)
+    const astroIslands = $("[component-url]");
+    for (const island of astroIslands) {
+        const componentUrl = $(island).attr("component-url");
+        if (componentUrl) {
+            if (componentUrl.startsWith("http")) {
+                foundUrls.push(componentUrl);
+            } else {
+                foundUrls.push(await resolvePath(url, componentUrl));
+            }
+        }
+    }
+
     if (foundUrls.length === 0) {
         console.log(chalk.red("[!] No JS files found from the page source"));
         return [];
