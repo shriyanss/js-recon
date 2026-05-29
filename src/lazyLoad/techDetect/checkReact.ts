@@ -16,35 +16,37 @@ const matchesReact = (body: string): string | null => {
     return null;
 };
 
-const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detected: boolean; evidence: string }> => {
-    let detected = false;
-    let evidence = "";
+const fetchAndCheck = async (src: string, url: string): Promise<string | null> => {
+    let resolvedUrl: string;
+    try {
+        resolvedUrl = new URL(src, url).href;
+    } catch {
+        return null;
+    }
 
+    // Fast path: filename itself contains "react"
+    const filename = resolvedUrl.split("/").pop() ?? "";
+    if (/react/i.test(filename)) {
+        return `React-named file referenced: ${src}`;
+    }
+
+    const res = await makeRequest(resolvedUrl, {});
+    if (!res) return null;
+    const body = await res.text();
+    const marker = matchesReact(body);
+    return marker ? `Found "${marker}" in ${src}` : null;
+};
+
+const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detected: boolean; evidence: string }> => {
+    // Check <script src="..."> elements
     for (const el of $("script").get()) {
         const attribs = el.attribs;
         if (!attribs) continue;
 
         const src = attribs["src"];
-
         if (src) {
-            // External script — fetch and scan its content
-            let resolvedUrl: string;
-            try {
-                resolvedUrl = new URL(src, url).href;
-            } catch {
-                continue;
-            }
-
-            const res = await makeRequest(resolvedUrl, {});
-            if (!res) continue;
-            const body = await res.text();
-
-            const marker = matchesReact(body);
-            if (marker) {
-                detected = true;
-                evidence = `Found "${marker}" in ${src}`;
-                break;
-            }
+            const evidence = await fetchAndCheck(src, url);
+            if (evidence) return { detected: true, evidence };
         } else {
             // Inline script — scan the text content directly (Vite bundles, etc.)
             const inlineContent = $(el).text();
@@ -52,14 +54,25 @@ const checkReact = async ($: cheerio.CheerioAPI, url: string): Promise<{ detecte
 
             const marker = matchesReact(inlineContent);
             if (marker) {
-                detected = true;
-                evidence = `Found "${marker}" in inline <script> on ${url}`;
-                break;
+                return { detected: true, evidence: `Found "${marker}" in inline <script> on ${url}` };
             }
         }
     }
 
-    return { detected, evidence };
+    // Check <link rel="modulepreload"> elements (Vite splits React into separate vendor chunks)
+    for (const el of $("link").get()) {
+        const attribs = el.attribs;
+        if (!attribs) continue;
+        if (attribs["rel"] !== "modulepreload") continue;
+
+        const href = attribs["href"];
+        if (!href) continue;
+
+        const evidence = await fetchAndCheck(href, url);
+        if (evidence) return { detected: true, evidence };
+    }
+
+    return { detected: false, evidence: "" };
 };
 
 export { checkReact };

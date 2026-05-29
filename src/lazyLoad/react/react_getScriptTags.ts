@@ -32,6 +32,15 @@ const react_getScriptTags = async (url: string, maxJsSizeMb: number, outputDir?:
         }
     });
 
+    // Vite splits React and other vendor code into chunks referenced via modulepreload links,
+    // not script tags. Include them as seeds so import-following picks them up.
+    $("link[rel='modulepreload']").each((_, elem) => {
+        const href = $(elem).attr("href");
+        if (href) {
+            toReturn.push(new URL(href, url).href);
+        }
+    });
+
     toReturn = [...new Set(toReturn)];
     return toReturn;
 };

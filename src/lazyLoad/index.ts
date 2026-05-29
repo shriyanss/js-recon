@@ -32,6 +32,7 @@ import vue_recursiveClientSidePathDownload from "./vue/vue_recursiveClientSidePa
 import react_getScriptTags from "./react/react_getScriptTags.js";
 import react_webpackChunkPaths from "./react/react_webpackChunkPaths.js";
 import react_sourcemapUrls from "./react/react_sourcemapUrls.js";
+import react_followImports from "./react/react_followImports.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -306,17 +307,28 @@ const lazyLoad = async (
 
                 const queue = new DownloadQueue(output, threads);
 
-                // get external script URLs and save any inline scripts to the output dir
+                // Seed: <script src> tags + <link rel="modulepreload"> (Vite vendor chunks)
                 const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb, output);
                 queue.push(jsFilesFromPageSource);
 
-                // find the webpack chunk path builder function
-                const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource);
-                queue.push(getWebpackChunkPaths);
+                // webpack-style chunk path builders (CRA / custom webpack configs)
+                const webpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource);
+                queue.push(webpackChunkPaths);
 
-                // check existing JS files for inline sourcemap references
-                const allDiscovered = [...new Set([...jsFilesFromPageSource, ...getWebpackChunkPaths])];
-                const sourcemapUrls = await react_sourcemapUrls(allDiscovered);
+                // Recursively follow ESM imports and Vite __vite_mapDeps references.
+                // visited starts empty so the seed files are fetched and parsed in the first round.
+                const visited = new Set<string>();
+                let toFollow = [...new Set([...jsFilesFromPageSource, ...webpackChunkPaths])];
+                while (toFollow.length > 0) {
+                    const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                    if (newFiles.length === 0) break;
+                    console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
+                    queue.push(newFiles);
+                    toFollow = newFiles;
+                }
+
+                // Sourcemaps for everything discovered
+                const sourcemapUrls = await react_sourcemapUrls([...visited]);
                 queue.push(sourcemapUrls);
 
                 await queue.drain();
