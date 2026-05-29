@@ -152,6 +152,37 @@ export const computeTaint = (ast: Node, sourceNodes: Node[]): TaintInfo => {
                     }
                 }
             },
+            // Propagate taint through callback parameters: when a tainted value is
+            // passed alongside an inline function argument (e.g. watch(tainted, cb)),
+            // the function's parameters may receive the tainted value at call time.
+            CallExpression(path) {
+                const argPaths = path.get("arguments") as NodePath[];
+                let hasTaintedNonFunction = false;
+                const inlineFnPaths: NodePath[] = [];
+                for (const argPath of argPaths) {
+                    const t_ = argPath.node.type;
+                    if (t_ === "ArrowFunctionExpression" || t_ === "FunctionExpression") {
+                        inlineFnPaths.push(argPath);
+                    } else if (expressionIsTainted(argPath, taint)) {
+                        hasTaintedNonFunction = true;
+                    }
+                }
+                if (hasTaintedNonFunction) {
+                    for (const fnPath of inlineFnPaths) {
+                        const fnNode = fnPath.node as any;
+                        for (const param of fnNode.params || []) {
+                            const names = collectIdsFromPattern(param as Node);
+                            for (const name of names) {
+                                const binding = fnPath.scope.getBinding(name);
+                                if (binding && !taint.bindings.has(binding.path)) {
+                                    taint.bindings.add(binding.path);
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         });
 
         if (!changed) break;

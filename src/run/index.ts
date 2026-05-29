@@ -257,6 +257,13 @@ const processUrl = async (
     if (isBatch) {
         globalsUtil.setOpenapiOutputFile(openapiFile);
     }
+    // Delete stale map artifacts so map always regenerates from the current target's output.
+    // Without this, a leftover mapped.json from a previous run would be reused, causing
+    // resolveFetch to look for files from the wrong target's directory.
+    for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+        const p = `${mappedFile}${ext}`;
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
     await map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false, cmd.command || []);
     console.log(chalk.bgGreen("[+] Map complete."));
 
