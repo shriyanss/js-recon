@@ -19,6 +19,7 @@ import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 // Svelte
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
+import svelte_recursivePageCrawl from "./svelte/svelte_recursivePageCrawl.js";
 
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
@@ -282,6 +283,20 @@ const lazyLoad = async (
                     console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
                     queue.push(newFiles);
                     toFollow = newFiles;
+                }
+
+                // crawl same-origin HTML pages found via <a href> and <link href>,
+                // running the full JS-discovery pipeline on each
+                const jsFilesFromPageCrawl = await svelte_recursivePageCrawl(
+                    url,
+                    maxJsSizeMb,
+                    (files) => queue.push(files)
+                );
+
+                // run string analysis once more to catch JS files discovered during page crawl
+                if (jsFilesFromPageCrawl.length > 0) {
+                    const jsFilesFromStringAnalysis2 = await svelte_stringAnalysisJSFiles(url);
+                    queue.push(jsFilesFromStringAnalysis2);
                 }
 
                 await queue.drain();
