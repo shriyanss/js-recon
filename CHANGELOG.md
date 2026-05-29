@@ -29,6 +29,7 @@
 - `regexMatch` engine step now collects all matching string/template-literal nodes instead of stopping at the first hit; each matched node emits its own finding, so all hardcoded secrets in a single chunk are reported individually rather than only the first one (`analyze`)
 - Taint propagation now follows callback parameters: when a tainted value is passed alongside an inline function argument in a call (e.g. Vue `watch(source, cb)`), the parameters of the inline function are marked tainted, fixing false-negatives where the callback param received a tainted value at runtime but was not tracked (`analyze`)
 - CSPT rule no longer treats `route.params.*` and `useParams()` as taint sources — route segment params are validated against the router's path pattern and cannot carry arbitrary `../` traversal strings; only query params (`route.query`, `URLSearchParams`, `location.search/hash`) are high-confidence CSPT sources (`analyze`)
+- Vue and React pipelines now also delete stale map artifacts before invoking `map`, applying the same fix as the Next.js pipeline; previously a stale `mapped.json` from a prior run would cause the analyze step to report findings against the wrong target's chunk IDs (`run`)
 
 ## 1.3.1-alpha.3 - 2026-05-20
 

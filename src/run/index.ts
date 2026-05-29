@@ -125,6 +125,10 @@ const processUrl = async (
         if (isBatch) {
             globalsUtil.setOpenapiOutputFile(openapiFile);
         }
+        for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+            const p = `${mappedFileReact}${ext}`;
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
         await map(reactHostDir, mappedFileReact, ["json"], "react", false, false, cmd.command || []);
         console.log(chalk.bgGreen("[+] Map complete."));
 
@@ -161,6 +165,10 @@ const processUrl = async (
         globalsUtil.setOpenapi(true);
         if (isBatch) {
             globalsUtil.setOpenapiOutputFile(openapiFile);
+        }
+        for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+            const p = `${mappedFileVue}${ext}`;
+            if (fs.existsSync(p)) fs.unlinkSync(p);
         }
         await map(outputDir, mappedFileVue, ["json"], "vue", false, false, cmd.command || []);
         console.log(chalk.bgGreen("[+] Map complete."));
