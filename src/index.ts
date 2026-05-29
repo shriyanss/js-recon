@@ -15,6 +15,7 @@ import report from "./report/index.js";
 import configureSandbox from "./utility/configureSandbox.js";
 import mcp from "./mcp/index.js";
 import load from "./load/index.js";
+import fingerprint from "./fingerprint/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -350,6 +351,23 @@ program
     .action(async (cmd) => {
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         await load(cmd.caido, cmd.url);
+    });
+
+program
+    .command("fingerprint")
+    .description("Detect front-end frameworks across one or more URLs")
+    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-o, --output <file>", "Output file to write results")
+    .option("-f, --format <formats>", "Output format(s): text, csv (comma-separated)", "text")
+    .option("--timeout <timeout>", "Request timeout in ms", "30000")
+    .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox")
+    .action(async (cmd) => {
+        validateAndSetTimeout(cmd.timeout);
+        globalsUtil.setDisableCache(true);
+        globalsUtil.setYes(true);
+        configureSandbox(cmd);
+        await fingerprint(cmd.url, cmd.output, cmd.format);
     });
 
 program

@@ -240,6 +240,17 @@ export const getAiEndpoint = (): string | undefined => {
     return aiEndpoint;
 };
 
+// Quiet mode — suppresses verbose detection logs (used by fingerprint)
+export let quiet = false;
+
+export const setQuiet = (value: boolean): void => {
+    quiet = value;
+};
+
+export const getQuiet = (): boolean => {
+    return quiet;
+};
+
 // Technology Detection
 /** Detected technology stack */
 export let tech = "";
