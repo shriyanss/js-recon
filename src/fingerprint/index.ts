@@ -6,7 +6,7 @@ import frameworkDetect from "../lazyLoad/techDetect/index.js";
 import { computeBarSize, watchBarResize, setActiveBarLogger, progressLog } from "../utility/progressLog.js";
 import * as globalsUtil from "../utility/globals.js";
 
-type OutputFormat = "text" | "csv";
+type OutputFormat = "text" | "csv" | "json" | "jsonl";
 
 interface FingerprintResult {
     url: string;
@@ -35,7 +35,10 @@ const parseUrls = (urlArg: string): string[] => {
 const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
     const ext = path.extname(outputFile);
     const base = ext ? outputFile.slice(0, -ext.length) : outputFile;
-    return format === "csv" ? `${base}.csv` : `${base}.txt`;
+    if (format === "csv") return `${base}.csv`;
+    if (format === "json") return `${base}.json`;
+    if (format === "jsonl") return `${base}.jsonl`;
+    return `${base}.txt`;
 };
 
 const writeResults = (results: FingerprintResult[], outputFile: string, formats: OutputFormat[]): void => {
@@ -49,6 +52,12 @@ const writeResults = (results: FingerprintResult[], outputFile: string, formats:
             for (const r of results) {
                 lines.push(`${r.framework ?? "unknown"},${r.url}`);
             }
+            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+        } else if (format === "json") {
+            const data = results.map((r) => ({ url: r.url, framework: r.framework ?? "unknown" }));
+            fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n");
+        } else if (format === "jsonl") {
+            const lines = results.map((r) => JSON.stringify({ url: r.url, framework: r.framework ?? "unknown" }));
             fs.writeFileSync(filePath, lines.join("\n") + "\n");
         } else {
             const lines = results.map((r) => `[${r.framework ?? "unknown"}] ${r.url}`);
@@ -69,7 +78,7 @@ const fingerprint = async (
     const rawFormats = formatArg
         .split(",")
         .map((f) => f.trim().toLowerCase())
-        .filter((f) => f === "text" || f === "csv") as OutputFormat[];
+        .filter((f) => f === "text" || f === "csv" || f === "json" || f === "jsonl") as OutputFormat[];
     const formats: OutputFormat[] = rawFormats.length > 0 ? rawFormats : ["text"];
 
     const results: FingerprintResult[] = [];

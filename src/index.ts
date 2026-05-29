@@ -358,7 +358,7 @@ program
     .description("Detect front-end frameworks across one or more URLs")
     .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <file>", "Output file to write results")
-    .option("-f, --format <formats>", "Output format(s): text, csv (comma-separated)", "text")
+    .option("-f, --format <formats>", "Output format(s): text, csv, json, jsonl (comma-separated)", "text")
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
