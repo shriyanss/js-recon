@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import cliProgress from "cli-progress";
 import makeRequest from "../../utility/makeReq.js";
+import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 import parser from "@babel/parser";
 import { extractStrings } from "../../strings/index.js";
 
@@ -119,6 +120,7 @@ const vue_stringJsFiles = async (knownJsFiles: string[], maxJsSizeMb: number = 2
                 "[{bar}] {percentage}% | {value}/{total} files | {refs} refs found",
             barCompleteChar: "█",
             barIncompleteChar: "░",
+            barsize: computeBarSize(72),
             hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
@@ -130,6 +132,8 @@ const vue_stringJsFiles = async (knownJsFiles: string[], maxJsSizeMb: number = 2
     const queue = [...knownJsFiles];
 
     bar.start(queue.length, 0, { refs: 0 });
+    const stopBarWatcher = watchBarResize(bar, 72);
+    setActiveBarLogger({ log: (s: string) => process.stdout.write("\r\x1b[K" + s) });
 
     const processFile = async (url: string) => {
         const discovered = await fetchAndExtractJsStrings(url, maxJsSizeMb);
@@ -150,6 +154,8 @@ const vue_stringJsFiles = async (knownJsFiles: string[], maxJsSizeMb: number = 2
     }
 
     bar.stop();
+    stopBarWatcher();
+    setActiveBarLogger(null);
 
     return [...allFound];
 };

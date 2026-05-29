@@ -4,6 +4,7 @@ import chalk from "chalk";
 import cliProgress from "cli-progress";
 import parser from "@babel/parser";
 import t from "@babel/types";
+import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 
 const traverse = _traverse.default;
 
@@ -20,6 +21,7 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
                 "[{bar}] {percentage}% | {value}/{total} files | {paths} paths | {skipped} skipped",
             barCompleteChar: "█",
             barIncompleteChar: "░",
+            barsize: computeBarSize(86),
             hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
@@ -30,6 +32,8 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
     let processed = 0;
     let skipped = 0;
     bar.start(jsFiles.length, 0, { paths: 0, skipped: 0 });
+    const stopBarWatcher = watchBarResize(bar, 86);
+    setActiveBarLogger({ log: (s: string) => process.stdout.write("\r\x1b[K" + s) });
 
     // iterate through all those
     for (const jsFile of jsFiles) {
@@ -162,6 +166,8 @@ const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeM
     }
 
     bar.stop();
+    stopBarWatcher();
+    setActiveBarLogger(null);
 
     if (toReturn.length > 0) {
         console.log(chalk.green(`[+] Found ${toReturn.length} client-side paths from JS files!`));

@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import cliProgress from "cli-progress";
 import vue_discoverJsFiles from "./vue_discoverJsFiles.js";
+import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 
 /**
  * Recursively walks newly discovered Vue.js client-side paths.
@@ -48,6 +49,7 @@ const vue_recursiveClientSidePathDownload = async (
                 "[{bar}] {percentage}% | {value}/{total} paths | round {round} | {jsFiles} JS files | {stagnant} stagnant",
             barCompleteChar: "█",
             barIncompleteChar: "░",
+            barsize: computeBarSize(99),
             hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
@@ -61,6 +63,8 @@ const vue_recursiveClientSidePathDownload = async (
         jsFiles: 0,
         stagnant: `0/${STAGNATION_LIMIT}`,
     });
+    const stopBarWatcher = watchBarResize(bar, 99);
+    setActiveBarLogger({ log: (s: string) => process.stdout.write("\r\x1b[K" + s) });
 
     const refreshBar = () => {
         bar.setTotal(knownPaths.size);
@@ -149,6 +153,8 @@ const vue_recursiveClientSidePathDownload = async (
         }
     } finally {
         bar.stop();
+        stopBarWatcher();
+        setActiveBarLogger(null);
     }
 
     if (allJsFiles.size > 0) {
