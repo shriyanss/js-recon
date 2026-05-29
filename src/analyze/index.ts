@@ -13,6 +13,7 @@ import { EngineOutput, generateEngineOutput } from "./helpers/outputHelper.js";
 const availableTechs = {
     next: "Next.js",
     vue: "Vue.js",
+    react: "React",
 };
 
 /**
@@ -24,8 +25,10 @@ const availableTechs = {
 const getRuleFilesRecursive = (dir: string): string[] => {
     let results: string[] = [];
     const list = fs.readdirSync(dir);
-    list.forEach(function (file) {
-        file = path.join(dir, file);
+    list.forEach(function (entry) {
+        // skip hidden directories (e.g. .github)
+        if (entry.startsWith(".")) return;
+        const file = path.join(dir, entry);
         const stat = fs.statSync(file);
         if (stat && stat.isDirectory()) {
             results = results.concat(getRuleFilesRecursive(file));
@@ -56,7 +59,7 @@ const getRuleFilesRecursive = (dir: string): string[] => {
 const analyze = async (
     rulesPath: string,
     mappedJson: string,
-    tech: "next" | "vue",
+    tech: "next" | "vue" | "react",
     list: boolean,
     openapi: string,
     validate: boolean,

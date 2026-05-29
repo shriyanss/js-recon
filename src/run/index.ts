@@ -100,12 +100,48 @@ const processUrl = async (
         process.exit(10);
     }
 
-    if (!["next", "vue"].includes(globalsUtil.getTech())) {
+    if (!["next", "vue", "react"].includes(globalsUtil.getTech())) {
         console.log(
             chalk.bgYellow(
-                `[!] The tool only supports Next.JS ('next') and Vue.JS ('vue') in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+                `[!] The tool supports Next.JS, Vue.JS, and React in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
             )
         );
+        return;
+    }
+
+    if (globalsUtil.getTech() === "react") {
+        const mappedFileReact = isBatch ? `${workingDir}/mapped` : "mapped";
+        const mappedJsonFileReact = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
+        const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
+        const analyzeFile = isBatch ? `${workingDir}/analyze.json` : "analyze.json";
+        const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
+        const reportFile = isBatch ? `${workingDir}/report` : "report";
+        const endpointsFile = isBatch ? `${workingDir}/endpoints` : "endpoints";
+
+        const reactHostDir = `${outputDir}/${targetHost}`;
+
+        console.log(chalk.bgCyan("[2/4] Running map to find functions and API calls..."));
+        globalsUtil.setOpenapi(true);
+        if (isBatch) {
+            globalsUtil.setOpenapiOutputFile(openapiFile);
+        }
+        await map(reactHostDir, mappedFileReact, ["json"], "react", false, false, cmd.command || []);
+        console.log(chalk.bgGreen("[+] Map complete."));
+
+        console.log(chalk.bgCyan("[3/4] Running analyze..."));
+        // @ts-ignore
+        await analyze(cmd.rules || "", mappedJsonFileReact, "react", false, openapiFile, false, analyzeFile);
+        console.log(chalk.bgGreen("[+] Analyze complete."));
+
+        console.log(chalk.bgCyan("[4/4] Running report module..."));
+        const endpointsJson = `${endpointsFile}.json`;
+        if (!fs.existsSync(endpointsJson)) {
+            fs.writeFileSync(endpointsJson, "[]");
+        }
+        await report(reportDbFile, mappedJsonFileReact, analyzeFile, endpointsJson, openapiFile, reportFile);
+        console.log(chalk.bgGreen("[+] Report complete."));
+
+        console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
         return;
     }
 

@@ -5,6 +5,7 @@ import { Rule } from "../types/index.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import _generator from "@babel/generator";
+const _traverseDefault = _traverse.default;
 const generator = _generator.default;
 import esquery from "esquery";
 import { Node } from "@babel/types";
@@ -141,6 +142,33 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                             }
                         }
                     }
+                }
+            } else if (step.regexMatch) {
+                // Scan all StringLiteral nodes in the chunk for values matching the regex
+                const pattern = new RegExp(step.regexMatch.pattern);
+                let foundNode: any = null;
+                _traverseDefault(ast, {
+                    StringLiteral(nodePath: any) {
+                        if (foundNode) return;
+                        if (pattern.test(nodePath.node.value)) {
+                            foundNode = nodePath.node;
+                            nodePath.stop();
+                        }
+                    },
+                    TemplateLiteral(nodePath: any) {
+                        if (foundNode) return;
+                        for (const quasi of nodePath.node.quasis) {
+                            if (pattern.test(quasi.value.raw)) {
+                                foundNode = nodePath.node;
+                                nodePath.stop();
+                                break;
+                            }
+                        }
+                    },
+                });
+                if (foundNode) {
+                    matchList[step.name] = { node: foundNode, scope: ast };
+                    completedSteps.add(step.name);
                 }
             } else if (step.checkAssignmentExist) {
                 const selectedNode: Node = matchList[step.checkAssignmentExist.name]?.node;

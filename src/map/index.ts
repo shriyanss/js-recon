@@ -23,9 +23,15 @@ import getViteConnections from "./vue_js/getViteConnections.js";
 import vueInteractive, { runCommands as vueRunCommands } from "./vue_js/interactive.js";
 import vue_resolveFetch from "./vue_js/vue_resolveFetch.js";
 
+// React
+import getReactConnections from "./react_js/getReactConnections.js";
+import reactInteractive, { runCommands as reactRunCommands } from "./react_js/interactive.js";
+import react_resolveFetch from "./react_js/react_resolveFetch.js";
+
 const availableTech = {
     next: "Next.JS",
     vue: "Vue.JS",
+    react: "React",
 };
 
 const availableFormats = {
@@ -179,6 +185,37 @@ const map = async (
         }
 
         // Generate OpenAPI spec and Postman collection if enabled
+        if (getOpenapi() === true) {
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
+            const openapiJson = JSON.stringify(openapiSpec, null, 2);
+            fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
+            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+
+            const postmanCollection = generatePostmanCollection(getOpenapiOutput());
+            const openapiOutputFile = getOpenapiOutputFile();
+            const postmanOutputFile = openapiOutputFile.endsWith(".json")
+                ? openapiOutputFile.replace(/\.json$/, ".postman_collection.json")
+                : `${openapiOutputFile}.postman_collection.json`;
+            fs.writeFileSync(postmanOutputFile, JSON.stringify(postmanCollection, null, 2));
+            console.log(chalk.green(`[✓] Generated Postman Collection at ${postmanOutputFile}`));
+        }
+    } else if (tech === "react") {
+        let chunks: Chunks;
+
+        if (!existsSync(`${output}.json`)) {
+            chunks = await getReactConnections(directory, output, formats);
+        } else {
+            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
+        }
+
+        await react_resolveFetch(directory);
+
+        if (commands.length > 0) {
+            await reactRunCommands(chunks, `${output}.json`, commands);
+        } else if (interactive_mode) {
+            await reactInteractive(chunks, `${output}.json`);
+        }
+
         if (getOpenapi() === true) {
             const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
             const openapiJson = JSON.stringify(openapiSpec, null, 2);
