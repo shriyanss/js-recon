@@ -1,2 +1,7 @@
-// React uses the same Vite bundle structure as Vue, so fetch resolution is identical.
-export { default } from "../vue_js/vue_resolveFetch.js";
+import vue_resolveFetch from "../vue_js/vue_resolveFetch.js";
+
+const react_resolveFetch = (directory: string): Promise<void> => {
+    return vue_resolveFetch(directory, "React");
+};
+
+export default react_resolveFetch;

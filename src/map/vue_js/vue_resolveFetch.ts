@@ -424,8 +424,8 @@ const substituteCallerHeaders = (
  * Designed for Vite-bundled Vue.JS applications where HTTP calls are
  * made with the native fetch() API rather than via webpack chunks.
  */
-const vue_resolveFetch = async (directory: string): Promise<void> => {
-    console.log(chalk.cyan("[i] Resolving Vue.JS fetch instances"));
+const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Promise<void> => {
+    console.log(chalk.cyan(`[i] Resolving ${frameworkName} fetch instances`));
 
     let files: string[];
     try {
@@ -620,7 +620,6 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                 if (args.length === 0) return;
 
                 const fileLine = callPath.node.loc?.start.line ?? 0;
-                console.log(chalk.blue(`[+] Found fetch call in "${filePath}":${fileLine}`));
                 totalFetchCalls++;
 
                 // Resolve URL (first argument)
@@ -709,6 +708,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
             entry.body = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
         }
 
+        console.log(chalk.blue(`[+] Found fetch call in "${entry.filePath}":${entry.fileLine}`));
         console.log(chalk.green(`    URL: ${entry.url}`));
         if (entry.method !== "GET" || Object.keys(entry.headers).length > 0 || entry.body) {
             console.log(chalk.green(`    Method: ${entry.method}`));
@@ -746,7 +746,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
         });
     }
 
-    console.log(chalk.green(`[✓] Found and resolved ${totalFetchCalls} fetch call(s) across Vue.JS files`));
+    console.log(chalk.green(`[✓] Found and resolved ${totalFetchCalls} fetch call(s) across ${frameworkName} files`));
 };
 
 export default vue_resolveFetch;
