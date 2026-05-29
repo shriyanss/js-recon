@@ -287,10 +287,8 @@ const lazyLoad = async (
 
                 // crawl same-origin HTML pages found via <a href> and <link href>,
                 // running the full JS-discovery pipeline on each
-                const jsFilesFromPageCrawl = await svelte_recursivePageCrawl(
-                    url,
-                    maxJsSizeMb,
-                    (files) => queue.push(files)
+                const jsFilesFromPageCrawl = await svelte_recursivePageCrawl(url, maxJsSizeMb, (files) =>
+                    queue.push(files)
                 );
 
                 // run string analysis once more to catch JS files discovered during page crawl

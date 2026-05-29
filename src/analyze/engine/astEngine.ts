@@ -200,9 +200,8 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
         if (completedSteps.size === rule.steps.length) {
             const message = `[+] "${rule.name}" found in chunk ${chunk.id}`;
             const lastMatch = Object.values(matchList)[Object.keys(matchList).length - 1];
-            const nodesToReport = lastMatch.allNodes && lastMatch.allNodes.length > 1
-                ? lastMatch.allNodes
-                : [lastMatch.node];
+            const nodesToReport =
+                lastMatch.allNodes && lastMatch.allNodes.length > 1 ? lastMatch.allNodes : [lastMatch.node];
 
             for (const reportNode of nodesToReport) {
                 const code = generator(reportNode).code;

@@ -22,7 +22,9 @@ import { checkReact } from "./checkReact.js";
  *   - evidence: A string with the evidence of the detection, or an empty string if no front-end framework was detected.
  */
 const frameworkDetect = async (url: string): Promise<{ name: string; evidence: string }> => {
-    const log = (...args: any[]) => { if (!globalsUtil.getQuiet()) console.log(...args); };
+    const log = (...args: any[]) => {
+        if (!globalsUtil.getQuiet()) console.log(...args);
+    };
     log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source. Drain the body immediately into a string — if we
@@ -61,9 +63,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
-            log(
-                chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available")
-            );
+            log(chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available"));
         } finally {
             await browser.close().catch(() => {});
         }

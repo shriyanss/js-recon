@@ -12,15 +12,27 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
 
     // Static imports: from "..." and import "..."
     for (const m of content.matchAll(/\bfrom\s*["']([^"']+\.js)["']/g)) {
-        try { found.push(new URL(m[1], fileUrl).href); } catch { /* skip */ }
+        try {
+            found.push(new URL(m[1], fileUrl).href);
+        } catch {
+            /* skip */
+        }
     }
     for (const m of content.matchAll(/\bimport\s*["']([^"']+\.js)["']/g)) {
-        try { found.push(new URL(m[1], fileUrl).href); } catch { /* skip */ }
+        try {
+            found.push(new URL(m[1], fileUrl).href);
+        } catch {
+            /* skip */
+        }
     }
 
     // Dynamic imports: import("...")
     for (const m of content.matchAll(/\bimport\s*\(\s*["']([^"']+\.js)["']\s*\)/g)) {
-        try { found.push(new URL(m[1], fileUrl).href); } catch { /* skip */ }
+        try {
+            found.push(new URL(m[1], fileUrl).href);
+        } catch {
+            /* skip */
+        }
     }
 
     // Vite __vite_mapDeps initialiser: m.f=["assets/chunk1.js","assets/chunk2.js",...]
@@ -33,9 +45,13 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
                     // Vite asset paths are relative to the origin root
                     const resolved = new URL(p.startsWith("/") ? p : "/" + p, baseUrl).href;
                     found.push(resolved);
-                } catch { /* skip */ }
+                } catch {
+                    /* skip */
+                }
             }
-        } catch { /* malformed JSON — ignore */ }
+        } catch {
+            /* malformed JSON — ignore */
+        }
     }
 
     return found;

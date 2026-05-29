@@ -68,9 +68,7 @@ const getReactConnections = async (directory: string, output: string, formats: s
     console.log(chalk.cyan("[i] Getting React (Vite/Rolldown) connections"));
 
     let files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
-    files = files.filter(
-        (f) => f.endsWith(".js") && !f.includes("___subsequent_requests") && !isVendorFile(f)
-    );
+    files = files.filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests") && !isVendorFile(f));
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const stemCount = new Map<string, number>();
@@ -206,8 +204,7 @@ const getReactConnections = async (directory: string, output: string, formats: s
             if (node.type === "ImportDeclaration") {
                 for (const spec of node.specifiers) {
                     if (spec.type === "ImportSpecifier") {
-                        const imported =
-                            spec.imported.type === "Identifier" ? spec.imported.name : spec.imported.value;
+                        const imported = spec.imported.type === "Identifier" ? spec.imported.name : spec.imported.value;
                         importMap.set(spec.local.name, { source: node.source.value, original: imported });
                     } else if (spec.type === "ImportDefaultSpecifier") {
                         importMap.set(spec.local.name, { source: node.source.value, original: "default" });
@@ -219,8 +216,7 @@ const getReactConnections = async (directory: string, output: string, formats: s
                 for (const spec of node.specifiers) {
                     if (spec.type !== "ExportSpecifier") continue;
                     const localName = spec.local.name;
-                    const exportedAs =
-                        spec.exported.type === "Identifier" ? spec.exported.name : spec.exported.value;
+                    const exportedAs = spec.exported.type === "Identifier" ? spec.exported.name : spec.exported.value;
                     const arr = exportMap.get(localName) ?? [];
                     arr.push(exportedAs);
                     exportMap.set(localName, arr);

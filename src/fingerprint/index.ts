@@ -24,7 +24,8 @@ const FRAMEWORK_LABELS: Record<string, string> = {
 
 const parseUrls = (urlArg: string): string[] => {
     if (fs.existsSync(urlArg)) {
-        return fs.readFileSync(urlArg, "utf-8")
+        return fs
+            .readFileSync(urlArg, "utf-8")
             .split("\n")
             .map((u) => u.trim())
             .filter((u) => u.length > 0);
@@ -66,11 +67,7 @@ const writeResults = (results: FingerprintResult[], outputFile: string, formats:
     }
 };
 
-const fingerprint = async (
-    urlArg: string,
-    outputFile: string | undefined,
-    formatArg: string
-): Promise<void> => {
+const fingerprint = async (urlArg: string, outputFile: string | undefined, formatArg: string): Promise<void> => {
     const urls = parseUrls(urlArg);
 
     const rawFormats = formatArg
@@ -84,9 +81,7 @@ const fingerprint = async (
     const overhead = 52;
     const multiBar = new cliProgress.MultiBar(
         {
-            format:
-                chalk.cyan("[i] Fingerprinting ") +
-                "[{bar}] {value}/{total} | {url}",
+            format: chalk.cyan("[i] Fingerprinting ") + "[{bar}] {value}/{total} | {url}",
             barCompleteChar: "█",
             barIncompleteChar: "░",
             barsize: computeBarSize(overhead),
@@ -117,10 +112,8 @@ const fingerprint = async (
 
         results.push({ url, framework });
 
-        const label = framework ? FRAMEWORK_LABELS[framework] ?? framework : "unknown";
-        const line = framework
-            ? chalk.green(`[${label}] ${url}`)
-            : chalk.dim(`[unknown] ${url}`);
+        const label = framework ? (FRAMEWORK_LABELS[framework] ?? framework) : "unknown";
+        const line = framework ? chalk.green(`[${label}] ${url}`) : chalk.dim(`[unknown] ${url}`);
         progressLog(line);
 
         bar.increment(1);
