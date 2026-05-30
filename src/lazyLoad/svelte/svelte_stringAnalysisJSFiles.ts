@@ -11,6 +11,7 @@ const traverse = _traverse.default;
 
 let analyzedFiles = [];
 let filesFound = [];
+let mapFilesFound = [];
 
 /**
  * Parses the content of a JavaScript file and returns an object containing
@@ -91,6 +92,16 @@ const svelte_stringAnalysisJSFiles = async (url) => {
             const respText = await response.text();
             const foundJsFiles: FoundJsFiles = await parseJSFileContent(respText);
 
+            // check for sourcemap reference and queue the .map file
+            const sourcemapMatch = respText.match(/\/\/# sourceMappingURL=(.+)$/m);
+            if (sourcemapMatch) {
+                const rawRef = sourcemapMatch[1].trim();
+                const mapUrl = new URL(rawRef, js_url).href;
+                if (!mapFilesFound.includes(mapUrl)) {
+                    mapFilesFound.push(mapUrl);
+                }
+            }
+
             // iterate through the foundJsFiles and resolve the paths
             for (const [key, value] of Object.entries(foundJsFiles)) {
                 const resolvedPath = await resolvePath(js_url, value);
@@ -107,10 +118,14 @@ const svelte_stringAnalysisJSFiles = async (url) => {
 
     // dedupe the files
     filesFound = [...new Set(filesFound)];
+    mapFilesFound = [...new Set(mapFilesFound)];
 
     console.log(chalk.green(`[✓] Found ${filesFound.length} JS files from string analysis`));
+    if (mapFilesFound.length > 0) {
+        console.log(chalk.green(`[✓] Found ${mapFilesFound.length} sourcemap(s) from JS files`));
+    }
 
-    return filesFound;
+    return { jsFiles: filesFound, mapFiles: mapFilesFound };
 };
 
 export default svelte_stringAnalysisJSFiles;

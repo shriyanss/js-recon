@@ -272,8 +272,12 @@ const lazyLoad = async (
                 queue.push(jsFilesFromPageSource);
 
                 // analyze the strings now
-                const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
+                const { jsFiles: jsFilesFromStringAnalysis, mapFiles: mapFilesFromStringAnalysis } =
+                    await svelte_stringAnalysisJSFiles(url);
                 queue.push(jsFilesFromStringAnalysis);
+                if (mapFilesFromStringAnalysis.length > 0) {
+                    queue.push(mapFilesFromStringAnalysis);
+                }
 
                 // recursively follow ESM static imports (import ... from "./chunk.js")
                 const visited = new Set<string>();
@@ -304,12 +308,18 @@ const lazyLoad = async (
 
                 // run string analysis once more to catch JS files discovered during page crawl
                 if (jsFilesFromPageCrawl.length > 0 || jsFilesFromPathScan.length > 0) {
-                    const jsFilesFromStringAnalysis2 = await svelte_stringAnalysisJSFiles(url);
+                    const { jsFiles: jsFilesFromStringAnalysis2, mapFiles: mapFilesFromStringAnalysis2 } =
+                        await svelte_stringAnalysisJSFiles(url);
                     queue.push(jsFilesFromStringAnalysis2);
+                    if (mapFilesFromStringAnalysis2.length > 0) {
+                        queue.push(mapFilesFromStringAnalysis2);
+                    }
                 }
 
                 await queue.drain();
                 queue.printSummary();
+
+                await extractSourceMaps(output, sourcemapDir);
             } else if (tech.name === "angular") {
                 console.log(chalk.green("[✓] Angular detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
