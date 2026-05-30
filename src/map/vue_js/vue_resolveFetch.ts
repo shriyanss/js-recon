@@ -443,11 +443,19 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
     // function that ultimately calls fetch(). Their property names are the
     // fetch-wrapper keys downstream code destructures and invokes in place of
     // fetch — so we need to recognise those aliases.
+    //
+    // ASTs are parsed on-demand and discarded after each file — only
+    // `wrapperKeyNames` (a small string set) and `fetchFilePaths` (a path list)
+    // are retained so that the full pre-pass AST set never lives in memory
+    // simultaneously.
     const wrapperKeyNames = new Set<string>();
-    const fileAstCache = new Map<string, any>();
-    const fileContentCache = new Map<string, string>();
+    const fetchFilePaths: string[] = [];
 
-    for (const file of files) {
+    for (let _pi = 0; _pi < files.length; _pi++) {
+        // Yield to the event loop every 50 files so V8 GC can reclaim ASTs
+        // from completed iterations before the next batch begins.
+        if (_pi > 0 && _pi % 50 === 0) await new Promise<void>((r) => setImmediate(r));
+        const file = files[_pi];
         const filePath = path.join(directory, file);
         let fileContent: string;
         try {
@@ -456,6 +464,7 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
             continue;
         }
         if (!fileContent.includes("fetch")) continue;
+        fetchFilePaths.push(filePath);
         let fileAst: any;
         try {
             fileAst = parser.parse(fileContent, {
@@ -466,8 +475,6 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
         } catch {
             continue;
         }
-        fileAstCache.set(filePath, fileAst);
-        fileContentCache.set(filePath, fileContent);
 
         traverse(fileAst, {
             ObjectProperty(p) {
@@ -479,27 +486,49 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
                 if (keyName) wrapperKeyNames.add(keyName);
             },
         });
+        // fileAst and fileContent go out of scope here — GC can reclaim them.
     }
 
-    // Lazy caller lookup. Rather than building a global index of every
-    // CallExpression in every bundle (which becomes O(huge) for minified Vite
-    // chunks), we only search when phase-2 actually asks for a specific binding
-    // name, and cache the per-name result. The fast `fileContent.includes`
-    // check skips files that can't possibly contain the call. When the call
-    // count blows past a sane budget we treat the name as too ambiguous to be
-    // useful for tracing and short-circuit to an empty list.
+    // Caller lookup — searches fetchFilePaths on demand, no persistent cache.
+    //
+    // The previous design used a callerCache (Map<bindingName, CallerInfo[]>) so
+    // repeated lookups for the same name were free. The problem: CallerInfo holds
+    // live Babel AST node references (callNode, scope, args). A cached CallerInfo
+    // keeps the entire file AST alive for the lifetime of vue_resolveFetch, which
+    // can be hundreds of large parsed ASTs simultaneously → OOM.
+    //
+    // Without caching, each getCallers call is self-contained: the CallerInfo
+    // objects are returned, used immediately in resolveParamProperty, and then
+    // become garbage — the AST node refs they hold are released promptly.
+    //
+    // Short (≤2 char) binding names are minifier locals that match thousands of
+    // call sites; they always overflow MAX_CALLERS_PER_NAME and return [] anyway,
+    // so we short-circuit before touching any file.
     const MAX_CALLERS_PER_NAME = 64;
-    const callerCache = new Map<string, CallerInfo[]>();
     const getCallers = (bindingName: string): CallerInfo[] => {
-        const cached = callerCache.get(bindingName);
-        if (cached) return cached;
+        if (!bindingName || bindingName.length <= 2) return [];
         const needle = `${bindingName}(`;
         const out: CallerInfo[] = [];
         let overflowed = false;
-        for (const [filePath, fileAst] of fileAstCache.entries()) {
+        for (const filePath of fetchFilePaths) {
             if (overflowed) break;
-            const fileContent = fileContentCache.get(filePath) ?? "";
+            let fileContent: string;
+            try {
+                fileContent = fs.readFileSync(filePath, "utf-8");
+            } catch {
+                continue;
+            }
             if (!fileContent.includes(needle)) continue;
+            let fileAst: any;
+            try {
+                fileAst = parser.parse(fileContent, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+            } catch {
+                continue;
+            }
             traverse(fileAst, {
                 CallExpression(callPath) {
                     if (overflowed) {
@@ -523,12 +552,13 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
                     });
                 },
             });
+            // fileAst local goes out of scope here. If CallerInfo objects in out[]
+            // hold node refs from this file, those keep the AST alive only until
+            // the caller uses out[] and discards it (no long-lived cache).
         }
         // A name with this many callsites is almost certainly a minifier
         // single-letter local (e, t, n, …) — tracing it is noise, not signal.
-        const result = overflowed ? [] : out;
-        callerCache.set(bindingName, result);
-        return result;
+        return overflowed ? [] : out;
     };
 
     let totalFetchCalls = 0;
@@ -537,26 +567,29 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
     let callsiteCounter = 0;
     const entries: FetchEntry[] = [];
 
-    for (const file of files) {
+    for (let _mi = 0; _mi < files.length; _mi++) {
+        // Yield every 50 files so V8 GC can run between batches.
+        if (_mi > 0 && _mi % 50 === 0) await new Promise<void>((r) => setImmediate(r));
+        const file = files[_mi];
         const filePath = path.join(directory, file);
-        let fileContent = fileContentCache.get(filePath);
-        let fileAst = fileAstCache.get(filePath);
-        if (!fileContent || !fileAst) {
-            try {
-                fileContent = fs.readFileSync(filePath, "utf-8");
-            } catch {
-                continue;
-            }
-            if (!fileContent.includes("fetch")) continue;
-            try {
-                fileAst = parser.parse(fileContent, {
-                    sourceType: "unambiguous",
-                    plugins: ["jsx", "typescript"],
-                    errorRecovery: true,
-                });
-            } catch {
-                continue;
-            }
+        // Parse each file fresh — no persistent cache. The AST goes out of scope
+        // at the end of this loop body so the GC can reclaim it.
+        let fileContent: string;
+        let fileAst: any;
+        try {
+            fileContent = fs.readFileSync(filePath, "utf-8");
+        } catch {
+            continue;
+        }
+        if (!fileContent.includes("fetch")) continue;
+        try {
+            fileAst = parser.parse(fileContent, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
         }
 
         // Collect fetch aliases:
@@ -666,12 +699,21 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
                     }
                 }
 
-                const enclosingFn = inferEnclosingFn(callPath, filePath);
+                const rawEnclosingFn = inferEnclosingFn(callPath, filePath);
+                // Null out the AST node reference — it is never read in the
+                // second pass, but keeping it alive would pin the entire file
+                // AST in memory through the entries array.
+                const enclosingFn = rawEnclosingFn
+                    ? { ...rawEnclosingFn, node: null }
+                    : null;
 
                 entries.push({
                     file,
                     filePath,
-                    fileContent,
+                    // fileContent is not used in the second pass; store an empty
+                    // string so the full file content is not kept alive in memory
+                    // through the entries array.
+                    fileContent: "",
                     fileLine,
                     url: typeof url === "string" ? url : "",
                     method,
@@ -687,7 +729,11 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
     // substitute markers we couldn't resolve in the first pass. This is where
     // `?[urlsearchparams:p.q]` turns into `?k1={k1}&k2={k2}`, and where
     // `...p.q: <spread>` gets expanded if a literal object was passed.
-    const MARKER_RE = /\[(urlsearchparams|member|param):/;
+    //
+    // [param:...] markers are NOT handled by substituteCallerPlaceholders, so
+    // excluding them from the guard avoids triggering an expensive (and fruitless)
+    // caller search for wrapper functions whose first arg is a plain parameter.
+    const MARKER_RE = /\[(urlsearchparams|member):/;
     const headersHaveMarkers = (h: Record<string, string>): boolean => {
         for (const [k, v] of Object.entries(h)) {
             if (k.startsWith("...") && v === "<spread>") return true;
@@ -701,6 +747,10 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
             entry.enclosingFn &&
             entry.enclosingFn.bindingName &&
             entry.enclosingFn.firstParamName &&
+            // Skip minifier-generated short names — getCallers returns [] for
+            // them anyway (see the short-circuit inside getCallers), but avoiding
+            // the call entirely saves the regex test overhead on large entry lists.
+            entry.enclosingFn.bindingName.length > 2 &&
             (MARKER_RE.test(entry.url) || MARKER_RE.test(entry.body) || headersHaveMarkers(entry.headers))
         ) {
             entry.url = substituteCallerPlaceholders(entry.url, entry.enclosingFn, getCallers);

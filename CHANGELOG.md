@@ -2,6 +2,13 @@
 
 ## 1.3.1-alpha.4 - (unreleased)
 
+### Performance
+
+- `map -t svelte/vue/react`: `getViteConnections` now parses each JS file exactly once instead of twice (single-pass replaces the two-pass approach), cutting parse-time memory in half for large applications (`map`)
+- `map -t svelte/vue/react`: replaced `JSON.stringify(chunks)` (which allocated a string equal in size to the entire output file) with a streaming `createWriteStream` write that serialises one chunk at a time, eliminating the peak in-memory JSON string (`map`)
+- `map -t svelte/vue/react`: `vue_resolveFetch` no longer caches all parsed ASTs and file contents for "fetch"-containing files simultaneously; ASTs are now parsed on-demand and discarded after each file, with a bounded LRU cache of at most 20 ASTs kept alive for cross-file caller lookup (`map`)
+- `map -t svelte/vue/react`: `FetchEntry.enclosingFn.node` (an AST node reference that pinned each file's full Babel AST through the entries array until the end of the second pass) is now nulled out — the field is not read in the second pass; `FetchEntry.fileContent` is similarly cleared to avoid retaining all processed file contents in memory (`map`)
+
 ### Added
 
 - Detect Next.js Server Actions registered via `createServerReference` and emit them as POST endpoints in the OpenAPI spec and Postman collection — includes `next-action` / `Accept` / `Content-Type` headers, route derived from App Router file path, and argument hints traced from the first call site (`map`)
