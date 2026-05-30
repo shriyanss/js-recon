@@ -14,6 +14,7 @@ const availableTechs = {
     next: "Next.js",
     vue: "Vue.js",
     react: "React",
+    svelte: "Svelte/Astro",
 };
 
 /**
@@ -59,7 +60,7 @@ const getRuleFilesRecursive = (dir: string): string[] => {
 const analyze = async (
     rulesPath: string,
     mappedJson: string,
-    tech: "next" | "vue" | "react",
+    tech: "next" | "vue" | "react" | "svelte",
     list: boolean,
     openapi: string,
     validate: boolean,

@@ -23,6 +23,9 @@ import getViteConnections from "./vue_js/getViteConnections.js";
 import vueInteractive, { runCommands as vueRunCommands } from "./vue_js/interactive.js";
 import vue_resolveFetch from "./vue_js/vue_resolveFetch.js";
 
+// Svelte/Astro
+import svelteInteractive, { runCommands as svelteRunCommands } from "./svelte_js/interactive.js";
+
 // React
 import getReactConnections from "./react_js/getReactConnections.js";
 import reactInteractive, { runCommands as reactRunCommands } from "./react_js/interactive.js";
@@ -32,6 +35,7 @@ const availableTech = {
     next: "Next.JS",
     vue: "Vue.JS",
     react: "React",
+    svelte: "Svelte/Astro",
 };
 
 const availableFormats = {
@@ -214,6 +218,38 @@ const map = async (
             await reactRunCommands(chunks, `${output}.json`, commands);
         } else if (interactive_mode) {
             await reactInteractive(chunks, `${output}.json`);
+        }
+
+        if (getOpenapi() === true) {
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
+            const openapiJson = JSON.stringify(openapiSpec, null, 2);
+            fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
+            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+
+            const postmanCollection = generatePostmanCollection(getOpenapiOutput());
+            const openapiOutputFile = getOpenapiOutputFile();
+            const postmanOutputFile = openapiOutputFile.endsWith(".json")
+                ? openapiOutputFile.replace(/\.json$/, ".postman_collection.json")
+                : `${openapiOutputFile}.postman_collection.json`;
+            fs.writeFileSync(postmanOutputFile, JSON.stringify(postmanCollection, null, 2));
+            console.log(chalk.green(`[✓] Generated Postman Collection at ${postmanOutputFile}`));
+        }
+    } else if (tech === "svelte") {
+        let chunks: Chunks;
+
+        if (!existsSync(`${output}.json`)) {
+            // Astro+Svelte uses Vite — same chunk format as Vue.JS
+            chunks = await getViteConnections(directory, output, formats);
+        } else {
+            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
+        }
+
+        await vue_resolveFetch(directory, "Svelte/Astro");
+
+        if (commands.length > 0) {
+            await svelteRunCommands(chunks, `${output}.json`, commands);
+        } else if (interactive_mode) {
+            await svelteInteractive(chunks, `${output}.json`);
         }
 
         if (getOpenapi() === true) {

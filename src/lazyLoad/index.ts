@@ -20,6 +20,7 @@ import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
 import svelte_recursivePageCrawl from "./svelte/svelte_recursivePageCrawl.js";
+import svelte_discoverPagesFromJs from "./svelte/svelte_discoverPagesFromJs.js";
 
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
@@ -291,8 +292,18 @@ const lazyLoad = async (
                     queue.push(files)
                 );
 
+                // Svelte/Astro apps use client-side routing — the home page rarely has
+                // <a href> links in its server-rendered HTML. Scan downloaded JS for
+                // embedded page path strings (e.g. "/admin", "/debug") and visit each
+                // page to discover the Astro island component-url values for those routes.
+                // Iterates until no new paths or JS files are discovered.
+                const jsFilesFromPathScan = await svelte_discoverPagesFromJs(url);
+                if (jsFilesFromPathScan.length > 0) {
+                    queue.push(jsFilesFromPathScan);
+                }
+
                 // run string analysis once more to catch JS files discovered during page crawl
-                if (jsFilesFromPageCrawl.length > 0) {
+                if (jsFilesFromPageCrawl.length > 0 || jsFilesFromPathScan.length > 0) {
                     const jsFilesFromStringAnalysis2 = await svelte_stringAnalysisJSFiles(url);
                     queue.push(jsFilesFromStringAnalysis2);
                 }

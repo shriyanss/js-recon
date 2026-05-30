@@ -4,7 +4,7 @@ export interface Rule {
     author: string;
     description: string;
     js_recon_version: string;
-    tech: ("next" | "vue" | "react" | "all")[];
+    tech: ("next" | "vue" | "react" | "svelte" | "all")[];
     severity: "info" | "low" | "medium" | "high";
     type: "request" | "ast";
     steps: Step[];

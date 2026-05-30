@@ -1,8 +1,7 @@
 /**
- * Detects if a webpage uses Svelte/SvelteKit by checking for Svelte-specific attributes.
- *
- * Looks for svelte- prefixed class names, IDs, and SvelteKit-specific attributes
- * like data-sveltekit-reload to identify Svelte applications.
+ * Detects if a webpage uses Svelte/SvelteKit or Astro+Svelte by checking for
+ * Svelte-specific attributes, SvelteKit navigation markers, and Astro island
+ * elements whose renderer is the Svelte adapter.
  *
  * @param $ - The Cheerio API object containing the parsed HTML
  * @returns Promise that resolves to an object with detection status and evidence
@@ -11,51 +10,49 @@ export const checkSvelte = async ($) => {
     let detected = false;
     let evidence = "";
 
-    // go through the page source, and check for all the class names of all HTML tags
+    // SvelteKit: svelte- prefixed class names or IDs
     $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
         const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "class") {
-                    // @ts-ignore
-                    if (attrValue.includes("svelte-")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
-        }
-    });
-
-    // now, search for the svelte- id of all elements
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "id") {
-                    // @ts-ignore
-                    if (attrValue.includes("svelte-")) {
-                        detected = true;
-                        evidence = `${attrName} :: ${attrValue}`;
-                    }
-                }
-            }
-        }
-    });
-
-    // now, check for the data-sveltekit-reload attribute
-    $("*").each((_, el) => {
-        const tag = $(el).get(0).tagName;
-        const attribs = el.attribs;
-        if (attribs) {
-            for (const [attrName, attrValue] of Object.entries(attribs)) {
-                if (attrName === "data-sveltekit-reload") {
+        if (!attribs) return;
+        for (const [attrName, attrValue] of Object.entries(attribs)) {
+            if (attrName === "class" || attrName === "id") {
+                // @ts-ignore
+                if ((attrValue as string).includes("svelte-")) {
                     detected = true;
                     evidence = `${attrName} :: ${attrValue}`;
                 }
             }
+        }
+    });
+
+    // SvelteKit: data-sveltekit-reload or other data-sveltekit-* attributes
+    $("*").each((_, el) => {
+        const attribs = el.attribs;
+        if (!attribs) return;
+        for (const attrName of Object.keys(attribs)) {
+            if (attrName.startsWith("data-sveltekit-")) {
+                detected = true;
+                evidence = `${attrName} :: ${attribs[attrName]}`;
+            }
+        }
+    });
+
+    // Astro+Svelte: astro-island elements whose renderer-url contains ".svelte."
+    // or whose opts attribute contains "value":"svelte"
+    $("astro-island").each((_, el) => {
+        const attribs = el.attribs;
+        if (!attribs) return;
+        const rendererUrl: string = attribs["renderer-url"] || "";
+        if (rendererUrl.includes(".svelte.") || rendererUrl.includes("/svelte")) {
+            detected = true;
+            evidence = `astro-island renderer-url :: ${rendererUrl}`;
+            return false; // break
+        }
+        const opts: string = attribs["opts"] || "";
+        if (opts.includes('"value":"svelte"') || opts.includes("'value':'svelte'")) {
+            detected = true;
+            evidence = `astro-island opts :: ${opts.slice(0, 80)}`;
+            return false;
         }
     });
 

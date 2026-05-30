@@ -54,10 +54,11 @@ const extractJsFromHtml = async (pageUrl: string, html: string): Promise<string[
         if (src) jsFiles.push(src.startsWith("http") ? src : await resolvePath(pageUrl, src));
     }
 
-    for (const el of $("[component-url]").toArray()) {
-        const componentUrl = $(el).attr("component-url");
-        if (componentUrl)
-            jsFiles.push(componentUrl.startsWith("http") ? componentUrl : await resolvePath(pageUrl, componentUrl));
+    for (const el of $("astro-island").toArray()) {
+        for (const attr of ["component-url", "renderer-url"]) {
+            const value = $(el).attr(attr);
+            if (value) jsFiles.push(value.startsWith("http") ? value : await resolvePath(pageUrl, value));
+        }
     }
 
     return jsFiles;

@@ -51,15 +51,17 @@ const svelte_getFromPageSource = async (url) => {
         }
     }
 
-    // parse astro-island component-url attributes (Astro island hydration)
-    const astroIslands = $("[component-url]");
+    // parse astro-island component-url and renderer-url attributes (Astro island hydration)
+    const astroIslands = $("astro-island");
     for (const island of astroIslands) {
-        const componentUrl = $(island).attr("component-url");
-        if (componentUrl) {
-            if (componentUrl.startsWith("http")) {
-                foundUrls.push(componentUrl);
-            } else {
-                foundUrls.push(await resolvePath(url, componentUrl));
+        for (const attr of ["component-url", "renderer-url"]) {
+            const value = $(island).attr(attr);
+            if (value) {
+                if (value.startsWith("http")) {
+                    foundUrls.push(value);
+                } else {
+                    foundUrls.push(await resolvePath(url, value));
+                }
             }
         }
     }

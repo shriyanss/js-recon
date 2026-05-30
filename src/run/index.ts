@@ -100,10 +100,10 @@ const processUrl = async (
         process.exit(10);
     }
 
-    if (!["next", "vue", "react"].includes(globalsUtil.getTech())) {
+    if (!["next", "vue", "react", "svelte"].includes(globalsUtil.getTech())) {
         console.log(
             chalk.bgYellow(
-                `[!] The tool supports Next.JS, Vue.JS, and React in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+                `[!] The tool supports Next.JS, Vue.JS, React, and Svelte/Astro in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
             )
         );
         return;
@@ -185,6 +185,44 @@ const processUrl = async (
             fs.writeFileSync(endpointsJson, "[]");
         }
         await report(reportDbFile, mappedJsonFileVue, analyzeFile, endpointsJson, openapiFile, reportFile);
+        console.log(chalk.bgGreen("[+] Report complete."));
+
+        console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
+        return;
+    }
+
+    if (globalsUtil.getTech() === "svelte") {
+        const mappedFileSvelte = isBatch ? `${workingDir}/mapped` : "mapped";
+        const mappedJsonFileSvelte = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
+        const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
+        const analyzeFile = isBatch ? `${workingDir}/analyze.json` : "analyze.json";
+        const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
+        const reportFile = isBatch ? `${workingDir}/report` : "report";
+        const endpointsFile = isBatch ? `${workingDir}/endpoints` : "endpoints";
+
+        console.log(chalk.bgCyan("[2/4] Running map to find functions and API calls..."));
+        globalsUtil.setOpenapi(true);
+        if (isBatch) {
+            globalsUtil.setOpenapiOutputFile(openapiFile);
+        }
+        for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+            const p = `${mappedFileSvelte}${ext}`;
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
+        await map(outputDir, mappedFileSvelte, ["json"], "svelte", false, false, cmd.command || []);
+        console.log(chalk.bgGreen("[+] Map complete."));
+
+        console.log(chalk.bgCyan("[3/4] Running analyze..."));
+        // @ts-ignore
+        await analyze(cmd.rules || "", mappedJsonFileSvelte, "svelte", false, openapiFile, false, analyzeFile);
+        console.log(chalk.bgGreen("[+] Analyze complete."));
+
+        console.log(chalk.bgCyan("[4/4] Running report module..."));
+        const endpointsJson = `${endpointsFile}.json`;
+        if (!fs.existsSync(endpointsJson)) {
+            fs.writeFileSync(endpointsJson, "[]");
+        }
+        await report(reportDbFile, mappedJsonFileSvelte, analyzeFile, endpointsJson, openapiFile, reportFile);
         console.log(chalk.bgGreen("[+] Report complete."));
 
         console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
