@@ -33,6 +33,7 @@ import react_resolveFetch from "./react_js/react_resolveFetch.js";
 
 // XHR resolution (shared across Vite-based techs)
 import vue_resolveXhr from "./vue_js/vue_resolveXhr.js";
+import vue_resolveHttpClient from "./vue_js/vue_resolveHttpClient.js";
 
 const availableTech = {
     next: "Next.JS",
@@ -185,6 +186,7 @@ const map = async (
         // Resolve fetch instances across all Vue.JS files
         await vue_resolveFetch(directory);
         await vue_resolveXhr(directory);
+        await vue_resolveHttpClient(directory);
 
         if (commands.length > 0) {
             await vueRunCommands(chunks, `${output}.json`, commands);
@@ -218,6 +220,7 @@ const map = async (
 
         await react_resolveFetch(directory);
         await vue_resolveXhr(directory, "React");
+        await vue_resolveHttpClient(directory, "React");
 
         if (commands.length > 0) {
             await reactRunCommands(chunks, `${output}.json`, commands);
@@ -251,6 +254,7 @@ const map = async (
 
         await vue_resolveFetch(directory, "Svelte/Astro");
         await vue_resolveXhr(directory, "Svelte/Astro");
+        await vue_resolveHttpClient(directory, "Svelte/Astro");
 
         if (commands.length > 0) {
             await svelteRunCommands(chunks, `${output}.json`, commands);

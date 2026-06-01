@@ -8,9 +8,23 @@ const traverse = _traverse.default;
 export interface EnclosingFn {
     bindingName: string | null;
     firstParamName: string | null;
+    paramNames: (string | null)[];
     node: any;
     file: string;
+    // Outer named/bindable functions, ordered innermost→outermost. Lets the
+    // taint helpers resolve a `[param:X]` against whichever enclosing scope
+    // actually declared X — bundled code commonly nests the resolveNodeValue
+    // callsite inside an anonymous Promise-chain callback whose own params
+    // don't include X.
+    parent?: EnclosingFn | null;
 }
+
+const getParamName = (paramNode: any): string | null => {
+    if (!paramNode) return null;
+    if (paramNode.type === "Identifier") return paramNode.name;
+    if (paramNode.type === "AssignmentPattern" && paramNode.left?.type === "Identifier") return paramNode.left.name;
+    return null;
+};
 
 export interface CallerInfo {
     file: string;
@@ -30,18 +44,10 @@ export interface CallerInfo {
  *   function fn(arg) { ... }
  *   { fn: (arg) => { ... } }  // object-literal property value
  */
-export const inferEnclosingFn = (callPath: any, file: string): EnclosingFn | null => {
-    const fnPath = callPath.getFunctionParent();
-    if (!fnPath) return null;
+const inferOneEnclosingFn = (fnPath: any, file: string): EnclosingFn => {
     const fnNode = fnPath.node;
-    const firstParamName =
-        fnNode.params && fnNode.params[0]?.type === "Identifier"
-            ? fnNode.params[0].name
-            : fnNode.params &&
-                fnNode.params[0]?.type === "AssignmentPattern" &&
-                fnNode.params[0].left?.type === "Identifier"
-              ? fnNode.params[0].left.name
-              : null;
+    const paramNames: (string | null)[] = (fnNode.params ?? []).map(getParamName);
+    const firstParamName = paramNames[0] ?? null;
 
     let bindingName: string | null = null;
     if (fnNode.type === "FunctionDeclaration" && fnNode.id?.type === "Identifier") {
@@ -63,7 +69,24 @@ export const inferEnclosingFn = (callPath: any, file: string): EnclosingFn | nul
         }
     }
 
-    return { bindingName, firstParamName, node: fnNode, file };
+    return { bindingName, firstParamName, paramNames, node: fnNode, file };
+};
+
+export const inferEnclosingFn = (callPath: any, file: string): EnclosingFn | null => {
+    let fnPath = callPath.getFunctionParent();
+    if (!fnPath) return null;
+    const innermost = inferOneEnclosingFn(fnPath, file);
+    let chainTail = innermost;
+    let outerPath = fnPath.getFunctionParent();
+    let depth = 0;
+    while (outerPath && depth < 6) {
+        const outer = inferOneEnclosingFn(outerPath, file);
+        chainTail.parent = outer;
+        chainTail = outer;
+        outerPath = outerPath.getFunctionParent();
+        depth++;
+    }
+    return innermost;
 };
 
 /**
@@ -105,17 +128,25 @@ export const resolveParamProperty = (
     paramName: string,
     propPath: string[],
     enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[],
+    getCallers: GetCallersFn,
     depth = 0
 ): { node: any; scope: any; fileContent: string } | null => {
-    if (!enclosingFn || !enclosingFn.bindingName || depth > 6) return null;
-    if (enclosingFn.firstParamName !== paramName) return null;
+    if (!enclosingFn || depth > 6) return null;
+    // Walk outward through nested anonymous callbacks until we find the fn
+    // that actually declares paramName.
+    let fn: EnclosingFn | null | undefined = enclosingFn;
+    while (fn && (!fn.bindingName || !(fn.paramNames ?? []).includes(paramName))) {
+        fn = fn.parent ?? null;
+    }
+    if (!fn || !fn.bindingName) return null;
+    const paramIndex = (fn.paramNames ?? []).indexOf(paramName);
+    if (paramIndex < 0) return null;
 
-    const callers = getCallers(enclosingFn.bindingName);
+    const callers = getCallers(fn.bindingName, fn.file);
     if (!callers || callers.length === 0) return null;
 
     for (const caller of callers) {
-        const arg = caller.args[0];
+        const arg = caller.args[paramIndex];
         if (!arg) continue;
 
         if (arg.type === "ObjectExpression") {
@@ -130,13 +161,31 @@ export const resolveParamProperty = (
                 const node = lookupObjectExpressionProp(initNode, propPath);
                 if (node) return { node, scope: caller.scope, fileContent: caller.fileContent };
             }
-            if (caller.enclosingFn?.firstParamName === arg.name) {
+            if (enclosingFnChainHasParam(caller.enclosingFn, arg.name)) {
                 const result = resolveParamProperty(arg.name, propPath, caller.enclosingFn, getCallers, depth + 1);
                 if (result) return result;
             }
         }
     }
     return null;
+};
+
+const enclosingFnChainHasParam = (fn: EnclosingFn | null | undefined, name: string): boolean => {
+    let cur: EnclosingFn | null | undefined = fn;
+    while (cur) {
+        if ((cur.paramNames ?? []).includes(name)) return true;
+        cur = cur.parent ?? null;
+    }
+    return false;
+};
+
+export const enclosingFnChainHasBinding = (fn: EnclosingFn | null | undefined): boolean => {
+    let cur: EnclosingFn | null | undefined = fn;
+    while (cur) {
+        if (cur.bindingName) return true;
+        cur = cur.parent ?? null;
+    }
+    return false;
 };
 
 /**
@@ -146,13 +195,20 @@ export const resolveParamProperty = (
 const resolveFirstArg = (
     paramName: string,
     enclosingFn: EnclosingFn,
-    getCallers: (name: string) => CallerInfo[],
+    getCallers: GetCallersFn,
     depth = 0
 ): string | null => {
-    if (!enclosingFn.bindingName || enclosingFn.firstParamName !== paramName || depth > 4) return null;
-    const callers = getCallers(enclosingFn.bindingName);
+    if (depth > 4) return null;
+    let fn: EnclosingFn | null | undefined = enclosingFn;
+    while (fn && (!fn.bindingName || !(fn.paramNames ?? []).includes(paramName))) {
+        fn = fn.parent ?? null;
+    }
+    if (!fn || !fn.bindingName) return null;
+    const paramIndex = (fn.paramNames ?? []).indexOf(paramName);
+    if (paramIndex < 0) return null;
+    const callers = getCallers(fn.bindingName, fn.file);
     for (const caller of callers) {
-        const arg = caller.args[0];
+        const arg = caller.args[paramIndex];
         if (!arg) continue;
         const resolved = resolveNodeValue(arg, caller.scope, "", "fetch", caller.fileContent);
         if (typeof resolved === "string" && !resolved.startsWith("[") && resolved.length > 0) {
@@ -167,7 +223,7 @@ const resolveFirstArg = (
                     return initResolved;
                 }
             }
-            if (caller.enclosingFn?.firstParamName === arg.name) {
+            if (caller.enclosingFn && enclosingFnChainHasParam(caller.enclosingFn, arg.name)) {
                 const r = resolveFirstArg(arg.name, caller.enclosingFn, getCallers, depth + 1);
                 if (r) return r;
             }
@@ -271,7 +327,7 @@ export const renderValueNode = (node: any, scope: any, fileContent: string): str
 export const substituteCallerPlaceholders = (
     input: string,
     enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[]
+    getCallers: GetCallersFn
 ): string => {
     if (!input || !enclosingFn) return input;
 
@@ -313,7 +369,7 @@ export const substituteCallerPlaceholders = (
 export const substituteCallerHeaders = (
     headers: Record<string, string>,
     enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[]
+    getCallers: GetCallersFn
 ): Record<string, string> => {
     if (!enclosingFn) return headers;
     const out: Record<string, string> = {};
@@ -350,10 +406,100 @@ export const substituteCallerHeaders = (
  * Binding names with length ≤ 2 are skipped — they are minifier locals that
  * match too many call sites to be useful.
  */
-export const makeGetCallers = (filePaths: string[], maxCallers = 64) => {
-    return (bindingName: string): CallerInfo[] => {
-        if (!bindingName || bindingName.length <= 2) return [];
-        const needle = `${bindingName}(`;
+/**
+ * Builds a binding→alias map by scanning every file for export-style object
+ * literals that rebind a function under a more meaningful key. Three patterns
+ * are recognized — they cover the common webpack/Vite output shapes:
+ *
+ *   { aliasName: localBinding }          // direct re-export
+ *   { aliasName: () => localBinding }    // webpack `a.d(b, {…})` getter export
+ *   { aliasName: function () { return localBinding(arguments…) } }  // wrapper
+ *
+ * Each alias is recorded both ways so getCallers can look up callsites either
+ * by the local binding or by the externally-visible export name. Computed
+ * only once and cached on first access.
+ */
+const buildAliasMap = (filePaths: string[]): Map<string, Map<string, Set<string>>> => {
+    // file -> bindingName -> set of aliases observed in that file
+    const aliasesByFile = new Map<string, Map<string, Set<string>>>();
+    const addAlias = (file: string, binding: string, alias: string) => {
+        if (!binding || !alias || binding === alias) return;
+        let perFile = aliasesByFile.get(file);
+        if (!perFile) {
+            perFile = new Map();
+            aliasesByFile.set(file, perFile);
+        }
+        let set = perFile.get(binding);
+        if (!set) {
+            set = new Set();
+            perFile.set(binding, set);
+        }
+        set.add(alias);
+    };
+
+    for (const filePath of filePaths) {
+        let fileContent: string;
+        try {
+            fileContent = fs.readFileSync(filePath, "utf-8");
+        } catch {
+            continue;
+        }
+        let fileAst: any;
+        try {
+            fileAst = parser.parse(fileContent, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
+        }
+        traverse(fileAst, {
+            ObjectProperty(propPath: any) {
+                const node = propPath.node;
+                if (node.computed) return;
+                const key =
+                    node.key.type === "Identifier"
+                        ? node.key.name
+                        : node.key.type === "StringLiteral"
+                          ? node.key.value
+                          : null;
+                if (!key) return;
+                const val = node.value;
+                if (val.type === "Identifier") {
+                    addAlias(filePath, val.name, key);
+                } else if (
+                    val.type === "ArrowFunctionExpression" &&
+                    val.params.length === 0 &&
+                    val.body.type === "Identifier"
+                ) {
+                    // `key: () => Binding` (webpack getter export)
+                    addAlias(filePath, val.body.name, key);
+                }
+            },
+        });
+    }
+    return aliasesByFile;
+};
+
+export type GetCallersFn = (bindingName: string, sourceFile?: string) => CallerInfo[];
+export const makeGetCallers = (filePaths: string[], maxCallers = 128): GetCallersFn => {
+    let aliasMap: Map<string, Map<string, Set<string>>> | null = null;
+    return (bindingName: string, sourceFile?: string): CallerInfo[] => {
+        if (!bindingName) return [];
+        if (aliasMap === null) aliasMap = buildAliasMap(filePaths);
+        // Use only the aliases defined in the file where `bindingName` lives;
+        // otherwise minifier name collisions across modules (`Se` may name
+        // different functions in different files) pollute the alias set.
+        const aliases =
+            (sourceFile && aliasMap.get(sourceFile)?.get(bindingName)) || new Set<string>();
+        // Only match by names that are long enough to be distinctive. Short
+        // minifier locals (≤ 2 chars) alone match too many sites; longer
+        // alias names — usually the exported function names — are safe.
+        const candidates = new Set<string>([bindingName, ...aliases].filter((n) => n.length > 2));
+        if (candidates.size === 0) return [];
+        const nameMatches = (n: string) => candidates.has(n);
+        const needles = Array.from(candidates).map((n) => `${n}(`);
         const out: CallerInfo[] = [];
         let overflowed = false;
         for (const filePath of filePaths) {
@@ -364,7 +510,7 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 64) => {
             } catch {
                 continue;
             }
-            if (!fileContent.includes(needle)) continue;
+            if (!needles.some((n) => fileContent.includes(n))) continue;
             let fileAst: any;
             try {
                 fileAst = parser.parse(fileContent, {
@@ -382,7 +528,17 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 64) => {
                         return;
                     }
                     const callee = callPath.node.callee;
-                    if (callee.type !== "Identifier" || callee.name !== bindingName) return;
+                    const isDirect = callee.type === "Identifier" && nameMatches(callee.name);
+                    // Registry-style exports re-bind functions onto an object
+                    // (e.g. `const ae = { request: Me }; ae.request(...)`), so we
+                    // accept member-expression callsites where the property name
+                    // matches the binding (or one of its aliases) too.
+                    const isMember =
+                        callee.type === "MemberExpression" &&
+                        !callee.computed &&
+                        callee.property.type === "Identifier" &&
+                        nameMatches(callee.property.name);
+                    if (!isDirect && !isMember) return;
                     if (out.length >= maxCallers) {
                         overflowed = true;
                         callPath.stop();
@@ -399,6 +555,9 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 64) => {
                 },
             });
         }
-        return overflowed ? [] : out;
+        // On overflow keep the callers we already collected: the alias map is
+        // file-scoped so an oversized result usually reflects a genuinely
+        // popular wrapper, and partial coverage beats none.
+        return out;
     };
 };
