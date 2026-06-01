@@ -25,11 +25,17 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
     for (const [key, value] of Object.entries(chunks)) {
         // see if the chunk code string contains window.__NEXT_P string
         if (value.code.includes("window.__NEXT_P")) {
-            const ast = parser.parse(value.code, {
-                sourceType: "unambiguous",
-                plugins: ["jsx", "typescript"],
-                errorRecovery: true,
-            });
+            let ast;
+            try {
+                ast = parser.parse(value.code, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+            } catch (err) {
+                console.log(chalk.red(`[!] Failed to parse chunk ${key}: ${err}`));
+                continue;
+            }
 
             traverse(ast, {
                 CallExpression(path) {
