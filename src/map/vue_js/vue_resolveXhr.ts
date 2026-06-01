@@ -130,7 +130,10 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
         }
 
         const xhrCallMap = new Map<string, XhrCallData[]>();
-        const xhrAccum = new Map<string, { headers: Record<string, string>; body: string; enclosingFn: EnclosingFn | null }>();
+        const xhrAccum = new Map<
+            string,
+            { headers: Record<string, string>; body: string; enclosingFn: EnclosingFn | null }
+        >();
 
         for (const name of xhrBindingNames) {
             xhrCallMap.set(name, []);

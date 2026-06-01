@@ -118,7 +118,9 @@ const svelte_discoverPagesFromJs = async (entryUrl: string): Promise<string[]> =
         const newPaths = [...candidatePaths].filter((p) => !visitedPaths.has(p));
         if (newPaths.length === 0) break;
 
-        console.log(chalk.cyan(`[i] Found ${newPaths.length} candidate page path(s) in JS — visiting to discover more chunks`));
+        console.log(
+            chalk.cyan(`[i] Found ${newPaths.length} candidate page path(s) in JS — visiting to discover more chunks`)
+        );
 
         let foundThisRound = 0;
         for (const pagePath of newPaths) {

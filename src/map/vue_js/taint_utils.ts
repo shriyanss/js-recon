@@ -208,7 +208,11 @@ const renderObjectAsQuery = (objExpr: any, scope: any, fileContent: string): str
  * Spread elements are merged when they themselves resolve to a literal object;
  * otherwise the spread is preserved as a sentinel key.
  */
-export const renderObjectExpression = (objExpr: any, scope: any, fileContent: string): Record<string, string> | null => {
+export const renderObjectExpression = (
+    objExpr: any,
+    scope: any,
+    fileContent: string
+): Record<string, string> | null => {
     if (!objExpr || objExpr.type !== "ObjectExpression") return null;
     const out: Record<string, string> = {};
     for (const prop of objExpr.properties) {

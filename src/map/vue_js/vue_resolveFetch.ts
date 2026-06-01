@@ -104,7 +104,6 @@ interface FetchEntry {
     enclosingFn: EnclosingFn | null;
 }
 
-
 /**
  * Scans all JS files in the given directory for fetch() calls,
  * resolves their URL / method / headers / body, and registers each
@@ -322,9 +321,7 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
                 // Null out the AST node reference — it is never read in the
                 // second pass, but keeping it alive would pin the entire file
                 // AST in memory through the entries array.
-                const enclosingFn = rawEnclosingFn
-                    ? { ...rawEnclosingFn, node: null }
-                    : null;
+                const enclosingFn = rawEnclosingFn ? { ...rawEnclosingFn, node: null } : null;
 
                 entries.push({
                     file,
