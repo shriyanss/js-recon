@@ -14,6 +14,7 @@ import {
     enclosingFnChainHasBinding,
     GetCallersFn,
 } from "./taint_utils.js";
+import { deepResolveValue, mapLeafStrings, hasMarkers } from "./bodyResolver.js";
 
 const stripAstNodes = (fn: EnclosingFn | null): EnclosingFn | null => {
     if (!fn) return null;
@@ -40,6 +41,12 @@ interface HttpCallEntry {
     method: string;
     headers: Record<string, string>;
     body: string;
+    /**
+     * Structured form of `body` when the request body resolves to an object.
+     * Preserved separately so taint substitution can rewrite leaf-string
+     * markers (`[param:X]`, `[member:P.X]`, …) without parsing JSON.
+     */
+    bodyValue?: any;
     enclosingFn: EnclosingFn | null;
 }
 
@@ -255,18 +262,19 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
                 if (!looksLikeUrl(url)) return;
 
                 let body = "";
+                let bodyValue: any = undefined;
                 const headers: Record<string, string> = {};
                 const hasBody = verb === "post" || verb === "put" || verb === "patch";
                 const configArgIndex = hasBody ? 2 : 1;
 
                 if (hasBody && args.length >= 2) {
-                    const rawBody = resolveNodeValue(args[1], p.scope, "", "fetch", fileContent);
+                    bodyValue = deepResolveValue(args[1], p.scope, fileContent);
                     body =
-                        rawBody === null || rawBody === undefined
+                        bodyValue === null || bodyValue === undefined
                             ? ""
-                            : typeof rawBody === "object"
-                              ? JSON.stringify(rawBody)
-                              : String(rawBody);
+                            : typeof bodyValue === "object"
+                              ? JSON.stringify(bodyValue)
+                              : String(bodyValue);
                 }
 
                 const configArg = args[configArgIndex];
@@ -310,6 +318,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
                     method: verb.toUpperCase(),
                     headers,
                     body,
+                    bodyValue,
                     enclosingFn,
                 });
             },
@@ -326,6 +335,26 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         return false;
     };
 
+    // Apply caller-side substitution to every leaf string inside a structured
+    // body. Then JSON.stringify the result so it round-trips through the
+    // string-typed `body` field. Plain-string bodies fall back to the existing
+    // single-pass substituter.
+    const substituteBody = (
+        entry: HttpCallEntry,
+        enclosingFn: EnclosingFn | null
+    ): { body: string; bodyValue: any } => {
+        if (entry.bodyValue !== undefined && entry.bodyValue !== null && typeof entry.bodyValue === "object") {
+            const next = mapLeafStrings(entry.bodyValue, (s) =>
+                substituteCallerPlaceholders(s, enclosingFn, getCallers)
+            );
+            return { body: JSON.stringify(next), bodyValue: next };
+        }
+        return {
+            body: substituteCallerPlaceholders(entry.body, enclosingFn, getCallers),
+            bodyValue: entry.bodyValue,
+        };
+    };
+
     // Expand `[param:X]` URLs across every caller of the enclosing function so
     // a single wrapper site (e.g. an internal `client.post(base+"path/"+ns+"/"+m, …)`)
     // generates one emitted URL per caller — capturing distinct namespace/method
@@ -336,19 +365,28 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
             enclosingFnChainHasBinding(entry.enclosingFn) &&
             (MARKER_RE.test(entry.url) ||
                 MARKER_RE.test(entry.body) ||
+                hasMarkers(entry.bodyValue) ||
                 headersHaveMarkers(entry.headers))
         ) {
             const urls = expandParamPlaceholders(entry.url, entry.enclosingFn, getCallers);
             if (urls.length === 0) {
                 entry.url = substituteCallerPlaceholders(entry.url, entry.enclosingFn, getCallers);
-                entry.body = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
+                const subBody = substituteBody(entry, entry.enclosingFn);
+                entry.body = subBody.body;
+                entry.bodyValue = subBody.bodyValue;
                 entry.headers = substituteCallerHeaders(entry.headers, entry.enclosingFn, getCallers);
                 expandedEntries.push(entry);
             } else {
-                const bodySub = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
+                const subBody = substituteBody(entry, entry.enclosingFn);
                 const headersSub = substituteCallerHeaders(entry.headers, entry.enclosingFn, getCallers);
                 for (const u of urls) {
-                    expandedEntries.push({ ...entry, url: u, body: bodySub, headers: headersSub });
+                    expandedEntries.push({
+                        ...entry,
+                        url: u,
+                        body: subBody.body,
+                        bodyValue: subBody.bodyValue,
+                        headers: headersSub,
+                    });
                 }
             }
         } else {
