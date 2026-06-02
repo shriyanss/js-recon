@@ -6,20 +6,21 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 
 ## Files
 
-- `index.ts` — entrypoint. Dispatches by tech.
+- `index.ts` — entrypoint. Dispatches by tech (`next`, `react`).
 - `next/index.ts` — Next.js refactor implementation. Walks the AST, normalizes identifier names where possible, runs Prettier on the output, writes to a sibling directory in `output/`.
+- `react/index.ts` — React refactor implementation. Same webpack-5 module-function shape (detects `(module, exports, require)` by positional params, rewrites `require(<n>)` calls to `require("./<n>.js")`), plus an exports walk that recognises both `Object.defineProperty(<exports>, "k", { get: () => local })` and the runtime helper `<require>.d(<exports>, { k: () => local, ... })`. Emits ES `export { local as k }` / `export default local` so a reader can see the public surface of each chunk.
 
 ## Patterns / gotchas
 
-- **Next-only today.** Adding Vue/React means a parallel subdir; do NOT merge into `next/`.
+- **Per-tech subdirs.** Each tech keeps its own AST pass under `<tech>/`; do NOT merge them. Webpack module wrappers are shared in shape, but each framework adds extras (Next.js runtime helpers, React refresh runtime, …).
 - **Prettier is required.** Without formatting, the AST-normalized output is harder to read than the original minified code. Don't make Prettier optional.
 - **Output goes to a sibling dir** (e.g. `output/<host>/static/js-refactored/`) — never overwrite the source chunks, downstream steps (`map`, `analyze`) still need them.
-- **Lossy.** Identifier renaming can produce collisions; refactored code is for human inspection only, never feed it back into `map`.
+- **Lossy.** Identifier renaming can produce collisions; the exports walk can collapse multi-getter shapes; refactored code is for human inspection only, never feed it back into `map`.
 
 ## How to test changes here
 
 ```bash
-npx tsc && node build/index.js refactor -d output/<host>/static/js
+npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react> -o /tmp/refactored
 ```
 
 Spot-check the refactored output by hand.

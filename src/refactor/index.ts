@@ -5,9 +5,12 @@ import prettier from "prettier";
 
 // Next.js
 import refactorNext from "./next/index.js";
+// React
+import refactorReact from "./react/index.js";
 
 const availableTechs = {
     next: "Next.js",
+    react: "React",
 };
 
 /**
@@ -63,6 +66,8 @@ const refactor = async (mappedJson: string, outputDir: string, tech: string, lis
 
         if (tech === "next") {
             code = await refactorNext(value);
+        } else if (tech === "react") {
+            code = await refactorReact(value);
         }
 
         // prettify the code before writing
