@@ -399,9 +399,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
     let emitted = 0;
     for (const entry of entries) {
         if (!looksLikeUrl(entry.url)) continue;
-        console.log(
-            chalk.blue(`[+] Found ${entry.method} client call in "${entry.filePath}":${entry.fileLine}`)
-        );
+        console.log(chalk.blue(`[+] Found ${entry.method} client call in "${entry.filePath}":${entry.fileLine}`));
         console.log(chalk.green(`    URL: ${entry.url}`));
         if (Object.keys(entry.headers).length > 0) {
             console.log(chalk.green(`    Headers: ${JSON.stringify(entry.headers)}`));
@@ -421,9 +419,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         emitted++;
     }
 
-    console.log(
-        chalk.green(`[✓] Emitted ${emitted} HTTP client call(s) across ${frameworkName} files`)
-    );
+    console.log(chalk.green(`[✓] Emitted ${emitted} HTTP client call(s) across ${frameworkName} files`));
 };
 
 export default vue_resolveHttpClient;

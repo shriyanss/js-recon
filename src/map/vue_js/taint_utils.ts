@@ -491,8 +491,7 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 128): GetCaller
         // Use only the aliases defined in the file where `bindingName` lives;
         // otherwise minifier name collisions across modules (`Se` may name
         // different functions in different files) pollute the alias set.
-        const aliases =
-            (sourceFile && aliasMap.get(sourceFile)?.get(bindingName)) || new Set<string>();
+        const aliases = (sourceFile && aliasMap.get(sourceFile)?.get(bindingName)) || new Set<string>();
         // Only match by names that are long enough to be distinctive. Short
         // minifier locals (≤ 2 chars) alone match too many sites; longer
         // alias names — usually the exported function names — are safe.

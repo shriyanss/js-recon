@@ -24,11 +24,9 @@ import { resolveNodeValue, memberChainToString } from "../next_js/utils.js";
 
 const PLACEHOLDER_RE = /^\[(unresolved|call|member|param|var |MemberExpression)/;
 
-const isUnresolvedString = (v: any): boolean =>
-    typeof v === "string" && PLACEHOLDER_RE.test(v);
+const isUnresolvedString = (v: any): boolean => typeof v === "string" && PLACEHOLDER_RE.test(v);
 
-const isResolvedLiteralString = (v: any): boolean =>
-    typeof v === "string" && v.length > 0 && !PLACEHOLDER_RE.test(v);
+const isResolvedLiteralString = (v: any): boolean => typeof v === "string" && v.length > 0 && !PLACEHOLDER_RE.test(v);
 
 const getPropKey = (prop: any): string | null => {
     if (prop.computed) return null;
@@ -65,12 +63,7 @@ const getReturnExpression = (fnNode: any): any | null => {
     return null;
 };
 
-export const deepResolveValue = (
-    node: any,
-    scope: any,
-    fileContent: string,
-    depth = 0
-): any => {
+export const deepResolveValue = (node: any, scope: any, fileContent: string, depth = 0): any => {
     if (!node) return null;
     if (depth > 8) return resolveNodeValue(node, scope, "", "fetch", fileContent);
 
@@ -107,9 +100,7 @@ export const deepResolveValue = (
         }
 
         case "ArrayExpression":
-            return node.elements.map((e: any) =>
-                e ? deepResolveValue(e, scope, fileContent, depth + 1) : null
-            );
+            return node.elements.map((e: any) => (e ? deepResolveValue(e, scope, fileContent, depth + 1) : null));
 
         case "LogicalExpression": {
             // For `a || b` we prefer the LHS — even if it resolves to a
@@ -142,12 +133,7 @@ export const deepResolveValue = (
         }
 
         case "SequenceExpression":
-            return deepResolveValue(
-                node.expressions[node.expressions.length - 1],
-                scope,
-                fileContent,
-                depth + 1
-            );
+            return deepResolveValue(node.expressions[node.expressions.length - 1], scope, fileContent, depth + 1);
 
         case "ParenthesizedExpression":
             return deepResolveValue((node as any).expression, scope, fileContent, depth + 1);
@@ -181,11 +167,7 @@ export const deepResolveValue = (
         case "MemberExpression": {
             // Try resolving the whole member chain via a local object literal:
             //   const p = { body: X, … }; return p.body  →  X
-            if (
-                !node.computed &&
-                node.property.type === "Identifier" &&
-                node.object.type === "Identifier"
-            ) {
+            if (!node.computed && node.property.type === "Identifier" && node.object.type === "Identifier") {
                 try {
                     const binding = scope?.getBinding?.(node.object.name);
                     const init = binding?.path?.node?.init;
@@ -193,12 +175,7 @@ export const deepResolveValue = (
                         for (const prop of init.properties) {
                             if (prop.type !== "ObjectProperty") continue;
                             if (getPropKey(prop) === node.property.name) {
-                                return deepResolveValue(
-                                    prop.value,
-                                    binding.scope ?? scope,
-                                    fileContent,
-                                    depth + 1
-                                );
+                                return deepResolveValue(prop.value, binding.scope ?? scope, fileContent, depth + 1);
                             }
                         }
                     }
@@ -231,12 +208,7 @@ export const deepResolveValue = (
  * function's own scope is needed to resolve any local bindings referenced
  * inside its return expression.
  */
-const inlineLocalCall = (
-    callNode: any,
-    callerScope: any,
-    fileContent: string,
-    depth: number
-): any => {
+const inlineLocalCall = (callNode: any, callerScope: any, fileContent: string, depth: number): any => {
     if (callNode.callee.type !== "Identifier") return undefined;
     const fnName = callNode.callee.name;
     let binding: any;
@@ -262,15 +234,7 @@ const inlineLocalCall = (
     if (!returnExpr) return undefined;
 
     const fnScope = binding.path?.get?.("body")?.scope ?? binding.scope ?? callerScope;
-    return resolveReturnInline(
-        returnExpr,
-        params,
-        args,
-        fnScope,
-        callerScope,
-        fileContent,
-        depth + 1
-    );
+    return resolveReturnInline(returnExpr, params, args, fnScope, callerScope, fileContent, depth + 1);
 };
 
 const resolveReturnInline = (
@@ -305,71 +269,27 @@ const resolveReturnInline = (
                 depth + 1
             );
         case "LogicalExpression": {
-            const l = resolveReturnInline(
-                node.left,
-                params,
-                args,
-                fnScope,
-                callerScope,
-                fileContent,
-                depth + 1
-            );
+            const l = resolveReturnInline(node.left, params, args, fnScope, callerScope, fileContent, depth + 1);
             if (node.operator === "||" || node.operator === "??") {
                 if (l === null || l === undefined) {
-                    return resolveReturnInline(
-                        node.right,
-                        params,
-                        args,
-                        fnScope,
-                        callerScope,
-                        fileContent,
-                        depth + 1
-                    );
+                    return resolveReturnInline(node.right, params, args, fnScope, callerScope, fileContent, depth + 1);
                 }
                 return l;
             }
             if (node.operator === "&&") {
-                return resolveReturnInline(
-                    node.right,
-                    params,
-                    args,
-                    fnScope,
-                    callerScope,
-                    fileContent,
-                    depth + 1
-                );
+                return resolveReturnInline(node.right, params, args, fnScope, callerScope, fileContent, depth + 1);
             }
             return l;
         }
         case "ConditionalExpression": {
-            const c = resolveReturnInline(
-                node.consequent,
-                params,
-                args,
-                fnScope,
-                callerScope,
-                fileContent,
-                depth + 1
-            );
+            const c = resolveReturnInline(node.consequent, params, args, fnScope, callerScope, fileContent, depth + 1);
             if (c !== null && c !== undefined && !isUnresolvedString(c)) return c;
-            return resolveReturnInline(
-                node.alternate,
-                params,
-                args,
-                fnScope,
-                callerScope,
-                fileContent,
-                depth + 1
-            );
+            return resolveReturnInline(node.alternate, params, args, fnScope, callerScope, fileContent, depth + 1);
         }
         case "MemberExpression": {
             // Look up `local.prop` where `local` is bound to an ObjectExpression
             // inside the function — common builder pattern.
-            if (
-                !node.computed &&
-                node.object.type === "Identifier" &&
-                node.property.type === "Identifier"
-            ) {
+            if (!node.computed && node.object.type === "Identifier" && node.property.type === "Identifier") {
                 try {
                     const localBinding = fnScope?.getBinding?.(node.object.name);
                     const init = localBinding?.path?.node?.init;
@@ -429,17 +349,7 @@ const resolveReturnInline = (
         }
         case "ArrayExpression":
             return node.elements.map((e: any) =>
-                e
-                    ? resolveReturnInline(
-                          e,
-                          params,
-                          args,
-                          fnScope,
-                          callerScope,
-                          fileContent,
-                          depth + 1
-                      )
-                    : null
+                e ? resolveReturnInline(e, params, args, fnScope, callerScope, fileContent, depth + 1) : null
             );
         case "CallExpression": {
             // Recurse: the return might itself be a call to another local helper.
@@ -476,8 +386,7 @@ export const mapLeafStrings = (value: any, fn: (s: string) => string): any => {
  */
 export const hasMarkers = (value: any): boolean => {
     if (value === null || value === undefined) return false;
-    if (typeof value === "string")
-        return /\[(urlsearchparams|member|param|call):/.test(value);
+    if (typeof value === "string") return /\[(urlsearchparams|member|param|call):/.test(value);
     if (Array.isArray(value)) return value.some((v) => hasMarkers(v));
     if (typeof value === "object") {
         for (const v of Object.values(value)) if (hasMarkers(v)) return true;
