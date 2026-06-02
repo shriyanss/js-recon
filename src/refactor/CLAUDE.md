@@ -8,7 +8,11 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 
 - `index.ts` — entrypoint. Dispatches by tech (`next`, `react`).
 - `next/index.ts` — Next.js refactor implementation. Walks the AST, normalizes identifier names where possible, runs Prettier on the output, writes to a sibling directory in `output/`.
-- `react/index.ts` — React refactor implementation. Same webpack-5 module-function shape (detects `(module, exports, require)` by positional params, rewrites `require(<n>)` calls to `require("./<n>.js")`), plus an exports walk that recognises both `Object.defineProperty(<exports>, "k", { get: () => local })` and the runtime helper `<require>.d(<exports>, { k: () => local, ... })`. Emits ES `export { local as k }` / `export default local` so a reader can see the public surface of each chunk.
+- `react/index.ts` — React refactor implementation. Detects each webpack module function under `var e = { <numericId>: function(module, exports, require) { ... } }` (and 2-param re-export modules `function(module, exports) { module.exports = require(N) }`), rewrites `require(<n>)` to `require("./<n>.js")`, captures exports via `Object.defineProperty(<exports>, ...)`, `<require>.d(<exports>, { ... })`, and `<exports>.<minProp> = <X>.<canonical>` assignments. Classifies modules by content fingerprint (`react` via `<X>.current.<hook>(...)` call shape; `react/jsx-runtime` via exports of both `jsx` and `jsxs`; `react-dom/client` via export of `createRoot`); resolves re-export chains. Rewrites bundled user-code callsites documented in `refactor_observations/00-bundled-shape-shared.md`:
+  - `(0, <reactLocal>.<hook>)(args)` → `<hook>(args)` + `import { <hook> } from "react";`
+  - `(0, <jsxLocal>.jsx)(args)` → `jsx(args)` + `import { jsx, jsxs, Fragment } from "react/jsx-runtime";`
+  - `<reactDomLocal>.<minProp>(args)` → `createRoot(args)` using the module's export map.
+  Any unrecognised `(0, X.Y)(args)` is still flattened to `X.Y(args)`. Outputs the import lines at the top of the chunk file.
 
 ## Patterns / gotchas
 
