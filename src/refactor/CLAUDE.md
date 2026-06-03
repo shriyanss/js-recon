@@ -20,6 +20,7 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 - **Prettier is required.** Without formatting, the AST-normalized output is harder to read than the original minified code. Don't make Prettier optional.
 - **Output goes to a sibling dir** (e.g. `output/<host>/static/js-refactored/`) — never overwrite the source chunks, downstream steps (`map`, `analyze`) still need them.
 - **Lossy.** Identifier renaming can produce collisions; the exports walk can collapse multi-getter shapes; refactored code is for human inspection only, never feed it back into `map`.
+- **Duplicate default export guard.** Webpack 5 / Vite bundles parsed with `sourceType: "unambiguous"` may already contain `export { X as default }` or `export default X` as real ESM statements in the source. The trailing-export logic in `react/index.ts` checks `codeHasDefaultExport` (a regex over the generated code) before appending another `export default`; omitting this check causes a `SyntaxError: Only one default export allowed per module` from Prettier.
 
 ## How to test changes here
 

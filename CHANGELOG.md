@@ -39,6 +39,7 @@
 
 ### Fixed
 
+- `refactor -t react`: chunks whose AST already contains `export { X as default }` or `export default X` no longer receive a second trailing `export default` statement — the refactor pass now checks for an existing default export in the generated code before appending one (`refactor`)
 - Fetch resolver second pass now handles `[param:X]` markers in request bodies — previously `MARKER_RE` matched only `[member:]` / `[urlsearchparams:]` and the resolver explicitly excluded `[param:]` markers, so a fetch wrapper whose body was an outer function parameter (`fetch(url, { body: JSON.stringify({ ..., body: E }) })`) was emitted with the literal placeholder string instead of the structured object the caller actually passed. The body JSON is now parsed and walked with `deepSubstituteBodyValue` so nested object/array call-site values replace the marker leaves (`map`)
 - `[MemberExpression -> X]`, `[var X]`, and other unresolved placeholders in URLs are now substituted with their OpenAPI equivalents (`{X}`) before URL parsing in the OpenAPI spec generator, preventing spurious `Invalid URL` errors for placeholder-containing paths (`map`)
 - Silenced the `Invalid URL` catch in the OpenAPI query-parameter extractor — URLs that remain unparseable after placeholder substitution (e.g. absolute URLs with placeholder hostnames) are skipped silently, since this is expected behaviour (`map`)

@@ -586,6 +586,8 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
     const allExports: Array<{ key: string; local: string }> = [];
     for (const arr of exportCollections.values()) allExports.push(...arr);
 
+    const codeHasDefaultExport = /\bexport\s+default\b|\bas\s+default\b/.test(codeCopy);
+
     let trailingExports = "";
     if (allExports.length > 0) {
         const usedKeys = new Set<string>();
@@ -603,7 +605,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
             }
             usedKeys.add(key);
             if (key === "default") {
-                defaultLines.push(`export default ${entry.local};`);
+                if (!codeHasDefaultExport) defaultLines.push(`export default ${entry.local};`);
             } else {
                 named.push({ key, local: entry.local });
             }
@@ -637,7 +639,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
                 }
             },
         });
-        if (functionName) trailingExports = `\n\nexport default ${functionName};`;
+        if (functionName && !codeHasDefaultExport) trailingExports = `\n\nexport default ${functionName};`;
     }
 
     return `${header}${codeCopy}${trailingExports}`;
