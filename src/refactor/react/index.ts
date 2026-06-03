@@ -149,11 +149,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
             if (!t.isFunctionExpression(value) && !t.isArrowFunctionExpression(value)) return;
             const id = String((path.node.key as t.NumericLiteral).value);
             const valuePath = path.get("value") as NodePath<t.Function>;
-            captureModule(
-                id,
-                valuePath,
-                (value as t.FunctionExpression | t.ArrowFunctionExpression).params
-            );
+            captureModule(id, valuePath, (value as t.FunctionExpression | t.ArrowFunctionExpression).params);
         },
         ObjectMethod(path) {
             if (!t.isNumericLiteral(path.node.key)) return;
@@ -252,10 +248,9 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
                 if (
                     t.isMemberExpression(node.callee) &&
                     t.isMemberExpression((node.callee as t.MemberExpression).object) &&
-                    t.isIdentifier(
-                        ((node.callee as t.MemberExpression).object as t.MemberExpression).property,
-                        { name: "current" }
-                    ) &&
+                    t.isIdentifier(((node.callee as t.MemberExpression).object as t.MemberExpression).property, {
+                        name: "current",
+                    }) &&
                     t.isIdentifier((node.callee as t.MemberExpression).property) &&
                     REACT_HOOK_NAMES.has(((node.callee as t.MemberExpression).property as t.Identifier).name)
                 ) {
@@ -364,9 +359,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
                         t.isNumericLiteral(node.arguments[0])
                     ) {
                         const numId = (node.arguments[0] as t.NumericLiteral).value;
-                        p.replaceWith(
-                            t.callExpression(t.identifier("require"), [t.stringLiteral(`./${numId}.js`)])
-                        );
+                        p.replaceWith(t.callExpression(t.identifier("require"), [t.stringLiteral(`./${numId}.js`)]));
                         return;
                     }
 
@@ -396,8 +389,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
                         t.isSequenceExpression(node.callee) &&
                         node.callee.expressions.length === 2 &&
                         t.isNumericLiteral(node.callee.expressions[0], { value: 0 }) &&
-                        (t.isMemberExpression(node.callee.expressions[1]) ||
-                            t.isIdentifier(node.callee.expressions[1]))
+                        (t.isMemberExpression(node.callee.expressions[1]) || t.isIdentifier(node.callee.expressions[1]))
                     ) {
                         const inner = node.callee.expressions[1] as t.Expression;
                         // If the MemberExpression visitor already rewrote the
@@ -510,8 +502,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
                         t.isSequenceExpression(node.callee) &&
                         node.callee.expressions.length === 2 &&
                         t.isNumericLiteral(node.callee.expressions[0], { value: 0 }) &&
-                        (t.isMemberExpression(node.callee.expressions[1]) ||
-                            t.isIdentifier(node.callee.expressions[1]))
+                        (t.isMemberExpression(node.callee.expressions[1]) || t.isIdentifier(node.callee.expressions[1]))
                     ) {
                         const inner = node.callee.expressions[1] as t.Expression;
                         const callee = t.isMemberExpression(inner)
@@ -556,7 +547,10 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
                         p.replaceWith(t.identifier(prop));
                         return;
                     }
-                    if (aliased.kind === "react" && (REACT_HOOK_NAMES.has(prop) || REACT_TOP_LEVEL_API_NAMES.has(prop))) {
+                    if (
+                        aliased.kind === "react" &&
+                        (REACT_HOOK_NAMES.has(prop) || REACT_TOP_LEVEL_API_NAMES.has(prop))
+                    ) {
                         reactImports.add(prop);
                         p.replaceWith(t.identifier(prop));
                         return;
@@ -616,9 +610,7 @@ const refactorReact = async (chunk: Chunk): Promise<string> => {
         }
         const parts: string[] = [];
         if (named.length > 0) {
-            const namedList = named
-                .map(({ key, local }) => (key === local ? key : `${local} as ${key}`))
-                .join(", ");
+            const namedList = named.map(({ key, local }) => (key === local ? key : `${local} as ${key}`)).join(", ");
             parts.push(`/* webpack-derived exports — keys may collide across modules in the chunk */`);
             parts.push(`export { ${namedList} };`);
         }
