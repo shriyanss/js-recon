@@ -14,7 +14,8 @@ import {
     enclosingFnChainHasBinding,
     GetCallersFn,
 } from "./taint_utils.js";
-import { deepResolveValue, mapLeafStrings, hasMarkers } from "./bodyResolver.js";
+import { deepResolveValue, hasMarkers, resolveParamToAnyValue, deepSubstituteBodyValue } from "./bodyResolver.js";
+import { substituteCrossFileMarkers, substituteCrossFileMarkersDeep } from "./crossFileResolver.js";
 
 const stripAstNodes = (fn: EnclosingFn | null): EnclosingFn | null => {
     if (!fn) return null;
@@ -86,9 +87,13 @@ const expandParamPlaceholders = (
     url: string,
     fn: EnclosingFn | null,
     getCallers: GetCallersFn,
-    depth = 0
+    depth = 0,
+    deadlineMs: number = Date.now() + 10000,
+    capacity: { remaining: number } = { remaining: 150 },
+    maxDepth: number = globals.getMaxRecursionDepth()
 ): string[] => {
-    if (depth > 3 || typeof url !== "string") return [];
+    if (depth > maxDepth || typeof url !== "string") return [];
+    if (Date.now() > deadlineMs || capacity.remaining <= 0) return [url];
     const all = url.match(/\[param:([A-Za-z_$][\w$]*)\]/g);
     if (!all) return [url];
 
@@ -110,11 +115,15 @@ const expandParamPlaceholders = (
         if (ownerParams.includes(n)) ownedNames.add(n);
     }
 
-    const callers = getCallers(owner.bindingName, owner.file);
-    if (!callers || callers.length === 0) return [url];
+    const allCallers = getCallers(owner.bindingName, owner.file);
+    if (!allCallers || allCallers.length === 0) return [url];
+    // Cap callers per level to bound work; deeper levels still recurse but the
+    // deadline/capacity guards above stop the explosion.
+    const callers = allCallers.slice(0, 25);
 
     const out = new Set<string>();
     for (const caller of callers) {
+        if (Date.now() > deadlineMs || capacity.remaining <= 0) break;
         let nextUrl = url;
         let hasArgs = false;
         for (const name of ownedNames) {
@@ -133,14 +142,24 @@ const expandParamPlaceholders = (
             nextUrl = nextUrl.split(`[param:${name}]`).join(resolvedStr);
         }
         if (!hasArgs) continue;
-        // Recurse so forwarding wrappers (where the caller's arg is itself a
-        // `[param:Y]` placeholder) walk up one more level into the caller's
-        // own enclosing function callers. Bounded by depth guard at the top.
         if (!/\[param:/.test(nextUrl)) {
             out.add(nextUrl);
+            capacity.remaining--;
         } else {
-            const subs = expandParamPlaceholders(nextUrl, caller.enclosingFn, getCallers, depth + 1);
-            for (const s of subs) out.add(s);
+            const subs = expandParamPlaceholders(
+                nextUrl,
+                caller.enclosingFn,
+                getCallers,
+                depth + 1,
+                deadlineMs,
+                capacity,
+                maxDepth
+            );
+            for (const s of subs) {
+                if (capacity.remaining <= 0) break;
+                out.add(s);
+                capacity.remaining--;
+            }
         }
     }
     return out.size === 0 ? [url] : Array.from(out);
@@ -210,9 +229,22 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
 
     const entries: HttpCallEntry[] = [];
     const verbPrefilter = /\.(?:get|post|put|delete|patch|head|options)\s*\(/;
+    const scanStartTs = Date.now();
+    console.log(chalk.cyan(`[i] Scanning ${files.length} ${frameworkName} JS file(s) for HTTP-client callsites`));
+    let lastScanPct = -1;
 
     for (let _i = 0; _i < files.length; _i++) {
         if (_i > 0 && _i % 50 === 0) await new Promise<void>((r) => setImmediate(r));
+        const scanPct = files.length === 0 ? 100 : Math.floor(((_i + 1) * 100) / files.length);
+        if (scanPct !== lastScanPct && (scanPct % 10 === 0 || scanPct === 100)) {
+            const elapsed = ((Date.now() - scanStartTs) / 1000).toFixed(1);
+            console.log(
+                chalk.gray(
+                    `    [scan] ${scanPct}% (${_i + 1}/${files.length}) entries=${entries.length} elapsed=${elapsed}s`
+                )
+            );
+            lastScanPct = scanPct;
+        }
 
         const file = files[_i];
         const filePath = path.join(directory, file);
@@ -344,9 +376,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         enclosingFn: EnclosingFn | null
     ): { body: string; bodyValue: any } => {
         if (entry.bodyValue !== undefined && entry.bodyValue !== null && typeof entry.bodyValue === "object") {
-            const next = mapLeafStrings(entry.bodyValue, (s) =>
-                substituteCallerPlaceholders(s, enclosingFn, getCallers)
-            );
+            const next = deepSubstituteBodyValue(entry.bodyValue, enclosingFn, getCallers);
             return { body: JSON.stringify(next), bodyValue: next };
         }
         return {
@@ -355,12 +385,261 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         };
     };
 
-    // Expand `[param:X]` URLs across every caller of the enclosing function so
-    // a single wrapper site (e.g. an internal `client.post(base+"path/"+ns+"/"+m, …)`)
-    // generates one emitted URL per caller — capturing distinct namespace/method
-    // pairs instead of just whichever resolved first.
+    // Per-caller fan-out: for each caller of the param-owning function,
+    // substitute URL + body + headers from that caller's args so each emitted
+    // entry carries the body/url pair that THAT specific caller passed
+    // (instead of all expanded URLs sharing one body from "the first caller").
+    interface Expanded {
+        url: string;
+        bodyValue: any;
+        headers: Record<string, string>;
+    }
+
+    const collectParamNames = (s: string, set: Set<string>): void => {
+        if (typeof s !== "string") return;
+        const m = s.match(/\[param:([A-Za-z_$][\w$]*)\]/g);
+        if (!m) return;
+        for (const x of m) set.add(x.slice("[param:".length, -1));
+    };
+
+    const walkValueForParams = (v: any, set: Set<string>): void => {
+        if (v === null || v === undefined) return;
+        if (typeof v === "string") collectParamNames(v, set);
+        else if (Array.isArray(v)) for (const x of v) walkValueForParams(x, set);
+        else if (typeof v === "object") for (const x of Object.values(v)) walkValueForParams(x, set);
+    };
+
+    const substituteParamsDeep = (
+        value: any,
+        subStr: Record<string, string | null>,
+        subVal: Record<string, any>,
+        owned: Set<string>
+    ): any => {
+        if (value === null || value === undefined) return value;
+        if (typeof value === "string") {
+            const exact = value.match(/^\[param:([A-Za-z_$][\w$]*)\]$/);
+            if (exact && owned.has(exact[1])) {
+                const v = subVal[exact[1]];
+                if (v !== undefined) return v;
+            }
+            let out = value;
+            for (const [name, s] of Object.entries(subStr)) {
+                if (s === null || s === undefined) continue;
+                out = out.split(`[param:${name}]`).join(String(s));
+            }
+            return out;
+        }
+        if (Array.isArray(value)) return value.map((v) => substituteParamsDeep(v, subStr, subVal, owned));
+        if (typeof value === "object") {
+            const o: Record<string, any> = {};
+            for (const [k, v] of Object.entries(value)) {
+                o[k] = substituteParamsDeep(v, subStr, subVal, owned);
+            }
+            return o;
+        }
+        return value;
+    };
+
+    // Hard bounds to prevent exponential blowup.
+    // depth=2 → up to (callers/level)² forwarding-wrapper chains, enabling
+    // resolution through registry-export wrappers like `ae.request → Me`.
+    const FANOUT_MAX_DEPTH = 2;
+    const FANOUT_MAX_CALLERS_PER_LEVEL = 12;
+    const FANOUT_MAX_EXPANSIONS_PER_ENTRY = 80;
+    const FANOUT_BUDGET_MS_PER_ENTRY = 1200;
+
+    // Lightweight arg resolver — avoids the deep recursive scope-walking that
+    // makes `resolveNodeValue`/`deepResolveValue` expensive (5+s per entry).
+    // Only handles the cheap patterns: literals, identifiers bound to literals,
+    // simple member chains where the base is a local ObjectExpression literal.
+    // Returns null for anything more complex; the outer loop falls back to
+    // leaving the [param:X] placeholder unresolved for that caller.
+    const lightResolveArg = (node: any, scope: any, depth = 0): { asString: string | null; asValue: any } => {
+        if (!node || depth > 3) return { asString: null, asValue: null };
+        if (node.type === "StringLiteral") return { asString: node.value, asValue: node.value };
+        if (node.type === "NumericLiteral") return { asString: String(node.value), asValue: node.value };
+        if (node.type === "BooleanLiteral") return { asString: String(node.value), asValue: node.value };
+        if (node.type === "NullLiteral") return { asString: "null", asValue: null };
+        if (node.type === "TemplateLiteral" && node.expressions.length === 0 && node.quasis.length === 1) {
+            const v = node.quasis[0].value.cooked ?? node.quasis[0].value.raw ?? "";
+            return { asString: v, asValue: v };
+        }
+        if (node.type === "ObjectExpression") {
+            // Build a shallow plain-object representation for structured body subst.
+            const o: Record<string, any> = {};
+            for (const p of node.properties ?? []) {
+                if (p.type !== "ObjectProperty") continue;
+                const k =
+                    p.key.type === "Identifier" ? p.key.name : p.key.type === "StringLiteral" ? p.key.value : null;
+                if (!k) continue;
+                o[k] = lightResolveArg(p.value, scope, depth + 1).asValue;
+            }
+            return { asString: null, asValue: o };
+        }
+        if (node.type === "ArrayExpression") {
+            const arr: any[] = [];
+            for (const e of node.elements ?? []) {
+                arr.push(e ? lightResolveArg(e, scope, depth + 1).asValue : null);
+            }
+            return { asString: null, asValue: arr };
+        }
+        if (node.type === "Identifier") {
+            try {
+                const b = scope?.getBinding?.(node.name);
+                const init = b?.path?.node?.init;
+                if (init) {
+                    return lightResolveArg(init, b.scope ?? scope, depth + 1);
+                }
+            } catch {}
+            return { asString: null, asValue: null };
+        }
+        if (node.type === "MemberExpression" && !node.computed && node.property.type === "Identifier") {
+            const base = lightResolveArg(node.object, scope, depth + 1);
+            if (base.asValue && typeof base.asValue === "object" && node.property.name in base.asValue) {
+                const v = base.asValue[node.property.name];
+                return { asString: typeof v === "string" ? v : v != null ? String(v) : null, asValue: v };
+            }
+        }
+        return { asString: null, asValue: null };
+    };
+
+    const expandEntryAcrossCallers = (
+        url: string,
+        bodyValue: any,
+        headers: Record<string, string>,
+        fn: EnclosingFn | null,
+        deadlineMs: number,
+        capacity: { remaining: number },
+        depth = 0
+    ): Expanded[] => {
+        if (depth > FANOUT_MAX_DEPTH || !fn) return [{ url, bodyValue, headers }];
+        if (Date.now() > deadlineMs || capacity.remaining <= 0) return [{ url, bodyValue, headers }];
+        const allNames = new Set<string>();
+        collectParamNames(url, allNames);
+        walkValueForParams(bodyValue, allNames);
+        for (const v of Object.values(headers)) collectParamNames(v, allNames);
+        for (const k of Object.keys(headers)) collectParamNames(k, allNames);
+        if (allNames.size === 0) return [{ url, bodyValue, headers }];
+
+        let owner: EnclosingFn | null | undefined = fn;
+        while (owner) {
+            const op = owner.paramNames ?? [];
+            if (owner.bindingName && [...allNames].some((n) => op.includes(n))) break;
+            owner = owner.parent ?? null;
+        }
+        if (!owner || !owner.bindingName) return [{ url, bodyValue, headers }];
+
+        const ownerParams = owner.paramNames ?? [];
+        const owned = new Set<string>([...allNames].filter((n) => ownerParams.includes(n)));
+        const allCallers = getCallers(owner.bindingName, owner.file);
+        if (!allCallers || allCallers.length === 0) return [{ url, bodyValue, headers }];
+        const callers = allCallers.slice(0, FANOUT_MAX_CALLERS_PER_LEVEL);
+
+        // Split owned params by where they appear: only call deepResolveValue
+        // (which can walk deeply) when an owned param appears as a bare
+        // `[param:X]` LEAF in the structured body. URL/header/string-body
+        // substitution only needs resolveNodeValue (string).
+        const bodyDeepOwned = new Set<string>();
+        const walkBodyForLeaves = (v: any): void => {
+            if (v === null || v === undefined) return;
+            if (typeof v === "string") {
+                const m = v.match(/^\[param:([A-Za-z_$][\w$]*)\]$/);
+                if (m && owned.has(m[1])) bodyDeepOwned.add(m[1]);
+            } else if (Array.isArray(v)) for (const x of v) walkBodyForLeaves(x);
+            else if (typeof v === "object") for (const x of Object.values(v)) walkBodyForLeaves(x);
+        };
+        walkBodyForLeaves(bodyValue);
+
+        const out: Expanded[] = [];
+        for (const caller of callers) {
+            if (Date.now() > deadlineMs || capacity.remaining <= 0) break;
+            const subStr: Record<string, string | null> = {};
+            const subVal: Record<string, any> = {};
+            let hasAny = false;
+            for (const name of owned) {
+                const idx = ownerParams.indexOf(name);
+                const arg = caller.args[idx];
+                if (!arg) continue;
+                hasAny = true;
+                // String resolution: use full resolveNodeValue (handles template
+                // literals, concat, identifier chains). It's fast — only
+                // deepResolveValue is the perf hazard.
+                try {
+                    const s = resolveNodeValue(arg, caller.scope, "", "fetch", caller.fileContent);
+                    subStr[name] = typeof s === "string" ? s : null;
+                } catch {
+                    subStr[name] = null;
+                }
+                // Structured body value: only call deepResolveValue if THIS
+                // param appears as a bare `[param:X]` leaf in the body — and
+                // only within the deadline. Otherwise fall back to the string.
+                if (bodyDeepOwned.has(name) && Date.now() < deadlineMs) {
+                    try {
+                        subVal[name] = deepResolveValue(arg, caller.scope, caller.fileContent);
+                    } catch {
+                        subVal[name] = subStr[name];
+                    }
+                } else {
+                    subVal[name] = subStr[name];
+                }
+            }
+            if (!hasAny) continue;
+
+            const urlSub = substituteParamsDeep(url, subStr, subVal, owned);
+            const bodyValSub = substituteParamsDeep(bodyValue, subStr, subVal, owned);
+            const headersSub: Record<string, string> = {};
+            for (const [k, v] of Object.entries(headers)) {
+                const nk = substituteParamsDeep(k, subStr, subVal, owned);
+                const nv = substituteParamsDeep(v, subStr, subVal, owned);
+                headersSub[typeof nk === "string" ? nk : k] = typeof nv === "string" ? nv : String(nv ?? "");
+            }
+
+            const stillHasParams =
+                (typeof urlSub === "string" && /\[param:/.test(urlSub)) ||
+                hasMarkers(bodyValSub) ||
+                Object.values(headersSub).some((v) => typeof v === "string" && /\[param:/.test(v));
+
+            if (stillHasParams && caller.enclosingFn && depth + 1 <= FANOUT_MAX_DEPTH) {
+                const recursed = expandEntryAcrossCallers(
+                    typeof urlSub === "string" ? urlSub : url,
+                    bodyValSub,
+                    headersSub,
+                    caller.enclosingFn,
+                    deadlineMs,
+                    capacity,
+                    depth + 1
+                );
+                for (const r of recursed) {
+                    if (capacity.remaining <= 0) break;
+                    out.push(r);
+                    capacity.remaining--;
+                }
+            } else {
+                out.push({
+                    url: typeof urlSub === "string" ? urlSub : url,
+                    bodyValue: bodyValSub,
+                    headers: headersSub,
+                });
+                capacity.remaining--;
+            }
+        }
+        return out.length === 0 ? [{ url, bodyValue, headers }] : out;
+    };
+
     const expandedEntries: HttpCallEntry[] = [];
+    const totalEntries = entries.length;
+    let processedCount = 0;
+    let lastProgressPct = -1;
+    const progressStartTs = Date.now();
+    console.log(chalk.cyan(`[i] Expanding ${totalEntries} ${frameworkName} HTTP-client callsite(s) across callers`));
     for (const entry of entries) {
+        processedCount++;
+        const pct = totalEntries === 0 ? 100 : Math.floor((processedCount * 100) / totalEntries);
+        if (pct !== lastProgressPct && (pct % 10 === 0 || pct === 100)) {
+            const elapsed = ((Date.now() - progressStartTs) / 1000).toFixed(1);
+            console.log(chalk.gray(`    [progress] ${pct}% (${processedCount}/${totalEntries}) elapsed=${elapsed}s`));
+            lastProgressPct = pct;
+        }
         if (
             enclosingFnChainHasBinding(entry.enclosingFn) &&
             (MARKER_RE.test(entry.url) ||
@@ -368,26 +647,73 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
                 hasMarkers(entry.bodyValue) ||
                 headersHaveMarkers(entry.headers))
         ) {
-            const urls = expandParamPlaceholders(entry.url, entry.enclosingFn, getCallers);
-            if (urls.length === 0) {
-                entry.url = substituteCallerPlaceholders(entry.url, entry.enclosingFn, getCallers);
-                const subBody = substituteBody(entry, entry.enclosingFn);
-                entry.body = subBody.body;
-                entry.bodyValue = subBody.bodyValue;
-                entry.headers = substituteCallerHeaders(entry.headers, entry.enclosingFn, getCallers);
-                expandedEntries.push(entry);
-            } else {
-                const subBody = substituteBody(entry, entry.enclosingFn);
-                const headersSub = substituteCallerHeaders(entry.headers, entry.enclosingFn, getCallers);
-                for (const u of urls) {
-                    expandedEntries.push({
-                        ...entry,
-                        url: u,
-                        body: subBody.body,
-                        bodyValue: subBody.bodyValue,
-                        headers: headersSub,
-                    });
-                }
+            // URL fan-out: use the original `expandParamPlaceholders` (string
+            // resolveNodeValue per caller). This is the version that produced
+            // varied URLs like `<service>/<module>/<method>`.
+            //
+            // Scale per-entry budget and capacity with maxDepth so deeper
+            // recursion actually has room to produce more URLs. At depth=3
+            // (default) we get ~10s/150caps. At depth=10 we get ~80s/1200caps
+            // per entry.
+            const maxDepth = globals.getMaxRecursionDepth();
+            const depthFactor = maxDepth + 1;
+            // Linear deadline scaling — empirically gives ~5min total runtime
+            // at depth 8 once getCallers AST caching is in place.
+            const perEntryDeadlineMs = Date.now() + Math.max(2000, (8000 * depthFactor) / 4);
+            const perEntryCapacity = { remaining: Math.max(30, 50 * depthFactor) };
+            const entryStartTs = Date.now();
+            const urls = expandParamPlaceholders(
+                entry.url,
+                entry.enclosingFn,
+                getCallers,
+                0,
+                perEntryDeadlineMs,
+                perEntryCapacity,
+                maxDepth
+            );
+            // Body+headers substitution: resolves [param:X] body leaves to the
+            // first matching caller's structured value (credentials object,
+            // etc.) via resolveParamToAnyValue.
+            const subBody = substituteBody(entry, entry.enclosingFn);
+            const headersSub = substituteCallerHeaders(entry.headers, entry.enclosingFn, getCallers);
+            const entryElapsed = Date.now() - entryStartTs;
+            if (entryElapsed > 200) {
+                console.log(
+                    chalk.gray(
+                        `    [expand] entry ${processedCount}/${totalEntries} took ${entryElapsed}ms (${urls.length} urls)`
+                    )
+                );
+            }
+
+            const expansions: Expanded[] =
+                urls.length === 0
+                    ? [
+                          {
+                              url: substituteCallerPlaceholders(entry.url, entry.enclosingFn, getCallers),
+                              bodyValue: subBody.bodyValue,
+                              headers: headersSub,
+                          },
+                      ]
+                    : urls.map((u) => ({ url: u, bodyValue: subBody.bodyValue, headers: headersSub }));
+
+            for (const exp of expansions) {
+                // Cross-file pass (later) handles [member:X.Y] / [call:X.Y()].
+                const urlFinal = exp.url;
+                const headersFinal = exp.headers;
+                const bodyValueFinal: any = exp.bodyValue;
+                const bodyStr =
+                    bodyValueFinal === null || bodyValueFinal === undefined
+                        ? ""
+                        : typeof bodyValueFinal === "object"
+                          ? JSON.stringify(bodyValueFinal)
+                          : String(bodyValueFinal);
+                expandedEntries.push({
+                    ...entry,
+                    url: urlFinal,
+                    body: bodyStr,
+                    bodyValue: bodyValueFinal,
+                    headers: headersFinal,
+                });
             }
         } else {
             expandedEntries.push(entry);
@@ -396,12 +722,44 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
     entries.length = 0;
     entries.push(...expandedEntries);
 
+    // Final pass: cross-file resolution for [member:X.Y] and [call:X.Y.Z()]
+    // markers that survived caller-chain substitution. These come from imports
+    // of other Vite chunks, which the in-file resolver can't follow.
+    console.log(chalk.cyan(`[i] Cross-file resolution pass for ${entries.length} entries`));
+    const crossStartTs = Date.now();
+    let lastCrossPct = -1;
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const pct = entries.length === 0 ? 100 : Math.floor(((i + 1) * 100) / entries.length);
+        if (pct !== lastCrossPct && (pct % 20 === 0 || pct === 100)) {
+            const elapsed = ((Date.now() - crossStartTs) / 1000).toFixed(1);
+            console.log(chalk.gray(`    [cross-file] ${pct}% (${i + 1}/${entries.length}) elapsed=${elapsed}s`));
+            lastCrossPct = pct;
+        }
+        try {
+            entry.url = substituteCrossFileMarkers(entry.url, entry.filePath, directory);
+            const headersResolved: Record<string, string> = {};
+            for (const [hk, hv] of Object.entries(entry.headers)) {
+                const nk = substituteCrossFileMarkers(hk, entry.filePath, directory);
+                const nv = substituteCrossFileMarkers(hv, entry.filePath, directory);
+                headersResolved[nk] = nv;
+            }
+            entry.headers = headersResolved;
+            if (entry.bodyValue !== undefined && entry.bodyValue !== null && typeof entry.bodyValue === "object") {
+                entry.bodyValue = substituteCrossFileMarkersDeep(entry.bodyValue, entry.filePath, directory);
+                entry.body = JSON.stringify(entry.bodyValue);
+            } else if (typeof entry.body === "string" && entry.body) {
+                entry.body = substituteCrossFileMarkers(entry.body, entry.filePath, directory);
+            }
+        } catch {
+            // Cross-file resolution is best-effort; never block emission on failure.
+        }
+    }
+
     let emitted = 0;
     for (const entry of entries) {
         if (!looksLikeUrl(entry.url)) continue;
-        console.log(
-            chalk.blue(`[+] Found ${entry.method} client call in "${entry.filePath}":${entry.fileLine}`)
-        );
+        console.log(chalk.blue(`[+] Found ${entry.method} client call in "${entry.filePath}":${entry.fileLine}`));
         console.log(chalk.green(`    URL: ${entry.url}`));
         if (Object.keys(entry.headers).length > 0) {
             console.log(chalk.green(`    Headers: ${JSON.stringify(entry.headers)}`));
@@ -421,9 +779,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         emitted++;
     }
 
-    console.log(
-        chalk.green(`[✓] Emitted ${emitted} HTTP client call(s) across ${frameworkName} files`)
-    );
+    console.log(chalk.green(`[✓] Emitted ${emitted} HTTP client call(s) across ${frameworkName} files`));
 };
 
 export default vue_resolveHttpClient;

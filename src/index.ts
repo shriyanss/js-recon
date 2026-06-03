@@ -202,6 +202,11 @@ program
     .option("--openapi", "Generate OpenAPI spec from the code", false)
     .option("--openapi-output <file>", "Output file for OpenAPI spec", "mapped-openapi.json")
     .option("--openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found", false)
+    .option(
+        "--max-recursion-depth <n>",
+        "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
+        "3"
+    )
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
@@ -222,6 +227,12 @@ program
                 }
             }
         }
+        const maxRecursionDepth = parseInt(cmd.maxRecursionDepth ?? "3", 10);
+        if (!Number.isFinite(maxRecursionDepth) || maxRecursionDepth < 0) {
+            console.log(chalk.red(`[!] Invalid --max-recursion-depth: ${cmd.maxRecursionDepth}`));
+            process.exit(1);
+        }
+        globalsUtil.setMaxRecursionDepth(maxRecursionDepth);
         await map(
             cmd.directory,
             cmd.output,

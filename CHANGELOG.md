@@ -4,6 +4,7 @@
 
 ### Performance
 
+- `makeGetCallers` now caches per-file content + Babel AST tuples for the lifetime of the resolver instance, so repeated caller searches at high recursion depth no longer re-read and re-parse every JS file on each call — depth-8 runs that previously took 200+ minutes on a large real-world target now complete in under a minute (`map`)
 - `map -t svelte/vue/react`: `getViteConnections` now parses each JS file exactly once instead of twice (single-pass replaces the two-pass approach), cutting parse-time memory in half for large applications (`map`)
 - `map -t svelte/vue/react`: replaced `JSON.stringify(chunks)` (which allocated a string equal in size to the entire output file) with a streaming `createWriteStream` write that serialises one chunk at a time, eliminating the peak in-memory JSON string (`map`)
 - `map -t svelte/vue/react`: `vue_resolveFetch` no longer caches all parsed ASTs and file contents for "fetch"-containing files simultaneously; ASTs are now parsed on-demand and discarded after each file, with a bounded LRU cache of at most 20 ASTs kept alive for cross-file caller lookup (`map`)
@@ -11,6 +12,11 @@
 
 ### Added
 
+- `--max-recursion-depth <n>` flag on `map` (default 3) — controls how far the HTTP-client URL fan-out and cross-file resolver recurse through caller chains. Higher values resolve more `[param:X]` markers at the cost of runtime; the per-entry deadline scales with depth so deeper recursion still terminates (`map`)
+- `deepSubstituteBodyValue` body resolver — when a request body contains a `[param:X]` leaf whose call-site value is a structured object (e.g. a credentials/config object passed by an outer caller), the leaf is now replaced with the full nested object rather than left as a placeholder string. Used by both the HTTP-client and fetch resolvers (`map`)
+- `makeGetCallersSameFile` fallback for body-param resolution — when the param-owning function has a short minifier-local binding name (≤ 2 chars), `resolveParamToAnyValue` now does a targeted same-file AST search to catch direct in-file callers that `makeGetCallers` skips to avoid cross-file false positives. Same-file short-name calls are unambiguous because the binding is in scope (`map`)
+- Object-preference in `resolveParamToAnyValue` — prefers a caller whose argument resolves to a structured object/array over one that resolves to a bare string, since body params are typically objects and string-arg overloads are usually unrelated dispatch calls. Also skips resolved values where every leaf is still an unresolved placeholder marker (`map`)
+- `OptionalMemberExpression` AST node handling in `deepResolveValue`, `resolveReturnInline`, and `resolveNodeValue` — optional chaining (`a?.b`) in URL/body expressions is now resolved the same way as regular member expressions instead of returning the opaque "unsupported node type" marker (`map`)
 - HTTP-client method-call resolver for Vue/React/Svelte bundles — captures `<obj>.<verb>(<url>, [body], [config])` callsites (where `<verb>` ∈ {get,post,put,delete,patch,head,options}), runs same-function assignment recovery for late-bound locals, fans the URL out across every caller chain, and emits one OpenAPI entry per resolved caller. Designed for bundles whose transport layer overrides `XMLHttpRequest.prototype.{open,send,setRequestHeader}` (axios xhrAdapter and similar wrappers), where the literal URL is composed at the client-instance method call site rather than inside the adapter (`map`)
 - `EnclosingFn.paramNames` + `parent` chain in the shared taint primitives — taint substitution can now resolve `[param:X]` for any parameter at any index in any enclosing function, including across anonymous Promise-chain callbacks where the immediate enclosing function doesn't declare X (`map`)
 - Per-file alias map in `makeGetCallers` — recognizes `{ name: Binding }` re-exports and `{ name: () => Binding }` webpack getter exports so callsites that hit the binding through its public name (e.g. `ae.request(...)`, `r.default.postUnchecked(...)`) are correctly matched as callers of the local minified symbol. Aliases are scoped per file because minifier locals collide across modules (`map`)
@@ -33,6 +39,7 @@
 
 ### Fixed
 
+- Fetch resolver second pass now handles `[param:X]` markers in request bodies — previously `MARKER_RE` matched only `[member:]` / `[urlsearchparams:]` and the resolver explicitly excluded `[param:]` markers, so a fetch wrapper whose body was an outer function parameter (`fetch(url, { body: JSON.stringify({ ..., body: E }) })`) was emitted with the literal placeholder string instead of the structured object the caller actually passed. The body JSON is now parsed and walked with `deepSubstituteBodyValue` so nested object/array call-site values replace the marker leaves (`map`)
 - `[MemberExpression -> X]`, `[var X]`, and other unresolved placeholders in URLs are now substituted with their OpenAPI equivalents (`{X}`) before URL parsing in the OpenAPI spec generator, preventing spurious `Invalid URL` errors for placeholder-containing paths (`map`)
 - Silenced the `Invalid URL` catch in the OpenAPI query-parameter extractor — URLs that remain unparseable after placeholder substitution (e.g. absolute URLs with placeholder hostnames) are skipped silently, since this is expected behaviour (`map`)
 - Add error handling if webpack JS file is not valid

@@ -483,44 +483,64 @@ const buildAliasMap = (filePaths: string[]): Map<string, Map<string, Set<string>
 };
 
 export type GetCallersFn = (bindingName: string, sourceFile?: string) => CallerInfo[];
+
+// Per-instance cache of (content, AST) tuples keyed by file path. Avoids
+// re-reading and re-parsing every JS file on every getCallers call — the
+// dominant cost at high recursion depth.
+interface FileCacheEntry {
+    content: string;
+    ast: any | null;
+}
+const loadFileCached = (filePath: string, cache: Map<string, FileCacheEntry | null>): FileCacheEntry | null => {
+    if (cache.has(filePath)) return cache.get(filePath) ?? null;
+    let content: string;
+    try {
+        content = fs.readFileSync(filePath, "utf-8");
+    } catch {
+        cache.set(filePath, null);
+        return null;
+    }
+    let ast: any = null;
+    try {
+        ast = parser.parse(content, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch {
+        ast = null;
+    }
+    const entry: FileCacheEntry = { content, ast };
+    cache.set(filePath, entry);
+    return entry;
+};
+
 export const makeGetCallers = (filePaths: string[], maxCallers = 128): GetCallersFn => {
     let aliasMap: Map<string, Map<string, Set<string>>> | null = null;
+    const fileCache = new Map<string, FileCacheEntry | null>();
     return (bindingName: string, sourceFile?: string): CallerInfo[] => {
         if (!bindingName) return [];
         if (aliasMap === null) aliasMap = buildAliasMap(filePaths);
         // Use only the aliases defined in the file where `bindingName` lives;
         // otherwise minifier name collisions across modules (`Se` may name
         // different functions in different files) pollute the alias set.
-        const aliases =
-            (sourceFile && aliasMap.get(sourceFile)?.get(bindingName)) || new Set<string>();
+        const aliases = (sourceFile && aliasMap.get(sourceFile)?.get(bindingName)) || new Set<string>();
         // Only match by names that are long enough to be distinctive. Short
         // minifier locals (≤ 2 chars) alone match too many sites; longer
         // alias names — usually the exported function names — are safe.
         const candidates = new Set<string>([bindingName, ...aliases].filter((n) => n.length > 2));
         if (candidates.size === 0) return [];
-        const nameMatches = (n: string) => candidates.has(n);
         const needles = Array.from(candidates).map((n) => `${n}(`);
         const out: CallerInfo[] = [];
         let overflowed = false;
         for (const filePath of filePaths) {
             if (overflowed) break;
-            let fileContent: string;
-            try {
-                fileContent = fs.readFileSync(filePath, "utf-8");
-            } catch {
-                continue;
-            }
+            const cached = loadFileCached(filePath, fileCache);
+            if (!cached) continue;
+            const fileContent = cached.content;
             if (!needles.some((n) => fileContent.includes(n))) continue;
-            let fileAst: any;
-            try {
-                fileAst = parser.parse(fileContent, {
-                    sourceType: "unambiguous",
-                    plugins: ["jsx", "typescript"],
-                    errorRecovery: true,
-                });
-            } catch {
-                continue;
-            }
+            const fileAst = cached.ast;
+            if (!fileAst) continue;
             traverse(fileAst, {
                 CallExpression(callPath: any) {
                     if (overflowed) {
@@ -528,7 +548,7 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 128): GetCaller
                         return;
                     }
                     const callee = callPath.node.callee;
-                    const isDirect = callee.type === "Identifier" && nameMatches(callee.name);
+                    const isDirect = callee.type === "Identifier" && candidates.has(callee.name);
                     // Registry-style exports re-bind functions onto an object
                     // (e.g. `const ae = { request: Me }; ae.request(...)`), so we
                     // accept member-expression callsites where the property name
@@ -537,7 +557,7 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 128): GetCaller
                         callee.type === "MemberExpression" &&
                         !callee.computed &&
                         callee.property.type === "Identifier" &&
-                        nameMatches(callee.property.name);
+                        candidates.has(callee.property.name);
                     if (!isDirect && !isMember) return;
                     if (out.length >= maxCallers) {
                         overflowed = true;
@@ -558,6 +578,58 @@ export const makeGetCallers = (filePaths: string[], maxCallers = 128): GetCaller
         // On overflow keep the callers we already collected: the alias map is
         // file-scoped so an oversized result usually reflects a genuinely
         // popular wrapper, and partial coverage beats none.
+        return out;
+    };
+};
+
+/**
+ * Like makeGetCallers but searches only the source file and does NOT filter by
+ * name length. Used as a fallback for body-param resolution when the binding is
+ * a short minifier local (e.g. `O`) and the caller in the same file uses the
+ * raw name rather than an exported alias.
+ *
+ * Never call this for URL fan-out — the short-name matches are file-scoped and
+ * won't flood cross-file call graphs.
+ */
+export const makeGetCallersSameFile = (): GetCallersFn => {
+    return (bindingName: string, sourceFile?: string): CallerInfo[] => {
+        if (!bindingName || !sourceFile) return [];
+        let fileContent: string;
+        try {
+            fileContent = fs.readFileSync(sourceFile, "utf-8");
+        } catch {
+            return [];
+        }
+        if (!fileContent.includes(`${bindingName}(`)) return [];
+        let fileAst: any;
+        try {
+            fileAst = parser.parse(fileContent, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            return [];
+        }
+        const out: CallerInfo[] = [];
+        traverse(fileAst, {
+            CallExpression(callPath: any) {
+                const callee = callPath.node.callee;
+                if (callee.type !== "Identifier" || callee.name !== bindingName) return;
+                if (out.length >= 32) {
+                    callPath.stop();
+                    return;
+                }
+                out.push({
+                    file: sourceFile,
+                    fileContent,
+                    callNode: callPath.node,
+                    scope: callPath.scope,
+                    args: callPath.node.arguments,
+                    enclosingFn: inferEnclosingFn(callPath, sourceFile),
+                });
+            },
+        });
         return out;
     };
 };

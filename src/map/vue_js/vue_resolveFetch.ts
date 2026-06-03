@@ -12,6 +12,7 @@ import {
     substituteCallerHeaders,
     makeGetCallers,
 } from "./taint_utils.js";
+import { deepSubstituteBodyValue } from "./bodyResolver.js";
 
 const traverse = _traverse.default;
 
@@ -346,10 +347,7 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
     // `?[urlsearchparams:p.q]` turns into `?k1={k1}&k2={k2}`, and where
     // `...p.q: <spread>` gets expanded if a literal object was passed.
     //
-    // [param:...] markers are NOT handled by substituteCallerPlaceholders, so
-    // excluding them from the guard avoids triggering an expensive (and fruitless)
-    // caller search for wrapper functions whose first arg is a plain parameter.
-    const MARKER_RE = /\[(urlsearchparams|member):/;
+    const MARKER_RE = /\[(urlsearchparams|member|param):/;
     const headersHaveMarkers = (h: Record<string, string>): boolean => {
         for (const [k, v] of Object.entries(h)) {
             if (k.startsWith("...") && v === "<spread>") return true;
@@ -363,15 +361,32 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
             entry.enclosingFn &&
             entry.enclosingFn.bindingName &&
             entry.enclosingFn.firstParamName &&
-            // Skip minifier-generated short names — getCallers returns [] for
-            // them anyway (see the short-circuit inside getCallers), but avoiding
-            // the call entirely saves the regex test overhead on large entry lists.
             entry.enclosingFn.bindingName.length > 2 &&
             (MARKER_RE.test(entry.url) || MARKER_RE.test(entry.body) || headersHaveMarkers(entry.headers))
         ) {
             entry.url = substituteCallerPlaceholders(entry.url, entry.enclosingFn, getCallers);
             entry.headers = substituteCallerHeaders(entry.headers, entry.enclosingFn, getCallers);
             entry.body = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
+        }
+
+        // Deep body resolution: when the body JSON contains [param:X] string
+        // values that map to structured objects at the call site, replace them.
+        // This runs even for short binding names (e.g. single-char minifier
+        // locals) because makeGetCallers uses the alias map internally and will
+        // find callers via a meaningful exported name (e.g. postSOA → O).
+        if (entry.enclosingFn && entry.enclosingFn.bindingName && /\[param:/.test(entry.body)) {
+            try {
+                const parsed = JSON.parse(entry.body);
+                if (parsed !== null && typeof parsed === "object") {
+                    const substituted = deepSubstituteBodyValue(parsed, entry.enclosingFn, getCallers);
+                    entry.body = JSON.stringify(substituted);
+                }
+            } catch {
+                // body is not valid JSON; fall back to string-level substitution
+                if (entry.enclosingFn.bindingName.length <= 2) {
+                    entry.body = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
+                }
+            }
         }
 
         console.log(chalk.blue(`[+] Found fetch call in "${entry.filePath}":${entry.fileLine}`));

@@ -359,6 +359,21 @@ export const setOpenapiChunkTag = (value: boolean): void => {
 };
 
 /**
+ * Max recursion depth for HTTP-client URL fan-out and cross-file resolution.
+ * Set via --max-recursion-depth on `map`. Higher values produce more endpoint
+ * variations at the cost of runtime.
+ */
+let maxRecursionDepth = 3;
+
+export const setMaxRecursionDepth = (value: number): void => {
+    maxRecursionDepth = value;
+};
+
+export const getMaxRecursionDepth = (): number => {
+    return maxRecursionDepth;
+};
+
+/**
  * Gets the chunk tag configuration status.
  * @returns Whether chunk ID tags are enabled
  */
