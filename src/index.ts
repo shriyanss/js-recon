@@ -65,6 +65,7 @@ program
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
+    .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -90,7 +91,8 @@ program
             cmd.research,
             cmd.researchOutput,
             Number(cmd.maxIterations),
-            Number(cmd.maxJsSize)
+            Number(cmd.maxJsSize),
+            Number(cmd.lazyloadTimeout) * 60 * 1000
         );
     });
 
@@ -326,6 +328,7 @@ program
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
+    .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
     .action(async (cmd) => {
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);

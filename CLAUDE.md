@@ -102,6 +102,11 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 - Declared in `src/index.ts`: `.option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")`
 - In `src/run/index.ts` the `analyze` calls use `cmd.rules || ""` — empty string tells `analyze` to use the default rules cache
 
+**Example — `--lazyload-timeout` flag:**
+
+- Declared in `src/index.ts` on both the `lazyload` and `run` commands: `.option("--lazyload-timeout <minutes>", ..., "30")`
+- Threaded directly into each `lazyLoad()` call as `Number(cmd.lazyloadTimeout) * 60 * 1000` (converts minutes → ms). Unlike flags that set a global, this one is passed as a parameter — no setter in the action handler.
+
 ## Interactive-mode commands
 
 The `map -i` blessed UI dispatches user input through `interactive_helpers/commandHandler.ts`. The same handler runs headlessly when commands are supplied via `-c/--command`:

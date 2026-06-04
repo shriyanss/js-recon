@@ -123,8 +123,10 @@ const lazyLoad = async (
     research: boolean,
     researchOutput: string,
     maxIterations: number,
-    maxJsSizeMb: number = 2
+    maxJsSizeMb: number = 2,
+    hardTimeoutMs: number = 30 * 60 * 1000
 ) => {
+    const work = async () => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
     if (globals.getDisableSandbox()) {
@@ -395,6 +397,22 @@ const lazyLoad = async (
             }
         }
     }
+    };
+
+    if (hardTimeoutMs === 0) {
+        await work();
+        return;
+    }
+
+    await Promise.race([
+        work(),
+        new Promise<void>((resolve) =>
+            setTimeout(() => {
+                console.log(chalk.yellow(`[!] Lazyload hard timeout reached (${hardTimeoutMs / 60000} min). Moving on.`));
+                resolve();
+            }, hardTimeoutMs)
+        ),
+    ]);
 };
 
 export default lazyLoad;

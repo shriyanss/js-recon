@@ -88,7 +88,8 @@ const processUrl = async (
         cmd.research,
         cmd.researchOutput,
         Number(cmd.maxIterations),
-        Number(cmd.maxJsSize)
+        Number(cmd.maxJsSize),
+        Number(cmd.lazyloadTimeout) * 60 * 1000
     );
     console.log(chalk.bgGreen("[+] Lazyload complete."));
 
@@ -264,7 +265,8 @@ const processUrl = async (
         cmd.research,
         cmd.researchOutput,
         Number(cmd.maxIterations),
-        Number(cmd.maxJsSize)
+        Number(cmd.maxJsSize),
+        Number(cmd.lazyloadTimeout) * 60 * 1000
     );
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
 
@@ -290,7 +292,9 @@ const processUrl = async (
         cmd.sourcemapDir,
         cmd.research,
         cmd.researchOutput,
-        Number(cmd.maxIterations)
+        Number(cmd.maxIterations),
+        Number(cmd.maxJsSize),
+        Number(cmd.lazyloadTimeout) * 60 * 1000
     );
     console.log(chalk.bgGreen("[+] Lazyload re-pass complete."));
 
