@@ -12,6 +12,7 @@
 
 ### Added
 
+- Next.js lazyload now scans ALL downloaded JS files for webpack chunk URL builder functions (`__webpack_require__.u` pattern), not just `webpack-*.js` files — covers module federation entry points and other non-standard filenames. Scanning runs iteratively after the initial crawl until no new chunk URLs are discovered, with a CLI progress bar (`lazyload`)
 - `--max-recursion-depth <n>` flag on `map` (default 3) — controls how far the HTTP-client URL fan-out and cross-file resolver recurse through caller chains. Higher values resolve more `[param:X]` markers at the cost of runtime; the per-entry deadline scales with depth so deeper recursion still terminates (`map`)
 - `deepSubstituteBodyValue` body resolver — when a request body contains a `[param:X]` leaf whose call-site value is a structured object (e.g. a credentials/config object passed by an outer caller), the leaf is now replaced with the full nested object rather than left as a placeholder string. Used by both the HTTP-client and fetch resolvers (`map`)
 - `makeGetCallersSameFile` fallback for body-param resolution — when the param-owning function has a short minifier-local binding name (≤ 2 chars), `resolveParamToAnyValue` now does a targeted same-file AST search to catch direct in-file callers that `makeGetCallers` skips to avoid cross-file false positives. Same-file short-name calls are unambiguous because the binding is in scope (`map`)

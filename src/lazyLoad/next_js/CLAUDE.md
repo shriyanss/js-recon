@@ -8,7 +8,8 @@ Discovers and downloads Next.js JS chunks. Handles initial script-tag scrape, bu
 
 - `NextJsCrawler.ts` — top-level crawler. Coordinates the helpers below for the initial pass.
 - `next_GetJSScript.ts` — extracts `<script>` tag srcs from the rendered HTML.
-- `next_GetLazyResourcesBuildManifestJs.ts` / `next_GetLazyResourcesWebpackJs.ts` — parse the build manifest and webpack resources to enumerate chunk URLs.
+- `next_GetLazyResourcesBuildManifestJs.ts` — parses the `_buildManifest.js` to enumerate chunk URLs.
+- `next_GetLazyResourcesWebpackJs.ts` — loads the page via Puppeteer, then scans ALL captured JS files (not just webpack-named ones) for webpack chunk URL builder functions (e.g. `__webpack_require__.u`). Shows matching function source, asks user to approve/deny per function (auto-approves with `--yes`), executes approved functions to enumerate chunk URLs. Covers module federation entry points and other non-standard filenames.
 - `next_buildId.ts` — extracts the Next.js `buildId` (used to construct chunk paths under `/_next/static/<buildId>/`).
 - `next_getClientSidePaths.ts` — walks downloaded chunks for client-side route declarations; feeds the subsequent-requests crawl.
 - `next_parseLayoutJs.ts` — Next 13+ App Router: parses layout JS to enumerate nested route dependencies.
