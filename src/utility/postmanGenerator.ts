@@ -89,7 +89,10 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
             schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         item: [],
-        variable: [{ key: "baseUrl", value: "https://example.com" }],
+        variable: [
+            { key: "baseUrl", value: "https://example.com" },
+            { key: "graphqlEndpoint", value: "graphql" },
+        ],
     };
 
     // Tracks (folder-path) → existing PMItem so the second endpoint under the same folder and reuses it
@@ -137,6 +140,57 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         callsiteCounts.set(dedupeKey, occurrenceIndex + 1);
 
         const { segments, query } = splitPath(normalized);
+
+        // Items with an explicit `collectionFolder` skip path-segment-derived
+        // folder hierarchy and are placed flat under a single named folder.
+        if (item.collectionFolder) {
+            const folder = ensureFolder([item.collectionFolder]);
+            const headers = Object.entries(item.headers || {}).map(([key, value]) => ({
+                key,
+                value: String(value),
+                type: "text",
+            }));
+            // Convert OpenAPI-style `{name}` path params to Postman `:name`,
+            // but leave `{{var}}` collection-variable placeholders untouched
+            // (Postman substitutes those at request time).
+            const pmUrlPath = segments.map((s) =>
+                s.startsWith("{{") && s.endsWith("}}")
+                    ? s
+                    : s.startsWith("{") && s.endsWith("}")
+                      ? `:${s.slice(1, -1)}`
+                      : s
+            );
+            const request: PMRequest = {
+                method,
+                header: headers,
+                url: {
+                    raw: `{{baseUrl}}/${pmUrlPath.join("/")}${query.length > 0 ? "?" + query.map((q) => `${q.key}=${q.value}`).join("&") : ""}`,
+                    host: ["{{baseUrl}}"],
+                    path: pmUrlPath,
+                    ...(query.length > 0 ? { query } : {}),
+                },
+            };
+            if (item.body) {
+                const bodyRaw = buildBodyExample(item.body) ?? item.body;
+                request.body = {
+                    mode: "raw",
+                    raw: bodyRaw,
+                    options: { raw: { language: "json" } },
+                };
+            } else {
+                request.body = { mode: "none" };
+            }
+            const descParts: string[] = [];
+            if (item.functionFile) {
+                descParts.push(`Found in ${item.functionFile}:${item.functionFileLine}`);
+            }
+            (folder.item as PMItem[]).push({
+                name: item.summary || `${method} request`,
+                ...(descParts.length > 0 ? { description: descParts.join("\n") } : {}),
+                request,
+            });
+            continue;
+        }
 
         // Folder segments = all path segments except path-parameter segments.
         // A trailing `{id}` segment doesn't earn its own folder; we mount the

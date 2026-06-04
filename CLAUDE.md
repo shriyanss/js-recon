@@ -33,6 +33,7 @@ npm run start -- <subcommand> [options]
 - `src/analyze/helpers/initRules.ts` — downloads/caches rules from GitHub to `~/.js-recon/rules`
 - `src/analyze/helpers/validate.ts` — validates rules and checks `js_recon_version` compatibility
 - `src/analyze/helpers/schemas.ts` — Zod schema for rule YAML files
+- `src/map/graphql/resolveGraphql.ts` — framework-agnostic GraphQL operation scanner. Visits every `StringLiteral` and `TemplateLiteral` in every JS file, validates with the `graphql` library's `parse()`, and emits each operation as a POST request under a flat `GraphQL` collection folder. Inlines transitively-referenced fragment definitions into each printed query so emitted requests are self-contained. Runs in every framework branch of `map/index.ts` when `--openapi` is on and `--no-graphql`/`--ngql` is not set.
 - `src/map/next_js/resolveFetch.ts` — resolves `fetch()` calls, detects Next.js framework chunks
 - `src/map/next_js/resolveServerActions.ts` — detects `createServerReference(actionId, ...)` calls, derives App Router routes from chunk file paths, traces argument call sites (same-chunk and cross-chunk), and emits POST endpoints with `next-action` headers and typed arg hints (e.g. `<string:userId>`) into the global OpenAPI output
 - `src/map/next_js/utils.ts` — `resolveNodeValue`, `resolveVariableInChunk`, `substituteVariablesInString`

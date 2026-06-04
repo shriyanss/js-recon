@@ -201,8 +201,10 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunk
             };
         });
 
-        // Extract path parameters
-        const pathParams = pathKey.match(/\{([^}]+)\}/g);
+        // Extract path parameters. The negative lookbehind/lookahead avoids
+        // matching the inner braces of a `{{var}}` collection-level placeholder
+        // (e.g. `{{graphqlEndpoint}}`) as a path parameter.
+        const pathParams = pathKey.match(/(?<!\{)\{([^{}]+)\}(?!\})/g);
         if (pathParams) {
             for (const p of pathParams) {
                 const paramName = p.slice(1, -1);
@@ -260,7 +262,11 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunk
                     description: "Successful response. The actual response will vary.",
                 },
             },
-            tags: globalsUtil.getOpenapiChunkTag() ? [item.chunkId] : [],
+            tags: item.collectionFolder
+                ? [item.collectionFolder]
+                : globalsUtil.getOpenapiChunkTag()
+                  ? [item.chunkId]
+                  : [],
         };
 
         if (!methodIsValid) {

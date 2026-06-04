@@ -204,6 +204,8 @@ program
     .option("--openapi", "Generate OpenAPI spec from the code", false)
     .option("--openapi-output <file>", "Output file for OpenAPI spec", "mapped-openapi.json")
     .option("--openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found", false)
+    .option("--no-graphql", "Disable GraphQL operation extraction during OpenAPI generation")
+    .option("--ngql", "Alias for --no-graphql")
     .option(
         "--max-recursion-depth <n>",
         "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
@@ -219,6 +221,8 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         globalsUtil.setOpenapi(cmd.openapi);
         globalsUtil.setOpenapiOutputFile(cmd.openapiOutput);
+        // Commander's --no-graphql flips cmd.graphql to false; --ngql is an alias.
+        globalsUtil.setGraphqlEnabled(cmd.graphql !== false && !cmd.ngql);
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {
@@ -320,6 +324,8 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
+    .option("--no-graphql", "Disable GraphQL operation extraction during OpenAPI generation")
+    .option("--ngql", "Alias for --no-graphql")
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
@@ -338,6 +344,7 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+        globalsUtil.setGraphqlEnabled(cmd.graphql !== false && !cmd.ngql);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setCacheOnly(cmd.cacheOnly);

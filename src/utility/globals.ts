@@ -326,6 +326,13 @@ export interface OpenapiOutputItem {
     serverActionCallChunkId?: string;
     serverActionCallFile?: string;
     serverActionCallLine?: number;
+    /**
+     * Optional override for collection grouping. When set, the OpenAPI generator
+     * uses this as the operation's tag and the Postman generator places the
+     * item under a flat top-level folder with this name (bypassing path-segment
+     * folder derivation).
+     */
+    collectionFolder?: string;
 }
 /** Array of OpenAPI output items */
 export let openapiOutput: OpenapiOutputItem[] = [];
@@ -379,4 +386,16 @@ export const getMaxRecursionDepth = (): number => {
  */
 export const getOpenapiChunkTag = (): boolean => {
     return openapiChunkTag;
+};
+
+// GraphQL Extraction Configuration
+/** Whether to scan JS for embedded GraphQL operations during `map` */
+export let graphqlEnabled = true;
+
+export const setGraphqlEnabled = (value: boolean): void => {
+    graphqlEnabled = value;
+};
+
+export const getGraphqlEnabled = (): boolean => {
+    return graphqlEnabled;
 };

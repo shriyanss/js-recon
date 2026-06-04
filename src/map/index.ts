@@ -12,7 +12,8 @@ import { existsSync, readFileSync } from "fs";
 import { Chunks } from "../utility/interfaces.js";
 import getAxiosInstances from "./next_js/getAxiosInstances.js";
 import resolveAxios from "./next_js/resolveAxios.js";
-import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile } from "../utility/globals.js";
+import { getOpenapi, getOpenapiOutput, getOpenapiOutputFile, getGraphqlEnabled } from "../utility/globals.js";
+import resolveGraphql from "./graphql/resolveGraphql.js";
 import { generateOpenapiV3Spec } from "../utility/openapiGenerator.js";
 import { generatePostmanCollection } from "../utility/postmanGenerator.js";
 import getExports from "./next_js/getExports.js";
@@ -153,6 +154,10 @@ const map = async (
             await interactive(chunks, `${output}.json`);
         }
 
+        if (getOpenapi() === true && getGraphqlEnabled()) {
+            await resolveGraphql(directory);
+        }
+
         // check if the openapi output is enabled. if so, then write to file
         if (getOpenapi() === true) {
             // convert the openapi output to JSON
@@ -194,6 +199,10 @@ const map = async (
             await vueInteractive(chunks, `${output}.json`);
         }
 
+        if (getOpenapi() === true && getGraphqlEnabled()) {
+            await resolveGraphql(directory);
+        }
+
         // Generate OpenAPI spec and Postman collection if enabled
         if (getOpenapi() === true) {
             const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
@@ -228,6 +237,10 @@ const map = async (
             await reactInteractive(chunks, `${output}.json`);
         }
 
+        if (getOpenapi() === true && getGraphqlEnabled()) {
+            await resolveGraphql(directory);
+        }
+
         if (getOpenapi() === true) {
             const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
             const openapiJson = JSON.stringify(openapiSpec, null, 2);
@@ -260,6 +273,10 @@ const map = async (
             await svelteRunCommands(chunks, `${output}.json`, commands);
         } else if (interactive_mode) {
             await svelteInteractive(chunks, `${output}.json`);
+        }
+
+        if (getOpenapi() === true && getGraphqlEnabled()) {
+            await resolveGraphql(directory);
         }
 
         if (getOpenapi() === true) {
