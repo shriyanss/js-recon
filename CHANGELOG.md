@@ -2,6 +2,11 @@
 
 ## 1.3.1-alpha.4 - (unreleased)
 
+### Fixed
+
+- `extractSourceMaps` no longer crashes with `EISDIR` when a source map entry has a degenerate path (e.g. a bare `webpack://` prefix with no trailing path) that `normalizePath` reduces to `"."` — such entries are now silently skipped (`lazyload`, `run`)
+- Source map files extracted during `run` are now written to `output/<domain>/extracted/` (or the equivalent per-target subdirectory) instead of a bare `extracted/` directory in the current working directory (`lazyload`, `run`)
+
 ### Performance
 
 - `makeGetCallers` now caches per-file content + Babel AST tuples for the lifetime of the resolver instance, so repeated caller searches at high recursion depth no longer re-read and re-parse every JS file on each call — depth-8 runs that previously took 200+ minutes on a large real-world target now complete in under a minute (`map`)

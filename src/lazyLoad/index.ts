@@ -85,6 +85,7 @@ const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
         const { files } = extractSources(mapContent);
 
         for (const file of files) {
+            if (file.path === "." || file.path === "") continue;
             const outPath = join(outputDir, file.path);
             mkdirSync(dirname(outPath), { recursive: true });
             writeFileSync(outPath, file.content);
@@ -225,7 +226,7 @@ const lazyLoad = async (
                 }
 
                 // extract the source maps
-                await extractSourceMaps(output, sourcemapDir);
+                await extractSourceMaps(output, join(output, sourcemapDir));
             } else if (tech.name === "vue") {
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
@@ -244,7 +245,7 @@ const lazyLoad = async (
                 queue.printSummary();
 
                 // extract the source maps
-                await extractSourceMaps(output, sourcemapDir);
+                await extractSourceMaps(output, join(output, sourcemapDir));
             } else if (tech.name === "nuxt") {
                 console.log(chalk.green("[✓] Nuxt.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
@@ -330,7 +331,7 @@ const lazyLoad = async (
                 await queue.drain();
                 queue.printSummary();
 
-                await extractSourceMaps(output, sourcemapDir);
+                await extractSourceMaps(output, join(output, sourcemapDir));
             } else if (tech.name === "angular") {
                 console.log(chalk.green("[✓] Angular detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
@@ -392,7 +393,7 @@ const lazyLoad = async (
                 await queue.drain();
                 queue.printSummary();
 
-                extractSourceMaps(output, sourcemapDir);
+                extractSourceMaps(output, join(output, sourcemapDir));
             }
         } else {
             console.log(chalk.red("[!] Framework not detected :("));
