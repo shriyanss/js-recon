@@ -23,7 +23,7 @@ npm run start -- <subcommand> [options]
 | `report`      | Generate HTML/SQLite report                                     |
 | `run`         | Run all of the above in sequence (primary interface)            |
 | `api-gateway` | Manage AWS API Gateway for IP rotation                          |
-| `mcp`         | Interactive AI-powered CLI                                      |
+| `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
 
 ## Key source files
 

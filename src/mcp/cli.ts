@@ -1,12 +1,23 @@
 import readline from "readline";
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { ChatMessage, LLMProvider, SessionUsage, createProvider, listModels, getDefaultModel } from "./providers.js";
+import {
+    ChatMessage,
+    LLMProvider,
+    SessionUsage,
+    createProvider,
+    createAnthropicOAuthProvider,
+    listModels,
+    getDefaultModel,
+} from "./providers.js";
 import { McpConfig, resolveApiKey, saveConfig } from "./config.js";
 import { processCommand, CommandContext, getCommandSuggestions } from "./commands.js";
-import { runLazyload, runFullPipeline, summarizeLazyloadOutput, summarizeRunOutput } from "./tools.js";
+import { detectIntent, handleToolExecution } from "./intent.js";
+import { getUsableAccessToken } from "./claudeCodeCreds.js";
+import { getJobManager, buildJobContext, JobSummary } from "./jobs.js";
+import { loadSkills, findSkill, parseSkillArgs, renderSkill } from "./skills.js";
 
-const SYSTEM_PROMPT = `You are js-recon MCP, an AI assistant for JavaScript reconnaissance and security analysis.
+export const SYSTEM_PROMPT = `You are js-recon MCP, an AI assistant for JavaScript reconnaissance and security analysis.
 You help users analyze websites by running js-recon modules against target URLs.
 
 You have access to two main tools:
@@ -37,108 +48,8 @@ interface CliSession {
     lastModule?: "lazyload" | "run";
     currentAbortController?: AbortController;
     configChanged: boolean;
+    cwd: string;
 }
-
-/**
- * Detects intent from user message and decides whether to invoke a tool.
- */
-const detectIntent = (
-    message: string
-): { action: "lazyload" | "run" | "parse_lazyload" | "parse_run" | "chat"; url?: string } => {
-    const lower = message.toLowerCase();
-
-    // Detect "parse" / "summarize" intents
-    if (
-        lower.includes("parse") ||
-        lower.includes("summarize") ||
-        lower.includes("summary") ||
-        lower.includes("overview") ||
-        lower.includes("show results") ||
-        lower.includes("what did you find")
-    ) {
-        if (
-            lower.includes("lazyload") ||
-            lower.includes("lazy load") ||
-            lower.includes("directory") ||
-            lower.includes("files")
-        ) {
-            return { action: "parse_lazyload" };
-        }
-        return { action: "parse_run" };
-    }
-
-    // Detect run/scan intents
-    const urlMatch = message.match(/https?:\/\/[^\s]+/);
-    const url = urlMatch ? urlMatch[0] : undefined;
-
-    if (
-        lower.includes("run against") ||
-        lower.includes("full scan") ||
-        lower.includes("full pipeline") ||
-        lower.includes("full analysis") ||
-        lower.includes("analyze")
-    ) {
-        return { action: "run", url };
-    }
-
-    if (
-        lower.includes("lazyload") ||
-        lower.includes("lazy load") ||
-        lower.includes("download js") ||
-        lower.includes("download javascript") ||
-        lower.includes("grab js") ||
-        lower.includes("fetch js")
-    ) {
-        return { action: "lazyload", url };
-    }
-
-    // If a URL is present and they seem to want scanning
-    if (url && (lower.includes("scan") || lower.includes("run") || lower.includes("check") || lower.includes("test"))) {
-        return { action: "run", url };
-    }
-
-    return { action: "chat", url };
-};
-
-/**
- * Handles tool execution based on detected intent.
- */
-const handleToolExecution = async (session: CliSession, action: string, url?: string): Promise<string | null> => {
-    const outputDir = session.config.default_output_dir;
-    const threads = session.config.default_threads;
-
-    switch (action) {
-        case "lazyload": {
-            if (!url) return null;
-            const result = await runLazyload(url, outputDir, threads);
-            session.lastOutputDir = result.outputDir || outputDir;
-            session.lastModule = "lazyload";
-            session.lastToolOutput = result.message;
-            return result.message;
-        }
-        case "run": {
-            if (!url) return null;
-            const result = await runFullPipeline(url, outputDir, threads);
-            session.lastOutputDir = result.outputDir || outputDir;
-            session.lastModule = "run";
-            session.lastToolOutput = result.message;
-            return result.message;
-        }
-        case "parse_lazyload": {
-            const dir = session.lastOutputDir || outputDir;
-            const summary = summarizeLazyloadOutput(dir);
-            session.lastToolOutput = summary;
-            return summary;
-        }
-        case "parse_run": {
-            const summary = summarizeRunOutput(".");
-            session.lastToolOutput = summary;
-            return summary;
-        }
-        default:
-            return null;
-    }
-};
 
 /**
  * Prompts user to configure MCP settings interactively.
@@ -183,24 +94,39 @@ const promptConfiguration = async (): Promise<{ provider: "openai" | "anthropic"
 /**
  * Starts the interactive MCP CLI session.
  */
+export interface StartCliOptions {
+    refreshClaudeCreds?: boolean;
+}
+
 export const startCli = async (
     config: McpConfig,
     cliApiKey?: string,
     cliModel?: string,
-    cliProvider?: string
+    cliProvider?: string,
+    opts: StartCliOptions = {}
 ): Promise<void> => {
     let providerName = (cliProvider || config.provider) as "openai" | "anthropic";
     let model = cliModel || config.model;
     let apiKey = resolveApiKey(providerName, cliApiKey, config);
 
-    // If no API key, prompt user to configure
-    if (!apiKey) {
+    let provider: LLMProvider | null = null;
+
+    if (!apiKey && (providerName === "anthropic" || !cliProvider)) {
+        const token = await getUsableAccessToken({ allowRefresh: opts.refreshClaudeCreds !== false });
+        if (token) {
+            providerName = "anthropic";
+            model = cliModel || getDefaultModel("anthropic");
+            provider = createAnthropicOAuthProvider(token, model);
+            console.log(chalk.cyan("[i] Using existing Claude Code credentials (Anthropic OAuth)."));
+        }
+    }
+
+    if (!provider && !apiKey) {
         const configured = await promptConfiguration();
         providerName = configured.provider;
         apiKey = configured.apiKey;
         model = configured.model;
 
-        // Update config and save
         config.provider = providerName;
         config.model = model;
         if (providerName === "openai") {
@@ -210,14 +136,17 @@ export const startCli = async (
         }
         saveConfig(config);
         console.log(chalk.green("\n[✓] Configuration saved to ~/.js-recon/mcp.yaml\n"));
-    } else if (cliApiKey && !cliModel) {
-        // Auto-detect model from provider when API key is provided
+    } else if (!provider && cliApiKey && !cliModel) {
         model = getDefaultModel(providerName);
         console.log(chalk.cyan(`[i] Auto-detected model: ${model}\n`));
     }
 
-    const provider = createProvider(providerName, apiKey, model);
+    if (!provider) {
+        provider = createProvider(providerName, apiKey, model);
+    }
     const usage = new SessionUsage(model);
+
+    const launchCwd = process.cwd();
 
     const session: CliSession = {
         provider,
@@ -228,7 +157,11 @@ export const startCli = async (
         history: [{ role: "system", content: SYSTEM_PROMPT }],
         cliApiKey,
         configChanged: false,
+        cwd: launchCwd,
     };
+
+    // Preload skills cache so intent detection and /skill have it available.
+    loadSkills();
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -242,23 +175,37 @@ export const startCli = async (
         },
     });
 
-    // Handle Ctrl-C to stop current process, not exit
+    // Handle Ctrl-C: cancel in-flight LLM call → else cancel most recent running job → else exit warning.
+    // `promptingActive` guards against re-entering `rl.question` while a prior question is still open.
     let ctrlCCount = 0;
+    let promptingActive = false;
+    const reprompt = (): void => {
+        if (!promptingActive) prompt();
+    };
     process.on("SIGINT", () => {
-        if (session.currentAbortController) {
-            console.log(chalk.yellow("\n\n[!] Stopping current process...\n"));
-            session.currentAbortController.abort();
-            session.currentAbortController = undefined;
-            ctrlCCount = 0;
-            prompt();
-        } else {
+        try {
+            if (session.currentAbortController) {
+                console.log(chalk.yellow("\n\n[!] Stopping current process...\n"));
+                session.currentAbortController.abort();
+                session.currentAbortController = undefined;
+                ctrlCCount = 0;
+                reprompt();
+                return;
+            }
+            const cancelled = getJobManager().cancelMostRecentRunning();
+            if (cancelled) {
+                console.log(chalk.yellow(`\n\n[!] Cancelling job ${cancelled.id} (${cancelled.name})...\n`));
+                ctrlCCount = 0;
+                reprompt();
+                return;
+            }
             ctrlCCount++;
             if (ctrlCCount === 1) {
                 console.log(chalk.yellow("\n\n[!] Press Ctrl-C again to exit, or type /exit\n"));
                 setTimeout(() => {
                     ctrlCCount = 0;
                 }, 2000);
-                prompt();
+                reprompt();
             } else {
                 console.log(chalk.yellow("\nGoodbye!\n"));
                 if (session.configChanged) {
@@ -267,6 +214,8 @@ export const startCli = async (
                 rl.close();
                 process.exit(0);
             }
+        } catch (err: any) {
+            console.log(chalk.red(`\n[!] SIGINT handler error: ${err?.message || err}\n`));
         }
     });
 
@@ -274,10 +223,55 @@ export const startCli = async (
     console.log(chalk.bold.cyan("  ║         js-recon MCP CLI             ║"));
     console.log(chalk.bold.cyan("  ╚══════════════════════════════════════╝\n"));
     console.log(chalk.gray(`  Provider: ${providerName} | Model: ${model}`));
+    console.log(chalk.gray(`  Working directory: ${launchCwd}`));
+    console.log(chalk.gray(`  Artifacts are preserved across runs.`));
     console.log(chalk.gray(`  Type /help for commands, or chat naturally.\n`));
 
+    // Announce job completions between prompts.
+    getJobManager().on("done", (job: JobSummary) => {
+        const marker = job.status === "done" ? chalk.green("[✓]") : chalk.yellow("[!]");
+        process.stdout.write(
+            `\n${marker} Job ${job.id} (${job.name}) finished: ${job.status}` +
+                (job.exitCode !== null ? ` (exit ${job.exitCode})` : "") +
+                `\n`
+        );
+        rl.prompt(true);
+    });
+
+    const runInference = async (sess: CliSession, cfg: McpConfig): Promise<void> => {
+        if (sess.history.length > cfg.history_limit) {
+            const system = sess.history[0];
+            sess.history = [system, ...sess.history.slice(-(cfg.history_limit - 1))];
+        }
+        sess.currentAbortController = new AbortController();
+        const spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+        let spinIdx = 0;
+        const spinnerInterval: NodeJS.Timeout = setInterval(() => {
+            process.stdout.write(`\r${chalk.cyan(spinner[spinIdx++ % spinner.length])} Thinking...`);
+        }, 80);
+        try {
+            const response = await sess.provider.chat(sess.history);
+            sess.usage.addUsage(response.promptTokens, response.completionTokens);
+            sess.history.push({ role: "assistant", content: response.content });
+            console.log(chalk.white("\n" + response.content + "\n"));
+        } catch (err: any) {
+            if (err.name !== "AbortError") {
+                console.log(chalk.red(`\n[!] ${err.message}\n`));
+            } else {
+                console.log(chalk.yellow("\n[!] Response generation stopped.\n"));
+            }
+        } finally {
+            clearInterval(spinnerInterval);
+            process.stdout.write("\r" + " ".repeat(20) + "\r");
+            sess.currentAbortController = undefined;
+        }
+    };
+
     const prompt = (): void => {
+        if (promptingActive) return;
+        promptingActive = true;
         rl.question(chalk.green("js-recon> "), async (input) => {
+            promptingActive = false;
             const trimmed = input.trim();
             if (!trimmed) {
                 prompt();
@@ -343,6 +337,34 @@ export const startCli = async (
                         saveConfig(session.config);
                         session.configChanged = false;
                         console.log(chalk.green("\n[✓] Configuration saved to ~/.js-recon/mcp.yaml\n"));
+                    } else if (cmdResult.output.startsWith("__INVOKE_SKILL__")) {
+                        const raw = cmdResult.output.replace("__INVOKE_SKILL__", "").trim();
+                        const spaceIdx = raw.indexOf(" ");
+                        const skillName = spaceIdx === -1 ? raw : raw.substring(0, spaceIdx);
+                        const argsStr = spaceIdx === -1 ? "" : raw.substring(spaceIdx + 1);
+                        const skill = findSkill(skillName);
+                        if (!skill) {
+                            console.log(chalk.red(`\n[!] Skill not found: ${skillName}\n`));
+                            prompt();
+                            return;
+                        }
+                        const parsed = parseSkillArgs(argsStr, skill);
+                        const rendered = renderSkill(skill, parsed);
+                        if (!rendered.ok) {
+                            console.log(chalk.red(`\n[!] ${rendered.error}\n`));
+                            prompt();
+                            return;
+                        }
+                        console.log(chalk.cyan(`\n[i] Invoking skill: ${skillName}\n`));
+                        const skillMessage = rendered.prompt!;
+                        const jobContext = buildJobContext(2048);
+                        session.history.push({
+                            role: "user",
+                            content: jobContext ? `${skillMessage}${jobContext}` : skillMessage,
+                        });
+                        await runInference(session, config);
+                        prompt();
+                        return;
                     } else {
                         console.log(cmdResult.output);
                     }
@@ -369,61 +391,30 @@ export const startCli = async (
             let toolContext = "";
 
             if (intent.action !== "chat") {
-                session.currentAbortController = new AbortController();
                 try {
-                    const toolOutput = await handleToolExecution(session, intent.action, intent.url);
+                    const toolOutput = await handleToolExecution(session, intent);
                     if (toolOutput) {
+                        // Echo to the user immediately so they see what happened, even if the LLM
+                        // call later fails (e.g. quota / network).
+                        console.log(chalk.cyan(`\n${toolOutput}\n`));
                         toolContext = `\n\n[Tool Output - ${intent.action}]:\n${toolOutput}`;
                     } else if ((intent.action === "lazyload" || intent.action === "run") && !intent.url) {
                         toolContext = "\n\n[System: No URL detected in the message. Ask the user for the target URL.]";
                     }
                 } catch (err: any) {
-                    if (err.name === "AbortError") {
-                        toolContext = "\n\n[System: Process was stopped by user.]";
-                    } else {
-                        throw err;
-                    }
-                } finally {
-                    session.currentAbortController = undefined;
+                    console.log(chalk.red(`\n[!] Tool error: ${err.message}\n`));
                 }
             }
 
-            // Build user message with tool context
-            const userMessage = toolContext ? `${trimmed}${toolContext}` : trimmed;
+            // Inject tails of running background jobs so the LLM can answer "how's it going?".
+            const jobContext = buildJobContext(2048);
+
+            // Build user message with tool + job context
+            const userMessage = (toolContext || jobContext)
+                ? `${trimmed}${toolContext}${jobContext}`
+                : trimmed;
             session.history.push({ role: "user", content: userMessage });
-
-            // Trim history if too long
-            if (session.history.length > config.history_limit) {
-                const system = session.history[0];
-                session.history = [system, ...session.history.slice(-(config.history_limit - 1))];
-            }
-
-            try {
-                session.currentAbortController = new AbortController();
-                const spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-                let spinIdx = 0;
-                const spinnerInterval = setInterval(() => {
-                    process.stdout.write(`\r${chalk.cyan(spinner[spinIdx++ % spinner.length])} Thinking...`);
-                }, 80);
-
-                const response = await session.provider.chat(session.history);
-                clearInterval(spinnerInterval);
-                process.stdout.write("\r" + " ".repeat(20) + "\r");
-                session.currentAbortController = undefined;
-
-                usage.addUsage(response.promptTokens, response.completionTokens);
-                session.history.push({ role: "assistant", content: response.content });
-
-                console.log(chalk.white("\n" + response.content + "\n"));
-            } catch (err: any) {
-                session.currentAbortController = undefined;
-                if (err.name !== "AbortError") {
-                    console.log(chalk.red(`\n[!] ${err.message}\n`));
-                } else {
-                    console.log(chalk.yellow("\n[!] Response generation stopped.\n"));
-                }
-            }
-
+            await runInference(session, config);
             prompt();
         });
     };

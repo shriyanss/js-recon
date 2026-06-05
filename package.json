@@ -23,6 +23,7 @@
         "@babel/parser": "^7.27.4",
         "@babel/traverse": "^7.27.4",
         "@babel/types": "^7.27.6",
+        "@modelcontextprotocol/sdk": "^1.29.0",
         "@types/chalk": "^0.4.31",
         "@types/cli-progress": "^3.11.6",
         "better-sqlite3": "^12.5.0",

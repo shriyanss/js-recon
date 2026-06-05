@@ -393,14 +393,31 @@ program
 
 program
     .command("mcp")
-    .description("Interactive AI-powered CLI for js-recon modules")
+    .description("AI-powered CLI / one-shot chat / Model Context Protocol server for js-recon")
     .option("--cli", "Start interactive CLI mode", false)
+    .option("--server", "Start a Model Context Protocol server over stdio", false)
+    .option(
+        "-c, --chat <prompt>",
+        "Send a one-shot prompt to the AI agent non-interactively (can be passed multiple times)",
+        (val: string, prev: string[]) => [...prev, val],
+        [] as string[]
+    )
     .option("--config <file>", "Path to MCP config file", undefined)
     .option("--api-key <key>", "API key for the LLM provider")
     .option("--model <model>", "AI model to use (e.g. gpt-4o-mini, claude-sonnet-4-20250514)")
     .option("--provider <provider>", "LLM provider to use (openai, anthropic)")
+    .option("--no-refresh-claude-creds", "Do not auto-refresh Claude Code OAuth tokens; fail if expired")
     .action(async (cmd) => {
-        await mcp(cmd.cli, cmd.config, cmd.apiKey, cmd.model, cmd.provider);
+        await mcp({
+            cli: cmd.cli,
+            server: cmd.server,
+            chat: cmd.chat,
+            configFile: cmd.config,
+            apiKey: cmd.apiKey,
+            model: cmd.model,
+            provider: cmd.provider,
+            refreshClaudeCreds: cmd.refreshClaudeCreds,
+        });
     });
 
 program.parse(process.argv);

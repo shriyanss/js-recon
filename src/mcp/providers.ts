@@ -109,6 +109,18 @@ export class AnthropicProvider implements LLMProvider {
         this.model = model;
     }
 
+    static fromOAuth(accessToken: string, model: string): AnthropicProvider {
+        const instance = Object.create(AnthropicProvider.prototype) as AnthropicProvider;
+        (instance as any).client = new Anthropic({
+            authToken: accessToken,
+            apiKey: null as any,
+            defaultHeaders: { "anthropic-beta": "oauth-2025-04-20" },
+        });
+        (instance as any).model = model;
+        (instance as any).name = "anthropic";
+        return instance;
+    }
+
     async chat(messages: ChatMessage[]) {
         try {
             // Anthropic requires system message separate from messages
@@ -154,6 +166,13 @@ export const createProvider = (provider: "openai" | "anthropic", apiKey: string,
 };
 
 /**
+ * Creates an Anthropic provider authenticated via a Claude Code OAuth bearer token.
+ */
+export const createAnthropicOAuthProvider = (accessToken: string, model: string): LLMProvider => {
+    return AnthropicProvider.fromOAuth(accessToken, model);
+};
+
+/**
  * Lists available models for a given provider.
  */
 export const listModels = async (provider: "openai" | "anthropic", apiKey: string): Promise<string[]> => {
@@ -173,5 +192,5 @@ export const listModels = async (provider: "openai" | "anthropic", apiKey: strin
  * Auto-detects a default model based on the provider.
  */
 export const getDefaultModel = (provider: "openai" | "anthropic"): string => {
-    return provider === "openai" ? "gpt-4o-mini" : "claude-3-5-sonnet-20241022";
+    return provider === "openai" ? "gpt-4o-mini" : "claude-sonnet-4-5";
 };
