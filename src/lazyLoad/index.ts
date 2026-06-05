@@ -126,6 +126,10 @@ const lazyLoad = async (
     maxJsSizeMb: number = 2,
     hardTimeoutMs: number = 30 * 60 * 1000
 ) => {
+    // Hoisted so the timeout handler can stop discovery and drain downloads.
+    let activeCrawler: NextJsCrawler | null = null;
+    let activeQueue: DownloadQueue | null = null;
+
     const work = async () => {
     console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
@@ -178,8 +182,7 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Next.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                const queue = new DownloadQueue(output, threads);
-
+                activeQueue = new DownloadQueue(output, threads);
                 const crawler = new NextJsCrawler({
                     url,
                     output,
@@ -188,12 +191,15 @@ const lazyLoad = async (
                     threads,
                     research,
                     maxIterations,
-                    onUrlsDiscovered: (urls) => queue.push(urls),
+                    onUrlsDiscovered: (urls) => activeQueue!.push(urls),
                 });
+                activeCrawler = crawler;
 
                 await crawler.crawl();
-                await queue.drain();
-                queue.printSummary();
+                activeCrawler = null; // done — prevent timeout handler from calling stop()
+                await activeQueue.drain();
+                activeQueue.printSummary();
+                activeQueue = null;
 
                 if (buildId) {
                     // get the buildId
@@ -224,7 +230,8 @@ const lazyLoad = async (
                 console.log(chalk.green("[✓] Vue.js detected"));
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                const queue = new DownloadQueue(output, threads);
+                activeQueue = new DownloadQueue(output, threads);
+                const queue = activeQueue;
                 const onFilesDiscovered = (files: string[]) => queue.push(files);
 
                 // run the full discovery pipeline against the entry URL
@@ -243,6 +250,7 @@ const lazyLoad = async (
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
                 const queue = new DownloadQueue(output, threads);
+                activeQueue = queue;
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
@@ -268,6 +276,7 @@ const lazyLoad = async (
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
                 const queue = new DownloadQueue(output, threads);
+                activeQueue = queue;
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await svelte_getFromPageSource(url);
@@ -327,6 +336,7 @@ const lazyLoad = async (
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
                 const queue = new DownloadQueue(output, threads);
+                activeQueue = queue;
 
                 // find the files from the page source
                 const jsFilesFromPageSource = await angular_getFromPageSource(url);
@@ -353,6 +363,7 @@ const lazyLoad = async (
                 console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
                 const queue = new DownloadQueue(output, threads);
+                activeQueue = queue;
 
                 // Seed: <script src> tags + <link rel="modulepreload"> (Vite vendor chunks)
                 const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb, output);
@@ -404,14 +415,30 @@ const lazyLoad = async (
         return;
     }
 
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
     await Promise.race([
-        work(),
-        new Promise<void>((resolve) =>
-            setTimeout(() => {
-                console.log(chalk.yellow(`[!] Lazyload hard timeout reached (${hardTimeoutMs / 60000} min). Moving on.`));
-                resolve();
-            }, hardTimeoutMs)
-        ),
+        work().finally(() => {
+            // work() finished before the timeout — cancel the timer so it never
+            // fires orphaned and doesn't hold the event loop open.
+            if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        }),
+        new Promise<void>((resolve) => {
+            timeoutHandle = setTimeout(() => {
+                console.log(chalk.yellow(`[!] Lazyload hard timeout reached (${hardTimeoutMs / 60000} min). Draining discovered files before moving on...`));
+                // Signal the crawler to stop at its next iteration boundary.
+                activeCrawler?.stop();
+                const q = activeQueue;
+                if (q) {
+                    // Wait for already-queued downloads to finish, then move on.
+                    q.drain()
+                        .then(() => { q.printSummary(); resolve(); })
+                        .catch(() => resolve());
+                } else {
+                    resolve();
+                }
+            }, hardTimeoutMs);
+        }),
     ]);
 };
 

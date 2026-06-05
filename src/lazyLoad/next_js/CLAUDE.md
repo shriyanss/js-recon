@@ -20,6 +20,8 @@ Discovers and downloads Next.js JS chunks. Handles initial script-tag scrape, bu
 
 ## Patterns / gotchas
 
+- **Content-entropy deduplication.** `NextJsCrawler` uses `pageScriptFingerprints: Map<string, Set<string>>` (keyed by `normalizePageUrl` — origin+pathname) instead of a simple visited set. Before processing a page, its script tags are extracted and fingerprinted (sorted, joined). If the fingerprint matches one already recorded for that pathname, the page is skipped — it has the same JS content as a previously-visited variant. If the fingerprint is new (e.g. a genuinely distinct dynamic route), the page is crawled and its fingerprint added. This correctly handles same-path pages with different query params: variants that differ only in a filter or language selector and load identical scripts are coalesced; parameterized pages (e.g. different product or user IDs) that load distinct chunks are all visited.
+- **Script-fingerprint dedup in `next_scriptTagsSubsequentRequests.ts`.** Instead of a pathname-only filter, each endpoint is fetched, its script set is fingerprinted, and duplicates are skipped. `next_SubsequentRequests.ts` (RSC pass) keeps pathname dedup — RSC responses are not HTML.
 - **Two re-pass strategies coexist.** Some Next apps expose chunks via runtime network calls, others via injected script tags. Both run; results are unioned. Removing one breaks targets that rely on it.
 - **`buildId` is fetched once per target.** If absent, the entire crawl degrades — guard new code paths with a `buildId` presence check.
 - **App Router vs Pages Router.** `next_parseLayoutJs` is App-Router-only. Pages Router has its own pathing inferred from the manifest. Don't unify.

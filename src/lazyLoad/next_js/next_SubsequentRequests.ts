@@ -56,6 +56,20 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
     // add `/` to endpoints
     endpoints.push("/");
 
+    // Deduplicate by path — same path with different query params counts once
+    const seenPaths = new Set<string>();
+    endpoints = endpoints.filter((endpoint: string) => {
+        let pathname: string;
+        try {
+            pathname = new URL(endpoint, url).pathname;
+        } catch {
+            pathname = endpoint;
+        }
+        if (seenPaths.has(pathname)) return false;
+        seenPaths.add(pathname);
+        return true;
+    });
+
     const multiBar = new cliProgress.MultiBar(
         {
             format:

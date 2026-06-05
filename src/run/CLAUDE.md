@@ -7,6 +7,7 @@ Powers the `run` subcommand — the primary user interface. Sequences `lazyload 
 ## Files
 
 - `index.ts` — single file. Exports `run(cmd)` and `processUrl(url, cmd)`. The flag-to-global wiring lives upstream in `src/index.ts`; this file consumes the resolved `cmd` and threads it into each step.
+- `interruptHandler.ts` — SIGINT (Ctrl-C) handler. Installs a persistent `process.on('SIGINT')` listener while `run` is active. On interrupt, prints a menu and reads one line from stdin. Exposes `getSkipStepPromise()` (each step in `processUrl` is wrapped in `Promise.race([step, getSkipStepPromise()])` so choosing "skip step" causes the pipeline to advance without waiting for the current step to finish) and `shouldSkipTarget()` (checked between steps; returning early from `processUrl` skips the remaining steps for the current target). In batch mode, `resetSkipTarget()` is called before each target.
 
 ## Patterns / gotchas
 
@@ -19,6 +20,14 @@ Powers the `run` subcommand — the primary user interface. Sequences `lazyload 
 ## Adding a new step or flag
 
 See root `CLAUDE.md` § "Adding a new flag to `run`". Short version: declare the option in `src/index.ts`, set a global in the action handler if it's cross-cutting, otherwise thread through `cmd` — `processUrl` receives the full object.
+
+When adding a new step to `processUrl`, wrap its `await` call using the interrupt pattern so Ctrl-C works correctly:
+
+```typescript
+resetSkipStep();
+await Promise.race([newStep(...), getSkipStepPromise()]);
+if (shouldSkipTarget()) return;
+```
 
 ## How to test changes here
 
