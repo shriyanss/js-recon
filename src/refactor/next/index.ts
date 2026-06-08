@@ -1,113 +1,80 @@
 import chalk from "chalk";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-import _generator from "@babel/generator";
+import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 import { Chunk } from "../../utility/interfaces.js";
+import { TurboModuleEntry, transformModule } from "./transform.js";
+import { validateAndFix } from "./validator.js";
+
 const traverse = _traverse.default;
-const generate = _generator.default;
 
 /**
- * Refactors a Next.js chunk to conform to the new Webpack 5 module system.
+ * Refactors a single Next.js (Turbopack) module into an ECMAScript module file.
  *
- * This function takes a code chunk and:
- * 1. Finds the third argument of the function declaration (if it exists)
- * 2. Replaces all calls to the third argument with `require("./<some_number>.js")`
- * 3. Finds the name of the exported function (if it exists)
- * 4. Appends `export default <function_name>` to the code
+ * The `map` step extracts each Turbopack module as:
+ *   func_<id> = (e, t, r) => { … }
  *
- * @param chunk - The code chunk to refactor
- * @returns A promise that resolves with the refactored code string
+ * Parameters of the module arrow function:
+ *   e — runtime/module object (cross-module require: e.r(N))
+ *   t — module object (t.exports used in interop)
+ *   r — exports object (Object.defineProperty(r, "name", …) sets named exports)
+ *
+ * Returns a map containing the single transformed module: { [chunk.id]: code }.
  */
-const refactorNext = async (chunk: Chunk): Promise<string> => {
-    console.log(chalk.cyan(`[i] Refactoring Next.js chunk: ${chunk.id}`));
+const refactorNext = async (chunk: Chunk): Promise<Record<string, string>> => {
+    console.log(chalk.cyan(`[i] Processing Next.js chunk: ${chunk.id}`));
 
-    let codeCopy = chunk.code;
-
-    // parse the code
     const ast = parser.parse(chunk.code, {
         sourceType: "unambiguous",
         plugins: ["jsx", "typescript"],
         errorRecovery: true,
     });
 
-    // first of all, find the name of third argument of the function
-    let thirdParamName: string | undefined;
-    traverse(ast, {
-        FunctionDeclaration(path) {
-            if (path.node.params.length < 3) return;
-            const thirdParam = path.node.params[2];
-            if (thirdParam.type !== "Identifier") return;
-            thirdParamName = thirdParam.name;
-            path.stop();
-        },
-        ArrowFunctionExpression(path) {
-            if (path.node.params.length < 3) return;
-            const thirdParam = path.node.params[2];
-            if (thirdParam.type !== "Identifier") return;
-            thirdParamName = thirdParam.name;
-            path.stop();
-        },
-    });
-
-    // if third argument is there, then process further
-
-    if (thirdParamName) {
-        // now, traverse through the code, and find the call expressions
-        // it would be like thirdParamName(<some_number>)
-        // Then replace it with `require("./<some_number>.js")`
-        // then, write it in the codeCopy variable
-
-        traverse(ast, {
-            CallExpression(path) {
-                if (
-                    t.isIdentifier(path.node.callee, {
-                        name: thirdParamName,
-                    }) &&
-                    path.node.arguments.length === 1 &&
-                    t.isNumericLiteral(path.node.arguments[0])
-                ) {
-                    const argument = path.node.arguments[0];
-                    const newRequire = t.callExpression(t.identifier("require"), [
-                        t.stringLiteral(`./${argument.value}.js`),
-                    ]);
-                    path.replaceWith(newRequire);
-                }
-            },
-        });
-
-        codeCopy = generate(ast).code;
-    }
-
-    let functionName: string | null = null;
+    let captured: TurboModuleEntry | null = null;
 
     traverse(ast, {
-        FunctionDeclaration(path) {
-            if (path.parent.type === "Program") {
-                if (path.node.id) {
-                    functionName = path.node.id.name;
-                    path.stop();
-                }
-            }
-        },
-        VariableDeclarator(path) {
-            if (
-                path.parentPath.parent.type === "Program" &&
-                path.node.init &&
-                path.node.init.type === "ArrowFunctionExpression" &&
-                path.node.id.type === "Identifier"
-            ) {
-                functionName = path.node.id.name;
+        ArrowFunctionExpression(path: NodePath<t.ArrowFunctionExpression>) {
+            // Only process top-level arrow functions (direct assignment like `func_511 = (e,t,r) => {...}`).
+            if (!path.parentPath?.isAssignmentExpression() && !path.parentPath?.isVariableDeclarator()) return;
+
+            const params = path.node.params;
+            if (params.length > 3) {
+                console.log(
+                    chalk.yellow(`[!] Module ${chunk.id} has ${params.length} params — not yet researched, skipping`)
+                );
                 path.stop();
+                return;
             }
+
+            const runtimeParam = params[0] && t.isIdentifier(params[0]) ? (params[0] as t.Identifier).name : "";
+            const moduleParam  = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
+            const exportsParam = params[2] && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : "";
+
+            captured = {
+                id: chunk.id,
+                fnPath: path,
+                runtimeParam,
+                moduleParam,
+                exportsParam,
+            };
+            path.stop();
         },
     });
 
-    if (functionName) {
-        codeCopy += `\n\nexport default ${functionName};`;
+    if (!captured) {
+        console.log(chalk.yellow(`[!] No module function found in chunk ${chunk.id} — skipping`));
+        return {};
     }
 
-    return codeCopy;
+    const statements = transformModule(captured);
+    const code = validateAndFix(statements, chunk.id);
+    if (code === null) {
+        console.log(chalk.yellow(`[~] Module ${chunk.id} skipped due to unresolvable syntax errors`));
+        return {};
+    }
+
+    return { [chunk.id]: code };
 };
 
 export default refactorNext;
