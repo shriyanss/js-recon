@@ -60,6 +60,8 @@ js-recon run -u https://app.example.com
 | `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](https://js-recon.io/docs/docs/modules/run)         |
 | `analyze`     | Analyzes the code.                                                            | [Read Docs](https://js-recon.io/docs/docs/modules/analyze)     |
 | `report`      | Generates a report from the analysis modules.                                 | [Read Docs](https://js-recon.io/docs/docs/modules/report)      |
+| `mcp`         | AI-powered interactive CLI, one-shot chat, and MCP stdio server.              | [Read Docs](https://js-recon.io/docs/docs/modules/mcp)         |
+| `fingerprint` | Detects the JavaScript framework used by a target URL (JSON/JSONL output).    | [Read Docs](https://js-recon.io/docs/docs/modules/fingerprint) |
 
 ## Key Features
 

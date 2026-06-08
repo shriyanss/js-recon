@@ -49,6 +49,17 @@ const downloadRules = async (homeDir: string): Promise<void> => {
     fs.unlinkSync(zipPath); // Clean up the zip file
     // remove the directory .js-recon/rules/.github
     fs.rmSync(path.join(homeDir, "/.js-recon/rules/.github"), { recursive: true });
+
+    // If the release ships a skills/ directory, stage it at ~/.js-recon/skills/.
+    const rulesSkillsDir = path.join(homeDir, "/.js-recon/rules/skills");
+    const skillsDir = path.join(homeDir, "/.js-recon/skills");
+    if (fs.existsSync(rulesSkillsDir)) {
+        if (fs.existsSync(skillsDir)) {
+            fs.rmSync(skillsDir, { recursive: true });
+        }
+        fs.renameSync(rulesSkillsDir, skillsDir);
+    }
+
     console.log(chalk.green("[✓] Rules initialized successfully."));
 };
 

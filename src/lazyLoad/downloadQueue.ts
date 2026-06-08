@@ -5,6 +5,7 @@ import prettier from "prettier";
 import makeRequest from "../utility/makeReq.js";
 import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope } from "./globals.js";
+import { progressLog, progressError, progressWarn } from "../utility/progressLog.js";
 
 export interface DownloadQueueOptions {
     /** Called after each URL is processed (downloaded, ignored, or failed). */
@@ -89,14 +90,14 @@ export class DownloadQueue {
     /** Print a summary of ignored files. */
     printSummary(): void {
         if (this.ignoredFiles.length > 0) {
-            console.log(
+            progressLog(
                 chalk.yellow(
                     `[i] Ignored ${this.ignoredFiles.length} JS files across ${this.ignoredDomains.length} domain(s) - ${this.ignoredDomains.join(", ")}`
                 )
             );
         }
         if (this.downloadCount > 0) {
-            console.log(chalk.green(`[✓] Downloaded ${this.downloadCount} JS chunks to ${this.output} directory`));
+            progressLog(chalk.green(`[✓] Downloaded ${this.downloadCount} JS chunks to ${this.output} directory`));
         }
     }
 
@@ -124,7 +125,7 @@ export class DownloadQueue {
     private async processOne(url: string): Promise<void> {
         try {
             if (!url.match(/(\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
-                console.log(chalk.yellow(`[i] Ignored ${url}`));
+                progressLog(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
 
@@ -145,12 +146,12 @@ export class DownloadQueue {
             try {
                 res = await makeRequest(url, {});
             } catch {
-                console.error(chalk.red(`[!] Failed to download: ${url}`));
+                progressError(chalk.red(`[!] Failed to download: ${url}`));
                 return;
             }
 
             if (!res) {
-                console.error(chalk.red(`[!] Failed to download: ${url}`));
+                progressError(chalk.red(`[!] Failed to download: ${url}`));
                 return;
             }
 
@@ -175,7 +176,7 @@ export class DownloadQueue {
             }
 
             if (!filename) {
-                console.warn(chalk.yellow(`[!] Could not determine filename for URL: ${url}. Skipping.`));
+                progressWarn(chalk.yellow(`[!] Could not determine filename for URL: ${url}. Skipping.`));
                 return;
             }
 
@@ -195,12 +196,12 @@ export class DownloadQueue {
                     fs.writeFileSync(filePath, formatted);
                 }
             } catch {
-                console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
+                progressError(chalk.red(`[!] Failed to write file: ${filePath}`));
                 return;
             }
             this.downloadCount++;
         } catch (err) {
-            console.error(chalk.red(`[!] Failed to download: ${url} : ${err}`));
+            progressError(chalk.red(`[!] Failed to download: ${url} : ${err}`));
         } finally {
             this.processedCount++;
             this.onProgress?.(this.processedCount, this.seen.size, this.downloadCount);

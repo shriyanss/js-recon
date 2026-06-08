@@ -159,3 +159,5 @@ js_recon_run_output/
 urls.txt
 extracted/
 research.json
+results.*
+out.*

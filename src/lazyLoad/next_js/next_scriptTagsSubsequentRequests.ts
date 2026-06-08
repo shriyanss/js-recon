@@ -1,5 +1,3 @@
-import makeRequest from "../../utility/makeReq.js";
-import * as cheerio from "cheerio";
 import chalk from "chalk";
 import next_getJSScript from "./next_GetJSScript.js";
 import fs from "fs";
@@ -11,12 +9,14 @@ const next_scriptTagsSubsequentRequests = async (url: string, endpointsFile: str
 
     endpoints.push("/");
 
+    // Content-entropy dedup: fetch each endpoint, compute a fingerprint from its
+    // script tags, and skip variants whose fingerprint has already been seen.
+    // This handles same-path URLs with different query params — if they load the
+    // same scripts they are treated as identical; if they load different scripts
+    // they are both included.
+    const seenFingerprints = new Set<string>();
     let jsUrls: string[] = [];
 
-    // TODO: when you get a page, you can also search for anchor tags. If you find any additional
-    // pages, you can go through them as well. this will give you a lot more JS files
-
-    // go through all endpoints, and parse them
     for (const endpoint of endpoints) {
         // skip anything that isn't a valid relative path or absolute URL
         if (!/^(\/|https?:\/\/)/.test(endpoint)) continue;
@@ -27,8 +27,11 @@ const next_scriptTagsSubsequentRequests = async (url: string, endpointsFile: str
         } catch {
             continue;
         }
-        const jsUrlsFromEndpoint = await next_getJSScript(reqUrl);
-        jsUrls.push(...jsUrlsFromEndpoint);
+        const scripts = await next_getJSScript(reqUrl);
+        const fp = [...new Set(scripts)].sort().join(",");
+        if (fp && seenFingerprints.has(fp)) continue;
+        if (fp) seenFingerprints.add(fp);
+        jsUrls.push(...scripts);
     }
 
     // dedupe

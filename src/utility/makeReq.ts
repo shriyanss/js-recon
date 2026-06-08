@@ -45,7 +45,12 @@ const readCache = async (url: string, headers: {}): Promise<Response | null> => 
 
     // console.log("reading cache for", url);
     // open the cache file, build a Response, and return
-    const cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
+    let cache: Record<string, any>;
+    try {
+        cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
+    } catch {
+        return null;
+    }
     if (cache[url]) {
         // check if the response contains the specific request headers
         // iterate through cache[url] and build a Response
@@ -104,7 +109,12 @@ const writeCacheUnsafe = async (url: string, headers: {}, response: Response): P
     }
 
     // open the cache file, and write the response based on the special headers
-    const cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
+    let cache: Record<string, any>;
+    try {
+        cache = JSON.parse(fs.readFileSync(globals.getRespCacheFile(), "utf-8"));
+    } catch {
+        cache = {};
+    }
     if (!cache[url]) {
         cache[url] = {};
     }

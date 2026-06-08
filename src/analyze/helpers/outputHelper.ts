@@ -8,7 +8,7 @@ export interface EngineOutput {
     ruleType: string;
     ruleDescription: string;
     ruleAuthor: string;
-    ruleTech: ("next" | "vue" | "all")[];
+    ruleTech: ("next" | "vue" | "react" | "svelte" | "all")[];
     severity: string;
     message: string;
     findingLocation: string;

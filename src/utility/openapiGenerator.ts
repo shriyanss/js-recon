@@ -2,6 +2,7 @@ import { OpenapiOutputItem } from "./globals.js";
 import { Chunks } from "./interfaces.js";
 import * as globalsUtil from "./globals.js";
 import replacePlaceholders from "./replaceUrlPlaceholders.js";
+import chalk from "chalk";
 
 export interface Parameter {
     name: string;
@@ -39,12 +40,14 @@ export interface Response {
 
 export interface OperationObject {
     summary: string;
+    description?: string;
     responses: {
         [statusCode: string]: Response;
     };
     parameters?: Parameter[];
     requestBody?: RequestBody;
     tags?: string[];
+    [key: string]: any; // allows x- extension fields
 }
 
 export interface PathItemObject {
@@ -127,7 +130,7 @@ export const getOpenApiType = (value: any): string => {
  * @param chunks - The chunks of API endpoints that the items belong to
  * @returns The generated OpenAPI v3 spec
  */
-export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks): OpenAPISpec => {
+export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], _chunks: Chunks): OpenAPISpec => {
     const spec: OpenAPISpec = {
         openapi: "3.0.0",
         info: {
@@ -151,7 +154,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
     const callsiteCounts = new Map<string, number>();
 
     for (const item of items) {
-        let rawItemPath = typeof item.path === "string" ? item.path : "";
+        let rawItemPath = typeof item.path === "string" ? replacePlaceholders(item.path) : "";
         try {
             if (rawItemPath.startsWith("http://") || rawItemPath.startsWith("https://")) {
                 rawItemPath = new URL(rawItemPath).pathname;
@@ -198,8 +201,10 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             };
         });
 
-        // Extract path parameters
-        const pathParams = pathKey.match(/\{([^}]+)\}/g);
+        // Extract path parameters. The negative lookbehind/lookahead avoids
+        // matching the inner braces of a `{{var}}` collection-level placeholder
+        // (e.g. `{{graphqlEndpoint}}`) as a path parameter.
+        const pathParams = pathKey.match(/(?<!\{)\{([^{}]+)\}(?!\})/g);
         if (pathParams) {
             for (const p of pathParams) {
                 const paramName = p.slice(1, -1);
@@ -214,7 +219,7 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
 
         // Extract query parameters
         try {
-            const url = new URL(item.path, "http://dummybase");
+            const url = new URL(replacePlaceholders(item.path), "http://dummybase");
             const queryParams = url.searchParams;
 
             queryParams.forEach((value, name) => {
@@ -225,18 +230,43 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
                     schema: { type: "string", example: value },
                 });
             });
-        } catch (e) {
-            console.log(e);
+        } catch (_e) {
+            // unparseable placeholder URLs
+            console.log(
+                chalk.red(
+                    `[!] Failed to parse: ${item.path} as URL for query parameter extraction, skipping query params.`
+                )
+            );
+        }
+
+        // Build a location description for server action entries.
+        let locationDescription: string | undefined;
+        if (item.serverActionCallFile || item.functionFile) {
+            const defLoc = `chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`;
+            const callLoc = item.serverActionCallFile
+                ? `chunk ${item.serverActionCallChunkId} at ${item.serverActionCallFile}:${item.serverActionCallLine}`
+                : undefined;
+            locationDescription = `Defined in ${defLoc}`;
+            if (callLoc && callLoc !== `chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`) {
+                locationDescription += `\nArguments from ${callLoc}`;
+            } else if (callLoc) {
+                locationDescription += `\nArguments from ${callLoc}`;
+            }
         }
 
         const operationObject: OperationObject = {
-            summary: `${pathKey}`,
+            summary: item.summary || `${pathKey}`,
+            ...(locationDescription ? { description: locationDescription } : {}),
             responses: {
                 "200": {
                     description: "Successful response. The actual response will vary.",
                 },
             },
-            tags: globalsUtil.getOpenapiChunkTag() ? [item.chunkId] : [],
+            tags: item.collectionFolder
+                ? [item.collectionFolder]
+                : globalsUtil.getOpenapiChunkTag()
+                  ? [item.chunkId]
+                  : [],
         };
 
         if (!methodIsValid) {
@@ -252,7 +282,19 @@ export const generateOpenapiV3Spec = (items: OpenapiOutputItem[], chunks: Chunks
             let requestBody: RequestBody;
             try {
                 const body = JSON.parse(item.body);
-                if (typeof body === "object" && body !== null) {
+                if (Array.isArray(body)) {
+                    // JSON-array body (e.g. Next.js Server Action arguments sent as
+                    // text/plain).  Represent as a raw string with the parsed array
+                    // as the example so tools show the actual expected shape.
+                    requestBody = {
+                        content: {
+                            "text/plain": {
+                                schema: { type: "string" },
+                                example: item.body,
+                            },
+                        },
+                    };
+                } else if (typeof body === "object" && body !== null) {
                     const properties: RequestBody["content"]["application/json"]["schema"]["properties"] = {};
                     for (const key in body) {
                         const value = body[key];

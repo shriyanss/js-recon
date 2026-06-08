@@ -22,7 +22,10 @@ import { checkReact } from "./checkReact.js";
  *   - evidence: A string with the evidence of the detection, or an empty string if no front-end framework was detected.
  */
 const frameworkDetect = async (url: string): Promise<{ name: string; evidence: string }> => {
-    console.log(chalk.cyan("[i] Detecting front-end framework"));
+    const log = (...args: any[]) => {
+        if (!globalsUtil.getQuiet()) console.log(...args);
+    };
+    log(chalk.cyan("[i] Detecting front-end framework"));
 
     // get the page source. Drain the body immediately into a string — if we
     // wait until after the puppeteer + downstream check* calls, the Response
@@ -34,7 +37,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         try {
             resBody = await res.text();
         } catch (err) {
-            console.log(
+            log(
                 chalk.yellow(
                     `[!] Could not read fetch response body for ${url} (${(err as any)?.message || err}); using browser-rendered source only.`
                 )
@@ -60,9 +63,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
-            console.log(
-                chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available")
-            );
+            log(chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available"));
         } finally {
             await browser.close().catch(() => {});
         }
@@ -98,7 +99,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     let $res;
     // if network error was caused, then return
     if (res === null) {
-        console.log(chalk.red("[!] Fetch request failed after retries"));
+        log(chalk.red("[!] Fetch request failed after retries"));
     } else if (resBody !== null) {
         $res = cheerio.load(resBody);
         result_checkNextJS_res = await checkNextJS($res);
@@ -113,8 +114,8 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
             result_checkNextJS.evidence !== "" ? result_checkNextJS.evidence : result_checkNextJS_res.evidence;
         return { name: "next", evidence };
     } else if (result_checkVueJS.detected === true || result_checkVueJS_res.detected === true) {
-        console.log(chalk.green("[✓] Vue.js detected"));
-        console.log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
+        log(chalk.green("[✓] Vue.js detected"));
+        log(chalk.cyan(`[i] Checking Nuxt.JS`), chalk.dim("(Nuxt.JS is built on Vue.js)"));
         const result_checkNuxtJS = await checkNuxtJS($);
         const result_checkNuxtJS_res = $res ? await checkNuxtJS($res) : { detected: false, evidence: "" };
         if (result_checkNuxtJS.detected === true || result_checkNuxtJS_res.detected === true) {

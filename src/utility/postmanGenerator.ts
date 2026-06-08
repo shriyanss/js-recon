@@ -29,6 +29,7 @@ interface PMRequest {
 
 interface PMItem {
     name: string;
+    description?: string;
     request?: PMRequest;
     item?: PMItem[];
 }
@@ -88,7 +89,10 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
             schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         item: [],
-        variable: [{ key: "baseUrl", value: "https://example.com" }],
+        variable: [
+            { key: "baseUrl", value: "https://example.com" },
+            { key: "graphqlEndpoint", value: "graphql" },
+        ],
     };
 
     // Tracks (folder-path) → existing PMItem so the second endpoint under the same folder and reuses it
@@ -136,6 +140,57 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
         callsiteCounts.set(dedupeKey, occurrenceIndex + 1);
 
         const { segments, query } = splitPath(normalized);
+
+        // Items with an explicit `collectionFolder` skip path-segment-derived
+        // folder hierarchy and are placed flat under a single named folder.
+        if (item.collectionFolder) {
+            const folder = ensureFolder([item.collectionFolder]);
+            const headers = Object.entries(item.headers || {}).map(([key, value]) => ({
+                key,
+                value: String(value),
+                type: "text",
+            }));
+            // Convert OpenAPI-style `{name}` path params to Postman `:name`,
+            // but leave `{{var}}` collection-variable placeholders untouched
+            // (Postman substitutes those at request time).
+            const pmUrlPath = segments.map((s) =>
+                s.startsWith("{{") && s.endsWith("}}")
+                    ? s
+                    : s.startsWith("{") && s.endsWith("}")
+                      ? `:${s.slice(1, -1)}`
+                      : s
+            );
+            const request: PMRequest = {
+                method,
+                header: headers,
+                url: {
+                    raw: `{{baseUrl}}/${pmUrlPath.join("/")}${query.length > 0 ? "?" + query.map((q) => `${q.key}=${q.value}`).join("&") : ""}`,
+                    host: ["{{baseUrl}}"],
+                    path: pmUrlPath,
+                    ...(query.length > 0 ? { query } : {}),
+                },
+            };
+            if (item.body) {
+                const bodyRaw = buildBodyExample(item.body) ?? item.body;
+                request.body = {
+                    mode: "raw",
+                    raw: bodyRaw,
+                    options: { raw: { language: "json" } },
+                };
+            } else {
+                request.body = { mode: "none" };
+            }
+            const descParts: string[] = [];
+            if (item.functionFile) {
+                descParts.push(`Found in ${item.functionFile}:${item.functionFileLine}`);
+            }
+            (folder.item as PMItem[]).push({
+                name: item.summary || `${method} request`,
+                ...(descParts.length > 0 ? { description: descParts.join("\n") } : {}),
+                request,
+            });
+            continue;
+        }
 
         // Folder segments = all path segments except path-parameter segments.
         // A trailing `{id}` segment doesn't earn its own folder; we mount the
@@ -204,12 +259,24 @@ export const generatePostmanCollection = (items: OpenapiOutputItem[]): PMCollect
 
         // Friendly request label — keep the leaf in the name to disambiguate
         // siblings under the same parent (e.g. invoices vs invoices/latest).
-        // When the same (path, method) is hit by multiple callsites, append a
-        // counter so the second/third occurrences are distinguishable in tree views.
+        // When an action name is available (e.g. Next.js Server Actions) it is
+        // appended in parentheses and used as the primary disambiguator so
+        // each entry is immediately identifiable without a bare counter.
+        // For plain endpoints that share a path/method, a #N counter is kept.
         const leafName = leaf || segments[segments.length - 1] || "/";
-        const suffix = occurrenceIndex > 0 ? ` #${occurrenceIndex + 1}` : "";
+        const disambig = item.summary ? ` (${item.summary})` : occurrenceIndex > 0 ? ` #${occurrenceIndex + 1}` : "";
+        const descParts: string[] = [];
+        if (item.functionFile) {
+            descParts.push(`Defined in chunk ${item.chunkId} at ${item.functionFile}:${item.functionFileLine}`);
+        }
+        if (item.serverActionCallFile) {
+            descParts.push(
+                `Arguments from chunk ${item.serverActionCallChunkId} at ${item.serverActionCallFile}:${item.serverActionCallLine}`
+            );
+        }
         const itemEntry: PMItem = {
-            name: `${method} ${leafName}${suffix}`,
+            name: `${method} ${leafName}${disambig}`,
+            ...(descParts.length > 0 ? { description: descParts.join("\n") } : {}),
             request,
         };
 

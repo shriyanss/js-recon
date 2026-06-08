@@ -35,8 +35,20 @@ jobs:
           GITHUB_RELEASE_VERSION_RAW: ${{ github.event.release.tag_name }}
 
 
-  build:
+  audit:
     needs: version_check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Run npm audit
+        run: npm audit
+
+  build:
+    needs: audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

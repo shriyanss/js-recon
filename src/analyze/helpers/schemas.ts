@@ -35,6 +35,10 @@ const checkAssignmentExistStepSchema = z.object({
     memberExpression: z.boolean().optional(),
 });
 
+const regexMatchStepSchema = z.object({
+    pattern: z.string(),
+});
+
 const stepSchema = z.object({
     name: z.string(),
     message: z.string(),
@@ -43,6 +47,7 @@ const stepSchema = z.object({
     esquery: esqueryStepSchema.optional(),
     postMessageFuncResolve: PostMessageFuncResolverStepSchema.optional(),
     checkAssignmentExist: checkAssignmentExistStepSchema.optional(),
+    regexMatch: regexMatchStepSchema.optional(),
 });
 
 export const ruleSchema = z.object({
@@ -51,7 +56,7 @@ export const ruleSchema = z.object({
     author: z.string(),
     description: z.string(),
     js_recon_version: z.string(),
-    tech: z.array(z.enum(["next", "vue", "all"])),
+    tech: z.array(z.enum(["next", "vue", "react", "svelte", "all"])),
     severity: z.enum(["info", "low", "medium", "high"]),
     type: z.enum(["request", "ast"]),
     steps: z.array(stepSchema),

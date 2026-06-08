@@ -13,17 +13,17 @@ npm run start -- <subcommand> [options]
 
 ## Subcommands
 
-| Command       | Purpose                                                         |
-| ------------- | --------------------------------------------------------------- |
-| `lazyload`    | Download JS chunks from a target URL                            |
-| `strings`     | Extract strings/paths/secrets from JS files                     |
-| `map`         | Parse webpack/turbopack bundles into a structured `mapped.json` |
-| `endpoints`   | Extract client-side routes                                      |
-| `analyze`     | Run YAML rules against `mapped.json` / OpenAPI spec             |
-| `report`      | Generate HTML/SQLite report                                     |
-| `run`         | Run all of the above in sequence (primary interface)            |
-| `api-gateway` | Manage AWS API Gateway for IP rotation                          |
-| `mcp`         | Interactive AI-powered CLI                                      |
+| Command       | Purpose                                                                            |
+| ------------- | ---------------------------------------------------------------------------------- |
+| `lazyload`    | Download JS chunks from a target URL                                               |
+| `strings`     | Extract strings/paths/secrets from JS files                                        |
+| `map`         | Parse webpack/turbopack bundles into a structured `mapped.json`                    |
+| `endpoints`   | Extract client-side routes                                                         |
+| `analyze`     | Run YAML rules against `mapped.json` / OpenAPI spec                                |
+| `report`      | Generate HTML/SQLite report                                                        |
+| `run`         | Run all of the above in sequence (primary interface)                               |
+| `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
+| `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
 
 ## Key source files
 
@@ -33,8 +33,22 @@ npm run start -- <subcommand> [options]
 - `src/analyze/helpers/initRules.ts` — downloads/caches rules from GitHub to `~/.js-recon/rules`
 - `src/analyze/helpers/validate.ts` — validates rules and checks `js_recon_version` compatibility
 - `src/analyze/helpers/schemas.ts` — Zod schema for rule YAML files
+- `src/map/graphql/resolveGraphql.ts` — framework-agnostic GraphQL operation scanner. Visits every `StringLiteral` and `TemplateLiteral` in every JS file, validates with the `graphql` library's `parse()`, and emits each operation as a POST request under a flat `GraphQL` collection folder. Inlines transitively-referenced fragment definitions into each printed query so emitted requests are self-contained. Runs in every framework branch of `map/index.ts` when `--openapi` is on and `--no-graphql`/`--ngql` is not set.
 - `src/map/next_js/resolveFetch.ts` — resolves `fetch()` calls, detects Next.js framework chunks
+- `src/map/next_js/resolveServerActions.ts` — detects `createServerReference(actionId, ...)` calls, derives App Router routes from chunk file paths, traces argument call sites (same-chunk and cross-chunk), and emits POST endpoints with `next-action` headers and typed arg hints (e.g. `<string:userId>`) into the global OpenAPI output
 - `src/map/next_js/utils.ts` — `resolveNodeValue`, `resolveVariableInChunk`, `substituteVariablesInString`
+- `src/map/vue_js/vue_resolveXhr.ts` — directory-scan resolver for `new XMLHttpRequest()` + `.open()/.setRequestHeader()/.send()` patterns. Shared by Vue/React/Svelte pipelines; the `frameworkName` arg only changes log labels. Reaches ground-truth XHR sites but in axios/Got/Ky-style bundles the URL/method come from a dispatcher config (`re.url`, `re.method`) and resolve only to opaque `[member:re.url]` placeholders that taint analysis cannot unwind across the library's internal dispatch chain — those entries fail the `looksLikeUrl` check at emit time. Catch the wrapper-level call instead via `vue_resolveHttpClient`.
+- `src/map/vue_js/vue_resolveHttpClient.ts` — directory-scan resolver for `<obj>.<verb>(<url>, [body], [config])` calls where `<verb>` ∈ {get,post,put,delete,patch,head,options}. Designed for bundles whose transport layer overrides `XMLHttpRequest.prototype.{open,send,setRequestHeader}` (axios xhrAdapter and similar wrappers): the override layer is irrelevant to URL extraction because the literal URL is composed at the client-instance method call site, not inside the adapter. The `looksLikeUrl` heuristic (post-placeholder-strip, must contain `/` or scheme) filters out `Map.get` / `Headers.delete` / `EventBus.post` false positives while keeping partially-resolved URLs like `[call:base()]<literal>/[var X]`. Three resolution stages run on every captured callsite — each addresses a separate gap exposed when an RPC wrapper is hidden behind multiple layers of webpack-exported helpers:
+    1. `resolveFromAssignments` — walks `binding.constantViolations` for `[unresolved: NAME]` markers, so identifiers declared as `let X;` and assigned later in the function body (e.g. `(X = a + "/" + b)` inside a sequence expression) resolve to their RHS. `resolveNodeValue`'s Identifier handler only looks at `binding.init`, which is empty for late-assigned locals.
+    2. `expandParamPlaceholders` — fans out one captured callsite into one URL per caller chain. Walks the `enclosingFn.parent` chain to find which named function declares each `[param:X]`, then substitutes **every** placeholder owned by that same function from a single caller's args (keeps `[param:e]`/`[param:t]` consistent across one caller — never mixing args from different callsites). Recurses on the caller's `enclosingFn` so a forwarding wrapper (`Se(e,t,n) → ae.request(e,t,n,...)`) walks up to the wrapper's own callers.
+    3. Taint substitution falls back to `substituteCallerPlaceholders` / `substituteCallerHeaders` for body/header placeholders that don't have multi-caller fan-out semantics.
+
+    Wired into Vue / React / Svelte pipelines in `map/index.ts`.
+
+- `src/map/vue_js/taint_utils.ts` — shared taint analysis primitives. Several pieces are non-obvious and exist to make `vue_resolveHttpClient` (and `vue_resolveXhr`) work on webpack output:
+    - `EnclosingFn.paramNames` + `parent` chain: `resolveNodeValue` emits `[param:X]` for any param at any index in any enclosing function. The chain lets the helpers resolve such a marker against whichever enclosing scope actually declared X — bundled code routinely nests the resolution callsite inside an anonymous `.then(function ($) {…})` whose own params don't include X, while X is a param of an outer named function.
+    - `buildAliasMap`: collects `{ exportedName: localBinding }` and `{ exportedName: () => localBinding }` patterns from object literals on a **per-file** basis. Webpack's `a.d(b, { name: () => Binding })` getter exports and re-export registries (`const ae = { request: Me }`) hide the local minifier name behind a meaningful key; without this map, `getCallers("Me")` would miss every `ae.request(...)` / `r.default.request(...)` callsite. **The map must be file-scoped** — minifier locals (`Se`, `Me`) collide across modules, and a global alias map blends unrelated functions into the same name set.
+    - `makeGetCallers` accepts an optional `sourceFile` argument so callers can scope alias lookup to the file where the binding was declared. Direct minifier-local matches (`bindingName.length ≤ 2`) are dropped from the candidate list because they generate too many false positives across files; meaningful aliases (length > 2) are kept and used for both bare-identifier (`X(...)`) and member-expression (`<anything>.X(...)`) callsite matching. Overflow returns the partial caller list rather than nothing — the file-scoped alias map already suppresses noise, so partial coverage beats none.
 - `src/map/next_js/getWebpackConnections.ts` — extracts chunk code from webpack bundles
 - `src/map/next_js/interactive_helpers/esqueryGen.ts` — `esquery` interactive command: minifies a pasted snippet, matches it against each chunk's minified AST nodes, prints loose/strict selectors. Vue's command handler imports the same module — keep it framework-agnostic.
 - `src/map/next_js/interactive.ts` / `src/map/vue_js/interactive.ts` — export both the blessed-backed `interactive()` entry and a headless `runCommands(chunks, mapFile, commands)` that pipes `outputBox.log` to stdout for `-c/--command` execution.
@@ -89,6 +103,11 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 - Declared in `src/index.ts`: `.option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")`
 - In `src/run/index.ts` the `analyze` calls use `cmd.rules || ""` — empty string tells `analyze` to use the default rules cache
 
+**Example — `--lazyload-timeout` flag:**
+
+- Declared in `src/index.ts` on both the `lazyload` and `run` commands: `.option("--lazyload-timeout <minutes>", ..., "30")`
+- Threaded directly into each `lazyLoad()` call as `Number(cmd.lazyloadTimeout) * 60 * 1000` (converts minutes → ms). Unlike flags that set a global, this one is passed as a parameter — no setter in the action handler.
+
 ## Interactive-mode commands
 
 The `map -i` blessed UI dispatches user input through `interactive_helpers/commandHandler.ts`. The same handler runs headlessly when commands are supplied via `-c/--command`:
@@ -96,6 +115,41 @@ The `map -i` blessed UI dispatches user input through `interactive_helpers/comma
 - The `-c` option's commander coerce function splits each value on `&&` (with optional whitespace) and concatenates into a single command array. So `-c "list fetch && esquery * fetch"` is two commands; passing `-c` twice has the same effect.
 - `map`'s entry point checks `commands.length > 0` first — if non-empty, it calls `nextRunCommands` / `vueRunCommands` and skips the blessed UI even when `-i` is also set.
 - New commands should be added to **both** `next_js/interactive_helpers/commandHandler.ts` and `vue_js/interactive_helpers/commandHandler.ts`, plus the corresponding `helpMenu.ts` entry. When the implementation is framework-agnostic (e.g. `esquery`), put it under `next_js/interactive_helpers/` and import it from the Vue handler — don't duplicate.
+- `list server_actions` is intentionally Next.js-only (it reads from `getOpenapiOutput()` filtered by `next-action` header) and has no Vue counterpart.
+
+## Reversing RPC-style API calls from manual browser observations
+
+When the user supplies a call-stack screenshot or notes from a real session ("XHR sent here, sink is this prototype override, body comes from this function"), the goal isn't to reproduce that exact target — it's to find the _generic pattern_ that the bundler emitted and add resolver support for it. The reverse-engineering workflow that produced the HTTP-client resolver:
+
+1. **Read the call stack bottom-up.** The deepest frame is almost always the transport (`XMLHttpRequest.send`, `fetch`); ignore it. The next frames going up are the HTTP library (axios's `_request` / `dispatchXhrRequest`); ignore those too unless the URL is literal at that level. Look for the first frame whose source line contains _a recognisable path fragment or template string_ — that's the wrapper callsite worth resolving.
+2. **Identify the URL composition site.** Open the file at that frame in the downloaded bundle (`output/<host>/static/js/<chunk>.js`) and find the literal. Typical webpack patterns are `client.post(base + "literal/path/" + paramVar, body, config)` or `client.request({ url: base + "/" + paramVar, method: "POST" })`. Note what's a literal, what's a parameter, what's a local variable.
+3. **Walk inward from the wrapper.** For every non-literal in the URL, find where it came from in the same function. If it's a `let X;` followed by `X = a + "/" + b` in a sequence expression, that's `resolveFromAssignments`' territory. If it's a function parameter, that's taint analysis' territory.
+4. **Walk outward from the wrapper.** Look at the callers of the enclosing function. In webpack bundles the function is usually exported through one of:
+    - A registry object: `const ae = { request: Me, postUnchecked: Se }` — callsites read `ae.request(...)`, NOT `Me(...)`.
+    - A webpack getter export: `a.d(b, { request: () => Me })` — same effect, different shape.
+    - Both. The same binding often appears in multiple aliases.
+
+    Both shapes are recognised by `buildAliasMap` in `taint_utils.ts` and _must be matched per file_ — minifier locals like `Se`, `Me` collide across modules.
+
+5. **Trace forwarding wrappers all the way out.** A wrapper like `Se(e, t, n) → ae.request(e, t, n, ...)` just forwards its parameters. After substituting at the wrapper level, recurse into Se's own callers; the externally-meaningful arguments (`s.signIn.namespace`) are several layers up.
+6. **Confirm the literal source.** The outermost caller passes a `MemberExpression` like `s.signIn.namespace`. Find the `const s = { signIn: { namespace: "...", method: "..." } }` declaration — `resolveNodeValue` handles this naturally as long as the binding is in scope at the caller's location.
+
+If at any layer the new resolver returns `[unresolved: X]` or `[param:X]`, that's a signal which primitive is missing — extend `taint_utils.ts` (chain walk, per-file aliases, member-expression matching, late-assignment recovery) rather than special-casing the wrapper. The goal is a primitive that resolves _similar_ RPC-style libraries in unrelated apps, not the one bundle in front of you.
+
+**Do not encode target-specific paths or service names in code or comments.** When iterating, run `map` against the downloaded chunks and grep the resulting `mapped-openapi.json` for the expected URL fragment — never paste that fragment into source.
+
+### How to test changes here
+
+The HTTP-client resolver runs inside the `map` step of the React/Vue/Svelte pipeline; verify it as part of the full `run` pipeline (see "Testing a change" below). Quick iteration loop while debugging:
+
+```bash
+npx tsc
+node --max-old-space-size=8192 build/index.js map \
+    -d output/<host>/static/js -o /tmp/jsr-mapped -t react -f json \
+    2>&1 | grep "URL: " | sort -u
+```
+
+This bypasses the slow `lazyload` step by reusing already-downloaded chunks. The final acceptance test is still `npm run cleanup && npm run start -- run -u <target> -y -k`; grep `mapped-openapi.json` for the expected resolved URL fragment.
 
 ## Rules
 
@@ -126,6 +180,41 @@ Typical test invocation:
 ```bash
 npm run cleanup && npm run start -- run -u <target-url> -y -k
 ```
+
+## Release process
+
+Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-rules) and `stage` (js-recon-docs). Do **not** touch `js-recon-research` — it is private and excluded from releases.
+
+### Steps
+
+1. **Bump version** — update `version` in `src/globalConfig.ts` and `package.json` to the new tag (e.g. `1.3.1-alpha.4`). Both must match.
+
+2. **Update CHANGELOG** — add a `## <version> - <YYYY-MM-DD>` section to `CHANGELOG.md` with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections as needed. Verify every `feat`/`fix` commit since the previous tag is covered:
+
+    ```bash
+    git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
+    ```
+
+3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`.
+
+4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are unreleased commits, update `CHANGELOG.md` and `version.txt`, then push.
+
+5. **Update docs** (`js-recon-docs` repo, `stage` branch):
+    - Fix any option/flag gaps in `docs/docs/modules/*.md` (cross-check against `src/index.ts`).
+    - Snapshot the current docs: `npx docusaurus docs:version <version>` (run inside `js-recon-docs/`).
+    - Keep `lastVersion` in `docusaurus.config.ts` pointing to the last **stable** release (do not change it for alphas/betas).
+    - Verify: `npm run build` in `js-recon-docs/` must pass with no broken-link errors.
+
+6. **Push** — push all three repos to their source branches (`dev`/`stage`).
+
+7. **Open PRs** using `gh pr create`:
+   | Repo | Source | Target | Title | Body |
+   |------|--------|--------|-------|------|
+   | `shriyanss/js-recon` | `dev` | `main` | version string (e.g. `v1.3.1-alpha.4`) | `## <version>` changelog section |
+   | `shriyanss/js-recon-docs` | `stage` | `main` | version string | Brief summary of doc changes |
+   | `shriyanss/js-recon-rules` | `dev` | `main` | rules version (e.g. `v1.2.0`) | `## <version>` rules changelog section |
+
+8. **Monitor PRs** — CodeRabbit reviews automatically. Wait for GitHub CI (version check, build, etc.) to pass. The docs CI check is expected to fail until js-recon is fully published to npm.
 
 ## Security / confidentiality
 

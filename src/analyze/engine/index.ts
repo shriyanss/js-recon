@@ -22,7 +22,7 @@ export const engine = async (
     rule: Rule,
     mappedJsonData: Chunks | undefined,
     openapiData: OpenAPISpec | undefined,
-    tech: "next" | "vue" | "all"
+    tech: "next" | "vue" | "react" | "svelte" | "all"
 ): Promise<EngineOutput[] | undefined> => {
     // first of all check what is rule type, and then check if the data for that is available or is undefined
 

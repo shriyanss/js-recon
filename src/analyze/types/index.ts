@@ -4,7 +4,7 @@ export interface Rule {
     author: string;
     description: string;
     js_recon_version: string;
-    tech: ("next" | "vue" | "all")[];
+    tech: ("next" | "vue" | "react" | "svelte" | "all")[];
     severity: "info" | "low" | "medium" | "high";
     type: "request" | "ast";
     steps: Step[];
@@ -14,10 +14,15 @@ export type Step = {
     name: string;
     message: string;
     requires?: string[];
-    request?: RequestStep; // used for openapi
-    esquery?: EsqueryStep; // parse an esquery string
-    postMessageFuncResolve?: PostMessageFuncResolverStep; // get the second argument of the addEventListener("message", ...) call expression
-    checkAssignmentExist?: CheckAssignmentExistStep; // check if a function exists in the node
+    request?: RequestStep;
+    esquery?: EsqueryStep;
+    postMessageFuncResolve?: PostMessageFuncResolverStep;
+    checkAssignmentExist?: CheckAssignmentExistStep;
+    regexMatch?: RegexMatchStep;
+};
+
+export type RegexMatchStep = {
+    pattern: string;
 };
 
 export type RequestStep =

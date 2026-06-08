@@ -5,6 +5,7 @@ import { Rule } from "../types/index.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import _generator from "@babel/generator";
+const _traverseDefault = _traverse.default;
 const generator = _generator.default;
 import esquery from "esquery";
 import { Node } from "@babel/types";
@@ -142,6 +143,29 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                         }
                     }
                 }
+            } else if (step.regexMatch) {
+                // Scan all StringLiteral/TemplateLiteral nodes in the chunk for values matching the regex
+                const pattern = new RegExp(step.regexMatch.pattern);
+                const foundNodes: Node[] = [];
+                _traverseDefault(ast, {
+                    StringLiteral(nodePath: any) {
+                        if (pattern.test(nodePath.node.value)) {
+                            foundNodes.push(nodePath.node);
+                        }
+                    },
+                    TemplateLiteral(nodePath: any) {
+                        for (const quasi of nodePath.node.quasis) {
+                            if (pattern.test(quasi.value.raw)) {
+                                foundNodes.push(nodePath.node);
+                                break;
+                            }
+                        }
+                    },
+                });
+                if (foundNodes.length > 0) {
+                    matchList[step.name] = { node: foundNodes[0], scope: ast, allNodes: foundNodes };
+                    completedSteps.add(step.name);
+                }
             } else if (step.checkAssignmentExist) {
                 const selectedNode: Node = matchList[step.checkAssignmentExist.name]?.node;
                 const toMatch = step.checkAssignmentExist.type;
@@ -176,38 +200,42 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
         if (completedSteps.size === rule.steps.length) {
             const message = `[+] "${rule.name}" found in chunk ${chunk.id}`;
             const lastMatch = Object.values(matchList)[Object.keys(matchList).length - 1];
-            const code = generator(lastMatch.node).code;
+            const nodesToReport =
+                lastMatch.allNodes && lastMatch.allNodes.length > 1 ? lastMatch.allNodes : [lastMatch.node];
 
-            // print the message based on the severity of the rule
-            if (rule.severity === "info") {
-                console.log(chalk.cyan(message));
-            } else if (rule.severity === "low") {
-                console.log(chalk.yellow(message));
-            } else if (rule.severity === "medium") {
-                console.log(chalk.magenta(message));
-            } else if (rule.severity === "high") {
-                console.log(chalk.red(message));
+            for (const reportNode of nodesToReport) {
+                const code = generator(reportNode).code;
+
+                if (rule.severity === "info") {
+                    console.log(chalk.cyan(message));
+                } else if (rule.severity === "low") {
+                    console.log(chalk.yellow(message));
+                } else if (rule.severity === "medium") {
+                    console.log(chalk.magenta(message));
+                } else if (rule.severity === "high") {
+                    console.log(chalk.red(message));
+                }
+
+                console.log(
+                    highlight(code, {
+                        language: "javascript",
+                        ignoreIllegals: true,
+                        theme: undefined,
+                    })
+                );
+
+                findings.push({
+                    ruleId: rule.id,
+                    ruleName: rule.name,
+                    ruleType: rule.type,
+                    ruleDescription: rule.description,
+                    ruleAuthor: rule.author,
+                    ruleTech: rule.tech,
+                    severity: rule.severity,
+                    message: message,
+                    findingLocation: `// ${chunk.id}\n\n${code}`,
+                });
             }
-
-            console.log(
-                highlight(code, {
-                    language: "javascript",
-                    ignoreIllegals: true,
-                    theme: undefined,
-                })
-            );
-
-            findings.push({
-                ruleId: rule.id,
-                ruleName: rule.name,
-                ruleType: rule.type,
-                ruleDescription: rule.description,
-                ruleAuthor: rule.author,
-                ruleTech: rule.tech,
-                severity: rule.severity,
-                message: message,
-                findingLocation: `// ${chunk.id}\n\n${code}`,
-            });
         }
     }
 

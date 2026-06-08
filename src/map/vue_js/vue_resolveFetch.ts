@@ -3,8 +3,16 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import fs from "fs";
 import path from "path";
-import { resolveNodeValue, substituteVariablesInString, memberChainToString } from "../next_js/utils.js";
+import { resolveNodeValue, substituteVariablesInString } from "../next_js/utils.js";
 import * as globals from "../../utility/globals.js";
+import {
+    EnclosingFn,
+    inferEnclosingFn,
+    substituteCallerPlaceholders,
+    substituteCallerHeaders,
+    makeGetCallers,
+} from "./taint_utils.js";
+import { deepSubstituteBodyValue } from "./bodyResolver.js";
 
 const traverse = _traverse.default;
 
@@ -85,24 +93,6 @@ const isFunctionLike = (node: any): boolean =>
         node.type === "FunctionExpression" ||
         node.type === "FunctionDeclaration");
 
-interface EnclosingFn {
-    bindingName: string | null;
-    firstParamName: string | null;
-    node: any;
-    file: string;
-}
-
-interface CallerInfo {
-    file: string;
-    fileContent: string;
-    callNode: any;
-    scope: any;
-    args: any[];
-    // Function that contains this call — used for transitive resolution when
-    // the call's argument is itself the enclosing function's parameter.
-    enclosingFn: EnclosingFn | null;
-}
-
 interface FetchEntry {
     file: string;
     filePath: string;
@@ -116,307 +106,6 @@ interface FetchEntry {
 }
 
 /**
- * Pulls out the function binding name from the surrounding declarator /
- * assignment so we can later match callsites by identifier. Handles four
- * common shapes seen in Vite-bundled code:
- *   const fn = (arg) => { ... }
- *   fn = (arg) => { ... }
- *   function fn(arg) { ... }
- *   { fn: (arg) => { ... } }  // object-literal property value
- */
-const inferEnclosingFn = (callPath: any, file: string): EnclosingFn | null => {
-    const fnPath = callPath.getFunctionParent();
-    if (!fnPath) return null;
-    const fnNode = fnPath.node;
-    const firstParamName =
-        fnNode.params && fnNode.params[0]?.type === "Identifier"
-            ? fnNode.params[0].name
-            : fnNode.params &&
-                fnNode.params[0]?.type === "AssignmentPattern" &&
-                fnNode.params[0].left?.type === "Identifier"
-              ? fnNode.params[0].left.name
-              : null;
-
-    let bindingName: string | null = null;
-    if (fnNode.type === "FunctionDeclaration" && fnNode.id?.type === "Identifier") {
-        bindingName = fnNode.id.name;
-    } else {
-        const parentNode = fnPath.parentPath?.node;
-        if (parentNode) {
-            if (parentNode.type === "VariableDeclarator" && parentNode.id?.type === "Identifier") {
-                bindingName = parentNode.id.name;
-            } else if (parentNode.type === "AssignmentExpression" && parentNode.left?.type === "Identifier") {
-                bindingName = parentNode.left.name;
-            } else if (
-                parentNode.type === "ObjectProperty" &&
-                !parentNode.computed &&
-                parentNode.key?.type === "Identifier"
-            ) {
-                bindingName = parentNode.key.name;
-            }
-        }
-    }
-
-    return { bindingName, firstParamName, node: fnNode, file };
-};
-
-/**
- * Walks an ObjectExpression and returns the property value for the given
- * dotted property path (e.g. ["data"] -> the value node of `data: ...`).
- * Returns null if any segment of the path isn't a literal property.
- */
-const lookupObjectExpressionProp = (objExpr: any, propPath: string[]): any => {
-    if (!objExpr || objExpr.type !== "ObjectExpression") return null;
-    let current: any = objExpr;
-    for (const segment of propPath) {
-        if (!current || current.type !== "ObjectExpression") return null;
-        let next: any = null;
-        for (const prop of current.properties) {
-            if (prop.type !== "ObjectProperty") continue;
-            const key =
-                prop.key.type === "Identifier"
-                    ? prop.key.name
-                    : prop.key.type === "StringLiteral"
-                      ? prop.key.value
-                      : null;
-            if (key === segment) {
-                next = prop.value;
-                break;
-            }
-        }
-        if (!next) return null;
-        current = next;
-    }
-    return current;
-};
-
-/**
- * Resolves the value of `paramName.propPath` by walking back through the
- * enclosing function's callers. If a caller's argument is itself an Identifier
- * pointing to a constant initializer, we follow that binding; if it's the
- * caller's own first parameter, we recurse to that function's callers.
- *
- * Returns the resolved AST node + the scope it lives in (so further sub-property
- * resolution can use the correct binding lookup), or null when the chain breaks.
- */
-const resolveParamProperty = (
-    paramName: string,
-    propPath: string[],
-    enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[],
-    depth: number = 0
-): { node: any; scope: any; fileContent: string } | null => {
-    if (!enclosingFn || !enclosingFn.bindingName || depth > 6) return null;
-    // Only the function's first parameter is supported for now — every observed
-    // case has fetch wrappers shaped as `(e) => fetch(... e.X ...)`.
-    if (enclosingFn.firstParamName !== paramName) return null;
-
-    const callers = getCallers(enclosingFn.bindingName);
-    if (!callers || callers.length === 0) return null;
-
-    for (const caller of callers) {
-        const arg = caller.args[0];
-        if (!arg) continue;
-
-        // Case 1: caller passes an object literal directly — fn({ a: ..., b: ... })
-        if (arg.type === "ObjectExpression") {
-            const node = lookupObjectExpressionProp(arg, propPath);
-            if (node) return { node, scope: caller.scope, fileContent: caller.fileContent };
-        }
-
-        // Case 2: caller passes an Identifier pointing to a const-initialized
-        // object literal — `const x = { a: ... }; fn(x)`.
-        if (arg.type === "Identifier") {
-            const binding = caller.scope.getBinding(arg.name);
-            const initNode = binding?.path?.node?.init;
-            if (initNode && initNode.type === "ObjectExpression") {
-                const node = lookupObjectExpressionProp(initNode, propPath);
-                if (node) return { node, scope: caller.scope, fileContent: caller.fileContent };
-            }
-            // Case 3: caller passes its own first param straight through —
-            // `outer = (p) => fn(p)`. Recurse up to that function's callers.
-            if (caller.enclosingFn?.firstParamName === arg.name) {
-                const result = resolveParamProperty(arg.name, propPath, caller.enclosingFn, getCallers, depth + 1);
-                if (result) return result;
-            }
-        }
-    }
-    return null;
-};
-
-/**
- * Renders an ObjectExpression as a `k1={k1}&k2={k2}` query-string fragment.
- * Literal property values are URL-encoded directly; non-literal values fall
- * back to the placeholder form so the schema reader can see what's missing.
- */
-const renderObjectAsQuery = (objExpr: any, scope: any, fileContent: string): string | null => {
-    if (!objExpr || objExpr.type !== "ObjectExpression") return null;
-    const parts: string[] = [];
-    for (const prop of objExpr.properties) {
-        if (prop.type !== "ObjectProperty") continue;
-        const key =
-            prop.key.type === "Identifier" ? prop.key.name : prop.key.type === "StringLiteral" ? prop.key.value : null;
-        if (!key) continue;
-        let valStr: string;
-        try {
-            const resolved = resolveNodeValue(prop.value, scope, "", "fetch", fileContent);
-            if (resolved !== null && resolved !== undefined && !String(resolved).startsWith("[")) {
-                valStr = encodeURIComponent(String(resolved));
-            } else {
-                valStr = `{${key}}`;
-            }
-        } catch {
-            valStr = `{${key}}`;
-        }
-        parts.push(`${key}=${valStr}`);
-    }
-    return parts.length > 0 ? parts.join("&") : null;
-};
-
-/**
- * Returns a plain object derived from an ObjectExpression's properties.
- * Spread elements are merged in when they themselves resolve to a literal
- * object; otherwise the spread is preserved as a sentinel key so the schema
- * reader knows extra fields exist at runtime.
- */
-const renderObjectExpression = (objExpr: any, scope: any, fileContent: string): Record<string, string> | null => {
-    if (!objExpr || objExpr.type !== "ObjectExpression") return null;
-    const out: Record<string, string> = {};
-    for (const prop of objExpr.properties) {
-        if (prop.type === "ObjectProperty") {
-            const key =
-                prop.key.type === "Identifier"
-                    ? prop.key.name
-                    : prop.key.type === "StringLiteral"
-                      ? prop.key.value
-                      : null;
-            if (!key) continue;
-            try {
-                const resolved = resolveNodeValue(prop.value, scope, "", "fetch", fileContent);
-                out[key] = resolved === undefined || resolved === null ? "" : String(resolved);
-            } catch {
-                out[key] = "";
-            }
-        } else if (prop.type === "SpreadElement") {
-            try {
-                const resolved = resolveNodeValue(prop.argument, scope, "", "fetch", fileContent);
-                if (resolved && typeof resolved === "object") {
-                    for (const [k, v] of Object.entries(resolved)) {
-                        if (!(k in out)) out[k] = v === undefined || v === null ? "" : String(v);
-                    }
-                } else {
-                    const chain = memberChainToString(prop.argument);
-                    out[`...${chain ?? "spread"}`] = "<spread>";
-                }
-            } catch {
-                const chain = memberChainToString(prop.argument);
-                out[`...${chain ?? "spread"}`] = "<spread>";
-            }
-        }
-    }
-    return out;
-};
-
-/**
- * Tries to convert a value node into a printable string, transparently
- * unwrapping template literals built from caller-side bindings. Returns null
- * when the value is itself a Vue-style ref / member expression that we can't
- * pin down statically.
- */
-const renderValueNode = (node: any, scope: any, fileContent: string): string | null => {
-    if (!node) return null;
-    try {
-        const resolved = resolveNodeValue(node, scope, "", "fetch", fileContent);
-        if (resolved === null || resolved === undefined) return null;
-        if (typeof resolved === "object") {
-            // Avoid emitting `[object Object]` — leave it to the upstream
-            // placeholder so the consumer knows it's structured.
-            return null;
-        }
-        const s = String(resolved);
-        if (s.startsWith("[unresolved")) return null;
-        return s;
-    } catch {
-        return null;
-    }
-};
-
-/**
- * Substitutes [member:P.X], [param:P], and [urlsearchparams:P.X] markers in a
- * string by walking back to the enclosing function's caller(s). The string is
- * returned with as many markers resolved as we could trace.
- */
-const substituteCallerPlaceholders = (
-    input: string,
-    enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[]
-): string => {
-    if (!input || !enclosingFn) return input;
-
-    let output = input;
-
-    output = output.replace(/\[urlsearchparams:([A-Za-z_$][\w$.]*)\]/g, (match, chain: string) => {
-        const parts = chain.split(".");
-        if (parts.length < 1) return match;
-        const paramName = parts[0];
-        const propPath = parts.slice(1);
-        const resolved = resolveParamProperty(paramName, propPath, enclosingFn, getCallers);
-        if (!resolved) return match;
-        const rendered = renderObjectAsQuery(resolved.node, resolved.scope, resolved.fileContent);
-        return rendered ?? match;
-    });
-
-    output = output.replace(/\[member:([A-Za-z_$][\w$.]*)\]/g, (match, chain: string) => {
-        const parts = chain.split(".");
-        if (parts.length < 1) return match;
-        const paramName = parts[0];
-        const propPath = parts.slice(1);
-        const resolved = resolveParamProperty(paramName, propPath, enclosingFn, getCallers);
-        if (!resolved) return match;
-        const rendered = renderValueNode(resolved.node, resolved.scope, resolved.fileContent);
-        return rendered ?? match;
-    });
-
-    return output;
-};
-
-/**
- * Substitutes placeholders in a header bag. `...P.X: <spread>` entries are
- * expanded when the corresponding caller-side value is a literal object;
- * `[member:P.X]` markers inside header values are substituted in-place.
- */
-const substituteCallerHeaders = (
-    headers: Record<string, string>,
-    enclosingFn: EnclosingFn | null,
-    getCallers: (bindingName: string) => CallerInfo[]
-): Record<string, string> => {
-    if (!enclosingFn) return headers;
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(headers)) {
-        if (k.startsWith("...") && v === "<spread>") {
-            const chain = k.slice(3);
-            const parts = chain.split(".");
-            const paramName = parts[0];
-            const propPath = parts.slice(1);
-            const resolved = resolveParamProperty(paramName, propPath, enclosingFn, getCallers);
-            if (resolved && resolved.node.type === "ObjectExpression") {
-                const obj = renderObjectExpression(resolved.node, resolved.scope, resolved.fileContent);
-                if (obj) {
-                    for (const [hk, hv] of Object.entries(obj)) {
-                        if (!(hk in out)) out[hk] = hv;
-                    }
-                    continue;
-                }
-            }
-            out[k] = v;
-        } else {
-            out[k] = substituteCallerPlaceholders(v, enclosingFn, getCallers);
-        }
-    }
-    return out;
-};
-
-/**
  * Scans all JS files in the given directory for fetch() calls,
  * resolves their URL / method / headers / body, and registers each
  * call with the OpenAPI output collector.
@@ -424,8 +113,8 @@ const substituteCallerHeaders = (
  * Designed for Vite-bundled Vue.JS applications where HTTP calls are
  * made with the native fetch() API rather than via webpack chunks.
  */
-const vue_resolveFetch = async (directory: string): Promise<void> => {
-    console.log(chalk.cyan("[i] Resolving Vue.JS fetch instances"));
+const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Promise<void> => {
+    console.log(chalk.cyan(`[i] Resolving ${frameworkName} fetch instances`));
 
     let files: string[];
     try {
@@ -443,11 +132,19 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
     // function that ultimately calls fetch(). Their property names are the
     // fetch-wrapper keys downstream code destructures and invokes in place of
     // fetch — so we need to recognise those aliases.
+    //
+    // ASTs are parsed on-demand and discarded after each file — only
+    // `wrapperKeyNames` (a small string set) and `fetchFilePaths` (a path list)
+    // are retained so that the full pre-pass AST set never lives in memory
+    // simultaneously.
     const wrapperKeyNames = new Set<string>();
-    const fileAstCache = new Map<string, any>();
-    const fileContentCache = new Map<string, string>();
+    const fetchFilePaths: string[] = [];
 
-    for (const file of files) {
+    for (let _pi = 0; _pi < files.length; _pi++) {
+        // Yield to the event loop every 50 files so V8 GC can reclaim ASTs
+        // from completed iterations before the next batch begins.
+        if (_pi > 0 && _pi % 50 === 0) await new Promise<void>((r) => setImmediate(r));
+        const file = files[_pi];
         const filePath = path.join(directory, file);
         let fileContent: string;
         try {
@@ -456,6 +153,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
             continue;
         }
         if (!fileContent.includes("fetch")) continue;
+        fetchFilePaths.push(filePath);
         let fileAst: any;
         try {
             fileAst = parser.parse(fileContent, {
@@ -466,8 +164,6 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
         } catch {
             continue;
         }
-        fileAstCache.set(filePath, fileAst);
-        fileContentCache.set(filePath, fileContent);
 
         traverse(fileAst, {
             ObjectProperty(p) {
@@ -479,57 +175,10 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                 if (keyName) wrapperKeyNames.add(keyName);
             },
         });
+        // fileAst and fileContent go out of scope here — GC can reclaim them.
     }
 
-    // Lazy caller lookup. Rather than building a global index of every
-    // CallExpression in every bundle (which becomes O(huge) for minified Vite
-    // chunks), we only search when phase-2 actually asks for a specific binding
-    // name, and cache the per-name result. The fast `fileContent.includes`
-    // check skips files that can't possibly contain the call. When the call
-    // count blows past a sane budget we treat the name as too ambiguous to be
-    // useful for tracing and short-circuit to an empty list.
-    const MAX_CALLERS_PER_NAME = 64;
-    const callerCache = new Map<string, CallerInfo[]>();
-    const getCallers = (bindingName: string): CallerInfo[] => {
-        const cached = callerCache.get(bindingName);
-        if (cached) return cached;
-        const needle = `${bindingName}(`;
-        const out: CallerInfo[] = [];
-        let overflowed = false;
-        for (const [filePath, fileAst] of fileAstCache.entries()) {
-            if (overflowed) break;
-            const fileContent = fileContentCache.get(filePath) ?? "";
-            if (!fileContent.includes(needle)) continue;
-            traverse(fileAst, {
-                CallExpression(callPath) {
-                    if (overflowed) {
-                        callPath.stop();
-                        return;
-                    }
-                    const callee = callPath.node.callee;
-                    if (callee.type !== "Identifier" || callee.name !== bindingName) return;
-                    if (out.length >= MAX_CALLERS_PER_NAME) {
-                        overflowed = true;
-                        callPath.stop();
-                        return;
-                    }
-                    out.push({
-                        file: filePath,
-                        fileContent,
-                        callNode: callPath.node,
-                        scope: callPath.scope,
-                        args: callPath.node.arguments,
-                        enclosingFn: inferEnclosingFn(callPath, filePath),
-                    });
-                },
-            });
-        }
-        // A name with this many callsites is almost certainly a minifier
-        // single-letter local (e, t, n, …) — tracing it is noise, not signal.
-        const result = overflowed ? [] : out;
-        callerCache.set(bindingName, result);
-        return result;
-    };
+    const getCallers = makeGetCallers(fetchFilePaths);
 
     let totalFetchCalls = 0;
     // Counter for per-callsite uniqueness so two callsites at the same path+method
@@ -537,26 +186,29 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
     let callsiteCounter = 0;
     const entries: FetchEntry[] = [];
 
-    for (const file of files) {
+    for (let _mi = 0; _mi < files.length; _mi++) {
+        // Yield every 50 files so V8 GC can run between batches.
+        if (_mi > 0 && _mi % 50 === 0) await new Promise<void>((r) => setImmediate(r));
+        const file = files[_mi];
         const filePath = path.join(directory, file);
-        let fileContent = fileContentCache.get(filePath);
-        let fileAst = fileAstCache.get(filePath);
-        if (!fileContent || !fileAst) {
-            try {
-                fileContent = fs.readFileSync(filePath, "utf-8");
-            } catch {
-                continue;
-            }
-            if (!fileContent.includes("fetch")) continue;
-            try {
-                fileAst = parser.parse(fileContent, {
-                    sourceType: "unambiguous",
-                    plugins: ["jsx", "typescript"],
-                    errorRecovery: true,
-                });
-            } catch {
-                continue;
-            }
+        // Parse each file fresh — no persistent cache. The AST goes out of scope
+        // at the end of this loop body so the GC can reclaim it.
+        let fileContent: string;
+        let fileAst: any;
+        try {
+            fileContent = fs.readFileSync(filePath, "utf-8");
+        } catch {
+            continue;
+        }
+        if (!fileContent.includes("fetch")) continue;
+        try {
+            fileAst = parser.parse(fileContent, {
+                sourceType: "unambiguous",
+                plugins: ["jsx", "typescript"],
+                errorRecovery: true,
+            });
+        } catch {
+            continue;
         }
 
         // Collect fetch aliases:
@@ -620,7 +272,6 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                 if (args.length === 0) return;
 
                 const fileLine = callPath.node.loc?.start.line ?? 0;
-                console.log(chalk.blue(`[+] Found fetch call in "${filePath}":${fileLine}`));
                 totalFetchCalls++;
 
                 // Resolve URL (first argument)
@@ -667,12 +318,19 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
                     }
                 }
 
-                const enclosingFn = inferEnclosingFn(callPath, filePath);
+                const rawEnclosingFn = inferEnclosingFn(callPath, filePath);
+                // Null out the AST node reference — it is never read in the
+                // second pass, but keeping it alive would pin the entire file
+                // AST in memory through the entries array.
+                const enclosingFn = rawEnclosingFn ? { ...rawEnclosingFn, node: null } : null;
 
                 entries.push({
                     file,
                     filePath,
-                    fileContent,
+                    // fileContent is not used in the second pass; store an empty
+                    // string so the full file content is not kept alive in memory
+                    // through the entries array.
+                    fileContent: "",
                     fileLine,
                     url: typeof url === "string" ? url : "",
                     method,
@@ -688,6 +346,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
     // substitute markers we couldn't resolve in the first pass. This is where
     // `?[urlsearchparams:p.q]` turns into `?k1={k1}&k2={k2}`, and where
     // `...p.q: <spread>` gets expanded if a literal object was passed.
+    //
     const MARKER_RE = /\[(urlsearchparams|member|param):/;
     const headersHaveMarkers = (h: Record<string, string>): boolean => {
         for (const [k, v] of Object.entries(h)) {
@@ -702,6 +361,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
             entry.enclosingFn &&
             entry.enclosingFn.bindingName &&
             entry.enclosingFn.firstParamName &&
+            entry.enclosingFn.bindingName.length > 2 &&
             (MARKER_RE.test(entry.url) || MARKER_RE.test(entry.body) || headersHaveMarkers(entry.headers))
         ) {
             entry.url = substituteCallerPlaceholders(entry.url, entry.enclosingFn, getCallers);
@@ -709,6 +369,27 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
             entry.body = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
         }
 
+        // Deep body resolution: when the body JSON contains [param:X] string
+        // values that map to structured objects at the call site, replace them.
+        // This runs even for short binding names (e.g. single-char minifier
+        // locals) because makeGetCallers uses the alias map internally and will
+        // find callers via a meaningful exported name (e.g. postSOA → O).
+        if (entry.enclosingFn && entry.enclosingFn.bindingName && /\[param:/.test(entry.body)) {
+            try {
+                const parsed = JSON.parse(entry.body);
+                if (parsed !== null && typeof parsed === "object") {
+                    const substituted = deepSubstituteBodyValue(parsed, entry.enclosingFn, getCallers);
+                    entry.body = JSON.stringify(substituted);
+                }
+            } catch {
+                // body is not valid JSON; fall back to string-level substitution
+                if (entry.enclosingFn.bindingName.length <= 2) {
+                    entry.body = substituteCallerPlaceholders(entry.body, entry.enclosingFn, getCallers);
+                }
+            }
+        }
+
+        console.log(chalk.blue(`[+] Found fetch call in "${entry.filePath}":${entry.fileLine}`));
         console.log(chalk.green(`    URL: ${entry.url}`));
         if (entry.method !== "GET" || Object.keys(entry.headers).length > 0 || entry.body) {
             console.log(chalk.green(`    Method: ${entry.method}`));
@@ -746,7 +427,7 @@ const vue_resolveFetch = async (directory: string): Promise<void> => {
         });
     }
 
-    console.log(chalk.green(`[✓] Found and resolved ${totalFetchCalls} fetch call(s) across Vue.JS files`));
+    console.log(chalk.green(`[✓] Found and resolved ${totalFetchCalls} fetch call(s) across ${frameworkName} files`));
 };
 
 export default vue_resolveFetch;

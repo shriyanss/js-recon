@@ -240,6 +240,17 @@ export const getAiEndpoint = (): string | undefined => {
     return aiEndpoint;
 };
 
+// Quiet mode — suppresses verbose detection logs (used by fingerprint)
+export let quiet = false;
+
+export const setQuiet = (value: boolean): void => {
+    quiet = value;
+};
+
+export const getQuiet = (): boolean => {
+    return quiet;
+};
+
 // Technology Detection
 /** Detected technology stack */
 export let tech = "";
@@ -311,6 +322,17 @@ export interface OpenapiOutputItem {
     functionFile: string;
     functionFileLine: number;
     crossChunkParams?: Array<{ chunkId: string; params: string; file: string; line: number }>;
+    summary?: string;
+    serverActionCallChunkId?: string;
+    serverActionCallFile?: string;
+    serverActionCallLine?: number;
+    /**
+     * Optional override for collection grouping. When set, the OpenAPI generator
+     * uses this as the operation's tag and the Postman generator places the
+     * item under a flat top-level folder with this name (bypassing path-segment
+     * folder derivation).
+     */
+    collectionFolder?: string;
 }
 /** Array of OpenAPI output items */
 export let openapiOutput: OpenapiOutputItem[] = [];
@@ -344,9 +366,36 @@ export const setOpenapiChunkTag = (value: boolean): void => {
 };
 
 /**
+ * Max recursion depth for HTTP-client URL fan-out and cross-file resolution.
+ * Set via --max-recursion-depth on `map`. Higher values produce more endpoint
+ * variations at the cost of runtime.
+ */
+let maxRecursionDepth = 3;
+
+export const setMaxRecursionDepth = (value: number): void => {
+    maxRecursionDepth = value;
+};
+
+export const getMaxRecursionDepth = (): number => {
+    return maxRecursionDepth;
+};
+
+/**
  * Gets the chunk tag configuration status.
  * @returns Whether chunk ID tags are enabled
  */
 export const getOpenapiChunkTag = (): boolean => {
     return openapiChunkTag;
+};
+
+// GraphQL Extraction Configuration
+/** Whether to scan JS for embedded GraphQL operations during `map` */
+export let graphqlEnabled = true;
+
+export const setGraphqlEnabled = (value: boolean): void => {
+    graphqlEnabled = value;
+};
+
+export const getGraphqlEnabled = (): boolean => {
+    return graphqlEnabled;
 };

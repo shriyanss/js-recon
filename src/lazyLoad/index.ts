@@ -19,6 +19,8 @@ import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
 // Svelte
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
+import svelte_recursivePageCrawl from "./svelte/svelte_recursivePageCrawl.js";
+import svelte_discoverPagesFromJs from "./svelte/svelte_discoverPagesFromJs.js";
 
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
@@ -32,6 +34,7 @@ import vue_recursiveClientSidePathDownload from "./vue/vue_recursiveClientSidePa
 import react_getScriptTags from "./react/react_getScriptTags.js";
 import react_webpackChunkPaths from "./react/react_webpackChunkPaths.js";
 import react_sourcemapUrls from "./react/react_sourcemapUrls.js";
+import react_followImports from "./react/react_followImports.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
@@ -82,6 +85,7 @@ const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
         const { files } = extractSources(mapContent);
 
         for (const file of files) {
+            if (file.path === "." || file.path === "") continue;
             const outPath = join(outputDir, file.path);
             mkdirSync(dirname(outPath), { recursive: true });
             writeFileSync(outPath, file.content);
@@ -120,224 +124,333 @@ const lazyLoad = async (
     research: boolean,
     researchOutput: string,
     maxIterations: number,
-    maxJsSizeMb: number = 2
+    maxJsSizeMb: number = 2,
+    hardTimeoutMs: number = 30 * 60 * 1000
 ) => {
-    console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
+    // Hoisted so the timeout handler can stop discovery and drain downloads.
+    let activeCrawler: NextJsCrawler | null = null;
+    let activeQueue: DownloadQueue | null = null;
 
-    if (globals.getDisableSandbox()) {
-        console.log(chalk.yellow("[!] Browser sandbox disabled"));
-    }
+    const work = async () => {
+        console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
-    if (insecure) {
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-        console.log(chalk.yellow("[!] Running in insecure mode. SSL certificate verification disabled"));
-    }
-
-    // if cache enabled, check if the cache file exists or not. If no, then create a new one
-    if (!globals.getDisableCache()) {
-        if (!fs.existsSync(globals.getRespCacheFile())) {
-            fs.writeFileSync(globals.getRespCacheFile(), "{}");
+        if (globals.getDisableSandbox()) {
+            console.log(chalk.yellow("[!] Browser sandbox disabled"));
         }
-    }
 
-    let urls;
+        if (insecure) {
+            process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+            console.log(chalk.yellow("[!] Running in insecure mode. SSL certificate verification disabled"));
+        }
 
-    // check if the url is file or a URL
-    if (fs.existsSync(url)) {
-        urls = fs.readFileSync(url, "utf8").split("\n");
-        // remove the empty lines
-        urls = urls.filter((url) => url.trim() !== "");
-    } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
-        urls = [url];
-    } else {
-        console.log(chalk.red("[!] Invalid URL or file path"));
-        process.exit(3);
-    }
+        // if cache enabled, check if the cache file exists or not. If no, then create a new one
+        if (!globals.getDisableCache()) {
+            if (!fs.existsSync(globals.getRespCacheFile())) {
+                fs.writeFileSync(globals.getRespCacheFile(), "{}");
+            }
+        }
 
-    for (const url of urls) {
-        console.log(chalk.cyan(`[i] Processing ${url}`));
+        let urls;
 
-        if (strictScope) {
-            lazyLoadGlobals.pushToScope(new URL(url).host);
+        // check if the url is file or a URL
+        if (fs.existsSync(url)) {
+            urls = fs.readFileSync(url, "utf8").split("\n");
+            // remove the empty lines
+            urls = urls.filter((url) => url.trim() !== "");
+        } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
+            urls = [url];
         } else {
-            lazyLoadGlobals.setScope(inputScope);
+            console.log(chalk.red("[!] Invalid URL or file path"));
+            process.exit(3);
         }
 
-        lazyLoadGlobals.setMaxReqQueue(threads);
+        for (const url of urls) {
+            console.log(chalk.cyan(`[i] Processing ${url}`));
 
-        const tech = await frameworkDetect(url);
-        globals.setTech(tech ? tech.name : "");
+            if (strictScope) {
+                lazyLoadGlobals.pushToScope(new URL(url).host);
+            } else {
+                lazyLoadGlobals.setScope(inputScope);
+            }
 
-        if (tech) {
-            if (tech.name === "next") {
-                console.log(chalk.green("[✓] Next.js detected"));
-                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+            lazyLoadGlobals.setMaxReqQueue(threads);
 
-                const queue = new DownloadQueue(output, threads);
+            const tech = await frameworkDetect(url);
+            globals.setTech(tech ? tech.name : "");
 
-                const crawler = new NextJsCrawler({
-                    url,
-                    output,
-                    subsequentRequestsFlag,
-                    urlsFile,
-                    threads,
-                    research,
-                    maxIterations,
-                    onUrlsDiscovered: (urls) => queue.push(urls),
-                });
+            if (tech) {
+                if (tech.name === "next") {
+                    console.log(chalk.green("[✓] Next.js detected"));
+                    console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
-                await crawler.crawl();
-                await queue.drain();
-                queue.printSummary();
+                    activeQueue = new DownloadQueue(output, threads);
+                    const crawler = new NextJsCrawler({
+                        url,
+                        output,
+                        subsequentRequestsFlag,
+                        urlsFile,
+                        threads,
+                        research,
+                        maxIterations,
+                        onUrlsDiscovered: (urls) => activeQueue!.push(urls),
+                    });
+                    activeCrawler = crawler;
 
-                if (buildId) {
-                    // get the buildId
-                    // the directory is the output <output>/<host.replace(":", "_")>/___subsequent_requests
-                    const buildId = await next_buildId_RSC(
-                        output + "/" + new URL(url).host.replace(":", "_") + "/___subsequent_requests"
-                    );
+                    await crawler.crawl();
+                    activeCrawler = null; // done — prevent timeout handler from calling stop()
+                    await activeQueue.drain();
+                    activeQueue.printSummary();
+                    activeQueue = null;
 
                     if (buildId) {
-                        console.log(chalk.cyan("[+] Found buildId: " + buildId));
-                        // now, write it to a file
-                        fs.writeFileSync(path.join(output, new URL(url).host.replace(":", "_") + "/BUILD_ID"), buildId);
-                    }
-                }
+                        // get the buildId
+                        // the directory is the output <output>/<host.replace(":", "_")>/___subsequent_requests
+                        const buildId = await next_buildId_RSC(
+                            output + "/" + new URL(url).host.replace(":", "_") + "/___subsequent_requests"
+                        );
 
-                // if the research mode is enabled, then write the technique efficiency to a file
-                if (research) {
-                    // prettify the JSON and write
-                    fs.writeFileSync(researchOutput, JSON.stringify(crawler.techniqueEfficiencyMapping, null, 4));
-                    console.log(
-                        chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
+                        if (buildId) {
+                            console.log(chalk.cyan("[+] Found buildId: " + buildId));
+                            // now, write it to a file
+                            fs.writeFileSync(
+                                path.join(output, new URL(url).host.replace(":", "_") + "/BUILD_ID"),
+                                buildId
+                            );
+                        }
+                    }
+
+                    // if the research mode is enabled, then write the technique efficiency to a file
+                    if (research) {
+                        // prettify the JSON and write
+                        fs.writeFileSync(researchOutput, JSON.stringify(crawler.techniqueEfficiencyMapping, null, 4));
+                        console.log(
+                            chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
+                        );
+                    }
+
+                    // extract the source maps
+                    await extractSourceMaps(output, join(output, sourcemapDir));
+                } else if (tech.name === "vue") {
+                    console.log(chalk.green("[✓] Vue.js detected"));
+                    console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                    activeQueue = new DownloadQueue(output, threads);
+                    const queue = activeQueue;
+                    const onFilesDiscovered = (files: string[]) => queue.push(files);
+
+                    // run the full discovery pipeline against the entry URL
+                    const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered);
+
+                    // recurse the same pipeline through every client-side path we found
+                    await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb, onFilesDiscovered);
+
+                    await queue.drain();
+                    queue.printSummary();
+
+                    // extract the source maps
+                    await extractSourceMaps(output, join(output, sourcemapDir));
+                } else if (tech.name === "nuxt") {
+                    console.log(chalk.green("[✓] Nuxt.js detected"));
+                    console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                    const queue = new DownloadQueue(output, threads);
+                    activeQueue = queue;
+
+                    // find the files from the page source
+                    const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
+                    queue.push(jsFilesFromPageSource);
+
+                    const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
+                    queue.push(jsFilesFromStringAnalysis);
+
+                    const firstBatch = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
+
+                    let jsFilesFromAST = [];
+                    console.log(chalk.cyan("[i] Analyzing functions in the files found"));
+                    for (const jsFile of firstBatch) {
+                        jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+                    }
+                    queue.push(jsFilesFromAST);
+                    queue.push(lazyLoadGlobals.getJsUrls());
+
+                    await queue.drain();
+                    queue.printSummary();
+                } else if (tech.name === "svelte") {
+                    console.log(chalk.green("[✓] Svelte detected"));
+                    console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                    const queue = new DownloadQueue(output, threads);
+                    activeQueue = queue;
+
+                    // find the files from the page source
+                    const jsFilesFromPageSource = await svelte_getFromPageSource(url);
+                    queue.push(jsFilesFromPageSource);
+
+                    // analyze the strings now
+                    const { jsFiles: jsFilesFromStringAnalysis, mapFiles: mapFilesFromStringAnalysis } =
+                        await svelte_stringAnalysisJSFiles(url);
+                    queue.push(jsFilesFromStringAnalysis);
+                    if (mapFilesFromStringAnalysis.length > 0) {
+                        queue.push(mapFilesFromStringAnalysis);
+                    }
+
+                    // recursively follow ESM static imports (import ... from "./chunk.js")
+                    const visited = new Set<string>();
+                    let toFollow = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
+                    while (toFollow.length > 0) {
+                        const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                        if (newFiles.length === 0) break;
+                        console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
+                        queue.push(newFiles);
+                        toFollow = newFiles;
+                    }
+
+                    // crawl same-origin HTML pages found via <a href> and <link href>,
+                    // running the full JS-discovery pipeline on each
+                    const jsFilesFromPageCrawl = await svelte_recursivePageCrawl(url, maxJsSizeMb, (files) =>
+                        queue.push(files)
                     );
-                }
 
-                // extract the source maps
-                await extractSourceMaps(output, sourcemapDir);
-            } else if (tech.name === "vue") {
-                console.log(chalk.green("[✓] Vue.js detected"));
-                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-                const queue = new DownloadQueue(output, threads);
-                const onFilesDiscovered = (files: string[]) => queue.push(files);
-
-                // run the full discovery pipeline against the entry URL
-                const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered);
-
-                // recurse the same pipeline through every client-side path we found
-                await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb, onFilesDiscovered);
-
-                await queue.drain();
-                queue.printSummary();
-
-                // extract the source maps
-                await extractSourceMaps(output, sourcemapDir);
-            } else if (tech.name === "nuxt") {
-                console.log(chalk.green("[✓] Nuxt.js detected"));
-                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-                const queue = new DownloadQueue(output, threads);
-
-                // find the files from the page source
-                const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
-                queue.push(jsFilesFromPageSource);
-
-                const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
-                queue.push(jsFilesFromStringAnalysis);
-
-                const firstBatch = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
-
-                let jsFilesFromAST = [];
-                console.log(chalk.cyan("[i] Analyzing functions in the files found"));
-                for (const jsFile of firstBatch) {
-                    jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
-                }
-                queue.push(jsFilesFromAST);
-                queue.push(lazyLoadGlobals.getJsUrls());
-
-                await queue.drain();
-                queue.printSummary();
-            } else if (tech.name === "svelte") {
-                console.log(chalk.green("[✓] Svelte detected"));
-                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-                const queue = new DownloadQueue(output, threads);
-
-                // find the files from the page source
-                const jsFilesFromPageSource = await svelte_getFromPageSource(url);
-                queue.push(jsFilesFromPageSource);
-
-                // analyze the strings now
-                const jsFilesFromStringAnalysis = await svelte_stringAnalysisJSFiles(url);
-                queue.push(jsFilesFromStringAnalysis);
-
-                await queue.drain();
-                queue.printSummary();
-            } else if (tech.name === "angular") {
-                console.log(chalk.green("[✓] Angular detected"));
-                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-                const queue = new DownloadQueue(output, threads);
-
-                // find the files from the page source
-                const jsFilesFromPageSource = await angular_getFromPageSource(url);
-                queue.push(jsFilesFromPageSource);
-
-                // files using the main.js
-                let mainJsUrl: string | undefined;
-                for (const jsFile of jsFilesFromPageSource) {
-                    if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
-                        mainJsUrl = jsFile;
-                        break;
+                    // Svelte/Astro apps use client-side routing — the home page rarely has
+                    // <a href> links in its server-rendered HTML. Scan downloaded JS for
+                    // embedded page path strings (e.g. "/admin", "/debug") and visit each
+                    // page to discover the Astro island component-url values for those routes.
+                    // Iterates until no new paths or JS files are discovered.
+                    const jsFilesFromPathScan = await svelte_discoverPagesFromJs(url);
+                    if (jsFilesFromPathScan.length > 0) {
+                        queue.push(jsFilesFromPathScan);
                     }
+
+                    // run string analysis once more to catch JS files discovered during page crawl
+                    if (jsFilesFromPageCrawl.length > 0 || jsFilesFromPathScan.length > 0) {
+                        const { jsFiles: jsFilesFromStringAnalysis2, mapFiles: mapFilesFromStringAnalysis2 } =
+                            await svelte_stringAnalysisJSFiles(url);
+                        queue.push(jsFilesFromStringAnalysis2);
+                        if (mapFilesFromStringAnalysis2.length > 0) {
+                            queue.push(mapFilesFromStringAnalysis2);
+                        }
+                    }
+
+                    await queue.drain();
+                    queue.printSummary();
+
+                    await extractSourceMaps(output, join(output, sourcemapDir));
+                } else if (tech.name === "angular") {
+                    console.log(chalk.green("[✓] Angular detected"));
+                    console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                    const queue = new DownloadQueue(output, threads);
+                    activeQueue = queue;
+
+                    // find the files from the page source
+                    const jsFilesFromPageSource = await angular_getFromPageSource(url);
+                    queue.push(jsFilesFromPageSource);
+
+                    // files using the main.js
+                    let mainJsUrl: string | undefined;
+                    for (const jsFile of jsFilesFromPageSource) {
+                        if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
+                            mainJsUrl = jsFile;
+                            break;
+                        }
+                    }
+
+                    if (mainJsUrl) {
+                        const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
+                        queue.push(jsFilesFromMainJs);
+                    }
+
+                    await queue.drain();
+                    queue.printSummary();
+                } else if (tech.name === "react") {
+                    console.log(chalk.green("[✓] React detected"));
+                    console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
+
+                    const queue = new DownloadQueue(output, threads);
+                    activeQueue = queue;
+
+                    // Seed: <script src> tags + <link rel="modulepreload"> (Vite vendor chunks)
+                    const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb, output);
+                    queue.push(jsFilesFromPageSource);
+
+                    // webpack-style chunk path builders (CRA / custom webpack configs)
+                    const webpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource);
+                    queue.push(webpackChunkPaths);
+
+                    // Recursively follow ESM imports and Vite __vite_mapDeps references.
+                    // visited starts empty so the seed files are fetched and parsed in the first round.
+                    const visited = new Set<string>();
+                    let toFollow = [...new Set([...jsFilesFromPageSource, ...webpackChunkPaths])];
+                    while (toFollow.length > 0) {
+                        const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                        if (newFiles.length === 0) break;
+                        console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
+                        queue.push(newFiles);
+                        toFollow = newFiles;
+                    }
+
+                    // Sourcemaps for everything discovered
+                    const sourcemapUrls = await react_sourcemapUrls([...visited]);
+                    queue.push(sourcemapUrls);
+
+                    await queue.drain();
+                    queue.printSummary();
+
+                    extractSourceMaps(output, join(output, sourcemapDir));
                 }
-
-                if (mainJsUrl) {
-                    const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
-                    queue.push(jsFilesFromMainJs);
+            } else {
+                console.log(chalk.red("[!] Framework not detected :("));
+                console.log(chalk.magenta(CONFIG.notFoundMessage));
+                console.log(chalk.yellow("[i] Trying to download loaded JS files"));
+                const js_urls = await downloadLoadedJs(url);
+                if (js_urls && js_urls.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+                    const queue = new DownloadQueue(output, threads);
+                    queue.push(js_urls);
+                    await queue.drain();
+                    queue.printSummary();
                 }
-
-                await queue.drain();
-                queue.printSummary();
-            } else if (tech.name === "react") {
-                console.log(chalk.green("[✓] React detected"));
-                console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
-
-                const queue = new DownloadQueue(output, threads);
-
-                // get the files from the page source
-                const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb);
-                queue.push(jsFilesFromPageSource);
-
-                // find the webpack chunk path builder function
-                const getWebpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource);
-                queue.push(getWebpackChunkPaths);
-
-                // check existing JS files for inline sourcemap references
-                const allDiscovered = [...new Set([...jsFilesFromPageSource, ...getWebpackChunkPaths])];
-                const sourcemapUrls = await react_sourcemapUrls(allDiscovered);
-                queue.push(sourcemapUrls);
-
-                await queue.drain();
-                queue.printSummary();
-
-                extractSourceMaps(output, sourcemapDir);
-            }
-        } else {
-            console.log(chalk.red("[!] Framework not detected :("));
-            console.log(chalk.magenta(CONFIG.notFoundMessage));
-            console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-            const js_urls = await downloadLoadedJs(url);
-            if (js_urls && js_urls.length > 0) {
-                console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
-                const queue = new DownloadQueue(output, threads);
-                queue.push(js_urls);
-                await queue.drain();
-                queue.printSummary();
             }
         }
+    };
+
+    if (hardTimeoutMs === 0) {
+        await work();
+        return;
     }
+
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+    await Promise.race([
+        work().finally(() => {
+            // work() finished before the timeout — cancel the timer so it never
+            // fires orphaned and doesn't hold the event loop open.
+            if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+        }),
+        new Promise<void>((resolve) => {
+            timeoutHandle = setTimeout(() => {
+                console.log(
+                    chalk.yellow(
+                        `[!] Lazyload hard timeout reached (${hardTimeoutMs / 60000} min). Draining discovered files before moving on...`
+                    )
+                );
+                // Signal the crawler to stop at its next iteration boundary.
+                activeCrawler?.stop();
+                const q = activeQueue;
+                if (q) {
+                    // Wait for already-queued downloads to finish, then move on.
+                    q.drain()
+                        .then(() => {
+                            q.printSummary();
+                            resolve();
+                        })
+                        .catch(() => resolve());
+                } else {
+                    resolve();
+                }
+            }, hardTimeoutMs);
+        }),
+    ]);
 };
 
 export default lazyLoad;

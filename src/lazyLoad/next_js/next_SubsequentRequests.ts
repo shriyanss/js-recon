@@ -5,6 +5,7 @@ import path from "path";
 import { getURLDirectory } from "../../utility/urlUtils.js";
 import makeRequest from "../../utility/makeReq.js";
 import * as cheerio from "cheerio";
+import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 
 let queue = 0;
 let max_queue;
@@ -55,20 +56,37 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
     // add `/` to endpoints
     endpoints.push("/");
 
-    const progressBar = new cliProgress.SingleBar(
+    // Deduplicate by path — same path with different query params counts once
+    const seenPaths = new Set<string>();
+    endpoints = endpoints.filter((endpoint: string) => {
+        let pathname: string;
+        try {
+            pathname = new URL(endpoint, url).pathname;
+        } catch {
+            pathname = endpoint;
+        }
+        if (seenPaths.has(pathname)) return false;
+        seenPaths.add(pathname);
+        return true;
+    });
+
+    const multiBar = new cliProgress.MultiBar(
         {
             format:
                 chalk.cyan("[i] Fetching JS files from subsequent requests ") +
                 "[{bar}] {percentage}% | {value}/{total} | {phase}",
             barCompleteChar: "█",
             barIncompleteChar: "░",
+            barsize: computeBarSize(73),
             hideCursor: false,
             clearOnComplete: false,
             stopOnComplete: false,
         },
         cliProgress.Presets.shades_classic
     );
-    progressBar.start(endpoints.length * 2, 0, { phase: "RSC" });
+    const progressBar = multiBar.create(endpoints.length * 2, 0, { phase: "RSC" });
+    const stopBarWatcher = watchBarResize(progressBar, 73);
+    setActiveBarLogger(multiBar);
 
     let js_contents = {};
 
@@ -132,7 +150,7 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
             queue--;
         } catch (e) {
             queue--;
-            console.log(chalk.red(`[!] Error fetching ${reqUrl}: ${e}`));
+            multiBar.log(chalk.red(`[!] Error fetching ${reqUrl}: ${e}\n`));
         }
         progressBar.increment(1, { phase: "RSC" });
     });
@@ -183,7 +201,9 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
         progressBar.increment(1, { phase: "HTML" });
     }
 
-    progressBar.stop();
+    multiBar.stop();
+    stopBarWatcher();
+    setActiveBarLogger(null);
 
     // build the full URL from path
     jsFilesFromPageHtml = jsFilesFromPageHtml.map((file) => {

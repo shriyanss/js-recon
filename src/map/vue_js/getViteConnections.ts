@@ -32,6 +32,13 @@ const parseFilename = (filename: string): FileMeta | null => {
     return { something, hash };
 };
 
+// Lightweight per-function import reference — stored instead of the live AST
+// so the AST can be freed after each file is processed.
+interface ImportRef {
+    source: string;
+    original: string;
+}
+
 const getViteConnections = async (directory: string, output: string, formats: string[]): Promise<Chunks> => {
     const maxAiThreads = globals.getAiThreads();
     if (globals.getAi().length > 0) {
@@ -89,10 +96,29 @@ const getViteConnections = async (directory: string, output: string, formats: st
         return `${funcName}__${suffix}`;
     };
 
+    // Build basename -> file path lookup for import resolution (cheap, no I/O)
+    const pathByNormalized = new Map<string, string>();
+    for (const file of files) {
+        pathByNormalized.set(path.normalize(file), file);
+    }
+
+    const resolveImportSource = (importingFile: string, source: string): string | null => {
+        if (!source.startsWith(".") && !source.startsWith("/")) return null;
+        const fileDir = path.dirname(importingFile);
+        const resolved = path.normalize(path.join(fileDir, source));
+        return pathByNormalized.get(resolved) ?? null;
+    };
+
     const chunks: Chunks = {};
     const fileFuncToChunkId = new Map<string, Map<string, string>>();
 
-    // Pass 1: find every root-level 2-char function and create a chunk entry
+    // Per-chunk import references collected during the single parse pass.
+    // Stored as lightweight data so ASTs can be freed immediately after each file.
+    const chunkImportRefs = new Map<string, ImportRef[]>();
+
+    // Single pass: parse each file once, extract functions + imports + exports.
+    // This replaces the previous two-pass approach (Pass 1 + Pass 2) that parsed
+    // every file twice and kept ASTs alive across both loops.
     console.log(chalk.cyan(`[i] Scanning ${files.length} JS files for root functions`));
     for (const file of files) {
         const meta = fileMeta.get(file);
@@ -119,27 +145,54 @@ const getViteConnections = async (directory: string, output: string, formats: st
         const fileFuncs = new Map<string, string>();
         fileFuncToChunkId.set(file, fileFuncs);
 
+        // Collect imports/exports from the top-level declaration list.
+        const importMap = new Map<string, { source: string; original: string }>();
+        const exportMap = new Map<string, string[]>();
+
         for (const node of ast.program.body) {
-            if (node.type !== "FunctionDeclaration") continue;
-            if (!node.id || !FUNC_NAME_RE.test(node.id.name)) continue;
-            if (!meta) continue;
-            const funcName = node.id.name;
-            const key = computeChunkKey(funcName, meta);
-            if (chunks[key]) continue;
-            const funcCode = code.slice(node.start ?? 0, node.end ?? 0);
-            chunks[key] = {
-                id: key,
-                description: "none",
-                loadedOn: [],
-                containsFetch: false,
-                isAxiosLibrary: false,
-                exports: [],
-                callStack: [],
-                code: funcCode,
-                imports: [],
-                file: file,
-            };
-            fileFuncs.set(funcName, key);
+            if (node.type === "FunctionDeclaration") {
+                if (!node.id || !FUNC_NAME_RE.test(node.id.name)) continue;
+                if (!meta) continue;
+                const funcName = node.id.name;
+                const key = computeChunkKey(funcName, meta);
+                if (chunks[key]) continue;
+                const funcCode = code.slice(node.start ?? 0, node.end ?? 0);
+                chunks[key] = {
+                    id: key,
+                    description: "none",
+                    loadedOn: [],
+                    containsFetch: false,
+                    isAxiosLibrary: false,
+                    exports: [],
+                    callStack: [],
+                    code: funcCode,
+                    imports: [],
+                    file: file,
+                };
+                fileFuncs.set(funcName, key);
+            } else if (node.type === "ImportDeclaration") {
+                const source = node.source.value;
+                for (const spec of node.specifiers) {
+                    if (spec.type === "ImportSpecifier") {
+                        const importedName =
+                            spec.imported.type === "Identifier" ? spec.imported.name : spec.imported.value;
+                        importMap.set(spec.local.name, { source, original: importedName });
+                    } else if (spec.type === "ImportDefaultSpecifier") {
+                        importMap.set(spec.local.name, { source, original: "default" });
+                    } else if (spec.type === "ImportNamespaceSpecifier") {
+                        importMap.set(spec.local.name, { source, original: "*" });
+                    }
+                }
+            } else if (node.type === "ExportNamedDeclaration" && !node.declaration) {
+                for (const spec of node.specifiers) {
+                    if (spec.type !== "ExportSpecifier") continue;
+                    const localName = spec.local.name;
+                    const exportedAs = spec.exported.type === "Identifier" ? spec.exported.name : spec.exported.value;
+                    const arr = exportMap.get(localName) ?? [];
+                    arr.push(exportedAs);
+                    exportMap.set(localName, arr);
+                }
+            }
         }
 
         // Fallback for Vite dev-mode / non-bundled files: production-style 2-char
@@ -166,114 +219,69 @@ const getViteConnections = async (directory: string, output: string, formats: st
                 file: file,
             };
         }
-    }
 
-    // Build basename -> file path lookup for import resolution
-    const pathByNormalized = new Map<string, string>();
-    for (const file of files) {
-        pathByNormalized.set(path.normalize(file), file);
-    }
-
-    const resolveImportSource = (importingFile: string, source: string): string | null => {
-        if (!source.startsWith(".") && !source.startsWith("/")) return null;
-        const fileDir = path.dirname(importingFile);
-        const resolved = path.normalize(path.join(fileDir, source));
-        return pathByNormalized.get(resolved) ?? null;
-    };
-
-    // Pass 2: resolve imports and exports for each chunk
-    console.log(chalk.cyan("[i] Resolving imports and exports"));
-    for (const file of files) {
-        const meta = fileMeta.get(file);
-        if (!meta) continue;
-
-        const fileFuncs = fileFuncToChunkId.get(file);
-        if (!fileFuncs || fileFuncs.size === 0) continue;
-
-        const filePath = path.join(directory, file);
-        let code: string;
-        try {
-            code = fs.readFileSync(filePath, "utf8");
-        } catch {
-            continue;
-        }
-
-        let ast: parser.ParseResult<File>;
-        try {
-            ast = parser.parse(code, {
-                sourceType: "unambiguous",
-                plugins: ["jsx", "typescript"],
-                errorRecovery: true,
-            });
-        } catch {
-            continue;
-        }
-
-        const importMap = new Map<string, { source: string; original: string }>();
-        const exportMap = new Map<string, string[]>();
-
-        for (const node of ast.program.body) {
-            if (node.type === "ImportDeclaration") {
-                const source = node.source.value;
-                for (const spec of node.specifiers) {
-                    if (spec.type === "ImportSpecifier") {
-                        const importedName =
-                            spec.imported.type === "Identifier" ? spec.imported.name : spec.imported.value;
-                        importMap.set(spec.local.name, { source, original: importedName });
-                    } else if (spec.type === "ImportDefaultSpecifier") {
-                        importMap.set(spec.local.name, { source, original: "default" });
-                    } else if (spec.type === "ImportNamespaceSpecifier") {
-                        importMap.set(spec.local.name, { source, original: "*" });
-                    }
-                }
-            } else if (node.type === "ExportNamedDeclaration" && !node.declaration) {
-                for (const spec of node.specifiers) {
-                    if (spec.type !== "ExportSpecifier") continue;
-                    const localName = spec.local.name;
-                    const exportedAs = spec.exported.type === "Identifier" ? spec.exported.name : spec.exported.value;
-                    const arr = exportMap.get(localName) ?? [];
-                    arr.push(exportedAs);
-                    exportMap.set(localName, arr);
-                }
-            }
-        }
-
+        // Apply exports now that we have fileFuncs and exportMap.
         for (const [funcName, chunkId] of fileFuncs.entries()) {
             const exportNames = exportMap.get(funcName);
             if (exportNames) chunks[chunkId].exports = exportNames;
         }
 
-        traverse(ast, {
-            FunctionDeclaration(funcPath) {
-                if (funcPath.parent.type !== "Program") return;
-                const name = funcPath.node.id?.name;
-                if (!name || !FUNC_NAME_RE.test(name)) return;
-                const chunkId = fileFuncs.get(name);
-                if (!chunkId) return;
+        // Collect per-function import references in a single AST traversal so the
+        // AST can be discarded immediately after this loop body. Lightweight ImportRef
+        // objects are stored instead of live AST node references.
+        if (importMap.size > 0) {
+            traverse(ast, {
+                FunctionDeclaration(funcPath) {
+                    if (funcPath.parent.type !== "Program") return;
+                    const name = funcPath.node.id?.name;
+                    if (!name || !FUNC_NAME_RE.test(name)) return;
+                    const chunkId = fileFuncs.get(name);
+                    if (!chunkId) return;
 
-                const importsSet = new Set<string>();
-                funcPath.traverse({
-                    Identifier(idPath) {
-                        const idName = idPath.node.name;
-                        if (!importMap.has(idName)) return;
-                        // skip identifiers that aren't references (property names, etc.)
-                        const parent = idPath.parent;
-                        if (parent.type === "MemberExpression" && parent.property === idPath.node && !parent.computed)
-                            return;
-                        if (parent.type === "ObjectProperty" && parent.key === idPath.node && !parent.computed) return;
-                        const { source, original } = importMap.get(idName)!;
-                        const resolvedFile = resolveImportSource(file, source);
-                        if (!resolvedFile) return;
-                        const targetMap = fileFuncToChunkId.get(resolvedFile);
-                        if (!targetMap) return;
-                        const targetId = targetMap.get(original);
-                        if (targetId) importsSet.add(targetId);
-                    },
-                });
+                    const refs: ImportRef[] = [];
+                    funcPath.traverse({
+                        Identifier(idPath) {
+                            const idName = idPath.node.name;
+                            if (!importMap.has(idName)) return;
+                            const parent = idPath.parent;
+                            if (
+                                parent.type === "MemberExpression" &&
+                                parent.property === idPath.node &&
+                                !parent.computed
+                            )
+                                return;
+                            if (parent.type === "ObjectProperty" && parent.key === idPath.node && !parent.computed)
+                                return;
+                            const imp = importMap.get(idName)!;
+                            refs.push({ source: imp.source, original: imp.original });
+                        },
+                    });
 
-                chunks[chunkId].imports = Array.from(importsSet);
-            },
-        });
+                    if (refs.length > 0) chunkImportRefs.set(chunkId, refs);
+                },
+            });
+        }
+
+        // ast and code go out of scope here — the GC can reclaim them.
+    }
+
+    // Resolve collected import references to chunk IDs (no re-parsing needed).
+    console.log(chalk.cyan("[i] Resolving imports and exports"));
+    for (const [chunkId, refs] of chunkImportRefs.entries()) {
+        const chunk = chunks[chunkId];
+        if (!chunk) continue;
+        const file = chunk.file;
+
+        const importsSet = new Set<string>();
+        for (const { source, original } of refs) {
+            const resolvedFile = resolveImportSource(file, source);
+            if (!resolvedFile) continue;
+            const targetMap = fileFuncToChunkId.get(resolvedFile);
+            if (!targetMap) continue;
+            const targetId = targetMap.get(original);
+            if (targetId) importsSet.add(targetId);
+        }
+        chunk.imports = Array.from(importsSet);
     }
 
     console.log(chalk.green(`[✓] Found ${Object.keys(chunks).length} Vue.JS functions`));
@@ -320,8 +328,30 @@ const getViteConnections = async (directory: string, output: string, formats: st
     }
 
     if (formats.includes("json")) {
-        const chunksJson = JSON.stringify(chunks, null, 2);
-        fs.writeFileSync(`${output}.json`, chunksJson);
+        // Write the JSON file incrementally to avoid allocating a single string
+        // that mirrors the entire chunks object in memory (which can be GBs for
+        // large apps).
+        const outputPath = `${output}.json`;
+        const writeStream = fs.createWriteStream(outputPath);
+        writeStream.write("{\n");
+        const entries = Object.entries(chunks);
+        for (let i = 0; i < entries.length; i++) {
+            const [key, value] = entries[i];
+            const isLast = i === entries.length - 1;
+            // Indent inner lines by 2 extra spaces to match pretty-print style.
+            const valueStr = JSON.stringify(value, null, 2)
+                .split("\n")
+                .map((line, j) => (j === 0 ? line : "  " + line))
+                .join("\n");
+            writeStream.write(`  ${JSON.stringify(key)}: ${valueStr}${isLast ? "" : ","}\n`);
+        }
+        writeStream.write("}");
+        await new Promise<void>((resolve, reject) => {
+            writeStream.end((err?: Error | null) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
         console.log(chalk.green(`[✓] Saved Vite connections to ${output}.json`));
     }
 

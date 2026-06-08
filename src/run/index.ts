@@ -10,6 +10,14 @@ import analyze from "../analyze/index.js";
 import report from "../report/index.js";
 import { clearJsUrls, clearJsonUrls, getJsUrls } from "../lazyLoad/globals.js";
 import path from "path";
+import {
+    installSigintHandler,
+    removeSigintHandler,
+    getSkipStepPromise,
+    resetSkipStep,
+    shouldSkipTarget,
+    resetSkipTarget,
+} from "./interruptHandler.js";
 
 /**
  * Determines the directory for a Content Delivery Network (CDN) if used by the target.
@@ -74,23 +82,29 @@ const processUrl = async (
     }
 
     console.log(chalk.bgCyan("[1/8] Running lazyload to download JavaScript files..."));
-    await lazyLoad(
-        url,
-        outputDir,
-        cmd.strictScope,
-        cmd.scope.split(","),
-        cmd.threads,
-        false,
-        "",
-        cmd.insecure,
-        false,
-        cmd.sourcemapDir,
-        cmd.research,
-        cmd.researchOutput,
-        Number(cmd.maxIterations),
-        Number(cmd.maxJsSize)
-    );
+    resetSkipStep();
+    await Promise.race([
+        lazyLoad(
+            url,
+            outputDir,
+            cmd.strictScope,
+            cmd.scope.split(","),
+            cmd.threads,
+            false,
+            "",
+            cmd.insecure,
+            false,
+            cmd.sourcemapDir,
+            cmd.research,
+            cmd.researchOutput,
+            Number(cmd.maxIterations),
+            Number(cmd.maxJsSize),
+            Number(cmd.lazyloadTimeout) * 60 * 1000
+        ),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Lazyload complete."));
+    if (shouldSkipTarget()) return;
 
     if (globalsUtil.getTech() === "") {
         console.log(chalk.bgRed(`[!] Technology not detected. ${isBatch ? "Skipping this target." : "Quitting."}`));
@@ -100,12 +114,66 @@ const processUrl = async (
         process.exit(10);
     }
 
-    if (!["next", "vue"].includes(globalsUtil.getTech())) {
+    if (!["next", "vue", "react", "svelte"].includes(globalsUtil.getTech())) {
         console.log(
             chalk.bgYellow(
-                `[!] The tool only supports Next.JS ('next') and Vue.JS ('vue') in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
+                `[!] The tool supports Next.JS, Vue.JS, React, and Svelte/Astro in the run module. For ${globalsUtil.getTech()}, only downloading JS files is supported`
             )
         );
+        return;
+    }
+
+    if (globalsUtil.getTech() === "react") {
+        const mappedFileReact = isBatch ? `${workingDir}/mapped` : "mapped";
+        const mappedJsonFileReact = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
+        const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
+        const analyzeFile = isBatch ? `${workingDir}/analyze.json` : "analyze.json";
+        const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
+        const reportFile = isBatch ? `${workingDir}/report` : "report";
+        const endpointsFile = isBatch ? `${workingDir}/endpoints` : "endpoints";
+
+        const reactHostDir = `${outputDir}/${targetHost}`;
+
+        console.log(chalk.bgCyan("[2/4] Running map to find functions and API calls..."));
+        globalsUtil.setOpenapi(true);
+        if (isBatch) {
+            globalsUtil.setOpenapiOutputFile(openapiFile);
+        }
+        for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+            const p = `${mappedFileReact}${ext}`;
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
+        resetSkipStep();
+        await Promise.race([
+            map(reactHostDir, mappedFileReact, ["json"], "react", false, false, cmd.command || []),
+            getSkipStepPromise(),
+        ]);
+        console.log(chalk.bgGreen("[+] Map complete."));
+        if (shouldSkipTarget()) return;
+
+        console.log(chalk.bgCyan("[3/4] Running analyze..."));
+        resetSkipStep();
+        // @ts-ignore
+        await Promise.race([
+            analyze(cmd.rules || "", mappedJsonFileReact, "react", false, openapiFile, false, analyzeFile),
+            getSkipStepPromise(),
+        ]);
+        console.log(chalk.bgGreen("[+] Analyze complete."));
+        if (shouldSkipTarget()) return;
+
+        console.log(chalk.bgCyan("[4/4] Running report module..."));
+        const endpointsJson = `${endpointsFile}.json`;
+        if (!fs.existsSync(endpointsJson)) {
+            fs.writeFileSync(endpointsJson, "[]");
+        }
+        resetSkipStep();
+        await Promise.race([
+            report(reportDbFile, mappedJsonFileReact, analyzeFile, endpointsJson, openapiFile, reportFile),
+            getSkipStepPromise(),
+        ]);
+        console.log(chalk.bgGreen("[+] Report complete."));
+
+        console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
         return;
     }
 
@@ -126,13 +194,27 @@ const processUrl = async (
         if (isBatch) {
             globalsUtil.setOpenapiOutputFile(openapiFile);
         }
-        await map(outputDir, mappedFileVue, ["json"], "vue", false, false, cmd.command || []);
+        for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+            const p = `${mappedFileVue}${ext}`;
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
+        resetSkipStep();
+        await Promise.race([
+            map(outputDir, mappedFileVue, ["json"], "vue", false, false, cmd.command || []),
+            getSkipStepPromise(),
+        ]);
         console.log(chalk.bgGreen("[+] Map complete."));
+        if (shouldSkipTarget()) return;
 
         console.log(chalk.bgCyan("[3/4] Running analyze..."));
+        resetSkipStep();
         // @ts-ignore
-        await analyze(cmd.rules || "", mappedJsonFileVue, "vue", false, openapiFile, false, analyzeFile);
+        await Promise.race([
+            analyze(cmd.rules || "", mappedJsonFileVue, "vue", false, openapiFile, false, analyzeFile),
+            getSkipStepPromise(),
+        ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
+        if (shouldSkipTarget()) return;
 
         console.log(chalk.bgCyan("[4/4] Running report module..."));
         // Endpoints extraction isn't implemented for Vue yet; pass an empty file if absent.
@@ -140,7 +222,63 @@ const processUrl = async (
         if (!fs.existsSync(endpointsJson)) {
             fs.writeFileSync(endpointsJson, "[]");
         }
-        await report(reportDbFile, mappedJsonFileVue, analyzeFile, endpointsJson, openapiFile, reportFile);
+        resetSkipStep();
+        await Promise.race([
+            report(reportDbFile, mappedJsonFileVue, analyzeFile, endpointsJson, openapiFile, reportFile),
+            getSkipStepPromise(),
+        ]);
+        console.log(chalk.bgGreen("[+] Report complete."));
+
+        console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
+        return;
+    }
+
+    if (globalsUtil.getTech() === "svelte") {
+        const mappedFileSvelte = isBatch ? `${workingDir}/mapped` : "mapped";
+        const mappedJsonFileSvelte = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
+        const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
+        const analyzeFile = isBatch ? `${workingDir}/analyze.json` : "analyze.json";
+        const reportDbFile = isBatch ? `${workingDir}/js-recon.db` : "js-recon.db";
+        const reportFile = isBatch ? `${workingDir}/report` : "report";
+        const endpointsFile = isBatch ? `${workingDir}/endpoints` : "endpoints";
+
+        console.log(chalk.bgCyan("[2/4] Running map to find functions and API calls..."));
+        globalsUtil.setOpenapi(true);
+        if (isBatch) {
+            globalsUtil.setOpenapiOutputFile(openapiFile);
+        }
+        for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+            const p = `${mappedFileSvelte}${ext}`;
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+        }
+        resetSkipStep();
+        await Promise.race([
+            map(outputDir, mappedFileSvelte, ["json"], "svelte", false, false, cmd.command || []),
+            getSkipStepPromise(),
+        ]);
+        console.log(chalk.bgGreen("[+] Map complete."));
+        if (shouldSkipTarget()) return;
+
+        console.log(chalk.bgCyan("[3/4] Running analyze..."));
+        resetSkipStep();
+        // @ts-ignore
+        await Promise.race([
+            analyze(cmd.rules || "", mappedJsonFileSvelte, "svelte", false, openapiFile, false, analyzeFile),
+            getSkipStepPromise(),
+        ]);
+        console.log(chalk.bgGreen("[+] Analyze complete."));
+        if (shouldSkipTarget()) return;
+
+        console.log(chalk.bgCyan("[4/4] Running report module..."));
+        const endpointsJson = `${endpointsFile}.json`;
+        if (!fs.existsSync(endpointsJson)) {
+            fs.writeFileSync(endpointsJson, "[]");
+        }
+        resetSkipStep();
+        await Promise.race([
+            report(reportDbFile, mappedJsonFileSvelte, analyzeFile, endpointsJson, openapiFile, reportFile),
+            getSkipStepPromise(),
+        ]);
         console.log(chalk.bgGreen("[+] Report complete."));
 
         console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
@@ -164,81 +302,138 @@ const processUrl = async (
     const cdnOutputDir = cdnDir ? cdnDir : outputDir + "/" + targetHost;
 
     console.log(chalk.bgCyan("[2/8] Running strings to extract endpoints..."));
-    await strings(outputDir, stringsFile, true, extractedUrlsFile, false, false, false);
+    resetSkipStep();
+    await Promise.race([
+        strings(outputDir, stringsFile, true, extractedUrlsFile, false, false, false),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Strings complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[3/8] Running lazyload with subsequent requests to download JavaScript files..."));
-    await lazyLoad(
-        url,
-        outputDir,
-        cmd.strictScope,
-        cmd.scope.split(","),
-        cmd.threads,
-        true,
-        `${extractedUrlsFile}.json`,
-        cmd.insecure,
-        true,
-        cmd.sourcemapDir,
-        cmd.research,
-        cmd.researchOutput,
-        Number(cmd.maxIterations),
-        Number(cmd.maxJsSize)
-    );
+    resetSkipStep();
+    await Promise.race([
+        lazyLoad(
+            url,
+            outputDir,
+            cmd.strictScope,
+            cmd.scope.split(","),
+            cmd.threads,
+            true,
+            `${extractedUrlsFile}.json`,
+            cmd.insecure,
+            true,
+            cmd.sourcemapDir,
+            cmd.research,
+            cmd.researchOutput,
+            Number(cmd.maxIterations),
+            Number(cmd.maxJsSize),
+            Number(cmd.lazyloadTimeout) * 60 * 1000
+        ),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Lazyload with subsequent requests complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[4/8] Running strings again to extract endpoints..."));
-    await strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true);
+    resetSkipStep();
+    await Promise.race([
+        strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Strings complete."));
+    if (shouldSkipTarget()) return;
 
     // a second subsequent_requests pass: the first strings pass only sees initial chunks,
     // so dynamic routes such as `/post/1` are only discovered after the first subsequent
     // crawl + second strings extraction. Re-running subsequent_requests with the freshly
     // updated paths picks up chunks for those dynamic routes (e.g. the post page).
     console.log(chalk.bgCyan("[4.5/8] Re-running lazyload with subsequent requests for newly discovered paths..."));
-    await lazyLoad(
-        url,
-        outputDir,
-        cmd.strictScope,
-        cmd.scope.split(","),
-        cmd.threads,
-        true,
-        `${extractedUrlsFile}.json`,
-        cmd.insecure,
-        false,
-        cmd.sourcemapDir,
-        cmd.research,
-        cmd.researchOutput,
-        Number(cmd.maxIterations)
-    );
+    resetSkipStep();
+    await Promise.race([
+        lazyLoad(
+            url,
+            outputDir,
+            cmd.strictScope,
+            cmd.scope.split(","),
+            cmd.threads,
+            true,
+            `${extractedUrlsFile}.json`,
+            cmd.insecure,
+            false,
+            cmd.sourcemapDir,
+            cmd.research,
+            cmd.researchOutput,
+            Number(cmd.maxIterations),
+            Number(cmd.maxJsSize),
+            Number(cmd.lazyloadTimeout) * 60 * 1000
+        ),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Lazyload re-pass complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[4.6/8] Re-running strings for chunks from the re-pass..."));
-    await strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true);
+    resetSkipStep();
+    await Promise.race([
+        strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Strings re-pass complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[5/8] Running map to find functions..."));
     globalsUtil.setOpenapi(true);
     if (isBatch) {
         globalsUtil.setOpenapiOutputFile(openapiFile);
     }
-    await map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false, cmd.command || []);
+    // Delete stale map artifacts so map always regenerates from the current target's output.
+    // Without this, a leftover mapped.json from a previous run would be reused, causing
+    // resolveFetch to look for files from the wrong target's directory.
+    for (const ext of [".json", "-openapi.json", "-openapi.postman_collection.json"]) {
+        const p = `${mappedFile}${ext}`;
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+    resetSkipStep();
+    await Promise.race([
+        map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false, cmd.command || []),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Map complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[6/8] Running endpoints to extract endpoints..."));
+    resetSkipStep();
     if (fs.existsSync(`${outputDir}/${targetHost}/___subsequent_requests`)) {
-        await endpoints(url, `${outputDir}/${targetHost}/`, endpointsFile, ["json"], "next", false, mappedJsonFile);
+        await Promise.race([
+            endpoints(url, `${outputDir}/${targetHost}/`, endpointsFile, ["json"], "next", false, mappedJsonFile),
+            getSkipStepPromise(),
+        ]);
     } else {
-        await endpoints(url, undefined, endpointsFile, ["json"], "next", false, mappedJsonFile);
+        await Promise.race([
+            endpoints(url, undefined, endpointsFile, ["json"], "next", false, mappedJsonFile),
+            getSkipStepPromise(),
+        ]);
     }
     console.log(chalk.bgGreen("[+] Endpoints complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[7/8] Running analyze to extract endpoints..."));
-    // @ts-ignore
-    await analyze(cmd.rules || "", mappedJsonFile, globalsUtil.getTech(), false, openapiFile, false, analyzeFile);
+    resetSkipStep();
+    await Promise.race([
+        // @ts-ignore
+        analyze(cmd.rules || "", mappedJsonFile, globalsUtil.getTech(), false, openapiFile, false, analyzeFile),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Analyze complete."));
+    if (shouldSkipTarget()) return;
 
     console.log(chalk.bgCyan("[8/8] Running report module..."));
-    await report(reportDbFile, mappedJsonFile, analyzeFile, `${endpointsFile}.json`, openapiFile, reportFile);
+    resetSkipStep();
+    await Promise.race([
+        report(reportDbFile, mappedJsonFile, analyzeFile, `${endpointsFile}.json`, openapiFile, reportFile),
+        getSkipStepPromise(),
+    ]);
     console.log(chalk.bgGreen("[+] Report complete."));
 
     console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
@@ -261,69 +456,78 @@ export default async (cmd: any): Promise<void> => {
     globalsUtil.setRespCacheFile(cmd.cacheFile);
     globalsUtil.setYes(cmd.yes);
 
-    // check if the given URL is a file
-    if (!fs.existsSync(cmd.url)) {
-        // check if output directory exists. If so, ask the user to switch to other directory
-        // if not done, it might conflict this process
-        // for devs: run `npm run cleanup` to prepare this directory
-        if (fs.existsSync(cmd.output)) {
-            console.log(
-                chalk.red(
-                    `[!] Output directory ${cmd.output} already exists. Please switch to other directory or it might conflict with this process.`
-                )
-            );
-            console.log(
-                chalk.yellow(
-                    `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
-                )
-            );
-            process.exit(11);
-        }
+    const isBatch = fs.existsSync(cmd.url);
+    installSigintHandler(isBatch);
 
-        try {
-            new URL(cmd.url);
-        } catch (e) {
-            console.log(chalk.red(`[!] Invalid URL: ${cmd.url}`));
-            process.exit(12);
-        }
-
-        await processUrl(cmd.url, cmd.output, ".", cmd, false);
-    } else {
-        // since this is a file, we need to first load the URLs in the memory remove empty strings
-        const urls = fs
-            .readFileSync(cmd.url, "utf-8")
-            .split("\n")
-            .filter((url) => url !== "");
-
-        if (!fs.existsSync(cmd.output)) {
-            fs.mkdirSync(cmd.output, { recursive: true });
-        }
-
-        for (const url of urls) {
-            // Validate URL only
-            let urlObj;
-            try {
-                urlObj = new URL(url);
-            } catch {
-                console.log(chalk.bgRed(`[!] Invalid URL: ${url}`));
-                continue;
-            }
-
-            const hostDir = urlObj.host.replace(":", "_");
-            const thisTargetDir = `${cmd.output}/${hostDir}`;
-
-            if (fs.existsSync(thisTargetDir)) {
-                console.log(chalk.red(`[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`));
+    try {
+        // check if the given URL is a file
+        if (!isBatch) {
+            // check if output directory exists. If so, ask the user to switch to other directory
+            // if not done, it might conflict this process
+            // for devs: run `npm run cleanup` to prepare this directory
+            if (fs.existsSync(cmd.output)) {
+                console.log(
+                    chalk.red(
+                        `[!] Output directory ${cmd.output} already exists. Please switch to other directory or it might conflict with this process.`
+                    )
+                );
                 console.log(
                     chalk.yellow(
                         `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
                     )
                 );
-                continue;
+                process.exit(11);
             }
 
-            fs.mkdirSync(thisTargetDir, { recursive: true });
-            await processUrl(url, thisTargetDir, thisTargetDir, cmd, true);
+            try {
+                new URL(cmd.url);
+            } catch (e) {
+                console.log(chalk.red(`[!] Invalid URL: ${cmd.url}`));
+                process.exit(12);
+            }
+
+            await processUrl(cmd.url, cmd.output, ".", cmd, false);
+        } else {
+            // since this is a file, we need to first load the URLs in the memory remove empty strings
+            const urls = fs
+                .readFileSync(cmd.url, "utf-8")
+                .split("\n")
+                .filter((url) => url !== "");
+
+            if (!fs.existsSync(cmd.output)) {
+                fs.mkdirSync(cmd.output, { recursive: true });
+            }
+
+            for (const url of urls) {
+                resetSkipTarget();
+
+                // Validate URL only
+                let urlObj;
+                try {
+                    urlObj = new URL(url);
+                } catch {
+                    console.log(chalk.bgRed(`[!] Invalid URL: ${url}`));
+                    continue;
+                }
+
+                const hostDir = urlObj.host.replace(":", "_");
+                const thisTargetDir = `${cmd.output}/${hostDir}`;
+
+                if (fs.existsSync(thisTargetDir)) {
+                    console.log(chalk.red(`[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`));
+                    console.log(
+                        chalk.yellow(
+                            `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
+                        )
+                    );
+                    continue;
+                }
+
+                fs.mkdirSync(thisTargetDir, { recursive: true });
+                await processUrl(url, thisTargetDir, thisTargetDir, cmd, true);
+            }
         }
+    } finally {
+        removeSigintHandler();
     }
 };

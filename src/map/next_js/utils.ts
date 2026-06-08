@@ -1344,6 +1344,7 @@ export const resolveNodeValue = (
                     }
                     return obj;
                 }
+                case "OptionalMemberExpression":
                 case "MemberExpression": {
                     // Handle deeply-nested webpack chunk imports by flattening the chain:
                     //   s.h.NEXT_OKTA_VALIDATE_USER  ->  resolveWebpackChunkImport("s", ..., ["h", "NEXT_OKTA_VALIDATE_USER"])

@@ -43,14 +43,23 @@ class NextJsCrawler {
     /** All JS/JSON URLs discovered so far (deduplicated). */
     private discoveredUrls: Set<string>;
 
-    /** Page URLs that have already been visited for script-tag extraction. */
-    private visitedPageUrls: Set<string>;
+    /**
+     * Script-fingerprint map used for content-entropy deduplication.
+     * Key: normalized page URL (origin+pathname).
+     * Value: set of fingerprints (sorted, joined script-src lists) seen for that path.
+     * A query-param variant of an already-visited path is only crawled when its
+     * script set differs from every fingerprint already recorded for that path.
+     */
+    private pageScriptFingerprints: Map<string, Set<string>>;
 
     /** Per-technique efficiency mapping (for research mode). */
     public techniqueEfficiencyMapping: Record<string, string[]>;
 
     /** Maximum number of recursive passes before giving up. */
     private MAX_ITERATIONS: number;
+
+    /** Set to true by stop() to abort the crawl loop gracefully. */
+    private stopped = false;
 
     /** Callback invoked with newly discovered downloadable URLs. */
     private readonly onUrlsDiscovered?: (urls: string[]) => void;
@@ -66,11 +75,34 @@ class NextJsCrawler {
         this.onUrlsDiscovered = options.onUrlsDiscovered;
 
         this.discoveredUrls = new Set();
-        this.visitedPageUrls = new Set();
+        this.pageScriptFingerprints = new Map();
         this.techniqueEfficiencyMapping = {};
     }
 
     // ── helpers ──────────────────────────────────────────────────────────
+
+    /**
+     * Normalizes a page URL to origin+pathname, stripping query and fragment.
+     * Used as the key for pageScriptFingerprints.
+     */
+    private normalizePageUrl(u: string): string {
+        try {
+            const parsed = new URL(u);
+            return parsed.origin + parsed.pathname;
+        } catch {
+            return u;
+        }
+    }
+
+    /** Produces a stable fingerprint for a set of script URLs. */
+    private scriptFingerprint(scripts: string[]): string {
+        return [...new Set(scripts)].sort().join(",");
+    }
+
+    /** Signal the crawl loop to stop after the current iteration. */
+    public stop(): void {
+        this.stopped = true;
+    }
 
     /** Register newly found URLs and return only the ones that are truly new. */
     private registerUrls(urls: string[]): string[] {
@@ -117,7 +149,10 @@ class NextJsCrawler {
             ...jsFromScriptTag,
         ];
         this.emitDownloadable(this.registerUrls(jsFromScriptTag));
-        this.visitedPageUrls.add(this.url);
+        // Record the landing page's script fingerprint so the recursive loop
+        // never re-probes it.
+        const landingNorm = this.normalizePageUrl(this.url);
+        this.pageScriptFingerprints.set(landingNorm, new Set([this.scriptFingerprint(jsFromScriptTag)]));
 
         // 1b. Client-side paths from <a href> tags on the landing page.
         // These are page URLs (not JS), so they'll be picked up by the
@@ -215,9 +250,9 @@ class NextJsCrawler {
         };
 
         const pageQueue: string[] = [];
-        const enqueued = new Set<string>();
+        const enqueued = new Set<string>(); // tracks full URLs to avoid duplicate entries per pass
         const enqueueIfPage = (u: string) => {
-            if (this.visitedPageUrls.has(u) || enqueued.has(u)) return;
+            if (enqueued.has(u)) return; // exact URL already queued this pass
             if (!isPageUrl(u)) return;
             enqueued.add(u);
             pageQueue.push(u);
@@ -227,17 +262,30 @@ class NextJsCrawler {
         for (const u of newInThisPass) enqueueIfPage(u);
 
         for (const u of pageQueue) {
-            if (this.visitedPageUrls.has(u)) continue;
-            this.visitedPageUrls.add(u);
+            if (this.stopped) break; // honour stop() at each iteration boundary
 
+            const normalized = this.normalizePageUrl(u);
+
+            // Fetch scripts first — used for both fingerprinting and URL registration.
             const extra = await next_getJSScript(u);
 
-            // If return value is invalid, log and crash
             if (!extra || !Array.isArray(extra)) {
                 console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
                 console.error(`[NextJsCrawler] Returned value:`, extra);
                 process.exit(1);
             }
+
+            // Content-entropy dedup: skip this variant if its script set matches
+            // a fingerprint already recorded for this pathname.
+            const fp = this.scriptFingerprint(extra);
+            const knownFPs = this.pageScriptFingerprints.get(normalized);
+            if (knownFPs?.has(fp)) continue;
+
+            // New content for this pathname — record fingerprint and process.
+            if (!this.pageScriptFingerprints.has(normalized)) {
+                this.pageScriptFingerprints.set(normalized, new Set());
+            }
+            this.pageScriptFingerprints.get(normalized)!.add(fp);
 
             this.techniqueEfficiencyMapping["next_getJSScript"] = [
                 ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
@@ -281,7 +329,7 @@ class NextJsCrawler {
         let currentBatch = [...this.discoveredUrls];
         let iteration = 0;
 
-        while (iteration < this.MAX_ITERATIONS) {
+        while (iteration < this.MAX_ITERATIONS && !this.stopped) {
             iteration++;
             const sizeBefore = this.size;
 
@@ -300,15 +348,19 @@ class NextJsCrawler {
             currentBatch = newUrls;
         }
 
-        if (iteration >= this.MAX_ITERATIONS) {
+        if (this.stopped) {
+            console.log(chalk.yellow(`[!] Crawler stopped — downloading all discovered files`));
+        } else if (iteration >= this.MAX_ITERATIONS) {
             console.log(chalk.yellow(`[!] Reached max recursive crawl iterations (${this.MAX_ITERATIONS})`));
         }
 
-        // Phase 3 – brute-force .map files on the final set
-        const allJsUrls = [...this.discoveredUrls].filter((u) => u.endsWith(".js") || u.endsWith(".js.map"));
-        const jsFromBrute = await next_bruteForceJsFiles(allJsUrls);
-        this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;
-        this.emitDownloadable(this.registerUrls(jsFromBrute));
+        // Phase 3 – brute-force .map files on the final set (skip if stopped by timeout)
+        if (!this.stopped) {
+            const allJsUrls = [...this.discoveredUrls].filter((u) => u.endsWith(".js") || u.endsWith(".js.map"));
+            const jsFromBrute = await next_bruteForceJsFiles(allJsUrls);
+            this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;
+            this.emitDownloadable(this.registerUrls(jsFromBrute));
+        }
 
         // Only return downloadable assets. Anchor-derived page URLs live in
         // discoveredUrls to drive the crawl, but must not reach downloadFiles.

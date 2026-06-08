@@ -15,6 +15,7 @@ import report from "./report/index.js";
 import configureSandbox from "./utility/configureSandbox.js";
 import mcp from "./mcp/index.js";
 import load from "./load/index.js";
+import fingerprint from "./fingerprint/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -64,6 +65,7 @@ program
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
+    .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -89,7 +91,8 @@ program
             cmd.research,
             cmd.researchOutput,
             Number(cmd.maxIterations),
-            Number(cmd.maxJsSize)
+            Number(cmd.maxJsSize),
+            Number(cmd.lazyloadTimeout) * 60 * 1000
         );
     });
 
@@ -201,6 +204,13 @@ program
     .option("--openapi", "Generate OpenAPI spec from the code", false)
     .option("--openapi-output <file>", "Output file for OpenAPI spec", "mapped-openapi.json")
     .option("--openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found", false)
+    .option("--no-graphql", "Disable GraphQL operation extraction during OpenAPI generation")
+    .option("--ngql", "Alias for --no-graphql")
+    .option(
+        "--max-recursion-depth <n>",
+        "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
+        "3"
+    )
     .action(async (cmd) => {
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
@@ -211,6 +221,8 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         globalsUtil.setOpenapi(cmd.openapi);
         globalsUtil.setOpenapiOutputFile(cmd.openapiOutput);
+        // Commander's --no-graphql flips cmd.graphql to false; --ngql is an alias.
+        globalsUtil.setGraphqlEnabled(cmd.graphql !== false && !cmd.ngql);
 
         // validate AI options
         if (globalsUtil.getAi().length !== 0) {
@@ -221,6 +233,12 @@ program
                 }
             }
         }
+        const maxRecursionDepth = parseInt(cmd.maxRecursionDepth ?? "3", 10);
+        if (!Number.isFinite(maxRecursionDepth) || maxRecursionDepth < 0) {
+            console.log(chalk.red(`[!] Invalid --max-recursion-depth: ${cmd.maxRecursionDepth}`));
+            process.exit(1);
+        }
+        globalsUtil.setMaxRecursionDepth(maxRecursionDepth);
         await map(
             cmd.directory,
             cmd.output,
@@ -306,6 +324,8 @@ program
     .option("--openai-api-key <key>", "OpenAI API key")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
+    .option("--no-graphql", "Disable GraphQL operation extraction during OpenAPI generation")
+    .option("--ngql", "Alias for --no-graphql")
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
@@ -314,6 +334,7 @@ program
     .option("--research-output <file>", "Output file for research mode", "research.json")
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
+    .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
     .action(async (cmd) => {
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
@@ -323,6 +344,7 @@ program
         globalsUtil.setAiThreads(cmd.aiThreads);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setOpenapiChunkTag(cmd.mapOpenapiChunkTag);
+        globalsUtil.setGraphqlEnabled(cmd.graphql !== false && !cmd.ngql);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setCacheOnly(cmd.cacheOnly);
@@ -353,15 +375,51 @@ program
     });
 
 program
+    .command("fingerprint")
+    .description("Detect front-end frameworks across one or more URLs")
+    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-o, --output <file>", "Output file to write results")
+    .option("-f, --format <formats>", "Output format(s): text, csv, json, jsonl (comma-separated)", "text")
+    .option("--timeout <timeout>", "Request timeout in ms", "30000")
+    .option("-k, --insecure", "Disable SSL certificate verification", false)
+    .option("--no-sandbox", "Disable browser sandbox")
+    .action(async (cmd) => {
+        validateAndSetTimeout(cmd.timeout);
+        globalsUtil.setDisableCache(true);
+        globalsUtil.setYes(true);
+        configureSandbox(cmd);
+        await fingerprint(cmd.url, cmd.output, cmd.format);
+    });
+
+program
     .command("mcp")
-    .description("Interactive AI-powered CLI for js-recon modules")
+    .description("AI-powered CLI / one-shot chat / Model Context Protocol server for js-recon")
     .option("--cli", "Start interactive CLI mode", false)
+    .option("--server", "Start a Model Context Protocol server over stdio", false)
+    .option(
+        "-c, --chat <prompt>",
+        "Send a one-shot prompt to the AI agent non-interactively (can be passed multiple times)",
+        (val: string, prev: string[]) => [...prev, val],
+        [] as string[]
+    )
     .option("--config <file>", "Path to MCP config file", undefined)
     .option("--api-key <key>", "API key for the LLM provider")
     .option("--model <model>", "AI model to use (e.g. gpt-4o-mini, claude-sonnet-4-20250514)")
     .option("--provider <provider>", "LLM provider to use (openai, anthropic)")
+    .option("--no-refresh-claude-creds", "Do not auto-refresh Claude Code OAuth tokens; fail if expired")
+    .option("--claude-client-id <id>", "OAuth client ID used when refreshing Claude Code credentials")
     .action(async (cmd) => {
-        await mcp(cmd.cli, cmd.config, cmd.apiKey, cmd.model, cmd.provider);
+        await mcp({
+            cli: cmd.cli,
+            server: cmd.server,
+            chat: cmd.chat,
+            configFile: cmd.config,
+            apiKey: cmd.apiKey,
+            model: cmd.model,
+            provider: cmd.provider,
+            refreshClaudeCreds: cmd.refreshClaudeCreds,
+            claudeClientId: cmd.claudeClientId,
+        });
     });
 
 program.parse(process.argv);
