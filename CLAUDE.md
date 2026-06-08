@@ -195,7 +195,7 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
     git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
     ```
 
-3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`.
+3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`. The `refactor` and `load` subcommands are easy to miss — explicitly verify they are present.
 
 4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are unreleased commits, update `CHANGELOG.md` and `version.txt`, then push.
 
@@ -214,7 +214,11 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
    | `shriyanss/js-recon-docs` | `stage` | `main` | version string | Brief summary of doc changes |
    | `shriyanss/js-recon-rules` | `dev` | `main` | rules version (e.g. `v1.2.0`) | `## <version>` rules changelog section |
 
-8. **Monitor PRs** — CodeRabbit reviews automatically. Wait for GitHub CI (version check, build, etc.) to pass. The docs CI check is expected to fail until js-recon is fully published to npm.
+8. **Monitor CI** — after PRs are open, use `gh pr checks <pr-number> --repo <owner/repo>` to watch all three repos. Poll until all checks complete. The docs CI check is expected to fail until js-recon is fully published to npm — that is acceptable.
+
+9. **Handle CodeRabbit** — js-recon has CodeRabbit installed. After the PR is created, poll for review comments with `gh api repos/shriyanss/js-recon/pulls/<pr>/comments`. For each actionable suggestion (correctness bugs, conventions violations), apply a fix as a follow-up commit to `dev` — the PR updates automatically. Trivial style preferences can be skipped.
+
+10. **Stop before merge** — do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
 
 ## Security / confidentiality
 
