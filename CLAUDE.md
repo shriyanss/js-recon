@@ -181,6 +181,40 @@ Typical test invocation:
 npm run cleanup && npm run start -- run -u <target-url> -y -k
 ```
 
+## Release process
+
+Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-rules) and `stage` (js-recon-docs). Do **not** touch `js-recon-research` — it is private and excluded from releases.
+
+### Steps
+
+1. **Bump version** — update `version` in `src/globalConfig.ts` and `package.json` to the new tag (e.g. `1.3.1-alpha.4`). Both must match.
+
+2. **Update CHANGELOG** — add a `## <version> - <YYYY-MM-DD>` section to `CHANGELOG.md` with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections as needed. Verify every `feat`/`fix` commit since the previous tag is covered:
+   ```bash
+   git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
+   ```
+
+3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`.
+
+4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are unreleased commits, update `CHANGELOG.md` and `version.txt`, then push.
+
+5. **Update docs** (`js-recon-docs` repo, `stage` branch):
+   - Fix any option/flag gaps in `docs/docs/modules/*.md` (cross-check against `src/index.ts`).
+   - Snapshot the current docs: `npx docusaurus docs:version <version>` (run inside `js-recon-docs/`).
+   - Keep `lastVersion` in `docusaurus.config.ts` pointing to the last **stable** release (do not change it for alphas/betas).
+   - Verify: `npm run build` in `js-recon-docs/` must pass with no broken-link errors.
+
+6. **Push** — push all three repos to their source branches (`dev`/`stage`).
+
+7. **Open PRs** using `gh pr create`:
+   | Repo | Source | Target | Title | Body |
+   |------|--------|--------|-------|------|
+   | `shriyanss/js-recon` | `dev` | `main` | version string (e.g. `v1.3.1-alpha.4`) | `## <version>` changelog section |
+   | `shriyanss/js-recon-docs` | `stage` | `main` | version string | Brief summary of doc changes |
+   | `shriyanss/js-recon-rules` | `dev` | `main` | rules version (e.g. `v1.2.0`) | `## <version>` rules changelog section |
+
+8. **Monitor PRs** — CodeRabbit reviews automatically. Wait for GitHub CI (version check, build, etc.) to pass. The docs CI check is expected to fail until js-recon is fully published to npm.
+
 ## Security / confidentiality
 
 When a change is informed by behavior observed on a real target (URLs, endpoint names, response shapes, finding details, etc.):
