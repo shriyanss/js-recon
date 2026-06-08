@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.3.1-alpha.4 - (unreleased)
+## 1.3.1-alpha.4 - 2026-06-08
 
 ### Fixed
 
