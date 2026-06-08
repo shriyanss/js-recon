@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.3.1-beta.1 - (unreleased)
+## 1.3.1-beta.1 - 2026-06-08
 
 ### Added
 
@@ -8,7 +8,8 @@
 
 ### Fixed
 
-- Bumbed versions for dependencies
+- Bumped versions for dependencies
+- Fixed container
 
 ## 1.3.1-alpha.4 - 2026-06-08
 
