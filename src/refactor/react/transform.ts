@@ -168,12 +168,7 @@ export const transformModule = (mod: ModuleEntry): t.Statement[] => {
     // Step 5 — strip outer function wrapper, prepend hoisted static imports.
     const importStmts: t.Statement[] = [];
     for (const [spec, name] of hoistedImports) {
-        importStmts.push(
-            t.importDeclaration(
-                [t.importNamespaceSpecifier(t.identifier(name))],
-                t.stringLiteral(spec)
-            )
-        );
+        importStmts.push(t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec)));
     }
 
     return [...importStmts, ...body.body];

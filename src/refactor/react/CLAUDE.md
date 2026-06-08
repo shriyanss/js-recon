@@ -6,21 +6,21 @@ Splits a webpack 5 React bundle (the numeric module map `var e = { 540(e,n,t){�
 
 ## File layout
 
-| File | Responsibility |
-|------|---------------|
-| `index.ts` | Entry point: parses the bundle AST, collects `ModuleEntry` objects, orchestrates the transform + validate loop, returns `Record<moduleId, code>` |
-| `transform.ts` | `transformModule(mod)` — four-pass AST rewrite that converts one webpack module function into ES module statements |
-| `helpers.ts` | Pure AST pattern matchers and export-builder utilities |
-| `validator.ts` | `validateAndFix` — iterative Babel strict-parse → fix loop |
+| File           | Responsibility                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `index.ts`     | Entry point: parses the bundle AST, collects `ModuleEntry` objects, orchestrates the transform + validate loop, returns `Record<moduleId, code>` |
+| `transform.ts` | `transformModule(mod)` — four-pass AST rewrite that converts one webpack module function into ES module statements                               |
+| `helpers.ts`   | Pure AST pattern matchers and export-builder utilities                                                                                           |
+| `validator.ts` | `validateAndFix` — iterative Babel strict-parse → fix loop                                                                                       |
 
 ## Webpack module shapes
 
 Two param signatures appear in React webpack bundles:
 
-| Shape | Params | Meaning |
-|-------|--------|---------|
-| 3-param | `(module, exports, require)` | Normal module — has require calls and may populate `exports` |
-| 2-param | `(module, exports)` | Pure export module — no require; populates `exports.<prop>` directly |
+| Shape   | Params                       | Meaning                                                              |
+| ------- | ---------------------------- | -------------------------------------------------------------------- |
+| 3-param | `(module, exports, require)` | Normal module — has require calls and may populate `exports`         |
+| 2-param | `(module, exports)`          | Pure export module — no require; populates `exports.<prop>` directly |
 
 The numeric key in the object literal is the module ID. Both `ObjectProperty` (arrow/function value) and `ObjectMethod` shorthand forms are captured.
 
@@ -29,15 +29,15 @@ The numeric key in the object literal is the module ID. Both `ObjectProperty` (a
 All passes iterate only over **top-level** `body.body` statements to avoid placing `export` declarations inside nested functions (which causes `export may only appear at top level`).
 
 1. **Pass 1** — `<moduleParam>.exports = <rhs>`:
-   - `<rhs>` is `<requireParam>(N)` → `export * from "./N.js"` (transparent named re-export)
-   - anything else → `export default <rhs>`
-   - Also handles the SequenceExpression case: `(e.exports = t(N), ...)` splits into individual statements
+    - `<rhs>` is `<requireParam>(N)` → `export * from "./N.js"` (transparent named re-export)
+    - anything else → `export default <rhs>`
+    - Also handles the SequenceExpression case: `(e.exports = t(N), ...)` splits into individual statements
 
 2. **Pass 2** — `<exportsParam>.<propName> = <rhs>` for all modules with an exportsParam:
-   - `FunctionExpression` → `export function propName(…) { … }`
-   - `Identifier` → `export { ident as propName }` (string key when propName isn't a valid JS identifier)
-   - Everything else → `export const propName = <rhs>`
-   - Handles both direct assignment and SequenceExpression (`(n.a = 1, n.b = 2, …)`)
+    - `FunctionExpression` → `export function propName(…) { … }`
+    - `Identifier` → `export { ident as propName }` (string key when propName isn't a valid JS identifier)
+    - Everything else → `export const propName = <rhs>`
+    - Handles both direct assignment and SequenceExpression (`(n.a = 1, n.b = 2, …)`)
 
 3. **Pass 3** — Hoist `var x = <requireParam>(N)` to `import * as x from "./N.js"` (removes the declarator, records the mapping)
 
@@ -52,9 +52,9 @@ All passes iterate only over **top-level** `body.body` statements to avoid placi
 1. Generate code from statements
 2. Strict-parse with Babel (`errorRecovery: false`) — if no errors, return
 3. Re-parse with `errorRecovery: true` to locate errored nodes, then downgrade or drop:
-   - `export { ident as "StringKey" }` → `export const StringKey = ident`
-   - `export function name() {}` → `export const name = function() {}`
-   - Anything else → dropped with a yellow warning
+    - `export { ident as "StringKey" }` → `export const StringKey = ident`
+    - `export function name() {}` → `export const name = function() {}`
+    - Anything else → dropped with a yellow warning
 
 If still failing after 10 attempts, the module is skipped (not written).
 

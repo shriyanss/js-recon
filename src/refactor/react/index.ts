@@ -59,19 +59,13 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
         const id = String(key.value);
         const params = value.params;
         if (params.length > 3) {
-            console.log(
-                chalk.yellow(
-                    `[!] Module ${id} has ${params.length} params — not yet researched, skipping`
-                )
-            );
+            console.log(chalk.yellow(`[!] Module ${id} has ${params.length} params — not yet researched, skipping`));
             return;
         }
         const moduleParam = params[0] && t.isIdentifier(params[0]) ? (params[0] as t.Identifier).name : "";
         const exportsParam = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
         const requireParam =
-            params.length >= 3 && t.isIdentifier(params[2])
-                ? (params[2] as t.Identifier).name
-                : undefined;
+            params.length >= 3 && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : undefined;
         modules.push({
             id,
             fnPath: path.get("value") as NodePath<t.FunctionExpression | t.ArrowFunctionExpression>,
@@ -98,19 +92,13 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
         const id = String(key.value);
         const params = path.node.params;
         if (params.length > 3) {
-            console.log(
-                chalk.yellow(
-                    `[!] Module ${id} has ${params.length} params — not yet researched, skipping`
-                )
-            );
+            console.log(chalk.yellow(`[!] Module ${id} has ${params.length} params — not yet researched, skipping`));
             return;
         }
         const moduleParam = params[0] && t.isIdentifier(params[0]) ? (params[0] as t.Identifier).name : "";
         const exportsParam = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
         const requireParam =
-            params.length >= 3 && t.isIdentifier(params[2])
-                ? (params[2] as t.Identifier).name
-                : undefined;
+            params.length >= 3 && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : undefined;
         modules.push({
             id,
             fnPath: path as unknown as NodePath<t.ObjectMethod>,

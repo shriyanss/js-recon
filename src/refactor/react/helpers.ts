@@ -33,10 +33,7 @@ export const tryExtractExportsAssignment = (
 };
 
 // Returns the rhs if expr matches `<moduleParam>.exports = <rhs>`, else null.
-export const tryExtractModuleExportsAssignment = (
-    expr: t.Node,
-    moduleParam: string
-): t.Expression | null => {
+export const tryExtractModuleExportsAssignment = (expr: t.Node, moduleParam: string): t.Expression | null => {
     if (!t.isAssignmentExpression(expr) || expr.operator !== "=") return null;
     const left = expr.left;
     if (!t.isMemberExpression(left) || left.computed) return null;
@@ -57,10 +54,7 @@ export const tryExtractRequireCall = (expr: t.Node, requireParam: string): numbe
 // Builds an export statement for `<moduleParam>.exports = <rhs>`.
 // - `<requireParam>(N)` RHS → `export * from "./N.js"` (transparent re-export).
 // - anything else → `export default <rhs>`.
-export const buildModuleExportStatement = (
-    rhs: t.Expression,
-    requireParam: string | undefined
-): t.Statement => {
+export const buildModuleExportStatement = (rhs: t.Expression, requireParam: string | undefined): t.Statement => {
     if (requireParam) {
         const numId = tryExtractRequireCall(rhs, requireParam);
         if (numId !== null) {
