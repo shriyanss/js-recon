@@ -1,4 +1,4 @@
-FROM ghcr.io/puppeteer/puppeteer:latest
+FROM ghcr.io/puppeteer/puppeteer:24.43.1
 
 WORKDIR /home/pptruser
 
@@ -11,6 +11,7 @@ COPY ./src ./src
 USER root
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    unzip \
     libnspr4 libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
     libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxkbcommon0 \
     libasound2 libpangocairo-1.0-0 libxfixes3 libxi6 libxinerama1 \
