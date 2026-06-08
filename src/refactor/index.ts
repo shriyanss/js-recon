@@ -62,25 +62,27 @@ const refactor = async (mappedJson: string, outputDir: string, tech: string, lis
 
     // iterate through the chunks
     for (const [key, value] of Object.entries(chunks)) {
-        let code: string;
-
         if (tech === "next") {
-            code = await refactorNext(value);
+            let code = await refactorNext(value);
+            code = await prettier.format(code, {
+                parser: "babel",
+                singleQuote: true,
+                trailingComma: "none",
+            });
+            fs.writeFileSync(`${outputDir}/${key}.js`, code);
+            console.log(chalk.green(`[✓] Chunk ${key} written to ${outputDir}/${key}.js`));
         } else if (tech === "react") {
-            code = await refactorReact(value);
+            const moduleFiles = await refactorReact(value);
+            for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
+                const formatted = await prettier.format(rawCode, {
+                    parser: "babel",
+                    singleQuote: true,
+                    trailingComma: "none",
+                });
+                fs.writeFileSync(`${outputDir}/${moduleId}.js`, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${outputDir}/${moduleId}.js`));
+            }
         }
-
-        // prettify the code before writing
-        code = await prettier.format(code, {
-            parser: "babel",
-            singleQuote: true,
-            trailingComma: "none",
-        });
-
-        // write the code to a file
-        fs.writeFileSync(`${outputDir}/${key}.js`, code);
-
-        console.log(chalk.green(`[i] Chunk ${key} written to ${outputDir}/${key}.js`));
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));
