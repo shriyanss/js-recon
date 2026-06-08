@@ -13,6 +13,7 @@ export interface McpOptions {
     model?: string;
     provider?: string;
     refreshClaudeCreds: boolean; // commander sets to false when --no-refresh-claude-creds passed
+    claudeClientId?: string;
 }
 
 /**
@@ -34,6 +35,7 @@ const mcp = async (opts: McpOptions): Promise<void> => {
     if (opts.chat && opts.chat.length > 0) {
         await runChatOneShot(config, opts.chat, opts.apiKey, opts.model, opts.provider, {
             refreshClaudeCreds: opts.refreshClaudeCreds,
+            claudeClientId: opts.claudeClientId,
         });
         return;
     }
@@ -41,6 +43,7 @@ const mcp = async (opts: McpOptions): Promise<void> => {
     if (opts.cli) {
         await startCli(config, opts.apiKey, opts.model, opts.provider, {
             refreshClaudeCreds: opts.refreshClaudeCreds,
+            claudeClientId: opts.claudeClientId,
         });
         return;
     }

@@ -407,6 +407,7 @@ program
     .option("--model <model>", "AI model to use (e.g. gpt-4o-mini, claude-sonnet-4-20250514)")
     .option("--provider <provider>", "LLM provider to use (openai, anthropic)")
     .option("--no-refresh-claude-creds", "Do not auto-refresh Claude Code OAuth tokens; fail if expired")
+    .option("--claude-client-id <id>", "OAuth client ID used when refreshing Claude Code credentials")
     .action(async (cmd) => {
         await mcp({
             cli: cmd.cli,
@@ -417,6 +418,7 @@ program
             model: cmd.model,
             provider: cmd.provider,
             refreshClaudeCreds: cmd.refreshClaudeCreds,
+            claudeClientId: cmd.claudeClientId,
         });
     });
 
