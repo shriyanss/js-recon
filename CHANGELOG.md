@@ -35,9 +35,13 @@
 - Argument hints in Server Action request bodies carry the inferred type alongside the variable name (e.g. `<string:userId>`) instead of an opaque placeholder (`map`)
 - Location metadata for Server Actions: definition chunk + absolute file path + line and call-site chunk + absolute file path + line, surfaced as the `description` field in both the OpenAPI spec and Postman collection (`map`)
 - `list server_actions` interactive command — prints all discovered Server Actions with route, body args, and source locations (`map -i`)
+- Svelte/Astro framework support — `lazyload` now discovers island JS files via recursive HTML page crawl and ESM import following; `map` decodes Vite production chunks using the same logic as Vue; `analyze` and `run` pipeline added for Svelte/Astro apps (`lazyload`, `map`, `analyze`, `run`)
+- `fingerprint` subcommand — batch framework detection against one or more target URLs; outputs detected framework and version to stdout in `text` (default), `json`, `jsonl`, or `csv` format; useful for triaging large target lists before running the full pipeline (`fingerprint`)
 - React (Vite/Rolldown) framework detection via `<link rel="modulepreload">` elements and fast-path filename matching, in addition to inline `<script>` tags (`lazyload`)
 - Recursive ESM import following for React bundles — static imports, dynamic `import()`, and Vite `__vite_mapDeps` arrays are parsed from each downloaded file so all referenced chunks are fetched transitively (`lazyload`)
 - `map` and `analyze` pipeline support for React (Vite/Rolldown) applications, using the same fetch-resolver and analyze engine as Vue with vendor-chunk filtering (`map`, `analyze`, `run`)
+- Content-entropy deduplication in `lazyload` — query-param variants of the same path are probed and only skipped when their extracted script sets are identical, so genuinely distinct parameterised routes are still crawled (`lazyload`)
+- Ctrl-C interrupt menu in `run` — pressing Ctrl-C during a pipeline step shows an interactive prompt (skip current step / skip current target / exit) instead of immediately killing the process; in batch mode an extra "skip target" option is offered (`run`)
 - `regexMatch` step type in the AST rule engine — matches string and template literals against a regex pattern, enabling rules that detect hardcoded credentials and other value-pattern findings (`analyze`)
 - React tech added to all tech-gated type definitions and rule schemas (`analyze`)
 - Model Context Protocol stdio server (`mcp --server`) — speaks the MCP protocol so js-recon can be wired into Claude Code, Cursor, and other MCP-aware hosts as a tool provider. Registers `lazyload`, `strings`, `map`, `endpoints`, `analyze`, `report`, `run`, `list_skills`, and `run_skill` as MCP tools. Subcommand stdout is captured and redirected to stderr so the chatty `console.log` output never corrupts the JSON-RPC frame; captured text is returned as the tool result (`mcp`)
@@ -45,6 +49,7 @@
 - Claude Code OAuth credential reuse — when no API key is configured, `mcp --cli` and `mcp -c` fall back to the OAuth bearer token stored by the official Claude Code CLI (macOS keychain service `Claude Code-credentials`, or `~/.claude/.credentials.json` on Linux). The Anthropic SDK is constructed with `authToken` + `anthropic-beta: oauth-2025-04-20`. Tokens are auto-refreshed when expired (with a warning); refresh tokens are written back to the source credential store. OAuth tokens are never persisted to `~/.js-recon/mcp.yaml`. Disable refresh with `--no-refresh-claude-creds` (`mcp`)
 - Background-job runner for `mcp --cli` — `lazyload` and `run` actions now spawn child processes (`node build/index.js <subcmd> ...`) and return immediately so the REPL stays responsive. The user can chat with the LLM while a job runs; tails of running jobs are auto-injected into the LLM context on every turn so the model can answer "how's it going?" naturally. New slash commands: `/jobs`, `/log <id>`, `/tail <id> [n]`, `/cancel <id>`. Ctrl-C cancels the most recent running job (SIGTERM → SIGKILL after 3s) before falling through to the exit warning (`mcp --cli`)
 - Skills system — workflow prompts shipped under `~/.js-recon/skills/*.md` (delivered via a new `skills/` directory in the `js-recon-rules` release zipball, staged by `initRules`). Each skill carries YAML frontmatter (`name`, `description`, `params`, optional `pre_actions`). Invoke from the REPL with `/skill <name> [--param value …]`, via natural-language intent (e.g. `pentest <url>` routes to `web_app_pentest`), or from external MCP hosts via the `run_skill` MCP tool. `pre_actions` declare tool jobs (e.g. `run`) that are spawned before the rendered skill prompt is handed to the LLM. Ships with `graphql_pentest` and `web_app_pentest` (`mcp`, `analyze`)
+- `--claude-client-id <id>` flag on `mcp` — OAuth client ID used when auto-refreshing Claude Code credentials; required in environments where the default Anthropic client ID is not registered (`mcp --cli`, `mcp -c`)
 
 ### Changed
 
@@ -52,6 +57,7 @@
 - Fetch resolution logs correctly label the framework ("React" or "Vue.JS") in the start and summary messages (`map`)
 - `mcp --cli` launches in the user's current working directory and prints a `Working directory: <abs>` + `Artifacts are preserved across runs.` banner. Spawned job child processes inherit that cwd explicitly so artifacts always land next to the user's other working files (`mcp --cli`)
 - Intent detector now requires word-boundary matches on `scan|run|check|test` so the substring `pentest` no longer accidentally routes to `run`; "pentest" + URL now routes to the `web_app_pentest` skill (or any `*_pentest` skill) when one is loaded (`mcp --cli`)
+- Updated `@anthropic-ai/sdk` dependency to **0.102.0**
 
 ### Fixed
 
