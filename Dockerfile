@@ -23,6 +23,7 @@ RUN npm run build
 USER pptruser
 RUN ./node_modules/.bin/puppeteer browsers install chrome && \
     for zip in /home/pptruser/.cache/puppeteer/chrome/*-chrome-linux64.zip; do \
+        [ -f "$zip" ] || break; \
         version="${zip%-chrome-linux64.zip}"; version="${version##*/}"; \
         dest="/home/pptruser/.cache/puppeteer/chrome/linux-${version}"; \
         unzip -o "$zip" -d "${dest}/" && chmod +x "${dest}/chrome-linux64/chrome"; \
