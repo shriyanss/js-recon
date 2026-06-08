@@ -190,19 +190,20 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
 1. **Bump version** — update `version` in `src/globalConfig.ts` and `package.json` to the new tag (e.g. `1.3.1-alpha.4`). Both must match.
 
 2. **Update CHANGELOG** — add a `## <version> - <YYYY-MM-DD>` section to `CHANGELOG.md` with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections as needed. Verify every `feat`/`fix` commit since the previous tag is covered:
-   ```bash
-   git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
-   ```
+
+    ```bash
+    git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
+    ```
 
 3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`.
 
 4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are unreleased commits, update `CHANGELOG.md` and `version.txt`, then push.
 
 5. **Update docs** (`js-recon-docs` repo, `stage` branch):
-   - Fix any option/flag gaps in `docs/docs/modules/*.md` (cross-check against `src/index.ts`).
-   - Snapshot the current docs: `npx docusaurus docs:version <version>` (run inside `js-recon-docs/`).
-   - Keep `lastVersion` in `docusaurus.config.ts` pointing to the last **stable** release (do not change it for alphas/betas).
-   - Verify: `npm run build` in `js-recon-docs/` must pass with no broken-link errors.
+    - Fix any option/flag gaps in `docs/docs/modules/*.md` (cross-check against `src/index.ts`).
+    - Snapshot the current docs: `npx docusaurus docs:version <version>` (run inside `js-recon-docs/`).
+    - Keep `lastVersion` in `docusaurus.config.ts` pointing to the last **stable** release (do not change it for alphas/betas).
+    - Verify: `npm run build` in `js-recon-docs/` must pass with no broken-link errors.
 
 6. **Push** — push all three repos to their source branches (`dev`/`stage`).
 
