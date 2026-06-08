@@ -34,7 +34,10 @@ export const runChatOneShot = async (
     let provider: LLMProvider | null = null;
 
     if (!apiKey && (providerName === "anthropic" || !cliProvider)) {
-        const token = await getUsableAccessToken({ allowRefresh: opts.refreshClaudeCreds !== false, clientId: opts.claudeClientId });
+        const token = await getUsableAccessToken({
+            allowRefresh: opts.refreshClaudeCreds !== false,
+            clientId: opts.claudeClientId,
+        });
         if (token) {
             providerName = "anthropic";
             model = cliModel || getDefaultModel("anthropic");

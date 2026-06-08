@@ -69,9 +69,7 @@ const placeholderForType = (typeNode: TypeNode): any => {
     }
 };
 
-const buildVariablesStub = (
-    defs: ReadonlyArray<VariableDefinitionNode> | undefined
-): Record<string, any> => {
+const buildVariablesStub = (defs: ReadonlyArray<VariableDefinitionNode> | undefined): Record<string, any> => {
     const out: Record<string, any> = {};
     if (!defs) return out;
     for (const def of defs) {

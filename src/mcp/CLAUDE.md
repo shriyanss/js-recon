@@ -56,12 +56,12 @@ To wire into Claude Code itself, add to `~/.claude.json`:
 
 ```json
 {
-  "mcpServers": {
-    "js-recon": {
-      "command": "node",
-      "args": ["/abs/path/to/js-recon/build/index.js", "mcp", "--server"]
+    "mcpServers": {
+        "js-recon": {
+            "command": "node",
+            "args": ["/abs/path/to/js-recon/build/index.js", "mcp", "--server"]
+        }
     }
-  }
 }
 ```
 

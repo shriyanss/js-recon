@@ -12,13 +12,7 @@ export interface IntentToolState {
     lastModule?: "lazyload" | "run";
 }
 
-export type IntentAction =
-    | "lazyload"
-    | "run"
-    | "parse_lazyload"
-    | "parse_run"
-    | "skill"
-    | "chat";
+export type IntentAction = "lazyload" | "run" | "parse_lazyload" | "parse_run" | "skill" | "chat";
 
 export interface Intent {
     action: IntentAction;
@@ -31,9 +25,7 @@ export interface Intent {
  * Returns true if the user message looks like it intends a known skill.
  * Matches when the message lower-case contains the skill name or its kebab/space variant.
  */
-const matchSkillIntent = (
-    message: string
-): { name: string; args: Record<string, string> } | null => {
+const matchSkillIntent = (message: string): { name: string; args: Record<string, string> } | null => {
     const skills = loadSkills();
     if (skills.length === 0) return null;
     const lower = message.toLowerCase();
@@ -176,10 +168,7 @@ const spawnTool = (
 /**
  * Resolve `<param>` placeholders inside skill pre_action args using the supplied skill args.
  */
-const resolvePreActionArgs = (
-    preAction: SkillPreAction,
-    skillArgs: Record<string, string>
-): { url?: string } => {
+const resolvePreActionArgs = (preAction: SkillPreAction, skillArgs: Record<string, string>): { url?: string } => {
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(preAction.args)) {
         let resolved = v;
@@ -191,10 +180,7 @@ const resolvePreActionArgs = (
     return { url: out.url };
 };
 
-export const handleToolExecution = async (
-    session: IntentToolState,
-    intent: Intent
-): Promise<string | null> => {
+export const handleToolExecution = async (session: IntentToolState, intent: Intent): Promise<string | null> => {
     const { action, url } = intent;
     const cwd = session.cwd;
 

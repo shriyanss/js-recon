@@ -51,7 +51,7 @@ const mcp = async (opts: McpOptions): Promise<void> => {
     console.log(chalk.yellow("[!] MCP module requires a mode flag."));
     console.log(chalk.cyan("[i] Usage:"));
     console.log("    js-recon mcp --cli                  Interactive TUI");
-    console.log("    js-recon mcp -c \"<prompt>\"          One-shot chat");
+    console.log('    js-recon mcp -c "<prompt>"          One-shot chat');
     console.log("    js-recon mcp --server               Model Context Protocol server (stdio)");
 };
 

@@ -113,7 +113,10 @@ export const startCli = async (
     let provider: LLMProvider | null = null;
 
     if (!apiKey && (providerName === "anthropic" || !cliProvider)) {
-        const token = await getUsableAccessToken({ allowRefresh: opts.refreshClaudeCreds !== false, clientId: opts.claudeClientId });
+        const token = await getUsableAccessToken({
+            allowRefresh: opts.refreshClaudeCreds !== false,
+            clientId: opts.claudeClientId,
+        });
         if (token) {
             providerName = "anthropic";
             model = cliModel || getDefaultModel("anthropic");
@@ -411,9 +414,7 @@ export const startCli = async (
             const jobContext = buildJobContext(2048);
 
             // Build user message with tool + job context
-            const userMessage = (toolContext || jobContext)
-                ? `${trimmed}${toolContext}${jobContext}`
-                : trimmed;
+            const userMessage = toolContext || jobContext ? `${trimmed}${toolContext}${jobContext}` : trimmed;
             session.history.push({ role: "user", content: userMessage });
             await runInference(session, config);
             prompt();

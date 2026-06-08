@@ -191,7 +191,11 @@ const commands: Record<string, CommandDef> = {
                 return { handled: true, output: chalk.red("\n[!] Usage: /cancel <id>\n") };
             }
             const ok = getJobManager().cancelJob(id);
-            if (!ok) return { handled: true, output: chalk.red(`\n[!] Cannot cancel job ${id} (not running or doesn't exist)\n`) };
+            if (!ok)
+                return {
+                    handled: true,
+                    output: chalk.red(`\n[!] Cannot cancel job ${id} (not running or doesn't exist)\n`),
+                };
             return { handled: true, output: chalk.yellow(`\n[!] Cancelling job ${id}...\n`) };
         },
     },
@@ -205,7 +209,9 @@ const commands: Record<string, CommandDef> = {
                 if (skills.length === 0) {
                     return {
                         handled: true,
-                        output: chalk.yellow("\n[!] No skills found. They are shipped via the js-recon-rules release into ~/.js-recon/skills/.\n"),
+                        output: chalk.yellow(
+                            "\n[!] No skills found. They are shipped via the js-recon-rules release into ~/.js-recon/skills/.\n"
+                        ),
                     };
                 }
                 const lines = [chalk.bold.cyan("\n  Available skills:\n")];

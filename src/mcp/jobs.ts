@@ -208,9 +208,7 @@ export const buildJobContext = (n = 2048): string => {
     for (const j of running) {
         const tail = mgr.tailJob(j.id, n) || "";
         const elapsed = Math.round(j.elapsedMs / 1000);
-        parts.push(
-            `\n\n[Job ${j.id} (${j.name}) — running ${elapsed}s, recent output]:\n${tail || "(no output yet)"}`
-        );
+        parts.push(`\n\n[Job ${j.id} (${j.name}) — running ${elapsed}s, recent output]:\n${tail || "(no output yet)"}`);
     }
     return parts.join("");
 };

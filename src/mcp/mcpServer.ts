@@ -25,7 +25,7 @@ const captureStdout = async <T>(fn: () => Promise<T>): Promise<{ result: T; capt
     let captured = "";
 
     process.stdout.write = ((chunk: any, ...args: any[]): boolean => {
-        const text = typeof chunk === "string" ? chunk : chunk?.toString?.() ?? "";
+        const text = typeof chunk === "string" ? chunk : (chunk?.toString?.() ?? "");
         captured += text;
         return process.stderr.write(text, ...(args as [any]));
     }) as typeof process.stdout.write;
@@ -155,15 +155,7 @@ export const startMcpServer = async (): Promise<void> => {
         },
         async (args) => {
             const { captured } = await captureStdout(async () => {
-                await endpoints(
-                    args.url,
-                    args.directory,
-                    args.output,
-                    args.format,
-                    args.tech,
-                    false,
-                    args.mappedJson
-                );
+                await endpoints(args.url, args.directory, args.output, args.format, args.tech, false, args.mappedJson);
             });
             return textResult(`${captured}\n\n[Output] ${path.resolve(args.output + ".json")}`);
         }
@@ -184,15 +176,7 @@ export const startMcpServer = async (): Promise<void> => {
         },
         async (args) => {
             const { captured } = await captureStdout(async () => {
-                await analyze(
-                    args.rulesPath,
-                    args.mappedJson,
-                    args.tech,
-                    false,
-                    args.openapi,
-                    false,
-                    args.outputFile
-                );
+                await analyze(args.rulesPath, args.mappedJson, args.tech, false, args.openapi, false, args.outputFile);
             });
             return textResult(`${captured}\n\n[Output] ${path.resolve(args.outputFile)}`);
         }

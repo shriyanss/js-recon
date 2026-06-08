@@ -13,16 +13,16 @@ npm run start -- <subcommand> [options]
 
 ## Subcommands
 
-| Command       | Purpose                                                         |
-| ------------- | --------------------------------------------------------------- |
-| `lazyload`    | Download JS chunks from a target URL                            |
-| `strings`     | Extract strings/paths/secrets from JS files                     |
-| `map`         | Parse webpack/turbopack bundles into a structured `mapped.json` |
-| `endpoints`   | Extract client-side routes                                      |
-| `analyze`     | Run YAML rules against `mapped.json` / OpenAPI spec             |
-| `report`      | Generate HTML/SQLite report                                     |
-| `run`         | Run all of the above in sequence (primary interface)            |
-| `api-gateway` | Manage AWS API Gateway for IP rotation                          |
+| Command       | Purpose                                                                            |
+| ------------- | ---------------------------------------------------------------------------------- |
+| `lazyload`    | Download JS chunks from a target URL                                               |
+| `strings`     | Extract strings/paths/secrets from JS files                                        |
+| `map`         | Parse webpack/turbopack bundles into a structured `mapped.json`                    |
+| `endpoints`   | Extract client-side routes                                                         |
+| `analyze`     | Run YAML rules against `mapped.json` / OpenAPI spec                                |
+| `report`      | Generate HTML/SQLite report                                                        |
+| `run`         | Run all of the above in sequence (primary interface)                               |
+| `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
 | `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
 
 ## Key source files

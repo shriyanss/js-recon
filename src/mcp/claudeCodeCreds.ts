@@ -32,12 +32,7 @@ interface ReadResult {
 
 const readFromKeychain = async (): Promise<string | null> => {
     try {
-        const { stdout } = await execFileAsync("security", [
-            "find-generic-password",
-            "-s",
-            KEYCHAIN_SERVICE,
-            "-w",
-        ]);
+        const { stdout } = await execFileAsync("security", ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"]);
         const value = stdout.trim();
         return value || null;
     } catch {
@@ -47,16 +42,7 @@ const readFromKeychain = async (): Promise<string | null> => {
 
 const writeToKeychain = async (value: string): Promise<void> => {
     const account = os.userInfo().username;
-    await execFileAsync("security", [
-        "add-generic-password",
-        "-U",
-        "-s",
-        KEYCHAIN_SERVICE,
-        "-a",
-        account,
-        "-w",
-        value,
-    ]);
+    await execFileAsync("security", ["add-generic-password", "-U", "-s", KEYCHAIN_SERVICE, "-a", account, "-w", value]);
 };
 
 const readFromFile = (): string | null => {
@@ -124,15 +110,11 @@ export const refreshClaudeCodeCreds = async (
     if (!clientId) {
         throw new Error(
             "Cannot refresh Claude Code OAuth token: --claude-client-id is required. " +
-            "Pass the OAuth client ID or use --no-refresh-claude-creds to skip refresh."
+                "Pass the OAuth client ID or use --no-refresh-claude-creds to skip refresh."
         );
     }
 
-    console.log(
-        chalk.yellow(
-            "[!] Refreshing Claude Code OAuth token (use --no-refresh-claude-creds to disable)."
-        )
-    );
+    console.log(chalk.yellow("[!] Refreshing Claude Code OAuth token (use --no-refresh-claude-creds to disable)."));
 
     const body = {
         grant_type: "refresh_token",
@@ -175,11 +157,7 @@ export const refreshClaudeCodeCreds = async (
     try {
         await writeCreds(refreshed, source);
     } catch (err: any) {
-        console.log(
-            chalk.yellow(
-                `[!] Refreshed token, but failed to persist it back to ${source}: ${err.message}`
-            )
-        );
+        console.log(chalk.yellow(`[!] Refreshed token, but failed to persist it back to ${source}: ${err.message}`));
     }
 
     return refreshed;
@@ -190,9 +168,7 @@ export interface GetTokenOptions {
     clientId?: string;
 }
 
-export const getUsableAccessToken = async (
-    opts: GetTokenOptions
-): Promise<string | null> => {
+export const getUsableAccessToken = async (opts: GetTokenOptions): Promise<string | null> => {
     const read = await readClaudeCodeCreds();
     if (!read) return null;
 
