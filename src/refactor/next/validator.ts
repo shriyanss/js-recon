@@ -3,7 +3,7 @@ import parser from "@babel/parser";
 import _generator from "@babel/generator";
 import * as t from "@babel/types";
 
-const generate = _generator.default;
+const generate = _generator.default;f
 
 export const MAX_FIX_ITERATIONS = 10;
 
