@@ -146,9 +146,7 @@ export const tryExtractForInExportLoop = (stmt: t.Statement, exportsParam: strin
 
 // Extracts all { exportName → returnExpr } entries from an export map object literal.
 // The map has shape: { name: function() { return localVar; }, … }
-export const extractExportsFromMap = (
-    objExpr: t.ObjectExpression
-): Map<string, t.Expression> => {
+export const extractExportsFromMap = (objExpr: t.ObjectExpression): Map<string, t.Expression> => {
     const result = new Map<string, t.Expression>();
     for (const prop of objExpr.properties) {
         if (!t.isObjectProperty(prop) && !t.isObjectMethod(prop)) continue;
@@ -183,9 +181,7 @@ export const makeExportStatement = (exportName: string, returnExpr: t.Expression
         const exported: t.Identifier | t.StringLiteral = isValidIdent
             ? t.identifier(exportName)
             : t.stringLiteral(exportName);
-        return t.exportNamedDeclaration(null, [
-            t.exportSpecifier(returnExpr as t.Identifier, exported),
-        ]);
+        return t.exportNamedDeclaration(null, [t.exportSpecifier(returnExpr as t.Identifier, exported)]);
     }
     if (isValidIdent) {
         return t.exportNamedDeclaration(
@@ -194,7 +190,5 @@ export const makeExportStatement = (exportName: string, returnExpr: t.Expression
     }
     // Non-identifier name with a non-identifier value: introduce a temp binding.
     const tempName = `_jsr_exp_${exportName.replace(/[^a-zA-Z0-9_$]/g, "_")}`;
-    return t.exportNamedDeclaration(null, [
-        t.exportSpecifier(t.identifier(tempName), t.stringLiteral(exportName)),
-    ]);
+    return t.exportNamedDeclaration(null, [t.exportSpecifier(t.identifier(tempName), t.stringLiteral(exportName))]);
 };

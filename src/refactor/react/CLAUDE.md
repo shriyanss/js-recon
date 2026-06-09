@@ -6,12 +6,12 @@ Splits a webpack 5 React bundle (the numeric module map `var e = { 540(e,n,t){�
 
 ## File layout
 
-| File           | Responsibility                                                                                                                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File           | Responsibility                                                                                                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `index.ts`     | Entry point: parses the bundle AST, collects `ModuleEntry` objects, orchestrates the transform + validate loop, collects non-module IIFE content into `index.js`, returns `Record<moduleId, code>` |
-| `transform.ts` | `transformModule(mod)` — four-pass AST rewrite that converts one webpack module function into ES module statements                                                                                |
-| `helpers.ts`   | Pure AST pattern matchers and export-builder utilities                                                                                                                                            |
-| `validator.ts` | `validateAndFix` — iterative Babel strict-parse → fix loop                                                                                                                                        |
+| `transform.ts` | `transformModule(mod)` — four-pass AST rewrite that converts one webpack module function into ES module statements                                                                                 |
+| `helpers.ts`   | Pure AST pattern matchers and export-builder utilities                                                                                                                                             |
+| `validator.ts` | `validateAndFix` — iterative Babel strict-parse → fix loop                                                                                                                                         |
 
 ## Webpack module shapes
 

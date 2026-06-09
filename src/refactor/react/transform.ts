@@ -211,11 +211,7 @@ export const transformIndexStatements = (statements: t.Statement[]): t.Statement
     const requireFnNames = new Set<string>();
     const afterA: t.Statement[] = [];
     for (const stmt of statements) {
-        if (
-            t.isFunctionDeclaration(stmt) &&
-            stmt.id &&
-            isWebpackRequireHelper(stmt as t.FunctionDeclaration)
-        ) {
+        if (t.isFunctionDeclaration(stmt) && stmt.id && isWebpackRequireHelper(stmt as t.FunctionDeclaration)) {
             requireFnNames.add((stmt.id as t.Identifier).name);
             continue; // drop
         }
@@ -279,9 +275,7 @@ export const transformIndexStatements = (statements: t.Statement[]): t.Statement
 
     const importStmts: t.Statement[] = [];
     for (const [spec, name] of hoistedImports) {
-        importStmts.push(
-            t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec))
-        );
+        importStmts.push(t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec)));
     }
 
     return [...importStmts, ...afterB];

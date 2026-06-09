@@ -35,11 +35,10 @@ const isModuleMapDeclarator = (d: t.VariableDeclarator): boolean => {
     if (!t.isObjectExpression(d.init)) return false;
     const props = (d.init as t.ObjectExpression).properties;
     if (props.length === 0) return false;
-    return props.every(p => {
+    return props.every((p) => {
         if (t.isObjectProperty(p))
             return (
-                t.isNumericLiteral(p.key) &&
-                (t.isFunctionExpression(p.value) || t.isArrowFunctionExpression(p.value))
+                t.isNumericLiteral(p.key) && (t.isFunctionExpression(p.value) || t.isArrowFunctionExpression(p.value))
             );
         if (t.isObjectMethod(p)) return t.isNumericLiteral(p.key);
         return false;
@@ -170,9 +169,8 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
     const indexStatements: t.Statement[] = [];
     for (const stmt of topLevel) {
         if (t.isVariableDeclaration(stmt)) {
-            const remaining = stmt.declarations.filter(d => !isModuleMapDeclarator(d));
-            if (remaining.length > 0)
-                indexStatements.push(t.variableDeclaration(stmt.kind, remaining));
+            const remaining = stmt.declarations.filter((d) => !isModuleMapDeclarator(d));
+            if (remaining.length > 0) indexStatements.push(t.variableDeclaration(stmt.kind, remaining));
         } else {
             indexStatements.push(stmt);
         }

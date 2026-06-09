@@ -5,10 +5,10 @@
 ### Added
 
 - `refactor -t react-webpack`: new React webpack refactor mode that splits a webpack 5 bundle into individual ES module files (`refactor`)
-  - Numeric module map (`var e = { 540: fn, … }`) is extracted and each module written to `<id>.js` with full ES import/export conversion (require→import hoisting, exports→named/default export rewriting, outer wrapper stripped)
-  - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
-  - Webpack require helper is detected by its `return (moduleMap[id](…), mod.exports)` return shape and stripped from `index.js`
-  - Top-level `requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; remaining inline calls are replaced recursively throughout the file
+    - Numeric module map (`var e = { 540: fn, … }`) is extracted and each module written to `<id>.js` with full ES import/export conversion (require→import hoisting, exports→named/default export rewriting, outer wrapper stripped)
+    - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
+    - Webpack require helper is detected by its `return (moduleMap[id](…), mod.exports)` return shape and stripped from `index.js`
+    - Top-level `requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; remaining inline calls are replaced recursively throughout the file
 
 ### Fixed
 

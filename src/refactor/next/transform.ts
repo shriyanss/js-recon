@@ -16,9 +16,9 @@ const traverse = _traverse.default;
 export type TurboModuleEntry = {
     id: string;
     fnPath: NodePath<t.ArrowFunctionExpression>;
-    runtimeParam: string;   // first param — has .r() for cross-module requires
-    moduleParam: string;    // second param — t.exports interop
-    exportsParam: string;   // third param — Object.defineProperty target
+    runtimeParam: string; // first param — has .r() for cross-module requires
+    moduleParam: string; // second param — t.exports interop
+    exportsParam: string; // third param — Object.defineProperty target
 };
 
 /**
@@ -120,11 +120,7 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
             if (declNode) {
                 // Extract exports from the map object.
                 for (const decl of declNode.declarations) {
-                    if (
-                        t.isIdentifier(decl.id, { name: mapVarName }) &&
-                        decl.init &&
-                        t.isObjectExpression(decl.init)
-                    ) {
+                    if (t.isIdentifier(decl.id, { name: mapVarName }) && decl.init && t.isObjectExpression(decl.init)) {
                         const extracted = extractExportsFromMap(decl.init as t.ObjectExpression);
                         for (const [name, expr] of extracted) exportMap.set(name, expr);
                         break;
@@ -199,12 +195,7 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
     // ── Step 4: assemble — prepend imports, filtered body, append exports ────────
     const importStmts: t.Statement[] = [];
     for (const [spec, name] of hoistedImports) {
-        importStmts.push(
-            t.importDeclaration(
-                [t.importNamespaceSpecifier(t.identifier(name))],
-                t.stringLiteral(spec)
-            )
-        );
+        importStmts.push(t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec)));
     }
 
     const exportStmts: t.Statement[] = [];

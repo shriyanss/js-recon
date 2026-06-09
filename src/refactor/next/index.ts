@@ -48,7 +48,7 @@ const refactorNext = async (chunk: Chunk): Promise<Record<string, string>> => {
             }
 
             const runtimeParam = params[0] && t.isIdentifier(params[0]) ? (params[0] as t.Identifier).name : "";
-            const moduleParam  = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
+            const moduleParam = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
             const exportsParam = params[2] && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : "";
 
             captured = {
