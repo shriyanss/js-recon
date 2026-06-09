@@ -173,3 +173,116 @@ export const transformModule = (mod: ModuleEntry): t.Statement[] => {
 
     return [...importStmts, ...body.body];
 };
+
+// Returns true when fn matches the webpack runtime require helper:
+//   function X(id) { … return (moduleMap[id](mod, mod.exports, X), mod.exports); }
+// The key signal is the final return statement: a SequenceExpression whose first element
+// is a computed-member CallExpression and whose second is a `<var>.exports` MemberExpression.
+const isWebpackRequireHelper = (fn: t.FunctionDeclaration): boolean => {
+    if (fn.params.length !== 1) return false;
+    for (const stmt of fn.body.body) {
+        if (!t.isReturnStatement(stmt) || !stmt.argument) continue;
+        const arg = stmt.argument;
+        if (!t.isSequenceExpression(arg) || arg.expressions.length !== 2) continue;
+        const [first, second] = arg.expressions;
+        if (!t.isCallExpression(first)) continue;
+        if (!t.isMemberExpression(first.callee) || !(first.callee as t.MemberExpression).computed) continue;
+        if (!t.isMemberExpression(second)) continue;
+        if (!t.isIdentifier((second as t.MemberExpression).property, { name: "exports" })) continue;
+        return true;
+    }
+    return false;
+};
+
+/**
+ * Transforms the non-module-map IIFE statements that become `index.js`.
+ *
+ * Three passes:
+ *   A – Detect and remove the webpack require helper function (matched by its return
+ *       statement shape). Record its declared name so Passes B and C can identify calls.
+ *   B – Hoist top-level `var x = requireFn(N)` declarators to
+ *       `import * as x from "./N.js"`. Records numId → localName for Pass C.
+ *   C – Traverse all remaining statements recursively; replace any remaining
+ *       `requireFn(N)` CallExpression with the hoisted import identifier
+ *       (synthesises `_jsr_module_N` if not yet seen).
+ */
+export const transformIndexStatements = (statements: t.Statement[]): t.Statement[] => {
+    // Pass A — detect and remove webpack require helper(s).
+    const requireFnNames = new Set<string>();
+    const afterA: t.Statement[] = [];
+    for (const stmt of statements) {
+        if (
+            t.isFunctionDeclaration(stmt) &&
+            stmt.id &&
+            isWebpackRequireHelper(stmt as t.FunctionDeclaration)
+        ) {
+            requireFnNames.add((stmt.id as t.Identifier).name);
+            continue; // drop
+        }
+        afterA.push(stmt);
+    }
+
+    if (requireFnNames.size === 0) return statements; // nothing to do
+
+    const hoistedImports = new Map<string, string>();
+    const importNameByNumId = new Map<number, string>();
+
+    // Pass B — hoist top-level `var x = requireFn(N)` to static imports.
+    const afterB: t.Statement[] = [];
+    for (const stmt of afterA) {
+        if (!t.isVariableDeclaration(stmt)) {
+            afterB.push(stmt);
+            continue;
+        }
+        const kept: t.VariableDeclarator[] = [];
+        for (const decl of stmt.declarations) {
+            if (!t.isIdentifier(decl.id) || !decl.init) {
+                kept.push(decl);
+                continue;
+            }
+            let matched = false;
+            for (const fnName of requireFnNames) {
+                const numId = tryExtractRequireCall(decl.init, fnName);
+                if (numId === null) continue;
+                const spec = `./${numId}.js`;
+                if (!hoistedImports.has(spec)) {
+                    hoistedImports.set(spec, (decl.id as t.Identifier).name);
+                    importNameByNumId.set(numId, (decl.id as t.Identifier).name);
+                }
+                matched = true;
+                break;
+            }
+            if (!matched) kept.push(decl);
+        }
+        if (kept.length > 0) afterB.push(t.variableDeclaration(stmt.kind, kept));
+    }
+
+    // Pass C — replace remaining inline requireFn(N) calls recursively.
+    const syntheticFile = t.file(t.program(afterB, [], "module"));
+    traverse(syntheticFile, {
+        CallExpression(p) {
+            for (const fnName of requireFnNames) {
+                const numId = tryExtractRequireCall(p.node, fnName);
+                if (numId === null) continue;
+                let name = importNameByNumId.get(numId);
+                if (!name) {
+                    name = `_jsr_module_${numId}`;
+                    hoistedImports.set(`./${numId}.js`, name);
+                    importNameByNumId.set(numId, name);
+                }
+                p.replaceWith(t.identifier(name));
+                p.skip();
+                break;
+            }
+        },
+    });
+
+    const importStmts: t.Statement[] = [];
+    for (const [spec, name] of hoistedImports) {
+        importStmts.push(
+            t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec))
+        );
+    }
+
+    return [...importStmts, ...afterB];
+};

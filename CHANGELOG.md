@@ -1,6 +1,23 @@
 # Change Log
 
-## 1.3.1-beta.1 - (unreleased)
+## 1.4.1-alpha.1 - (unreleased)
+
+### Added
+
+- `refactor -t react-webpack`: new React webpack refactor mode that splits a webpack 5 bundle into individual ES module files (`refactor`)
+  - Numeric module map (`var e = { 540: fn, … }`) is extracted and each module written to `<id>.js` with full ES import/export conversion (require→import hoisting, exports→named/default export rewriting, outer wrapper stripped)
+  - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
+  - Webpack require helper is detected by its `return (moduleMap[id](…), mod.exports)` return shape and stripped from `index.js`
+  - Top-level `requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; remaining inline calls are replaced recursively throughout the file
+
+### Fixed
+
+### Changed
+
+- `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit (`refactor`)
+- Improved tool description in `globalConfig.ts`
+
+## 1.3.1-beta.1 - 2026-06-08
 
 ### Added
 
@@ -8,7 +25,8 @@
 
 ### Fixed
 
-- Bumbed versions for dependencies
+- Bumped versions for dependencies
+- Fixed container
 
 ## 1.3.1-alpha.4 - 2026-06-08
 

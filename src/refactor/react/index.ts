@@ -8,9 +8,43 @@ import * as t from "@babel/types";
 import { Chunk } from "../../utility/interfaces.js";
 import { isInModuleMap } from "./helpers.js";
 import { validateAndFix } from "./validator.js";
-import { ModuleEntry, transformModule } from "./transform.js";
+import { ModuleEntry, transformModule, transformIndexStatements } from "./transform.js";
 
 const traverse = _traverse.default;
+
+// Returns the body statements of a top-level IIFE (e.g. `(() => { … })()`), or null.
+const findIifeBody = (program: t.Program): t.Statement[] | null => {
+    for (const stmt of program.body) {
+        if (!t.isExpressionStatement(stmt)) continue;
+        const expr = stmt.expression;
+        if (!t.isCallExpression(expr) || expr.arguments.length !== 0) continue;
+        const callee = expr.callee;
+        if (
+            (t.isArrowFunctionExpression(callee) || t.isFunctionExpression(callee)) &&
+            t.isBlockStatement(callee.body)
+        ) {
+            return callee.body.body;
+        }
+    }
+    return null;
+};
+
+// Returns true when a VariableDeclarator's init is the webpack numeric module map
+// object (every property has a NumericLiteral key and a function value).
+const isModuleMapDeclarator = (d: t.VariableDeclarator): boolean => {
+    if (!t.isObjectExpression(d.init)) return false;
+    const props = (d.init as t.ObjectExpression).properties;
+    if (props.length === 0) return false;
+    return props.every(p => {
+        if (t.isObjectProperty(p))
+            return (
+                t.isNumericLiteral(p.key) &&
+                (t.isFunctionExpression(p.value) || t.isArrowFunctionExpression(p.value))
+            );
+        if (t.isObjectMethod(p)) return t.isNumericLiteral(p.key);
+        return false;
+    });
+};
 
 /**
  * Rewrites a webpack-bundled React chunk by splitting the numeric module map
@@ -29,6 +63,9 @@ const traverse = _traverse.default;
  *              e) Strip the outer function wrapper.
  *   Step 3 – Validate generated code with Babel; iteratively drop/downgrade statements
  *              that still cause parse errors.
+ *   Step 4 – Collect all IIFE body statements that are NOT part of the module map and
+ *              write them to `index.js` (entrypoint bootstrap, app component functions,
+ *              the ReactDOM.render call, etc.).
  */
 const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
     console.log(chalk.cyan(`[i] Processing React bundle: ${chunk.id}`));
@@ -126,6 +163,25 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
             continue;
         }
         results[mod.id] = code;
+    }
+
+    // Collect everything in the IIFE body that is NOT the module-map variable into index.js.
+    const topLevel = findIifeBody(ast.program) ?? ast.program.body;
+    const indexStatements: t.Statement[] = [];
+    for (const stmt of topLevel) {
+        if (t.isVariableDeclaration(stmt)) {
+            const remaining = stmt.declarations.filter(d => !isModuleMapDeclarator(d));
+            if (remaining.length > 0)
+                indexStatements.push(t.variableDeclaration(stmt.kind, remaining));
+        } else {
+            indexStatements.push(stmt);
+        }
+    }
+    if (indexStatements.length > 0) {
+        console.log(chalk.cyan(`[i] Writing ${indexStatements.length} non-module statements to index.js`));
+        const transformed = transformIndexStatements(indexStatements);
+        const indexCode = validateAndFix(transformed, "index");
+        if (indexCode !== null) results["index"] = indexCode;
     }
 
     return results;

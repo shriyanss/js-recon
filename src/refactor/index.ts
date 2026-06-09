@@ -10,7 +10,7 @@ import refactorReact from "./react/index.js";
 
 const availableTechs = {
     next: "Next.js",
-    react: "React",
+    "react-webpack": "React (webpack)",
 };
 
 /**
@@ -73,7 +73,7 @@ const refactor = async (mappedJson: string, outputDir: string, tech: string, lis
                 fs.writeFileSync(`${outputDir}/${moduleId}.js`, formatted);
                 console.log(chalk.green(`[✓] Module ${moduleId} written to ${outputDir}/${moduleId}.js`));
             }
-        } else if (tech === "react") {
+        } else if (tech === "react-webpack") {
             const moduleFiles = await refactorReact(value);
             for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
                 const formatted = await prettier.format(rawCode, {

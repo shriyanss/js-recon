@@ -6,13 +6,16 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 
 ## Files
 
-- `index.ts` — entrypoint. Dispatches by tech (`next`, `react`).
+- `index.ts` — entrypoint. Dispatches by tech (`next`, `react-webpack`).
 - `next/index.ts` — Next.js refactor implementation. Walks the AST, normalizes identifier names where possible, runs Prettier on the output, writes to a sibling directory in `output/`.
 - `react/index.ts` — React refactor implementation. Detects each webpack module function under `var e = { <numericId>: function(module, exports, require) { ... } }` (and 2-param re-export modules `function(module, exports) { module.exports = require(N) }`), rewrites `require(<n>)` to `require("./<n>.js")`, captures exports via `Object.defineProperty(<exports>, ...)`, `<require>.d(<exports>, { ... })`, and `<exports>.<minProp> = <X>.<canonical>` assignments. Classifies modules by content fingerprint (`react` via `<X>.current.<hook>(...)` call shape; `react/jsx-runtime` via exports of both `jsx` and `jsxs`; `react-dom/client` via export of `createRoot`); resolves re-export chains. Rewrites bundled user-code callsites documented in `refactor_observations/00-bundled-shape-shared.md`:
     - `(0, <reactLocal>.<hook>)(args)` → `<hook>(args)` + `import { <hook> } from "react";`
     - `(0, <jsxLocal>.jsx)(args)` → `jsx(args)` + `import { jsx, jsxs, Fragment } from "react/jsx-runtime";`
     - `<reactDomLocal>.<minProp>(args)` → `createRoot(args)` using the module's export map.
       Any unrecognised `(0, X.Y)(args)` is still flattened to `X.Y(args)`. Outputs the import lines at the top of the chunk file.
+    - In addition to the per-module numeric files, all IIFE body statements that are NOT part of the module map (helpers, app component functions, the `ReactDOM.render(…)` entrypoint) are collected, transformed, and written to `index.js`.
+    - The webpack require helper function (detected by its `return (moduleMap[id](...), mod.exports)` return shape) is stripped from `index.js`.
+    - Top-level `var x = requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; any remaining inline `requireFn(N)` calls inside nested functions are replaced with the imported identifier.
 
 ## Patterns / gotchas
 
@@ -25,7 +28,7 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 ## How to test changes here
 
 ```bash
-npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react> -o /tmp/refactored
+npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react-webpack> -o /tmp/refactored
 ```
 
 Spot-check the refactored output by hand.
