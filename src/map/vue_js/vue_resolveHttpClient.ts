@@ -224,6 +224,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     const allFilePaths = files.map((f) => path.join(directory, f));
     const getCallers = makeGetCallers(allFilePaths);
 
@@ -248,6 +249,8 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
 
         const file = files[_i];
         const filePath = path.join(directory, file);
+
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) continue;
 
         let fileContent: string;
         try {

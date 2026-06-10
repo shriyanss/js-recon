@@ -1,5 +1,12 @@
 # Change Log
 
+## 1.3.1-beta.2 - 2026-06-10
+
+### Fixed
+
+- Framework detection now falls back to checking Puppeteer-intercepted network request URLs when all HTML-attribute checks fail — catches Nuxt.js and Next.js sites that load their framework chunks dynamically (e.g. behind a Cloudflare challenge or SSO redirect) rather than referencing them in static HTML (`lazyload`)
+- Map step no longer crashes with SIGSEGV (JavaScript heap out of memory) on ad-heavy or large-bundle targets — all file-parsing loops in the Vue/React/Svelte resolvers now skip files larger than 1.5 MB before calling Babel, preventing unbounded AST memory accumulation on sites that download 100+ third-party JS files (`map`)
+
 ## 1.3.1-beta.1 - 2026-06-08
 
 ### Added

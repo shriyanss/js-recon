@@ -20,6 +20,7 @@ Identifies which front-end framework a target uses. Single entrypoint, one check
 - **Each check is permissive.** Returning a positive on the FIRST strong signal is the convention; don't add multi-signal AND-logic without considering false negatives.
 - **Both Puppeteer page AND raw fetch** are available — the orchestrator passes both so checks can use whichever is cheaper. Don't force a check to use Puppeteer when a static HTML scan suffices.
 - **Empty return = unknown.** `run` exits when tech is empty; do NOT default to a guess for stability — silent misdispatch is worse than aborting.
+- **Network request interception fallback.** `index.ts` enables Puppeteer request interception and collects all URLs requested during page load. If all HTML-attribute checks fail, the orchestrator scans the intercepted URL list for framework-specific path prefixes (`/_nuxt/`, `/_next/`). This catches sites that load framework chunks dynamically (e.g. behind a redirect or Cloudflare challenge) rather than referencing them in static HTML. The fallback runs only when all `check*` functions return negative — it does not change behavior for normally-detectable sites.
 - **Adding a framework** = new `checkX.ts` here + new crawler in `../<framework>/` + new branch in `../../map/index.ts` + (optionally) downstream wiring. Without all four, the framework is detected but unsupported.
 
 ## How to test changes here

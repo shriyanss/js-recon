@@ -119,11 +119,16 @@ const getViteConnections = async (directory: string, output: string, formats: st
     // Single pass: parse each file once, extract functions + imports + exports.
     // This replaces the previous two-pass approach (Pass 1 + Pass 2) that parsed
     // every file twice and kept ASTs alive across both loops.
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     console.log(chalk.cyan(`[i] Scanning ${files.length} JS files for root functions`));
     for (const file of files) {
         const meta = fileMeta.get(file);
 
         const filePath = path.join(directory, file);
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
+            console.log(chalk.yellow(`[!] Skipping ${file} (too large for map analysis)`));
+            continue;
+        }
         let code: string;
         try {
             code = fs.readFileSync(filePath, "utf8");

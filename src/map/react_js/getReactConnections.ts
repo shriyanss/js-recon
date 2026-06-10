@@ -86,10 +86,15 @@ const getReactConnections = async (directory: string, output: string, formats: s
     const fileFuncToChunkId = new Map<string, Map<string, string>>();
 
     // Pass 1: find root-level 2-char function declarations (Vite/Rolldown minification pattern)
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     console.log(chalk.cyan(`[i] Scanning ${files.length} React JS files for functions`));
     for (const file of files) {
         const meta = parseFilename(file);
         const filePath = path.join(directory, file);
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
+            console.log(chalk.yellow(`[!] Skipping ${file} (too large for map analysis)`));
+            continue;
+        }
         let code: string;
         try {
             code = fs.readFileSync(filePath, "utf8");

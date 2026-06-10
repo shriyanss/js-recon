@@ -47,12 +47,20 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
 
     // get the page source in the browser (skipped in cache-only mode — no network allowed)
     let pageSource = "";
+    const interceptedUrls: string[] = [];
     if (!globalsUtil.getCacheOnly()) {
         const browser = await puppeteer.launch({
             args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);
+        // Intercept all requests so framework-specific URL patterns (e.g. /_nuxt/, /_next/)
+        // can be used as a detection signal even when they don't appear in parsed HTML.
+        await page.setRequestInterception(true);
+        page.on("request", (req) => {
+            interceptedUrls.push(req.url());
+            req.continue().catch(() => {});
+        });
         try {
             await page.goto(url, {
                 waitUntil: "domcontentloaded",
@@ -138,6 +146,19 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         const evidence =
             result_checkReact.evidence !== "" ? result_checkReact.evidence : result_checkReact_res.evidence;
         return { name: "react", evidence };
+    }
+
+    // Fallback: check URLs intercepted by Puppeteer during page load.
+    // Some sites load framework chunks dynamically via JavaScript rather than referencing
+    // them in static HTML attributes — those won't be caught by the HTML-based checks above.
+    // Matching on well-known path prefixes gives us a reliable signal without fetching extra files.
+    for (const interceptedUrl of interceptedUrls) {
+        if (interceptedUrl.includes("/_nuxt/")) {
+            return { name: "nuxt", evidence: `intercepted request: ${interceptedUrl}` };
+        }
+        if (interceptedUrl.includes("/_next/")) {
+            return { name: "next", evidence: `intercepted request: ${interceptedUrl}` };
+        }
     }
 
     return null;
