@@ -19,7 +19,7 @@ const checkFeasibility = async (url: string): Promise<void> => {
             const response = await get(url);
             const isFireWallBlocking = await checkFireWallBlocking(response);
             if (isFireWallBlocking) {
-                console.log(chalk.magenta("[!] Please try again without API Gateway"));
+                console.error(chalk.magenta("[!] Please try again without API Gateway"));
                 return;
             }
         }
@@ -28,7 +28,7 @@ const checkFeasibility = async (url: string): Promise<void> => {
             chalk.dim("However, this doesn't represent the true nature of the firewall used.")
         );
     } catch (error) {
-        console.log(chalk.red(`[!] An error occured in feasibility check: ${error}`));
+        console.error(chalk.red(`[!] An error occured in feasibility check: ${error}`));
     }
 };
 

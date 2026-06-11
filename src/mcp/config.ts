@@ -55,7 +55,7 @@ export const loadConfig = (configPath?: string): McpConfig => {
         const parsed = YAML.parse(raw) as Partial<McpConfig>;
         return { ...DEFAULT_CONFIG, ...parsed };
     } catch (err) {
-        console.log(chalk.yellow(`[!] Failed to parse config at ${filePath}. Using defaults.`));
+        console.error(chalk.yellow(`[!] Failed to parse config at ${filePath}. Using defaults.`));
         return { ...DEFAULT_CONFIG };
     }
 };

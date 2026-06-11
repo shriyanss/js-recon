@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- All error and warning messages (chalk.red, chalk.bgRed, chalk.yellow `[!]`, chalk.magenta `[!]`, chalk.dim `[!]`) now write to `stderr` instead of `stdout` — affects 62 source files across every subcommand; fixes machine-readable pipelines and shell redirects that expected clean stdout
 - Framework detection now falls back to checking Puppeteer-intercepted network request URLs when all HTML-attribute checks fail — catches Nuxt.js and Next.js sites that load their framework chunks dynamically (e.g. behind a Cloudflare challenge or SSO redirect) rather than referencing them in static HTML (`lazyload`)
 - Map step no longer crashes with SIGSEGV (JavaScript heap out of memory) on ad-heavy or large-bundle targets — all file-parsing loops in the Vue/React/Svelte resolvers now skip files larger than 1.5 MB before calling Babel, preventing unbounded AST memory accumulation on sites that download 100+ third-party JS files (`map`)
 - `run` now calls `process.exit(0)` after all pipeline steps complete — previously, abandoned Puppeteer navigations left by the lazyload hard timeout kept Node.js's event loop open indefinitely, causing the container to be SIGKILL'd (exit 137) even when analysis finished successfully (`run`)

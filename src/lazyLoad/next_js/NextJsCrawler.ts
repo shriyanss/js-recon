@@ -278,7 +278,7 @@ class NextJsCrawler {
             if (this.stopped) break; // honour stop() at each iteration boundary
 
             if (this.visitedPageCount >= this.MAX_VISITED_PAGES) {
-                console.log(chalk.yellow(`[!] Visited page limit reached (${this.MAX_VISITED_PAGES}). Skipping remaining page queue entries.`));
+                console.error(chalk.yellow(`[!] Visited page limit reached (${this.MAX_VISITED_PAGES}). Skipping remaining page queue entries.`));
                 break;
             }
             this.visitedPageCount++;
@@ -368,9 +368,9 @@ class NextJsCrawler {
         }
 
         if (this.stopped) {
-            console.log(chalk.yellow(`[!] Crawler stopped — downloading all discovered files`));
+            console.error(chalk.yellow(`[!] Crawler stopped — downloading all discovered files`));
         } else if (iteration >= this.MAX_ITERATIONS) {
-            console.log(chalk.yellow(`[!] Reached max recursive crawl iterations (${this.MAX_ITERATIONS})`));
+            console.error(chalk.yellow(`[!] Reached max recursive crawl iterations (${this.MAX_ITERATIONS})`));
         }
 
         // Phase 3 – brute-force .map files on the final set (skip if stopped by timeout)

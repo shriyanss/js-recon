@@ -64,7 +64,7 @@ const svelte_stringAnalysisJSFiles = async (url) => {
         const js_urls = getJsUrls();
 
         if (js_urls.length === 0) {
-            console.log(chalk.red("[!] No JS files found for string analysis"));
+            console.error(chalk.red("[!] No JS files found for string analysis"));
             break;
         }
 

@@ -55,7 +55,7 @@ interface CliSession {
  * Prompts user to configure MCP settings interactively.
  */
 const promptConfiguration = async (): Promise<{ provider: "openai" | "anthropic"; apiKey: string; model: string }> => {
-    console.log(chalk.yellow("\n[!] No API key configured. Let's set up MCP.\n"));
+    console.error(chalk.yellow("\n[!] No API key configured. Let's set up MCP.\n"));
 
     const { provider } = await inquirer.prompt([
         {
@@ -189,7 +189,7 @@ export const startCli = async (
     process.on("SIGINT", () => {
         try {
             if (session.currentAbortController) {
-                console.log(chalk.yellow("\n\n[!] Stopping current process...\n"));
+                console.error(chalk.yellow("\n\n[!] Stopping current process...\n"));
                 session.currentAbortController.abort();
                 session.currentAbortController = undefined;
                 ctrlCCount = 0;
@@ -198,14 +198,14 @@ export const startCli = async (
             }
             const cancelled = getJobManager().cancelMostRecentRunning();
             if (cancelled) {
-                console.log(chalk.yellow(`\n\n[!] Cancelling job ${cancelled.id} (${cancelled.name})...\n`));
+                console.error(chalk.yellow(`\n\n[!] Cancelling job ${cancelled.id} (${cancelled.name})...\n`));
                 ctrlCCount = 0;
                 reprompt();
                 return;
             }
             ctrlCCount++;
             if (ctrlCCount === 1) {
-                console.log(chalk.yellow("\n\n[!] Press Ctrl-C again to exit, or type /exit\n"));
+                console.error(chalk.yellow("\n\n[!] Press Ctrl-C again to exit, or type /exit\n"));
                 setTimeout(() => {
                     ctrlCCount = 0;
                 }, 2000);
@@ -219,7 +219,7 @@ export const startCli = async (
                 process.exit(0);
             }
         } catch (err: any) {
-            console.log(chalk.red(`\n[!] SIGINT handler error: ${err?.message || err}\n`));
+            console.error(chalk.red(`\n[!] SIGINT handler error: ${err?.message || err}\n`));
         }
     });
 
@@ -260,9 +260,9 @@ export const startCli = async (
             console.log(chalk.white("\n" + response.content + "\n"));
         } catch (err: any) {
             if (err.name !== "AbortError") {
-                console.log(chalk.red(`\n[!] ${err.message}\n`));
+                console.error(chalk.red(`\n[!] ${err.message}\n`));
             } else {
-                console.log(chalk.yellow("\n[!] Response generation stopped.\n"));
+                console.error(chalk.yellow("\n[!] Response generation stopped.\n"));
             }
         } finally {
             clearInterval(spinnerInterval);
@@ -324,7 +324,7 @@ export const startCli = async (
                             | "anthropic";
                         const newKey = resolveApiKey(newProvider, session.cliApiKey, config);
                         if (!newKey) {
-                            console.log(chalk.red(`\n[!] No API key configured for ${newProvider}.\n`));
+                            console.error(chalk.red(`\n[!] No API key configured for ${newProvider}.\n`));
                         } else {
                             session.providerName = newProvider;
                             const autoModel = getDefaultModel(newProvider);
@@ -348,14 +348,14 @@ export const startCli = async (
                         const argsStr = spaceIdx === -1 ? "" : raw.substring(spaceIdx + 1);
                         const skill = findSkill(skillName);
                         if (!skill) {
-                            console.log(chalk.red(`\n[!] Skill not found: ${skillName}\n`));
+                            console.error(chalk.red(`\n[!] Skill not found: ${skillName}\n`));
                             prompt();
                             return;
                         }
                         const parsed = parseSkillArgs(argsStr, skill);
                         const rendered = renderSkill(skill, parsed);
                         if (!rendered.ok) {
-                            console.log(chalk.red(`\n[!] ${rendered.error}\n`));
+                            console.error(chalk.red(`\n[!] ${rendered.error}\n`));
                             prompt();
                             return;
                         }
@@ -406,7 +406,7 @@ export const startCli = async (
                         toolContext = "\n\n[System: No URL detected in the message. Ask the user for the target URL.]";
                     }
                 } catch (err: any) {
-                    console.log(chalk.red(`\n[!] Tool error: ${err.message}\n`));
+                    console.error(chalk.red(`\n[!] Tool error: ${err.message}\n`));
                 }
             }
 

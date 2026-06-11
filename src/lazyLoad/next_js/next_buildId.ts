@@ -10,7 +10,7 @@ export const next_buildId_RSC = async (rsc_directory: string): Promise<string | 
         try {
             dirents = await readdir(directory, { withFileTypes: true });
         } catch {
-            console.log(
+            console.error(
                 chalk.red(
                     `[!] Can't read subsequent requests directory. Skipping build ID extraction using this method...`
                 )

@@ -73,7 +73,7 @@ const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string
         }
     } catch (err) {
         // This is expected if the file is not found or is not a JS file
-        // console.log(chalk.red(`[!] Failed to parse _buildManifest.js: ${err.message}`));
+        // console.error(chalk.red(`[!] Failed to parse _buildManifest.js: ${err.message}`));
     }
 
     return toReturn;

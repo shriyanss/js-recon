@@ -63,7 +63,7 @@ const validateRules = async (ruleFiles: string[]): Promise<{ allValid: boolean; 
             ruleSchema.parse(rule);
 
             if (!isVersionCompatible(rule.js_recon_version, CONFIG.version)) {
-                console.log(
+                console.error(
                     chalk.yellow(
                         `[!] Skipping ${ruleFile}: requires js-recon ${rule.js_recon_version} (current: ${CONFIG.version})`
                     )

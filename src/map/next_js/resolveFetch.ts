@@ -300,7 +300,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
         } catch (error) {
-            console.log(chalk.red(`[!] Could not read file: ${filePath}`));
+            console.error(chalk.red(`[!] Could not read file: ${filePath}`));
             continue;
         }
 
@@ -313,7 +313,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 errorRecovery: true,
             });
         } catch (err) {
-            console.log(chalk.red(`[!] Failed to parse file: ${filePath}. Error: ${err.message}`));
+            console.error(chalk.red(`[!] Failed to parse file: ${filePath}. Error: ${err.message}`));
             continue;
         }
 

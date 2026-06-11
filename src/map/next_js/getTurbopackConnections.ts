@@ -236,7 +236,7 @@ const getTurbopackConnections = async (
                     const description = await getCompletion(value.code, systemPrompt);
                     return { key, description };
                 } catch (err) {
-                    console.log(chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`));
+                    console.error(chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`));
                     return { key, description: "none" };
                 } finally {
                     activeThreads--;

@@ -82,19 +82,19 @@ const react_followImports = async (
 
             const contentLength = req.headers.get("content-length");
             if (contentLength && parseInt(contentLength) > maxJsSizeMb * 1024 * 1024) {
-                console.log(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
+                console.error(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
                 continue;
             }
 
             const content = await req.text();
             if (content.length > maxJsSizeMb * 1024 * 1024) {
-                console.log(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
+                console.error(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
                 continue;
             }
 
             discovered.push(...extractImports(content, jsFile, baseUrl));
         } catch (err) {
-            console.log(chalk.yellow(`[!] Could not follow imports in ${jsFile}: ${err}`));
+            console.error(chalk.yellow(`[!] Could not follow imports in ${jsFile}: ${err}`));
         }
     }
 

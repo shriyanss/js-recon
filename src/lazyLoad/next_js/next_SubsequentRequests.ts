@@ -46,9 +46,9 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
 
     // open the urls file, and load the paths (JSON)
     if (!fs.existsSync(urlsFile)) {
-        console.log(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
-        console.log(chalk.yellow(`[!] Please run strings module first with -e flag`));
-        console.log(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
+        console.error(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
+        console.error(chalk.yellow(`[!] Please run strings module first with -e flag`));
+        console.error(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
         process.exit(17);
     }
     let endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;

@@ -9,7 +9,7 @@ import puppeteer from "../utility/puppeteerInstance.js";
  */
 const downloadLoadedJs = async (url) => {
     if (!url.match(/https?:\/\/[a-zA-Z0-9\._\-]+/)) {
-        console.log(chalk.red("[!] Invalid URL"));
+        console.error(chalk.red("[!] Invalid URL"));
         return; // Return undefined as per JSDoc
     }
 

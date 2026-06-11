@@ -30,13 +30,13 @@ const next_getJSScript = async (url: string): Promise<string[]> => {
         res = await makeRequest(url, {});
         if (res) break;
         if (attempt < maxAttempts) {
-            console.log(chalk.yellow(`[!] Request to ${url} failed, retrying (${attempt}/${maxAttempts})...`));
+            console.error(chalk.yellow(`[!] Request to ${url} failed, retrying (${attempt}/${maxAttempts})...`));
             await sleep(1000);
         }
     }
     if (!res) {
         if (!getCacheOnly()) {
-            console.log(chalk.red(`[!] Giving up on ${url} after ${maxAttempts} attempts`));
+            console.error(chalk.red(`[!] Giving up on ${url} after ${maxAttempts} attempts`));
         }
         return toReturn;
     }

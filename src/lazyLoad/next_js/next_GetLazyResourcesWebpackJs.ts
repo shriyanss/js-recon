@@ -63,7 +63,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     try {
         await page.goto(url, { waitUntil: "networkidle0" });
     } catch {
-        console.log(chalk.yellow("[!] Timeout reached for page load. Continuing with the current state"));
+        console.error(chalk.yellow("[!] Timeout reached for page load. Continuing with the current state"));
     }
 
     await browser.close();
@@ -71,7 +71,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const jsUrls = getJsUrls();
 
     if (jsUrls.length === 0) {
-        console.log(chalk.yellow("[!] No JS files discovered during page load"));
+        console.error(chalk.yellow("[!] No JS files discovered during page load"));
         return [];
     }
 
@@ -174,7 +174,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     stopResize();
 
     if (matched.length === 0) {
-        console.log(chalk.yellow("[!] No chunk URL builder functions found in discovered JS files"));
+        console.error(chalk.yellow("[!] No chunk URL builder functions found in discovered JS files"));
         return [];
     }
 
@@ -203,7 +203,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
         }
 
         if (!approved) {
-            console.log(chalk.red("[!] Skipping function."));
+            console.error(chalk.red("[!] Skipping function."));
             continue;
         }
 

@@ -49,7 +49,7 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
     try {
         files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
     } catch {
-        console.log(chalk.red(`[!] Could not read directory: ${directory}`));
+        console.error(chalk.red(`[!] Could not read directory: ${directory}`));
         return;
     }
 
