@@ -58,6 +58,14 @@ class NextJsCrawler {
     /** Maximum number of recursive passes before giving up. */
     private MAX_ITERATIONS: number;
 
+    /**
+     * Maximum number of page URLs visited across the entire crawl instance.
+     * Prevents runaway crawls on sites with many locale/language variants where
+     * each locale page links to every other locale, causing exponential growth.
+     */
+    private readonly MAX_VISITED_PAGES = 200;
+    private visitedPageCount = 0;
+
     /** Set to true by stop() to abort the crawl loop gracefully. */
     private stopped = false;
 
@@ -164,11 +172,16 @@ class NextJsCrawler {
         ];
         this.emitDownloadable(this.registerUrls(pathsFromAnchors));
 
-        // 2. Webpack runtime analysis (puppeteer – expensive, run once)
-        const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
-        this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
-        lazyLoadGlobals.pushToJsUrls(jsFromWebpack);
-        this.emitDownloadable(this.registerUrls(jsFromWebpack));
+        // 2. Webpack runtime analysis (puppeteer – expensive, run once per target).
+        // Skip in subsequent-requests passes: the webpack chunk URL builders are static
+        // and were already resolved in the initial lazyload call; re-running this costs
+        // 3-6 minutes per call without discovering new URLs.
+        if (!this.subsequentRequestsFlag) {
+            const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
+            this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
+            lazyLoadGlobals.pushToJsUrls(jsFromWebpack);
+            this.emitDownloadable(this.registerUrls(jsFromWebpack));
+        }
 
         // 3. _buildManifest.js
         const jsFromBuildManifest = await next_getLazyResourcesBuildManifestJs(this.url);
@@ -263,6 +276,12 @@ class NextJsCrawler {
 
         for (const u of pageQueue) {
             if (this.stopped) break; // honour stop() at each iteration boundary
+
+            if (this.visitedPageCount >= this.MAX_VISITED_PAGES) {
+                console.log(chalk.yellow(`[!] Visited page limit reached (${this.MAX_VISITED_PAGES}). Skipping remaining page queue entries.`));
+                break;
+            }
+            this.visitedPageCount++;
 
             const normalized = this.normalizePageUrl(u);
 

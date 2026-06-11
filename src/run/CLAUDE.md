@@ -16,6 +16,7 @@ Powers the `run` subcommand — the primary user interface. Sequences `lazyload 
 - **`-r/--rules` is forwarded** to both Next and Vue branches as `cmd.rules || ""`. Empty string = use cached rules; non-empty = file/dir override.
 - **Step ordering is meaningful.** Strings pass 2 runs after the subsequent-requests re-crawl because it needs the expanded chunk set; swapping them produces stale `extracted_urls.txt`. The Vue branch skips the re-passes entirely — Vite chunk discovery completes in one pass.
 - **Vue endpoints fallback.** Vue has no endpoints extractor yet, so `report` step writes `endpoints.json` as `[]` if missing. Don't add a placeholder Vue endpoints implementation here — it belongs in `../endpoints/`.
+- **`process.exit(0)` in finally.** The `run` action handler's `finally` block calls `process.exit(0)` after `removeSigintHandler()`. This is intentional: Puppeteer navigations abandoned by the lazyload hard timeout keep the Node.js event loop open indefinitely, preventing natural exit. Any step that encounters an unrecoverable error calls `process.exit(N)` directly (e.g. exit 10 for tech not detected), which terminates the process before the finally block runs, so the explicit `process.exit(0)` only fires on a successful or normally-returned pipeline.
 
 ## Adding a new step or flag
 

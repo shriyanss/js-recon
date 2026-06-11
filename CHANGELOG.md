@@ -6,6 +6,13 @@
 
 - Framework detection now falls back to checking Puppeteer-intercepted network request URLs when all HTML-attribute checks fail — catches Nuxt.js and Next.js sites that load their framework chunks dynamically (e.g. behind a Cloudflare challenge or SSO redirect) rather than referencing them in static HTML (`lazyload`)
 - Map step no longer crashes with SIGSEGV (JavaScript heap out of memory) on ad-heavy or large-bundle targets — all file-parsing loops in the Vue/React/Svelte resolvers now skip files larger than 1.5 MB before calling Babel, preventing unbounded AST memory accumulation on sites that download 100+ third-party JS files (`map`)
+- `run` now calls `process.exit(0)` after all pipeline steps complete — previously, abandoned Puppeteer navigations left by the lazyload hard timeout kept Node.js's event loop open indefinitely, causing the container to be SIGKILL'd (exit 137) even when analysis finished successfully (`run`)
+- Next.js lazyload recursive page-crawl now stops visiting pages after 200 unique page visits per crawl instance — prevents runaway crawl explosion on sites that expose many locale or language variants in their navigation, where each locale page links to every other locale causing the crawl frontier to grow exponentially and exhaust the lazyload timeout (`lazyload`)
+
+### Performance
+
+- Next.js subsequent-requests passes (steps 3/8 and 4.5/8) no longer re-run webpack chunk URL builder analysis — `next_GetLazyResourcesWebpackJs` (a full Puppeteer session) is now skipped when `subsequentRequestsFlag` is true, saving 3-6 minutes per call since the chunk URL builders are static and were already resolved in the initial lazyload (`lazyload`)
+- HTML inline-chunk scraping in `subsequentRequests` is now parallelised using the same thread-count semaphore as the RSC pass — previously sequential over all extracted paths, cutting the HTML phase from ~17 min to ~2 min for sites with 1000+ extracted paths (`lazyload`)
 
 ## 1.3.1-beta.1 - 2026-06-08
 
