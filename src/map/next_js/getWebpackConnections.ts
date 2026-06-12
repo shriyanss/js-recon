@@ -22,7 +22,7 @@ const getWebpackConnections = async (directory, output, formats) => {
     const maxAiThreads = globals.getAiThreads();
     if (globals.getAi().length > 0) {
         // print a warning message about costs that might incur
-        console.log(
+        console.error(
             chalk.yellow(
                 "[!] AI integration is enabled. This may incur costs. By using this feature, you agree to the AI provider's terms of service, and accept the risk of incurring unexpected costs due to huge codebase."
             )
@@ -31,7 +31,7 @@ const getWebpackConnections = async (directory, output, formats) => {
         if (provider === "openai") {
             const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
             if (!apiKey) {
-                console.log(
+                console.error(
                     chalk.red(
                         "[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."
                     )
@@ -44,7 +44,7 @@ const getWebpackConnections = async (directory, output, formats) => {
 
     // if the output file already exists, and AI mode is enabled, skip coz it burns $$$
     if (fs.existsSync(`${output}.json`) && globals.getAi().length > 0) {
-        console.log(
+        console.error(
             chalk.yellow(`[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`)
         );
         const chunks = JSON.parse(fs.readFileSync(`${output}.json`, "utf8"));
@@ -235,7 +235,7 @@ const getWebpackConnections = async (directory, output, formats) => {
                     const description = await getCompletion(value.code, systemPrompt);
                     return { key, description };
                 } catch (err) {
-                    console.log(chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`));
+                    console.error(chalk.red(`[!] Error generating description for chunk ${key}: ${err.message}`));
                     return { key, description: "none" };
                 } finally {
                     activeThreads--;

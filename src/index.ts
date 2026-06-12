@@ -33,7 +33,7 @@ const validAiOptions = ["description"];
 function validateAndSetTimeout(timeoutValue: string): void {
     const parsedTimeout = parseInt(timeoutValue, 10);
     if (Number.isNaN(parsedTimeout) || parsedTimeout < 1) {
-        console.log(chalk.yellow(`[!] Invalid timeout value: "${timeoutValue}". Using default of 30000ms.`));
+        console.error(chalk.yellow(`[!] Invalid timeout value: "${timeoutValue}". Using default of 30000ms.`));
         globalsUtil.setRequestTimeout(30000);
     } else {
         globalsUtil.setRequestTimeout(parsedTimeout);
@@ -228,14 +228,14 @@ program
         if (globalsUtil.getAi().length !== 0) {
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
-                    console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
+                    console.error(chalk.red(`[!] Invalid AI option: ${aiType}`));
                     process.exit(1);
                 }
             }
         }
         const maxRecursionDepth = parseInt(cmd.maxRecursionDepth ?? "3", 10);
         if (!Number.isFinite(maxRecursionDepth) || maxRecursionDepth < 0) {
-            console.log(chalk.red(`[!] Invalid --max-recursion-depth: ${cmd.maxRecursionDepth}`));
+            console.error(chalk.red(`[!] Invalid --max-recursion-depth: ${cmd.maxRecursionDepth}`));
             process.exit(1);
         }
         globalsUtil.setMaxRecursionDepth(maxRecursionDepth);
@@ -355,7 +355,7 @@ program
         if (globalsUtil.getAi().length !== 0) {
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
-                    console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
+                    console.error(chalk.red(`[!] Invalid AI option: ${aiType}`));
                     process.exit(2);
                 }
             }

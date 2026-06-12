@@ -32,7 +32,7 @@ export const processDirectAxiosCall = (
 
     if (!callMethod) {
         if (!globalConfig.axiosNonHttpMethods.includes(callMethodName)) {
-            // console.log(chalk.yellow(`[!] Unknown or unhandled axios method: ${callMethodName}`));
+            // console.error(chalk.yellow(`[!] Unknown or unhandled axios method: ${callMethodName}`));
         }
         return;
     }

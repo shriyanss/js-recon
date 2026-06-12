@@ -34,7 +34,7 @@ const nuxt_astParse = async (url: string) => {
             errorRecovery: true,
         });
     } catch (error) {
-        console.log(chalk.red("[!] Error parsing JS file: ", url));
+        console.error(chalk.red("[!] Error parsing JS file: ", url));
         return filesFound;
     }
 
@@ -106,7 +106,7 @@ const nuxt_astParse = async (url: string) => {
             if (user_verified === true) {
                 console.log(chalk.cyan("[i] Proceeding with the selected function to fetch files"));
             } else {
-                console.log(chalk.red("[!] Not executing function."));
+                console.error(chalk.red("[!] Not executing function."));
                 continue;
             }
             // get the value of the unknown vars
@@ -185,7 +185,7 @@ const nuxt_astParse = async (url: string) => {
                     }
                 }
             } catch (error) {
-                console.log(chalk.red("[!] Error executing function: ", error));
+                console.error(chalk.red("[!] Error executing function: ", error));
             }
 
             if (js_paths.length > 0) {

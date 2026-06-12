@@ -216,7 +216,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
     try {
         files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
     } catch {
-        console.log(chalk.red(`[!] Could not read directory: ${directory}`));
+        console.error(chalk.red(`[!] Could not read directory: ${directory}`));
         return;
     }
 
@@ -224,6 +224,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     const allFilePaths = files.map((f) => path.join(directory, f));
     const getCallers = makeGetCallers(allFilePaths);
 
@@ -248,6 +249,15 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
 
         const file = files[_i];
         const filePath = path.join(directory, file);
+
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
+            console.error(
+                chalk.yellow(
+                    `[!] Skipping ${file} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(1)} MB > 1.5 MB limit) — HTTP client coverage may be incomplete`
+                )
+            );
+            continue;
+        }
 
         let fileContent: string;
         try {

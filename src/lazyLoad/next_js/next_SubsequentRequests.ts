@@ -46,9 +46,9 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
 
     // open the urls file, and load the paths (JSON)
     if (!fs.existsSync(urlsFile)) {
-        console.log(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
-        console.log(chalk.yellow(`[!] Please run strings module first with -e flag`));
-        console.log(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
+        console.error(chalk.red(`[!] URLs file ${urlsFile} does not exist`));
+        console.error(chalk.yellow(`[!] Please run strings module first with -e flag`));
+        console.error(chalk.yellow(`[!] Example: js-recon strings -d <directory> -e`));
         process.exit(17);
     }
     let endpoints = JSON.parse(fs.readFileSync(urlsFile, "utf8")).paths;
@@ -164,42 +164,45 @@ const subsequentRequests = async (url, urlsFile, threads, output, js_urls): Prom
     // as well
 
     let jsFilesFromPageHtml: string[] = [];
-    for (const endpoint of endpoints) {
+    const htmlPromises = endpoints.map(async (endpoint) => {
         const reqUrl = new URL(endpoint, url).href;
 
-        // make the request to get the contents of the webpage
-
-        const req = await makeRequest(reqUrl);
-        if (!req) {
-            progressBar.increment(1, { phase: "HTML" });
-            continue;
+        while (queue >= max_queue) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        const resText = await req.text();
-        const $ = cheerio.load(resText);
+        queue++;
 
-        const extract_regex = /static\/chunks\/[a-zA-Z0-9_\-~.]+\.js/g;
+        try {
+            const req = await makeRequest(reqUrl);
+            if (!req) {
+                progressBar.increment(1, { phase: "HTML" });
+                return;
+            }
+            const resText = await req.text();
+            const $ = cheerio.load(resText);
 
-        // find all script tags
-        $("script").each((_, script) => {
-            // make sure that is doesn't have src attribute
-            if (!$(script).attr("src")) {
-                // get the content of the script tag
-                const scriptContent = $(script).html();
-                if (scriptContent) {
-                    // parse the script tag contents
-                    // it would be something like the following:
-                    // self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[13032,[\"2090\",\"static/chunks/2090.....
-                    // just use regex :/
+            const extract_regex = /static\/chunks\/[a-zA-Z0-9_\-~.]+\.js/g;
 
-                    const matches = scriptContent.matchAll(extract_regex);
-                    for (const match of matches) {
-                        jsFilesFromPageHtml.push(match[0]);
+            $("script").each((_, script) => {
+                if (!$(script).attr("src")) {
+                    const scriptContent = $(script).html();
+                    if (scriptContent) {
+                        const matches = scriptContent.matchAll(extract_regex);
+                        for (const match of matches) {
+                            jsFilesFromPageHtml.push(match[0]);
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (e) {
+            multiBar.log(chalk.red(`[!] Error fetching HTML for ${reqUrl}: ${e}\n`));
+        } finally {
+            queue--;
+        }
         progressBar.increment(1, { phase: "HTML" });
-    }
+    });
+
+    await Promise.all(htmlPromises);
 
     multiBar.stop();
     stopBarWatcher();

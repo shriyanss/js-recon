@@ -87,13 +87,13 @@ const map = async (
     // iterate through all the formats, and match it with the available formats
     for (const format of formats) {
         if (!Object.keys(availableFormats).includes(format)) {
-            console.log(chalk.red(`[!] Invalid format: ${format}`));
+            console.error(chalk.red(`[!] Invalid format: ${format}`));
             process.exit(4);
         }
     }
 
     if (!tech) {
-        console.log(
+        console.error(
             chalk.red(
                 "[!] Please specify a technology with -t/--tech. Run with -l/--list to see available technologies"
             )
@@ -102,7 +102,7 @@ const map = async (
     }
 
     if (!directory) {
-        console.log(chalk.red("[!] Please specify a directory with -d/--directory"));
+        console.error(chalk.red("[!] Please specify a directory with -d/--directory"));
         process.exit(6);
     }
 

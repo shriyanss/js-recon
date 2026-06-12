@@ -183,13 +183,26 @@ npm run cleanup && npm run start -- run -u <target-url> -y -k
 
 ## Release process
 
-Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-rules) and `stage` (js-recon-docs). Do **not** touch `js-recon-research` — it is private and excluded from releases.
+Releasing a new version touches three repos. Work on `dev` (js-recon, js-recon-rules) and `stage` (js-recon-docs). Do **not** touch `js-recon-research` — it is private and excluded from releases.
 
-### Steps
+**Ordering is critical**: release js-recon first (including the GitHub release so CI publishes it to npm), then snapshot and PR js-recon-docs. This ensures the docs `version_check` CI step passes instead of failing due to a missing npm package.
 
-1. **Bump version** — update `version` in `src/globalConfig.ts` and `package.json` to the new tag (e.g. `1.3.1-alpha.4`). Both must match.
+### When a user asks to prepare a release
 
-2. **Update CHANGELOG** — add a `## <version> - <YYYY-MM-DD>` section to `CHANGELOG.md` with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections as needed. Verify every `feat`/`fix` commit since the previous tag is covered:
+Before writing any files, gather the current state:
+
+1. Check `package.json` and `src/globalConfig.ts` for the current version — both must match. If they don't, fix them first.
+2. Find the latest git tag: `git describe --tags --abbrev=0`
+3. List unreleased commits: `git log <latest-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"`
+4. Check if `CHANGELOG.md` already has an `(unreleased)` entry for the current version — if so, only the date needs to be added.
+5. Check `js-recon-rules` for unreleased commits since its last tag: `git -C ../js-recon-rules log $(git -C ../js-recon-rules describe --tags --abbrev=0)..HEAD --oneline`
+6. Check `js-recon-docs` for commits since the last version snapshot: `git -C ../js-recon-docs log --oneline -20`
+
+### Phase 1 — js-recon (release first)
+
+1. **Bump version** (if not already at the target version) — update `version` in `src/globalConfig.ts` and `package.json`. Both must match.
+
+2. **Update CHANGELOG** — if the version heading already exists as `(unreleased)`, replace it with the real date (`## <version> - <YYYY-MM-DD>`). Otherwise add the full section with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections. Verify every `feat`/`fix` commit since the previous tag is covered:
 
     ```bash
     git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
@@ -197,28 +210,76 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
 
 3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`. The `refactor` and `load` subcommands are easy to miss — explicitly verify they are present.
 
-4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are unreleased commits, update `CHANGELOG.md` and `version.txt`, then push.
+4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are substantive unreleased commits (not just merge/cleanup commits), update `CHANGELOG.md` and `version.txt`, push to `dev`, and open a PR (`shriyanss/js-recon-rules` dev→main, title=rules version, body=rules changelog section).
 
-5. **Update docs** (`js-recon-docs` repo, `stage` branch):
-    - Fix any option/flag gaps in `docs/docs/modules/*.md` (cross-check against `src/index.ts`).
-    - Snapshot the current docs: `npx docusaurus docs:version <version>` (run inside `js-recon-docs/`).
-    - Keep `lastVersion` in `docusaurus.config.ts` pointing to the last **stable** release (do not change it for alphas/betas).
-    - Verify: `npm run build` in `js-recon-docs/` must pass with no broken-link errors.
+5. **Push** `js-recon` dev branch: `git push origin dev`
 
-6. **Push** — push all three repos to their source branches (`dev`/`stage`).
-
-7. **Open PRs** using `gh pr create`:
+6. **Open PR** using `gh pr create`:
    | Repo | Source | Target | Title | Body |
    |------|--------|--------|-------|------|
-   | `shriyanss/js-recon` | `dev` | `main` | version string (e.g. `v1.3.1-alpha.4`) | `## <version>` changelog section |
-   | `shriyanss/js-recon-docs` | `stage` | `main` | version string | Brief summary of doc changes |
-   | `shriyanss/js-recon-rules` | `dev` | `main` | rules version (e.g. `v1.2.0`) | `## <version>` rules changelog section |
+   | `shriyanss/js-recon` | `dev` | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
 
-8. **Monitor CI** — after PRs are open, use `gh pr checks <pr-number> --repo <owner/repo>` to watch all three repos. Poll until all checks complete. The docs CI check is expected to fail until js-recon is fully published to npm — that is acceptable.
+7. **Monitor js-recon CI** — use `gh pr checks <pr-number> --repo shriyanss/js-recon` and poll until all checks complete. Handle CodeRabbit suggestions (see below). Do NOT merge — wait for user approval.
 
-9. **Handle CodeRabbit** — js-recon has CodeRabbit installed. After the PR is created, poll for review comments with `gh api repos/shriyanss/js-recon/pulls/<pr>/comments`. For each actionable suggestion (correctness bugs, conventions violations), apply a fix as a follow-up commit to `dev` — the PR updates automatically. Trivial style preferences can be skipped.
+8. **Create GitHub release** — after the PR is merged to main:
 
-10. **Stop before merge** — do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
+    ```bash
+    gh release create v<version> \
+      --repo shriyanss/js-recon \
+      --title "v<version>" \
+      --notes "<changelog section>" \
+      --prerelease    # set for any version containing "alpha" or "beta"
+    ```
+
+    `--latest` flag rules:
+    - **Omit** `--latest` if the version contains `alpha` or `beta`
+    - **Add** `--latest` only for stable releases (no pre-release suffix in the version string)
+
+    Previous tag is left to GitHub's automatic detection (do not set `--target` or `--tag` beyond the tag name itself).
+
+9. **Wait for npm publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow release`. Confirm the npm package is live at the new version before proceeding to Phase 2.
+
+### Phase 2 — js-recon-docs (after npm is live)
+
+10. **Fix doc gaps** — cross-check `docs/docs/modules/*.md` against `src/index.ts` and the new CHANGELOG entries. Add or update any missing flags, options, or command descriptions.
+
+11. **Snapshot** — run inside `js-recon-docs/`:
+
+    ```bash
+    npx docusaurus docs:version <version>
+    ```
+
+    This creates `versioned_docs/version-<version>/`, updates `versions.json`, and creates `versioned_sidebars/version-<version>-sidebars.json`.
+
+12. **Keep `lastVersion` stable** — `lastVersion` in `docusaurus.config.ts` stays pointing to the last stable release. Do **not** update it for alpha or beta versions.
+
+13. **Push** `js-recon-docs` stage branch and open PR:
+
+    ```bash
+    git -C ../js-recon-docs add .
+    git -C ../js-recon-docs commit -m "docs: snapshot v<version>"
+    git -C ../js-recon-docs push origin stage
+    gh pr create --repo shriyanss/js-recon-docs \
+      --head stage --base main \
+      --title "v<version>" \
+      --body "<brief summary of doc changes>"
+    ```
+
+14. **Monitor docs CI** — `version_check` should pass now that the npm package is live. CodeRabbit rate-limit comments are non-blocking.
+
+### Handling CodeRabbit
+
+After any PR is created, poll for review comments:
+
+```bash
+gh api repos/shriyanss/js-recon/pulls/<pr>/comments
+```
+
+For each suggestion: apply a fix commit to `dev` for correctness bugs or convention violations. Skip trivial style preferences. The PR updates automatically.
+
+### Stop before merge
+
+Do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
 
 ## Security / confidentiality
 

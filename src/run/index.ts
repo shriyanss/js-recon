@@ -107,7 +107,7 @@ const processUrl = async (
     if (shouldSkipTarget()) return;
 
     if (globalsUtil.getTech() === "") {
-        console.log(chalk.bgRed(`[!] Technology not detected. ${isBatch ? "Skipping this target." : "Quitting."}`));
+        console.error(chalk.bgRed(`[!] Technology not detected. ${isBatch ? "Skipping this target." : "Quitting."}`));
         if (isBatch) {
             return;
         }
@@ -466,7 +466,7 @@ export default async (cmd: any): Promise<void> => {
             // if not done, it might conflict this process
             // for devs: run `npm run cleanup` to prepare this directory
             if (fs.existsSync(cmd.output)) {
-                console.log(
+                console.error(
                     chalk.red(
                         `[!] Output directory ${cmd.output} already exists. Please switch to other directory or it might conflict with this process.`
                     )
@@ -482,7 +482,7 @@ export default async (cmd: any): Promise<void> => {
             try {
                 new URL(cmd.url);
             } catch (e) {
-                console.log(chalk.red(`[!] Invalid URL: ${cmd.url}`));
+                console.error(chalk.red(`[!] Invalid URL: ${cmd.url}`));
                 process.exit(12);
             }
 
@@ -506,7 +506,7 @@ export default async (cmd: any): Promise<void> => {
                 try {
                     urlObj = new URL(url);
                 } catch {
-                    console.log(chalk.bgRed(`[!] Invalid URL: ${url}`));
+                    console.error(chalk.bgRed(`[!] Invalid URL: ${url}`));
                     continue;
                 }
 
@@ -514,7 +514,7 @@ export default async (cmd: any): Promise<void> => {
                 const thisTargetDir = `${cmd.output}/${hostDir}`;
 
                 if (fs.existsSync(thisTargetDir)) {
-                    console.log(chalk.red(`[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`));
+                    console.error(chalk.red(`[!] Output directory ${thisTargetDir} already exists. Skipping ${url}.`));
                     console.log(
                         chalk.yellow(
                             `[i] For advanced users: use the individual modules separately. See docs at ${CONFIG.modulesDocs}`
@@ -529,5 +529,6 @@ export default async (cmd: any): Promise<void> => {
         }
     } finally {
         removeSigintHandler();
+        process.exit(process.exitCode ?? 0);
     }
 };

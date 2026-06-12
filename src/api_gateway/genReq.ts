@@ -67,7 +67,7 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
 
     let newResourceResponse;
     if (resourceExists) {
-        // console.log(chalk.yellow("[!] Resource already exists"));
+        // console.error(chalk.yellow("[!] Resource already exists"));
         newResourceResponse = {
             id: resourceExists.id,
         };
@@ -190,7 +190,7 @@ const get = async (url: string, headers: {} = {}): Promise<string> => {
     }
 
     if (isFireWallBlocking) {
-        console.log(chalk.magenta("[!] Please try again without API Gateway"));
+        console.error(chalk.magenta("[!] Please try again without API Gateway"));
         process.exit(18);
     }
 

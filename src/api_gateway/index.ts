@@ -148,7 +148,7 @@ const createGateway = async () => {
 const destroyGateway = async (id: string): Promise<void> => {
     console.log(chalk.cyan("[i] Destroying API Gateway"));
     if (!id) {
-        console.log(chalk.red("[!] Please provide an API Gateway ID"));
+        console.error(chalk.red("[!] Please provide an API Gateway ID"));
         return;
     }
     //   read the config file
@@ -231,7 +231,7 @@ const listGateways = async () => {
 
     // check if the config file exists
     if (!fs.existsSync(configFile)) {
-        console.log(chalk.red("[!] Config file does not exist"));
+        console.error(chalk.red("[!] Config file does not exist"));
         return;
     }
 
@@ -239,7 +239,7 @@ const listGateways = async () => {
 
     //   if list is empty
     if (Object.keys(config).length === 0) {
-        console.log(chalk.red("[!] No API Gateways found"));
+        console.error(chalk.red("[!] No API Gateways found"));
         return;
     }
 
@@ -286,7 +286,7 @@ const apiGateway = async (
     // if feasibility is true, check feasibility
     if (feasibilityInput) {
         if (!feasibilityUrlInput) {
-            console.log(chalk.red("[!] Please provide a URL to check feasibility of"));
+            console.error(chalk.red("[!] Please provide a URL to check feasibility of"));
             return;
         }
         await checkFeasibility(feasibilityUrlInput);
@@ -300,7 +300,7 @@ const apiGateway = async (
     configFile = configInput || "config.json";
 
     if (!aws_access_key || !aws_secret_key) {
-        console.log(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
+        console.error(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
         return;
     }
 
@@ -328,7 +328,7 @@ const apiGateway = async (
     } else if (listInput) {
         await listGateways();
     } else {
-        console.log(chalk.red("[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)"));
+        console.error(chalk.red("[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)"));
     }
 };
 

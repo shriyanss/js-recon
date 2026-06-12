@@ -8,7 +8,7 @@ const vue_pageSrc = async (url: string) => {
     // first, get the contents of the homepage
     const req = await makeRequest(url);
     if (req == null) {
-        console.log(chalk.red(`Failed to fetch ${url}`));
+        console.error(chalk.red(`Failed to fetch ${url}`));
         return toReturn;
     }
     const homepageContent = await req.text();

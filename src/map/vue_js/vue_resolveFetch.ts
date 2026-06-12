@@ -120,13 +120,15 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
     try {
         files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
     } catch {
-        console.log(chalk.red(`[!] Could not read directory: ${directory}`));
+        console.error(chalk.red(`[!] Could not read directory: ${directory}`));
         return;
     }
 
     files = files
         .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
+
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
 
     // Pre-pass: scan every file for object-literal properties whose value is a
     // function that ultimately calls fetch(). Their property names are the
@@ -146,6 +148,7 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
         if (_pi > 0 && _pi % 50 === 0) await new Promise<void>((r) => setImmediate(r));
         const file = files[_pi];
         const filePath = path.join(directory, file);
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) continue;
         let fileContent: string;
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
@@ -191,6 +194,14 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
         if (_mi > 0 && _mi % 50 === 0) await new Promise<void>((r) => setImmediate(r));
         const file = files[_mi];
         const filePath = path.join(directory, file);
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
+            console.error(
+                chalk.yellow(
+                    `[!] Skipping ${file} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(1)} MB > 1.5 MB limit) — fetch coverage may be incomplete`
+                )
+            );
+            continue;
+        }
         // Parse each file fresh — no persistent cache. The AST goes out of scope
         // at the end of this loop body so the GC can reclaim it.
         let fileContent: string;

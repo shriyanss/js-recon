@@ -572,7 +572,7 @@ const resolveNewRequest = async (chunks: Chunks, directory: string) => {
 
     const wrappers = findWrapperClasses(chunks);
     if (wrappers.size === 0) {
-        console.log(chalk.yellow("    [!] No HTTP-wrapper classes detected"));
+        console.error(chalk.yellow("    [!] No HTTP-wrapper classes detected"));
         return;
     }
 

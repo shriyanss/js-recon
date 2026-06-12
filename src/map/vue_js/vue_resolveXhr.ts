@@ -49,7 +49,7 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
     try {
         files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
     } catch {
-        console.log(chalk.red(`[!] Could not read directory: ${directory}`));
+        console.error(chalk.red(`[!] Could not read directory: ${directory}`));
         return;
     }
 
@@ -60,6 +60,7 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
     // Build the full path list for caller lookup. XHR wrapper callers may live
     // in any file (not just those containing XMLHttpRequest), so we search all
     // JS files with a text pre-filter before parsing.
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     const allFilePaths = files.map((f) => path.join(directory, f));
     const getCallers = makeGetCallers(allFilePaths);
 
@@ -73,6 +74,8 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
 
         const file = files[_i];
         const filePath = path.join(directory, file);
+
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) continue;
 
         let fileContent: string;
         try {

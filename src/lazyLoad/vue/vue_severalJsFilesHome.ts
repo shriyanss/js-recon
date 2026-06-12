@@ -7,7 +7,7 @@ const vue_severalJsFilesHome = async (url: string): Promise<string[]> => {
     // get the contents of the homepage
     const homepageReq = await makeRequest(url);
     if (homepageReq == null) {
-        console.log(chalk.red(`Failed to fetch ${url}`));
+        console.error(chalk.red(`Failed to fetch ${url}`));
         return jsFilesToReturn;
     }
     const homepageContent = await homepageReq.text();

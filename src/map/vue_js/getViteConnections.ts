@@ -42,7 +42,7 @@ interface ImportRef {
 const getViteConnections = async (directory: string, output: string, formats: string[]): Promise<Chunks> => {
     const maxAiThreads = globals.getAiThreads();
     if (globals.getAi().length > 0) {
-        console.log(
+        console.error(
             chalk.yellow(
                 "[!] AI integration is enabled. This may incur costs. By using this feature, you agree to the AI provider's terms of service, and accept the risk of incurring unexpected costs due to huge codebase."
             )
@@ -51,7 +51,7 @@ const getViteConnections = async (directory: string, output: string, formats: st
         if (provider === "openai") {
             const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
             if (!apiKey) {
-                console.log(
+                console.error(
                     chalk.red(
                         "[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."
                     )
@@ -64,7 +64,7 @@ const getViteConnections = async (directory: string, output: string, formats: st
 
     // skip regeneration when an AI-tagged JSON already exists, since it would burn $$$
     if (fs.existsSync(`${output}.json`) && globals.getAi().length > 0) {
-        console.log(
+        console.error(
             chalk.yellow(`[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`)
         );
         const chunks = JSON.parse(fs.readFileSync(`${output}.json`, "utf8"));
@@ -119,11 +119,16 @@ const getViteConnections = async (directory: string, output: string, formats: st
     // Single pass: parse each file once, extract functions + imports + exports.
     // This replaces the previous two-pass approach (Pass 1 + Pass 2) that parsed
     // every file twice and kept ASTs alive across both loops.
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     console.log(chalk.cyan(`[i] Scanning ${files.length} JS files for root functions`));
     for (const file of files) {
         const meta = fileMeta.get(file);
 
         const filePath = path.join(directory, file);
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
+            console.error(chalk.yellow(`[!] Skipping ${file} (too large for map analysis)`));
+            continue;
+        }
         let code: string;
         try {
             code = fs.readFileSync(filePath, "utf8");
@@ -308,7 +313,7 @@ const getViteConnections = async (directory: string, output: string, formats: st
                     return { key, description };
                 } catch (err) {
                     const msg = err instanceof Error ? err.message : String(err);
-                    console.log(chalk.red(`[!] Error generating description for chunk ${key}: ${msg}`));
+                    console.error(chalk.red(`[!] Error generating description for chunk ${key}: ${msg}`));
                     return { key, description: "none" };
                 } finally {
                     activeThreads--;

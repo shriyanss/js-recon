@@ -275,6 +275,14 @@ const isNextJsFrameworkChunk = (code: string): boolean => {
     if (code.includes('"serverActionReducer"') || code.includes("serverActionReducer:")) {
         return true;
     }
+    // CSS stylesheet lazy-loader — fetch(r) is a stylesheet URL, not an API endpoint
+    if (code.includes("markAssetError") || code.includes("fetchStyleSheet")) {
+        return true;
+    }
+    // Next.js data fetcher internals — x-nextjs-data header is injected by the framework
+    if (code.includes('"x-nextjs-data"') || code.includes("'x-nextjs-data'")) {
+        return true;
+    }
     return false;
 };
 
@@ -300,7 +308,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
         } catch (error) {
-            console.log(chalk.red(`[!] Could not read file: ${filePath}`));
+            console.error(chalk.red(`[!] Could not read file: ${filePath}`));
             continue;
         }
 
@@ -313,7 +321,7 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                 errorRecovery: true,
             });
         } catch (err) {
-            console.log(chalk.red(`[!] Failed to parse file: ${filePath}. Error: ${err.message}`));
+            console.error(chalk.red(`[!] Failed to parse file: ${filePath}. Error: ${err.message}`));
             continue;
         }
 
@@ -430,6 +438,76 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                             }
                         }
 
+                        // Resolve [param:X] in the URL by tracing callers of the wrapping function.
+                        // This handles patterns like: function wrapFetch(r) { fetch(r, opts) }
+                        // where the entire URL is passed in as a parameter from the callsite.
+                        if (typeof url === "string" && url.includes("[param:")) {
+                            const wrapperName = getFunctionNameForFetchCall(path);
+                            if (wrapperName) {
+                                // Try callers within the same module first (no export needed)
+                                const internalCallArgs = traceInternalFunctionCalls(wrapperName, chunk.code);
+                                if (internalCallArgs.length > 0) {
+                                    const firstArgResolved = resolveNodeValue(
+                                        internalCallArgs[0],
+                                        path.scope,
+                                        "",
+                                        "fetch",
+                                        fileContent,
+                                        chunks,
+                                        thirdArgName
+                                    );
+                                    if (
+                                        firstArgResolved &&
+                                        typeof firstArgResolved === "string" &&
+                                        !firstArgResolved.startsWith("[")
+                                    ) {
+                                        url = url.replace(/\[param:[^\]]+\]/g, firstArgResolved);
+                                        console.log(
+                                            chalk.cyan(`    [i] Resolved [param] URL from internal caller: ${url}`)
+                                        );
+                                    }
+                                }
+                                // Fall back to cross-chunk exported callers
+                                if (url.includes("[param:") && chunk.exports && chunk.exports.length > 0) {
+                                    const exportName = findExportForFunction(fileContent, wrapperName, chunk.exports);
+                                    if (exportName) {
+                                        const actualCallArg = traceFetchFunctionCalls(
+                                            chunk.id,
+                                            exportName,
+                                            wrapperName,
+                                            chunks,
+                                            directory
+                                        );
+                                        if (actualCallArg) {
+                                            const callerUrl = resolveNodeValue(
+                                                actualCallArg,
+                                                path.scope,
+                                                "",
+                                                "fetch",
+                                                fileContent,
+                                                chunks,
+                                                thirdArgName
+                                            );
+                                            if (
+                                                callerUrl &&
+                                                typeof callerUrl === "string" &&
+                                                !callerUrl.startsWith("[unresolved") &&
+                                                !callerUrl.startsWith("[error") &&
+                                                (callerUrl.includes("/") || callerUrl.includes("://"))
+                                            ) {
+                                                console.log(
+                                                    chalk.cyan(
+                                                        `    [i] Resolved [param] URL from exported caller: ${callerUrl}`
+                                                    )
+                                                );
+                                                url = callerUrl;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         callUrl = url;
                         console.log(chalk.green(`    URL: ${url}`));
 
@@ -523,7 +601,10 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                 if (options.headers)
                                     console.log(chalk.green(`    Headers: ${JSON.stringify(options.headers)}`));
                                 if (options.body) console.log(chalk.green(`    Body: ${JSON.stringify(options.body)}`));
-                                callHeaders = options.headers || {};
+                                callHeaders =
+                                    typeof options.headers === "object" && options.headers !== null
+                                        ? options.headers
+                                        : {};
                                 callBody =
                                     typeof options.body === "object"
                                         ? JSON.stringify(options.body)
@@ -548,7 +629,11 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                             // left an unresolved function-parameter placeholder.
                             let resolvedUrl = callUrl || "";
 
-                            if (resolvedUrl.startsWith("[unresolved:") || resolvedUrl === "") {
+                            if (
+                                resolvedUrl.startsWith("[unresolved:") ||
+                                resolvedUrl === "" ||
+                                resolvedUrl.includes("[param:")
+                            ) {
                                 const functionName = getFunctionNameForFetchCall(path);
                                 if (functionName && chunk.exports && chunk.exports.length > 0) {
                                     const exportName = findExportForFunction(fileContent, functionName, chunk.exports);
@@ -579,7 +664,8 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                                 callerUrl &&
                                                 typeof callerUrl === "string" &&
                                                 !callerUrl.startsWith("[unresolved") &&
-                                                !callerUrl.startsWith("[error")
+                                                !callerUrl.startsWith("[error") &&
+                                                (callerUrl.includes("/") || callerUrl.includes("://"))
                                             ) {
                                                 console.log(
                                                     chalk.cyan(`    [i] Resolved URL from caller: ${callerUrl}`)

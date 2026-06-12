@@ -135,12 +135,12 @@ const lazyLoad = async (
         console.log(chalk.cyan("[i] Loading 'Lazy Load' module"));
 
         if (globals.getDisableSandbox()) {
-            console.log(chalk.yellow("[!] Browser sandbox disabled"));
+            console.error(chalk.yellow("[!] Browser sandbox disabled"));
         }
 
         if (insecure) {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-            console.log(chalk.yellow("[!] Running in insecure mode. SSL certificate verification disabled"));
+            console.error(chalk.yellow("[!] Running in insecure mode. SSL certificate verification disabled"));
         }
 
         // if cache enabled, check if the cache file exists or not. If no, then create a new one
@@ -160,7 +160,7 @@ const lazyLoad = async (
         } else if (url.match(/https?:\/\/[a-zA-Z0-9\-_\.:]+/)) {
             urls = [url];
         } else {
-            console.log(chalk.red("[!] Invalid URL or file path"));
+            console.error(chalk.red("[!] Invalid URL or file path"));
             process.exit(3);
         }
 
@@ -399,7 +399,7 @@ const lazyLoad = async (
                     extractSourceMaps(output, join(output, sourcemapDir));
                 }
             } else {
-                console.log(chalk.red("[!] Framework not detected :("));
+                console.error(chalk.red("[!] Framework not detected :("));
                 console.log(chalk.magenta(CONFIG.notFoundMessage));
                 console.log(chalk.yellow("[i] Trying to download loaded JS files"));
                 const js_urls = await downloadLoadedJs(url);
@@ -429,7 +429,7 @@ const lazyLoad = async (
         }),
         new Promise<void>((resolve) => {
             timeoutHandle = setTimeout(() => {
-                console.log(
+                console.error(
                     chalk.yellow(
                         `[!] Lazyload hard timeout reached (${hardTimeoutMs / 60000} min). Draining discovered files before moving on...`
                     )

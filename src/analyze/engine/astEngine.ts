@@ -213,7 +213,7 @@ const esqueryEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
                 } else if (rule.severity === "medium") {
                     console.log(chalk.magenta(message));
                 } else if (rule.severity === "high") {
-                    console.log(chalk.red(message));
+                    console.error(chalk.red(message));
                 }
 
                 console.log(
