@@ -47,7 +47,9 @@ export const traceAxiosInstanceExports = (
     const exportName = findAxiosInstanceExport(sourceChunkId, axiosVarName, chunks);
 
     if (!exportName) {
-        console.error(chalk.yellow(`    [!] Axios instance '${axiosVarName}' in chunk ${sourceChunkId} is not exported`));
+        console.error(
+            chalk.yellow(`    [!] Axios instance '${axiosVarName}' in chunk ${sourceChunkId} is not exported`)
+        );
         return;
     }
 

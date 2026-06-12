@@ -278,7 +278,11 @@ class NextJsCrawler {
             if (this.stopped) break; // honour stop() at each iteration boundary
 
             if (this.visitedPageCount >= this.MAX_VISITED_PAGES) {
-                console.error(chalk.yellow(`[!] Visited page limit reached (${this.MAX_VISITED_PAGES}). Skipping remaining page queue entries.`));
+                console.error(
+                    chalk.yellow(
+                        `[!] Visited page limit reached (${this.MAX_VISITED_PAGES}). Skipping remaining page queue entries.`
+                    )
+                );
                 break;
             }
             this.visitedPageCount++;

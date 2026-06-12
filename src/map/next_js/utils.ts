@@ -817,8 +817,15 @@ export const resolveWebpackChunkImport = (
                                             if (i < returnValue.expressions.length) {
                                                 const expr = returnValue.expressions[i];
                                                 if (expr.type === "Identifier") {
-                                                    const resolvedExpr = resolveVariableInChunk(expr.name, targetChunk.code);
-                                                    parts.push(resolvedExpr && !String(resolvedExpr).startsWith("[") ? resolvedExpr : `[var ${expr.name}]`);
+                                                    const resolvedExpr = resolveVariableInChunk(
+                                                        expr.name,
+                                                        targetChunk.code
+                                                    );
+                                                    parts.push(
+                                                        resolvedExpr && !String(resolvedExpr).startsWith("[")
+                                                            ? resolvedExpr
+                                                            : `[var ${expr.name}]`
+                                                    );
                                                 } else {
                                                     parts.push(`[${expr.type}]`);
                                                 }
@@ -870,8 +877,15 @@ export const resolveWebpackChunkImport = (
                                                 if (arg.type === "StringLiteral") {
                                                     parts.unshift(arg.value);
                                                 } else if (arg.type === "Identifier") {
-                                                    const resolvedArg = resolveVariableInChunk(arg.name, targetChunk.code);
-                                                    parts.unshift(resolvedArg && !String(resolvedArg).startsWith("[") ? resolvedArg : `[var ${arg.name}]`);
+                                                    const resolvedArg = resolveVariableInChunk(
+                                                        arg.name,
+                                                        targetChunk.code
+                                                    );
+                                                    parts.unshift(
+                                                        resolvedArg && !String(resolvedArg).startsWith("[")
+                                                            ? resolvedArg
+                                                            : `[var ${arg.name}]`
+                                                    );
                                                 } else {
                                                     parts.unshift(`[${arg.type}]`);
                                                 }
@@ -882,8 +896,15 @@ export const resolveWebpackChunkImport = (
                                         if (currentCall && currentCall.type === "StringLiteral") {
                                             parts.unshift(currentCall.value);
                                         } else if (currentCall && currentCall.type === "Identifier") {
-                                            const resolvedBase = resolveVariableInChunk(currentCall.name, targetChunk.code);
-                                            parts.unshift(resolvedBase && !String(resolvedBase).startsWith("[") ? resolvedBase : `[var ${currentCall.name}]`);
+                                            const resolvedBase = resolveVariableInChunk(
+                                                currentCall.name,
+                                                targetChunk.code
+                                            );
+                                            parts.unshift(
+                                                resolvedBase && !String(resolvedBase).startsWith("[")
+                                                    ? resolvedBase
+                                                    : `[var ${currentCall.name}]`
+                                            );
                                         }
 
                                         // Reorganize parts if a base URL is found in the middle
@@ -934,7 +955,11 @@ export const resolveWebpackChunkImport = (
                                         const expr = value.expressions[i];
                                         if (expr.type === "Identifier") {
                                             const resolvedExpr = resolveVariableInChunk(expr.name, targetChunk.code);
-                                            parts.push(resolvedExpr && !String(resolvedExpr).startsWith("[") ? resolvedExpr : `[var ${expr.name}]`);
+                                            parts.push(
+                                                resolvedExpr && !String(resolvedExpr).startsWith("[")
+                                                    ? resolvedExpr
+                                                    : `[var ${expr.name}]`
+                                            );
                                         } else {
                                             parts.push(`[${expr.type}]`);
                                         }
@@ -989,7 +1014,11 @@ export const resolveWebpackChunkImport = (
                                                 parts.unshift(arg.value);
                                             } else if (arg.type === "Identifier") {
                                                 const resolvedArg = resolveVariableInChunk(arg.name, targetChunk.code);
-                                                parts.unshift(resolvedArg && !String(resolvedArg).startsWith("[") ? resolvedArg : `[var ${arg.name}]`);
+                                                parts.unshift(
+                                                    resolvedArg && !String(resolvedArg).startsWith("[")
+                                                        ? resolvedArg
+                                                        : `[var ${arg.name}]`
+                                                );
                                             } else {
                                                 parts.unshift(`[${arg.type}]`);
                                             }
@@ -1002,7 +1031,11 @@ export const resolveWebpackChunkImport = (
                                         parts.unshift(currentCall.value);
                                     } else if (currentCall && currentCall.type === "Identifier") {
                                         const resolvedBase = resolveVariableInChunk(currentCall.name, targetChunk.code);
-                                        parts.unshift(resolvedBase && !String(resolvedBase).startsWith("[") ? resolvedBase : `[var ${currentCall.name}]`);
+                                        parts.unshift(
+                                            resolvedBase && !String(resolvedBase).startsWith("[")
+                                                ? resolvedBase
+                                                : `[var ${currentCall.name}]`
+                                        );
                                     }
 
                                     // Reorganize parts if a base URL is found in the middle

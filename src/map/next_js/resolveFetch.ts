@@ -600,7 +600,10 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                 if (options.headers)
                                     console.log(chalk.green(`    Headers: ${JSON.stringify(options.headers)}`));
                                 if (options.body) console.log(chalk.green(`    Body: ${JSON.stringify(options.body)}`));
-                                callHeaders = (typeof options.headers === "object" && options.headers !== null) ? options.headers : {};
+                                callHeaders =
+                                    typeof options.headers === "object" && options.headers !== null
+                                        ? options.headers
+                                        : {};
                                 callBody =
                                     typeof options.body === "object"
                                         ? JSON.stringify(options.body)
@@ -625,7 +628,11 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                             // left an unresolved function-parameter placeholder.
                             let resolvedUrl = callUrl || "";
 
-                            if (resolvedUrl.startsWith("[unresolved:") || resolvedUrl === "" || resolvedUrl.includes("[param:")) {
+                            if (
+                                resolvedUrl.startsWith("[unresolved:") ||
+                                resolvedUrl === "" ||
+                                resolvedUrl.includes("[param:")
+                            ) {
                                 const functionName = getFunctionNameForFetchCall(path);
                                 if (functionName && chunk.exports && chunk.exports.length > 0) {
                                     const exportName = findExportForFunction(fileContent, functionName, chunk.exports);
