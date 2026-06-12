@@ -9,6 +9,10 @@
 - Map step no longer crashes with SIGSEGV (JavaScript heap out of memory) on ad-heavy or large-bundle targets — all file-parsing loops in the Vue/React/Svelte resolvers now skip files larger than 1.5 MB before calling Babel, preventing unbounded AST memory accumulation on sites that download 100+ third-party JS files (`map`)
 - `run` now calls `process.exit(0)` after all pipeline steps complete — previously, abandoned Puppeteer navigations left by the lazyload hard timeout kept Node.js's event loop open indefinitely, causing the container to be SIGKILL'd (exit 137) even when analysis finished successfully (`run`)
 - Next.js lazyload recursive page-crawl now stops visiting pages after 200 unique page visits per crawl instance — prevents runaway crawl explosion on sites that expose many locale or language variants in their navigation, where each locale page links to every other locale causing the crawl frontier to grow exponentially and exhaust the lazyload timeout (`lazyload`)
+- Next.js fetch resolver now skips CSS stylesheet lazy-loader chunks (`markAssetError`, `fetchStyleSheet`) and Next.js internal data-fetcher chunks (`x-nextjs-data`) to avoid emitting false-positive API endpoints from framework internals (`map`)
+- Next.js fetch resolver resolves `[param:X]` URL placeholders by tracing callers of the enclosing wrapper function — tries same-module callers first, then falls back to cross-chunk exported callers; reduces unresolved placeholder markers in output (`map`)
+- Next.js fetch resolver guards `callHeaders` assignment against non-object values so a `null` or primitive returned by header resolution no longer causes a downstream crash (`map`)
+- `resolveWebpackChunkImport` in `utils.ts` now calls `resolveVariableInChunk` on identifier nodes inside template-literal expressions and function-call arguments, cutting `[var X]` placeholder noise in resolved chunk URLs (`map`)
 
 ### Performance
 
