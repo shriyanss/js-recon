@@ -492,7 +492,8 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                                 callerUrl &&
                                                 typeof callerUrl === "string" &&
                                                 !callerUrl.startsWith("[unresolved") &&
-                                                !callerUrl.startsWith("[error")
+                                                !callerUrl.startsWith("[error") &&
+                                                (callerUrl.includes("/") || callerUrl.includes("://"))
                                             ) {
                                                 console.log(
                                                     chalk.cyan(
@@ -663,7 +664,8 @@ const resolveFetch = async (chunks: Chunks, directory: string) => {
                                                 callerUrl &&
                                                 typeof callerUrl === "string" &&
                                                 !callerUrl.startsWith("[unresolved") &&
-                                                !callerUrl.startsWith("[error")
+                                                !callerUrl.startsWith("[error") &&
+                                                (callerUrl.includes("/") || callerUrl.includes("://"))
                                             ) {
                                                 console.log(
                                                     chalk.cyan(`    [i] Resolved URL from caller: ${callerUrl}`)
