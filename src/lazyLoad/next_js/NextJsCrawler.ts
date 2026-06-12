@@ -265,6 +265,7 @@ class NextJsCrawler {
         const pageQueue: string[] = [];
         const enqueued = new Set<string>(); // tracks full URLs to avoid duplicate entries per pass
         const enqueueIfPage = (u: string) => {
+            if (this.visitedPageCount + pageQueue.length >= this.MAX_VISITED_PAGES) return;
             if (enqueued.has(u)) return; // exact URL already queued this pass
             if (!isPageUrl(u)) return;
             enqueued.add(u);

@@ -87,15 +87,12 @@ const endpoints = async (
 
         if (directory) {
             const subsequentRequestsDir = directory + "/___subsequent_requests";
-            // check if the subsequent requests directory exists
             if (!fs.existsSync(subsequentRequestsDir)) {
-                console.error(chalk.red("[!] Directory containing subsequent requests does not exist"));
-                // TODO: if subsequent requests directory doesn't exist, pass this, and try other methods
-                return;
+                console.error(chalk.yellow("[!] Directory containing subsequent requests does not exist — skipping subsequent requests extraction"));
+            } else {
+                const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
+                final_client_side.push(...client_subsequentRequestsResult);
             }
-
-            const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
-            final_client_side.push(...client_subsequentRequestsResult);
 
             const client_jsFilesHrefResult = await client_jsFilesHref(directory);
             final_client_side.push(...client_jsFilesHrefResult);

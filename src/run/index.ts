@@ -529,6 +529,6 @@ export default async (cmd: any): Promise<void> => {
         }
     } finally {
         removeSigintHandler();
-        process.exit(0);
+        process.exit(process.exitCode ?? 0);
     }
 };

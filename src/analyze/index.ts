@@ -115,7 +115,7 @@ const analyze = async (
     // check if a valid tech is passed
     if (!availableTechs[tech]) {
         console.error(chalk.red(`[!] Invalid technology ${tech}.`));
-        console.log(chalk.yellow("[i] Run with -l/--list to see available technologies"));
+        console.error(chalk.yellow("[i] Run with -l/--list to see available technologies"));
         return;
     }
 

@@ -71,9 +71,10 @@ const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string
         if (toReturn.length > 0) {
             console.log(chalk.green(`[✓] Found ${toReturn.length} JS files from _buildManifest.js`));
         }
-    } catch (err) {
-        // This is expected if the file is not found or is not a JS file
-        // console.error(chalk.red(`[!] Failed to parse _buildManifest.js: ${err.message}`));
+    } catch (err: any) {
+        if (err?.code !== "ENOENT") {
+            console.error(chalk.red(`[!] Failed to parse _buildManifest.js: ${err?.message ?? err}`));
+        }
     }
 
     return toReturn;
