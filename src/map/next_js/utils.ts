@@ -831,8 +831,8 @@ export const resolveWebpackChunkImport = (
                                                 const expr = returnValue.expressions[i];
                                                 if (expr.type === "Identifier") {
                                                     parts.push(
-                                                        resolveChunkVarAsUrlPart(expr.name, targetChunk.code)
-                                                            ?? `[var ${expr.name}]`
+                                                        resolveChunkVarAsUrlPart(expr.name, targetChunk.code) ??
+                                                            `[var ${expr.name}]`
                                                     );
                                                 } else {
                                                     parts.push(`[${expr.type}]`);
@@ -886,8 +886,8 @@ export const resolveWebpackChunkImport = (
                                                     parts.unshift(arg.value);
                                                 } else if (arg.type === "Identifier") {
                                                     parts.unshift(
-                                                        resolveChunkVarAsUrlPart(arg.name, targetChunk.code)
-                                                            ?? `[var ${arg.name}]`
+                                                        resolveChunkVarAsUrlPart(arg.name, targetChunk.code) ??
+                                                            `[var ${arg.name}]`
                                                     );
                                                 } else {
                                                     parts.unshift(`[${arg.type}]`);
@@ -900,8 +900,8 @@ export const resolveWebpackChunkImport = (
                                             parts.unshift(currentCall.value);
                                         } else if (currentCall && currentCall.type === "Identifier") {
                                             parts.unshift(
-                                                resolveChunkVarAsUrlPart(currentCall.name, targetChunk.code)
-                                                    ?? `[var ${currentCall.name}]`
+                                                resolveChunkVarAsUrlPart(currentCall.name, targetChunk.code) ??
+                                                    `[var ${currentCall.name}]`
                                             );
                                         }
 
@@ -953,8 +953,8 @@ export const resolveWebpackChunkImport = (
                                         const expr = value.expressions[i];
                                         if (expr.type === "Identifier") {
                                             parts.push(
-                                                resolveChunkVarAsUrlPart(expr.name, targetChunk.code)
-                                                    ?? `[var ${expr.name}]`
+                                                resolveChunkVarAsUrlPart(expr.name, targetChunk.code) ??
+                                                    `[var ${expr.name}]`
                                             );
                                         } else {
                                             parts.push(`[${expr.type}]`);
@@ -1010,8 +1010,8 @@ export const resolveWebpackChunkImport = (
                                                 parts.unshift(arg.value);
                                             } else if (arg.type === "Identifier") {
                                                 parts.unshift(
-                                                    resolveChunkVarAsUrlPart(arg.name, targetChunk.code)
-                                                        ?? `[var ${arg.name}]`
+                                                    resolveChunkVarAsUrlPart(arg.name, targetChunk.code) ??
+                                                        `[var ${arg.name}]`
                                                 );
                                             } else {
                                                 parts.unshift(`[${arg.type}]`);
@@ -1025,8 +1025,8 @@ export const resolveWebpackChunkImport = (
                                         parts.unshift(currentCall.value);
                                     } else if (currentCall && currentCall.type === "Identifier") {
                                         parts.unshift(
-                                            resolveChunkVarAsUrlPart(currentCall.name, targetChunk.code)
-                                                ?? `[var ${currentCall.name}]`
+                                            resolveChunkVarAsUrlPart(currentCall.name, targetChunk.code) ??
+                                                `[var ${currentCall.name}]`
                                         );
                                     }
 
