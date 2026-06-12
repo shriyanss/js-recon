@@ -24,6 +24,7 @@ npm run start -- <subcommand> [options]
 | `run`         | Run all of the above in sequence (primary interface)                               |
 | `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
 | `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
+| `cs-mast`     | Compute CS-MAST structural hashes for downloaded JS files; find hash collisions    |
 
 ## Key source files
 
@@ -215,6 +216,39 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
    | `shriyanss/js-recon-rules` | `dev` | `main` | rules version (e.g. `v1.2.0`) | `## <version>` rules changelog section |
 
 8. **Monitor PRs** — CodeRabbit reviews automatically. Wait for GitHub CI (version check, build, etc.) to pass. The docs CI check is expected to fail until js-recon is fully published to npm.
+
+## cs-mast
+
+`cs-mast` computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every `.js` file found recursively under an output directory, then optionally finds and reports structural collisions — files sharing the same root signature.
+
+**Source:** `src/cs_mast/index.ts`
+
+**Fixed hashing config:**
+```typescript
+{ hash: 'sha256', lang: 'js', prsr: '@babel/parser',
+  scat: ['lit', 'decl', 'loop', 'cond'], sinc: [],
+  sourceType: 'unambiguous' }
+```
+
+`rootSignature` on the `File` root node is empty (the File type isn't in any scat category), so `buildSignatureFromConfig(CS_MAST_CONFIG, tree.rootHash)` is used to construct the full PHC string from the root hash.
+
+**Options:**
+- `-o / --output <dir>` — directory to scan (default: `output`)
+- `--ct / --collision-table` — find and print collision table to stdout
+- `--min-collisions <n>` — minimum occurrences to report (default: 2)
+- `--co / --collision-output <file>` — write collision data to a file (independent of `--ct`)
+- `--cf / --collision-format json|csv` — output format (default: csv)
+
+**`--co` path resolution:** if the given path is a directory or has no extension, the file is written as `collisions.<fmt>` in the current working directory.
+
+**Output fields:** `signature` (full CS-MAST-S PHC string), `count`, `files`.
+
+**Testing:**
+```bash
+npm run build
+node build/index.js cs-mast -o output --ct --min-collisions 2
+node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
+```
 
 ## Security / confidentiality
 

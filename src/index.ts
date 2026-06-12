@@ -16,6 +16,7 @@ import configureSandbox from "./utility/configureSandbox.js";
 import mcp from "./mcp/index.js";
 import load from "./load/index.js";
 import fingerprint from "./fingerprint/index.js";
+import csMast from "./cs_mast/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -420,6 +421,24 @@ program
             refreshClaudeCreds: cmd.refreshClaudeCreds,
             claudeClientId: cmd.claudeClientId,
         });
+    });
+
+program
+    .command("cs-mast")
+    .description("Compute CS-MAST hashes for downloaded JS files and find structural collisions")
+    .option("-o, --output <directory>", "Output directory to scan for JS files", "output")
+    .option("--ct, --collision-table", "Find and display hash collisions", false)
+    .option("--min-collisions <n>", "Minimum times a hash must appear to be reported", "2")
+    .option("--co, --collision-output <file>", "Write collision results to a file")
+    .option("--cf, --collision-format <format>", "Output format for collision file: json or csv", "csv")
+    .action(async (cmd) => {
+        await csMast(
+            cmd.output,
+            cmd.collisionTable,
+            parseInt(cmd.minCollisions, 10),
+            cmd.collisionOutput,
+            cmd.collisionFormat
+        );
     });
 
 program.parse(process.argv);

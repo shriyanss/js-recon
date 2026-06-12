@@ -62,6 +62,7 @@ js-recon run -u https://app.example.com
 | `report`      | Generates a report from the analysis modules.                                 | [Read Docs](https://js-recon.io/docs/docs/modules/report)      |
 | `mcp`         | AI-powered interactive CLI, one-shot chat, and MCP stdio server.              | [Read Docs](https://js-recon.io/docs/docs/modules/mcp)         |
 | `fingerprint` | Detects the JavaScript framework used by a target URL (JSON/JSONL output).    | [Read Docs](https://js-recon.io/docs/docs/modules/fingerprint) |
+| `cs-mast`     | Computes CS-MAST structural hashes for JS files and finds hash collisions.    | [Read Docs](https://js-recon.io/docs/docs/modules/cs-mast)     |
 
 ## Key Features
 

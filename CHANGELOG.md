@@ -4,6 +4,13 @@
 
 ### Added
 
+- `cs-mast`: new subcommand that computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every downloaded `.js` file and finds structural hash collisions across targets (`cs-mast`)
+    - `--ct / --collision-table`: print a collision table sorted by frequency (files sharing the same CS-MAST-S root signature)
+    - `--min-collisions <n>`: minimum number of files that must share a signature to appear in the table (default: 2)
+    - `--co / --collision-output <file>`: write collision results to a file; independent of `--ct` (file is written without printing the table if `--ct` is omitted)
+    - `--cf / --collision-format json|csv`: output format (default: csv); if `--co` is a directory or has no extension, the file is written as `collisions.<fmt>` in the current working directory
+    - Uses `@shriyanss/cs-mast` with `scat: [lit, decl, loop, cond]`, SHA-256, `sourceType: unambiguous`; parse errors are skipped with a warning
+
 - `refactor -t react-webpack`: new React webpack refactor mode that splits a webpack 5 bundle into individual ES module files (`refactor`)
     - Numeric module map (`var e = { 540: fn, … }`) is extracted and each module written to `<id>.js` with full ES import/export conversion (require→import hoisting, exports→named/default export rewriting, outer wrapper stripped)
     - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
