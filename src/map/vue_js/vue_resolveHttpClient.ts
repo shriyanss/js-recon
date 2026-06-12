@@ -251,7 +251,11 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         const filePath = path.join(directory, file);
 
         if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
-            console.error(chalk.yellow(`[!] Skipping ${file} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(1)} MB > 1.5 MB limit) — HTTP client coverage may be incomplete`));
+            console.error(
+                chalk.yellow(
+                    `[!] Skipping ${file} (${(fs.statSync(filePath).size / 1024 / 1024).toFixed(1)} MB > 1.5 MB limit) — HTTP client coverage may be incomplete`
+                )
+            );
             continue;
         }
 
