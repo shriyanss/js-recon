@@ -103,7 +103,9 @@ export default async (
     }
 
     if (collisionTable) {
-        console.log(chalk.green(`\n[+] ${collisions.length} collision group(s) found (min-collisions: ${minCollisions}):\n`));
+        console.log(
+            chalk.green(`\n[+] ${collisions.length} collision group(s) found (min-collisions: ${minCollisions}):\n`)
+        );
 
         const sigColWidth = 60;
         const countColWidth = 7;
@@ -115,9 +117,10 @@ export default async (
 
         for (const entry of collisions) {
             // Truncate at the hash boundary: show params + first 12 hex chars
-            const truncated = entry.signature.length > sigColWidth - 1
-                ? entry.signature.slice(0, sigColWidth - 4) + "..."
-                : entry.signature;
+            const truncated =
+                entry.signature.length > sigColWidth - 1
+                    ? entry.signature.slice(0, sigColWidth - 4) + "..."
+                    : entry.signature;
             const fileList = entry.files.join(", ");
             console.log(truncated.padEnd(sigColWidth) + String(entry.count).padEnd(countColWidth) + fileList);
         }

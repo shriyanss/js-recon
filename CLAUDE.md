@@ -224,6 +224,7 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
 **Source:** `src/cs_mast/index.ts`
 
 **Fixed hashing config:**
+
 ```typescript
 { hash: 'sha256', lang: 'js', prsr: '@babel/parser',
   scat: ['lit', 'decl', 'loop', 'cond'], sinc: [],
@@ -233,6 +234,7 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
 `rootSignature` on the `File` root node is empty (the File type isn't in any scat category), so `buildSignatureFromConfig(CS_MAST_CONFIG, tree.rootHash)` is used to construct the full PHC string from the root hash.
 
 **Options:**
+
 - `-o / --output <dir>` — directory to scan (default: `output`)
 - `--ct / --collision-table` — find and print collision table to stdout
 - `--min-collisions <n>` — minimum occurrences to report (default: 2)
@@ -244,6 +246,7 @@ Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-ru
 **Output fields:** `signature` (full CS-MAST-S PHC string), `count`, `files`.
 
 **Testing:**
+
 ```bash
 npm run build
 node build/index.js cs-mast -o output --ct --min-collisions 2
