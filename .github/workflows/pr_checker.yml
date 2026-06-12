@@ -17,8 +17,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          BRANCH_NAME: ${{ github.head_ref }}
-          SOURCE_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           gh pr edit $PR_NUMBER --base dev
-          gh pr comment $PR_NUMBER --body "This PR was targeting \`main\`, but only the \`dev\` branch of \`shriyanss/js-recon\` can merge directly into \`main\`. The target branch has been changed to \`dev\` (source: \`$SOURCE_REPO:$BRANCH_NAME\`)."
+          gh pr comment $PR_NUMBER --body "This PR was targeting \`main\`, but only the \`dev\` branch of \`shriyanss/js-recon\` can merge directly into \`main\`. The target branch has been changed to \`dev\`."
