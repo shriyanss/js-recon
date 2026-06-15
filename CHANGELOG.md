@@ -1,5 +1,11 @@
 # Change Log
 
+## (unreleased)
+
+### Added
+
+- `--max-heap <mb>` flag on `map` and `run` — caps the V8 heap before any analysis work starts. Default `0` uses 100% of available RAM (`os.totalmem()`); a positive integer sets an explicit MB ceiling. Implemented via process re-exec so the limit is always honoured regardless of the value in `npm run start`. Addresses SIGSEGV (exit 139) on memory-constrained hosts and containers during the map step. (`map`, `run`)
+
 ## 1.3.1-beta.2 - 2026-06-12
 
 ### Fixed
