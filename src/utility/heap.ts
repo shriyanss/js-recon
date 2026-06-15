@@ -14,26 +14,19 @@ import { spawnSync } from "child_process";
 export function applyHeapLimit(heapMb: number): void {
     if (process.env.JS_RECON_HEAP_SET === "1") return;
 
-    const targetMb =
-        heapMb === 0 ? Math.floor(os.totalmem() / 1024 / 1024) : heapMb;
+    const targetMb = heapMb === 0 ? Math.floor(os.totalmem() / 1024 / 1024) : heapMb;
 
-    const currentMb = Math.floor(
-        v8.getHeapStatistics().heap_size_limit / 1024 / 1024
-    );
+    const currentMb = Math.floor(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
 
     // Skip re-exec when the current limit is already within 10% of the target
     // to avoid unnecessary process churn on machines where the npm start script
     // happens to already be close to the desired value.
     if (Math.abs(targetMb - currentMb) / currentMb < 0.1) return;
 
-    const result = spawnSync(
-        process.execPath,
-        [`--max-old-space-size=${targetMb}`, ...process.argv.slice(1)],
-        {
-            stdio: "inherit",
-            env: { ...process.env, JS_RECON_HEAP_SET: "1" },
-        }
-    );
+    const result = spawnSync(process.execPath, [`--max-old-space-size=${targetMb}`, ...process.argv.slice(1)], {
+        stdio: "inherit",
+        env: { ...process.env, JS_RECON_HEAP_SET: "1" },
+    });
     if (result.signal) {
         // Child was killed by a signal (e.g. SIGSEGV from heap OOM).
         // Compute the conventional shell exit code (128 + signal number) so

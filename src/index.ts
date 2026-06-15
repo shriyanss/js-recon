@@ -212,11 +212,7 @@ program
         "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
         "3"
     )
-    .option(
-        "--max-heap <mb>",
-        "V8 heap size cap in MB (0 = all available RAM, default 0)",
-        "0"
-    )
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
     .action(async (cmd) => {
         applyHeapLimit(parseInt(cmd.maxHeap ?? "0", 10));
         globalsUtil.setAi(cmd.ai?.split(",") || []);
@@ -342,11 +338,7 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
-    .option(
-        "--max-heap <mb>",
-        "V8 heap size cap in MB (0 = all available RAM, default 0)",
-        "0"
-    )
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
     .action(async (cmd) => {
         applyHeapLimit(parseInt(cmd.maxHeap ?? "0", 10));
         validateAndSetTimeout(cmd.timeout);
