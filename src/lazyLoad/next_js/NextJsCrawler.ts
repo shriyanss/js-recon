@@ -73,6 +73,13 @@ class NextJsCrawler {
     private readonly onUrlsDiscovered?: (urls: string[]) => void;
 
     constructor(options: NextJsCrawlerOptions) {
+        if (
+            options.maxPageVisits !== undefined &&
+            (!Number.isInteger(options.maxPageVisits) || options.maxPageVisits < 0)
+        ) {
+            throw new Error("maxPageVisits must be a non-negative integer (0 = unlimited)");
+        }
+
         this.url = options.url;
         this.output = options.output;
         this.subsequentRequestsFlag = options.subsequentRequestsFlag;

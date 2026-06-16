@@ -31,6 +31,15 @@ const validAiOptions = ["description"];
  * Validates a timeout string and updates the global request timeout.
  * @param timeoutValue Timeout value provided via CLI.
  */
+function parseMaxHeapMb(rawValue: string | undefined): number {
+    const parsed = parseInt(rawValue ?? "0", 10);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+        console.error(chalk.red(`[!] Invalid --max-heap value: ${rawValue}. Use 0 or a positive integer (MB).`));
+        process.exit(1);
+    }
+    return parsed;
+}
+
 function validateAndSetTimeout(timeoutValue: string): void {
     const parsedTimeout = parseInt(timeoutValue, 10);
     if (Number.isNaN(parsedTimeout) || parsedTimeout < 1) {
@@ -216,7 +225,7 @@ program
     )
     .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
     .action(async (cmd) => {
-        applyHeapLimit(parseInt(cmd.maxHeap ?? "0", 10));
+        applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setOpenapiChunkTag(cmd.openapiChunkTag);
@@ -343,7 +352,7 @@ program
     .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
     .action(async (cmd) => {
-        applyHeapLimit(parseInt(cmd.maxHeap ?? "0", 10));
+        applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);

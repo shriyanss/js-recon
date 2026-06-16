@@ -27,6 +27,10 @@ export function applyHeapLimit(heapMb: number): void {
         stdio: "inherit",
         env: { ...process.env, JS_RECON_HEAP_SET: "1" },
     });
+    if (result.error) {
+        console.error(`[!] Failed to re-exec with heap limit: ${result.error.message}`);
+        process.exit(1);
+    }
     if (result.signal) {
         // Child was killed by a signal (e.g. SIGSEGV from heap OOM).
         // Compute the conventional shell exit code (128 + signal number) so
@@ -35,5 +39,5 @@ export function applyHeapLimit(heapMb: number): void {
         const sigNum = (os.constants.signals as Record<string, number>)[result.signal] ?? 1;
         process.exit(128 + sigNum);
     }
-    process.exit(result.status ?? 0);
+    process.exit(result.status ?? 1);
 }
