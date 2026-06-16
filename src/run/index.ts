@@ -99,7 +99,8 @@ const processUrl = async (
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         ),
         getSkipStepPromise(),
     ]);
@@ -334,7 +335,8 @@ const processUrl = async (
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         ),
         getSkipStepPromise(),
     ]);
@@ -372,7 +374,8 @@ const processUrl = async (
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         ),
         getSkipStepPromise(),
     ]);

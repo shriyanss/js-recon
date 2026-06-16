@@ -67,6 +67,7 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
+    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -93,7 +94,8 @@ program
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         );
     });
 
@@ -339,6 +341,7 @@ program
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
     .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
+    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
     .action(async (cmd) => {
         applyHeapLimit(parseInt(cmd.maxHeap ?? "0", 10));
         validateAndSetTimeout(cmd.timeout);
