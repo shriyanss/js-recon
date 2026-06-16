@@ -99,7 +99,8 @@ const processUrl = async (
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         ),
         getSkipStepPromise(),
     ]);
@@ -123,7 +124,13 @@ const processUrl = async (
         return;
     }
 
-    if (globalsUtil.getTech() === "react") {
+    // Capture the tech here — subsequent lazyload passes (steps 3, 4.5) re-run framework
+    // detection and may reset the global to "" if the site doesn't expose framework signals
+    // on the second crawl. Using the captured value ensures map and analyze always receive
+    // the tech that was confirmed in step 1.
+    const detectedTech = globalsUtil.getTech();
+
+    if (detectedTech === "react") {
         const mappedFileReact = isBatch ? `${workingDir}/mapped` : "mapped";
         const mappedJsonFileReact = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
         const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
@@ -177,7 +184,7 @@ const processUrl = async (
         return;
     }
 
-    if (globalsUtil.getTech() === "vue") {
+    if (detectedTech === "vue") {
         // Vue.JS pipeline: lazyload (done) + map + analyze + report.
         // Scan the whole download directory: Vue builds frequently spread chunks
         // across multiple asset hosts, and relative imports resolve within each tree.
@@ -233,7 +240,7 @@ const processUrl = async (
         return;
     }
 
-    if (globalsUtil.getTech() === "svelte") {
+    if (detectedTech === "svelte") {
         const mappedFileSvelte = isBatch ? `${workingDir}/mapped` : "mapped";
         const mappedJsonFileSvelte = isBatch ? `${workingDir}/mapped.json` : "mapped.json";
         const openapiFile = isBatch ? `${workingDir}/mapped-openapi.json` : "mapped-openapi.json";
@@ -328,7 +335,8 @@ const processUrl = async (
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         ),
         getSkipStepPromise(),
     ]);
@@ -366,7 +374,8 @@ const processUrl = async (
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         ),
         getSkipStepPromise(),
     ]);
@@ -396,7 +405,7 @@ const processUrl = async (
     }
     resetSkipStep();
     await Promise.race([
-        map(cdnOutputDir, mappedFile, ["json"], globalsUtil.getTech(), false, false, cmd.command || []),
+        map(cdnOutputDir, mappedFile, ["json"], detectedTech, false, false, cmd.command || []),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Map complete."));
@@ -422,7 +431,7 @@ const processUrl = async (
     resetSkipStep();
     await Promise.race([
         // @ts-ignore
-        analyze(cmd.rules || "", mappedJsonFile, globalsUtil.getTech(), false, openapiFile, false, analyzeFile),
+        analyze(cmd.rules || "", mappedJsonFile, detectedTech, false, openapiFile, false, analyzeFile),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Analyze complete."));
