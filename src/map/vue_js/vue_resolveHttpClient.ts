@@ -225,7 +225,24 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
-    const allFilePaths = files.map((f) => path.join(directory, f));
+    const MAX_TOTAL_CALLER_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+    let callerTotalBytes = 0;
+    const allFilePaths: string[] = [];
+    for (const f of files) {
+        const fp = path.join(directory, f);
+        const sz = fs.statSync(fp).size;
+        if (sz > MAX_MAP_FILE_SIZE_BYTES) continue;
+        if (callerTotalBytes + sz > MAX_TOTAL_CALLER_SIZE_BYTES) {
+            console.error(
+                chalk.yellow(
+                    `[!] HTTP-client caller lookup capped at 50 MB total — ${files.length - allFilePaths.length} file(s) excluded from taint analysis`
+                )
+            );
+            break;
+        }
+        callerTotalBytes += sz;
+        allFilePaths.push(fp);
+    }
     const getCallers = makeGetCallers(allFilePaths);
 
     const entries: HttpCallEntry[] = [];
