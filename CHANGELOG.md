@@ -5,6 +5,7 @@
 ### Added
 
 - `--max-heap <mb>` flag on `map` and `run` — caps the V8 heap before any analysis work starts. Default `0` uses 100% of available RAM (`os.totalmem()`); a positive integer sets an explicit MB ceiling. Implemented via process re-exec so the limit is always honoured regardless of the value in `npm run start`. Addresses SIGSEGV (exit 139) on memory-constrained hosts and containers during the map step. (`map`, `run`)
+- `--max-pages <pages>` flag on `lazyload` and `run` — caps the number of HTML pages the Next.js crawler visits across all recursive passes. Default `200` (matches the previously hardcoded limit from beta.2); set `0` to disable. Prevents OOM crashes during the lazyload step on event-heavy or listing sites where every visited page surfaces 10–20 more anchor links, causing the crawl queue to fan out to hundreds of pages and exhaust available RAM before the hard timeout fires. (`lazyload`, `run`)
 
 ## 1.3.1-beta.2 - 2026-06-12
 
