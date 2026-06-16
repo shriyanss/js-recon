@@ -21,6 +21,8 @@ interface NextJsCrawlerOptions {
     threads: number;
     research: boolean;
     maxIterations: number;
+    /** Maximum number of HTML pages to visit across all recursive passes. 0 = unlimited. */
+    maxPageVisits?: number;
     /** Called with newly discovered downloadable URLs as they are found. */
     onUrlsDiscovered?: (urls: string[]) => void;
 }
@@ -58,6 +60,12 @@ class NextJsCrawler {
     /** Maximum number of recursive passes before giving up. */
     private MAX_ITERATIONS: number;
 
+    /** Maximum HTML pages to visit across all recursive passes (0 = unlimited). */
+    private readonly MAX_PAGE_VISITS: number;
+
+    /** Total HTML pages visited across all recursive passes. */
+    private totalPagesVisited = 0;
+
     /** Set to true by stop() to abort the crawl loop gracefully. */
     private stopped = false;
 
@@ -72,6 +80,7 @@ class NextJsCrawler {
         this.threads = options.threads;
         this.research = options.research;
         this.MAX_ITERATIONS = options.maxIterations;
+        this.MAX_PAGE_VISITS = options.maxPageVisits ?? 0;
         this.onUrlsDiscovered = options.onUrlsDiscovered;
 
         this.discoveredUrls = new Set();
@@ -264,6 +273,16 @@ class NextJsCrawler {
         for (const u of pageQueue) {
             if (this.stopped) break; // honour stop() at each iteration boundary
 
+            if (this.MAX_PAGE_VISITS > 0 && this.totalPagesVisited >= this.MAX_PAGE_VISITS) {
+                console.log(
+                    chalk.yellow(
+                        `[!] Page visit cap reached (${this.MAX_PAGE_VISITS}). Skipping remaining pages in queue.`
+                    )
+                );
+                break;
+            }
+
+            this.totalPagesVisited++;
             const normalized = this.normalizePageUrl(u);
 
             // Fetch scripts first — used for both fingerprinting and URL registration.

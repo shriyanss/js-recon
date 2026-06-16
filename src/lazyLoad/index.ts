@@ -125,7 +125,8 @@ const lazyLoad = async (
     researchOutput: string,
     maxIterations: number,
     maxJsSizeMb: number = 2,
-    hardTimeoutMs: number = 30 * 60 * 1000
+    hardTimeoutMs: number = 30 * 60 * 1000,
+    maxPageVisits: number = 0
 ) => {
     // Hoisted so the timeout handler can stop discovery and drain downloads.
     let activeCrawler: NextJsCrawler | null = null;
@@ -192,6 +193,7 @@ const lazyLoad = async (
                         threads,
                         research,
                         maxIterations,
+                        maxPageVisits,
                         onUrlsDiscovered: (urls) => activeQueue!.push(urls),
                     });
                     activeCrawler = crawler;

@@ -67,6 +67,7 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
+    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "0")
     .action(async (cmd) => {
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
@@ -93,7 +94,8 @@ program
             cmd.researchOutput,
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000
+            Number(cmd.lazyloadTimeout) * 60 * 1000,
+            Number(cmd.maxPages)
         );
     });
 
@@ -336,6 +338,7 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
+    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "0")
     .action(async (cmd) => {
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
@@ -431,13 +434,23 @@ program
     .option("--min-collisions <n>", "Minimum times a hash must appear to be reported", "2")
     .option("--co, --collision-output <file>", "Write collision results to a file")
     .option("--cf, --collision-format <format>", "Output format for collision file: json or csv", "csv")
+    .option("--scat <categories>", "Comma-separated scat categories (e.g. lit,decl,loop,cond)", "lit,decl,loop,cond")
+    .option("--sinc <nodes>", "Comma-separated exact node types to include via sinc (e.g. IfStatement)", "")
+    .option("--all-scat-permutations", "Run all 511 non-empty scat permutations and save per-permutation collision files", false)
+    .option("--perm-output <dir>", "Output directory for per-permutation collision files (required with --all-scat-permutations)")
+    .option("--perm-concurrency <n>", "Number of parallel permutation workers (default: half of CPU count)", "0")
     .action(async (cmd) => {
         await csMast(
             cmd.output,
             cmd.collisionTable,
             parseInt(cmd.minCollisions, 10),
             cmd.collisionOutput,
-            cmd.collisionFormat
+            cmd.collisionFormat,
+            cmd.scat,
+            cmd.sinc || "",
+            cmd.allScatPermutations,
+            cmd.permOutput,
+            parseInt(cmd.permConcurrency, 10)
         );
     });
 
