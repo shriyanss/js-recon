@@ -7,6 +7,10 @@
 - `--max-heap <mb>` flag on `map` and `run` — caps the V8 heap before any analysis work starts. Default `0` uses 100% of available RAM (`os.totalmem()`); a positive integer sets an explicit MB ceiling. Implemented via process re-exec so the limit is always honoured regardless of the value in `npm run start`. Addresses SIGSEGV (exit 139) on memory-constrained hosts and containers during the map step. (`map`, `run`)
 - `--max-pages <pages>` flag on `lazyload` and `run` — caps the number of HTML pages the Next.js crawler visits across all recursive passes. Default `200` (matches the previously hardcoded limit from beta.2); set `0` to disable. Prevents OOM crashes during the lazyload step on event-heavy or listing sites where every visited page surfaces 10–20 more anchor links, causing the crawl queue to fan out to hundreds of pages and exhaust available RAM before the hard timeout fires. (`lazyload`, `run`)
 
+### Fixed
+
+- XHR and HTTP-client taint resolvers (`vue_resolveXhr`, `vue_resolveHttpClient`) now apply the same 1.5 MB per-file size guard when building the caller-lookup file set passed to `makeGetCallers`, plus a cumulative 50 MB total-size cap. Previously, on sites that downloaded hundreds of third-party library source files (e.g. a Vue app without `--strict-scope` that linked to compiler or polyfill source trees), `buildAliasMap` parsed all of them at once, exhausting the V8 heap before any XHR entry was resolved. The fix caps the caller set while leaving the per-file XHR/HTTP scanning loop unchanged. (`map`)
+
 ## 1.3.1-beta.2 - 2026-06-12
 
 ### Fixed
