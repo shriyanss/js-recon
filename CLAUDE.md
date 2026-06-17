@@ -253,6 +253,14 @@ node build/index.js cs-mast -o output --ct --min-collisions 2
 node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
 ```
 
+## refactor `--collisions <file>`
+
+`refactor -t react-webpack` accepts a `--collisions <file>` argument that points at a `collisions.json` produced by `cs-mast --all-scat-permutations` over a cross-app baseline. Modules whose body signature is in the baseline set are classified as library code (React / React-DOM / jsx-runtime / scheduler / …) and dropped from the output, leaving only `index.js`.
+
+Plumbing: `src/index.ts` (CLI) → `src/refactor/index.ts` (resolves the path via `resolveCollisionsPath()` — accepts either a file or a baseline-tree directory like `../js-recon-cs-mast-s/`; builds `Set<string>` of signatures with `count >= max count`) → `src/refactor/react/index.ts` (`moduleIsLibrary()` hashes each module body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and matches against the set). Detailed rationale + build history in `src/refactor/react/CLAUDE.md`.
+
+The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<tech>/<scat>/collisions.json`). See its `README.md` for layout and provenance.
+
 ## Security / confidentiality
 
 When a change is informed by behavior observed on a real target (URLs, endpoint names, response shapes, finding details, etc.):

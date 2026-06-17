@@ -4,13 +4,21 @@
 import chalk from "chalk";
 import parser from "@babel/parser";
 import _traverse, { NodePath } from "@babel/traverse";
+import _generator from "@babel/generator";
 import * as t from "@babel/types";
+import { cs_mast_init, ScatCategory } from "@shriyanss/cs-mast";
 import { Chunk } from "../../utility/interfaces.js";
 import { isInModuleMap } from "./helpers.js";
 import { validateAndFix } from "./validator.js";
 import { ModuleEntry, transformModule, transformIndexStatements } from "./transform.js";
+import { LibraryModuleInfo, classifyLibraryModule, resolveReexportChains } from "./library-classify.js";
 
 const traverse = _traverse.default;
+const generate = (_generator as unknown as { default: typeof _generator }).default ?? _generator;
+
+// scat config used when computing experiment-baseline signatures (matches
+// refactor_observations/feature-signatures/<feature>/lit-decl-loop-cond/collisions.json).
+const LIB_SIG_SCAT: ScatCategory[] = ["lit", "decl", "loop", "cond"];
 
 // Returns the body statements of a top-level IIFE (e.g. `(() => { … })()`), or null.
 const findIifeBody = (program: t.Program): t.Statement[] | null => {
@@ -66,7 +74,39 @@ const isModuleMapDeclarator = (d: t.VariableDeclarator): boolean => {
  *              write them to `index.js` (entrypoint bootstrap, app component functions,
  *              the ReactDOM.render call, etc.).
  */
-const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
+const isLibrarySig = (sig: string | undefined, libSigs: Set<string> | undefined): boolean =>
+    !!(sig && libSigs && libSigs.has(sig));
+
+// Hash a single module's function body using cs_mast_init and look the signature
+// up against the count=18 baseline set. Returns true when the module's body
+// matches a baseline library signature.
+const moduleIsLibrary = (
+    mod: ModuleEntry,
+    libSigs: Set<string> | undefined
+): boolean => {
+    if (!libSigs || libSigs.size === 0) return false;
+    const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
+    if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
+    const body = (fnNode as { body: t.BlockStatement }).body;
+    try {
+        const code = generate(body).code;
+        const tree = cs_mast_init(code, {
+            hash: "sha256",
+            scat: LIB_SIG_SCAT,
+            sinc: [],
+            lang: "js",
+            prsr: "@babel/parser",
+        });
+        for (const sig of tree._signatureMap.keys()) {
+            if (isLibrarySig(sig, libSigs)) return true;
+        }
+    } catch {
+        // unparseable / unhashable — fall through and treat as non-library
+    }
+    return false;
+};
+
+const refactorReact = async (chunk: Chunk, libSigs?: Set<string>): Promise<Record<string, string>> => {
     console.log(chalk.cyan(`[i] Processing React bundle: ${chunk.id}`));
 
     const ast = parser.parse(chunk.code, {
@@ -154,7 +194,19 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
 
     const results: Record<string, string> = {};
 
+    // moduleId → LibraryModuleInfo for modules that are library-classified
+    const libModuleMap = new Map<string, LibraryModuleInfo>();
+
+    let libraryCount = 0;
     for (const mod of modules) {
+        if (moduleIsLibrary(mod, libSigs)) {
+            console.log(chalk.gray(`[-] Module ${mod.id} matches library baseline — skipping`));
+            libraryCount++;
+            // Classify the library module so index.js can use proper named imports
+            const info = classifyLibraryModule(mod);
+            libModuleMap.set(mod.id, info);
+            continue;
+        }
         const statements = transformModule(mod);
         const code = validateAndFix(statements, mod.id);
         if (code === null) {
@@ -162,6 +214,11 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
             continue;
         }
         results[mod.id] = code;
+    }
+    if (libSigs && libSigs.size > 0) {
+        console.log(chalk.cyan(`[i] Library modules skipped: ${libraryCount}/${modules.length}`));
+        // Resolve re-export chains so shim modules (e.g. 540 → 287/React) get the right identity
+        resolveReexportChains(libModuleMap, modules);
     }
 
     // Collect everything in the IIFE body that is NOT the module-map variable into index.js.
@@ -177,7 +234,7 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
     }
     if (indexStatements.length > 0) {
         console.log(chalk.cyan(`[i] Writing ${indexStatements.length} non-module statements to index.js`));
-        const transformed = transformIndexStatements(indexStatements);
+        const transformed = transformIndexStatements(indexStatements, libModuleMap.size > 0 ? libModuleMap : undefined);
         const indexCode = validateAndFix(transformed, "index");
         if (indexCode !== null) results["index"] = indexCode;
     }

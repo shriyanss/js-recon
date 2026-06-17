@@ -33,6 +33,18 @@ npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|re
 
 Spot-check the refactored output by hand.
 
+## `--collisions <file>` (library module stripping)
+
+The refactor command accepts an optional `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
+
+**Pipeline in this directory:**
+
+1. `index.ts` accepts either a file path or a baseline-tree directory for `--collisions`. `resolveCollisionsPath()` walks the directory candidates (in order: `<dir>/baselines/<tech>/<scat>/collisions.json`, `<dir>/<tech>/<scat>/collisions.json`, `<dir>/<scat>/collisions.json`, `<dir>/collisions.json`) until a file is found. The `<scat>` segment comes from `BASELINE_SCAT_DIR[tech]` — keep that map in sync with each tech's `LIB_SIG_SCAT` constant. After resolution, the file is parsed, records whose `count` equals the maximum count are kept, and a `Set<string>` of library signatures is passed down to `refactorReact()` / `refactorNext()` as the `libSigs` argument.
+2. `react/index.ts`'s `moduleIsLibrary()` re-hashes each module's body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and looks every sub-tree signature up in `libSigs`. If any matches, the module is dropped.
+3. The default `lit-decl-loop-cond` scat config matches the directory name used in the research experiment's output tree (`feature-signatures/<feature>/lit-decl-loop-cond/collisions.json`). Changing the scat list here means consumers must change which `collisions.json` they pass.
+
+See `react/CLAUDE.md` for the full build history and signature-matching rationale. The user-facing docs are at `js-recon-docs/docs/docs/modules/refactor/react-webpack.md` under "Library module stripping (with `--collisions`)".
+
 ## See also
 
 - `../map/next_js/` — the place that benefits from refactored chunks during resolver development.

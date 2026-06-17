@@ -258,8 +258,12 @@ program
     .option("-o, --output <directory>", "Output directory", "output_refactored")
     .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
     .option("-l, --list", "List available technologies", false)
+    .option(
+        "--collisions <file>",
+        "Path to a CS-MAST collisions.json (count=18 sigs from cross-app baseline). Modules whose body signature is in this set are treated as library code and skipped."
+    )
     .action(async (cmd) => {
-        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list);
+        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions);
     });
 
 program
