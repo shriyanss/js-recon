@@ -223,9 +223,9 @@ program
         "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
         "3"
     )
-    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .action(async (cmd) => {
-        applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
+        if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setOpenapiChunkTag(cmd.openapiChunkTag);
@@ -349,10 +349,10 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
-    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
     .action(async (cmd) => {
-        applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
+        if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);

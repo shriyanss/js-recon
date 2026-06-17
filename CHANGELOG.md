@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.4.1-alpha.1 - (unreleased)
+
+### Added
+
+### Changed
+
+### Fixed
+
+- `--max-heap` on `map` and `run` is now opt-in: without the flag, no process re-exec occurs and the existing `--max-old-space-size` from the npm start script is preserved. Previously, the default `0` caused every invocation to re-exec with `os.totalmem()` as the heap ceiling, which could trigger OOM kills on memory-constrained hosts and changed the default runtime for all users who never specified the flag. (`map`, `run`)
+- XHR and HTTP-client taint resolvers (`vue_resolveXhr`, `vue_resolveHttpClient`) now sort the JS file list alphabetically before applying the 50 MB caller-lookup cap. Previously the cap was applied in `readdirSync` order, which is filesystem-dependent and made the included file set non-deterministic across runs — on large bundles this could silently exclude different API call sites depending on inode ordering. (`map`)
+
 ## 1.3.1 - 2026-06-16
 
 ### Added
