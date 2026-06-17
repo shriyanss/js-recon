@@ -158,6 +158,9 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         if (interceptedUrl.includes("/_next/")) {
             return { name: "next", evidence: `intercepted request: ${interceptedUrl}` };
         }
+        if (interceptedUrl.includes("/_app/immutable/")) {
+            return { name: "svelte", evidence: `intercepted request: ${interceptedUrl}` };
+        }
     }
 
     return null;
