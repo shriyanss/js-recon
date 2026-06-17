@@ -63,11 +63,10 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         });
         try {
             await page.goto(url, {
-                waitUntil: "domcontentloaded",
+                waitUntil: "load",
                 timeout: 30000,
             });
-            // Give client-side frameworks a brief window to render
-            await page.waitForSelector("html", { timeout: 10000 }).catch(() => {});
+            // Give client-side frameworks (and bot-challenge redirects) a brief window to settle
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
