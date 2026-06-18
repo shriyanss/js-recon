@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import puppeteer from "../../utility/puppeteerInstance.js";
+import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
@@ -34,9 +35,11 @@ type MatchedFunction = {
  * @returns {Promise<string[]>} Deduplicated absolute URLs of discovered JS chunks.
  */
 const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> => {
+    const chromiumPath = getChromiumPath();
     const browser = await puppeteer.launch({
         headless: true,
-        args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+        executablePath: chromiumPath,
+        args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] : [],
     });
 
     const page = await browser.newPage();

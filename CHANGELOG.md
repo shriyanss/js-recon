@@ -21,6 +21,10 @@
 
 ### Fixed
 
+- Puppeteer browser launch now resolves a usable Chrome/Chromium via a new `getChromiumPath` utility (`PUPPETEER_EXECUTABLE_PATH` env var → well-known system paths → `which`) and passes it as `executablePath`; also adds `--disable-dev-shm-usage` to the sandbox-disabled arg list — fixes crashes on systems where Puppeteer's bundled Chrome is absent or has missing shared libraries (`lazyload`, `makeReq`)
+- `refactor --collisions`: `scanExportMap` now records a self-reference when a module export's RHS is a complex expression (e.g. a function declaration) so it participates in canonical library classification checks instead of being silently dropped (`refactor`)
+- `refactor --collisions`: added `Profiler` to `REACT_CANONICAL` export set (`refactor`)
+
 ### Changed
 
 - `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit (`refactor`)

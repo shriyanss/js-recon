@@ -14,13 +14,14 @@ export const REACT_CANONICAL = new Set([
     "useReducer", "useLayoutEffect", "useDebugValue", "useId", "useTransition",
     "useDeferredValue", "useInsertionEffect", "useImperativeHandle", "useSyncExternalStore",
     "createElement", "Fragment", "Component", "PureComponent", "createContext",
-    "forwardRef", "memo", "Suspense", "StrictMode", "createRef", "isValidElement",
+    "forwardRef", "memo", "Profiler", "Suspense", "StrictMode", "createRef", "isValidElement",
     "Children", "cloneElement", "startTransition", "lazy", "version", "createPortal",
     "flushSync", "act", "cache",
 ]);
 
 // Deliberately excludes "Fragment" — React itself also exports Fragment, so it is not
-// a distinctive marker. Use only jsx/jsxs/jsxDEV which are unique to this package.
+// a distinctive marker for classification. Use only jsx/jsxs/jsxDEV which are unique to
+// this package. For rewriting purposes, Fragment is handled in resolveLibraryProp.
 export const JSX_RUNTIME_CANONICAL = new Set(["jsx", "jsxs", "jsxDEV"]);
 export const REACT_DOM_CLIENT_CANONICAL = new Set(["createRoot", "hydrateRoot"]);
 
@@ -57,6 +58,10 @@ function scanExportMap(mod: ModuleEntry): Map<string, string> {
                 map.set(minName, (rhs.property as t.Identifier).name);
             } else if (t.isIdentifier(rhs)) {
                 map.set(minName, (rhs as t.Identifier).name);
+            } else {
+                // RHS is a complex expression (e.g. function declaration) — record the key
+                // with a self-reference so it participates in canonical classification checks.
+                map.set(minName, minName);
             }
         }
     }
