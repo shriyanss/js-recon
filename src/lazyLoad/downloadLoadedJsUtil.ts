@@ -18,7 +18,9 @@ const downloadLoadedJs = async (url) => {
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] : [],
+        args: globalsUtil.getDisableSandbox()
+            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            : [],
     });
 
     const page = await browser.newPage();

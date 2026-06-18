@@ -6,13 +6,13 @@ Splits a webpack 5 React bundle (the numeric module map `var e = { 540(e,n,t){�
 
 ## File layout
 
-| File                   | Responsibility                                                                                                                                                                                     |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`             | Entry point: parses the bundle AST, collects `ModuleEntry` objects, orchestrates the transform + validate loop, collects non-module IIFE content into `index.js`, returns `Record<moduleId, code>` |
-| `transform.ts`         | `transformModule(mod)` — four-pass AST rewrite that converts one webpack module function into ES module statements; `transformIndexStatements` — eight-pass cleanup for the IIFE body              |
-| `library-classify.ts`  | `classifyLibraryModule` — detects which library a module belongs to (react, react-dom-client, react-jsx-runtime) by scanning export assignments; `resolveReexportChains` — follows transparent re-export chains (e.g. 540→287/React) |
-| `helpers.ts`           | Pure AST pattern matchers and export-builder utilities                                                                                                                                             |
-| `validator.ts`         | `validateAndFix` — iterative Babel strict-parse → fix loop                                                                                                                                         |
+| File                  | Responsibility                                                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `index.ts`            | Entry point: parses the bundle AST, collects `ModuleEntry` objects, orchestrates the transform + validate loop, collects non-module IIFE content into `index.js`, returns `Record<moduleId, code>`                                   |
+| `transform.ts`        | `transformModule(mod)` — four-pass AST rewrite that converts one webpack module function into ES module statements; `transformIndexStatements` — eight-pass cleanup for the IIFE body                                                |
+| `library-classify.ts` | `classifyLibraryModule` — detects which library a module belongs to (react, react-dom-client, react-jsx-runtime) by scanning export assignments; `resolveReexportChains` — follows transparent re-export chains (e.g. 540→287/React) |
+| `helpers.ts`          | Pure AST pattern matchers and export-builder utilities                                                                                                                                                                               |
+| `validator.ts`        | `validateAndFix` — iterative Babel strict-parse → fix loop                                                                                                                                                                           |
 
 ## Webpack module shapes
 
@@ -88,6 +88,7 @@ Cleans up webpack-internal artifacts with 8 passes. Passes A–C always run; D�
 **Pass C** — Replaces remaining `requireFn(N)` calls anywhere in the tree.
 
 **Pass D** — Library-aware import rewriting (only with `--collisions`). Builds `varName → LibraryModuleInfo` from `varToModuleId` and the library identity map, then:
+
 - Traverses all statements and rewrites `(0, varName.prop)(args)` → `canonicalName(args)` where the canonical name is determined from `LibraryModuleInfo.exportMap` (e.g. `l.H` → `createRoot`) or by recognising the prop as an already-canonical name (e.g. `r.useState` → `useState`).
 - Replaces namespace imports with named imports from the actual library path (`import { useState } from 'react'`, `import { createRoot } from 'react-dom/client'`).
 
@@ -96,6 +97,7 @@ Cleans up webpack-internal artifacts with 8 passes. Passes A–C always run; D�
 **Pass F** — JSX recovery. Traverses looking for `jsx(tag, props)` / `jsxs(tag, props)` / `jsxDEV(tag, props)` calls (bare identifier callee — these are only bare after Pass D rewrites them) and replaces them with `JSXElement` nodes. Handles: string/identifier tags, props as JSXAttributes, `children` array → individual JSXChildren, string literals → JSXText, everything else → `JSXExpressionContainer`.
 
 **Pass G** — Removes:
+
 - Babel `arrayLikeToArray` helper functions (detected by shape: 2–4 statement body containing a `for` loop that initialises `Array(n)`).
 - `var x = {}` declarations where all declarators have empty object inits (webpack module-cache variable).
 - Babel `_typeof` helper (`isBabelTypeofHelper`): detected as a 1-param function whose entire body is `return ((fnName = <conditional>), fnName(arg))` — the lazy self-reassignment pattern Babel emits for `typeof` polyfills.
@@ -106,13 +108,13 @@ Cleans up webpack-internal artifacts with 8 passes. Passes A–C always run; D�
 
 ## `--collisions <file>` — CS-MAST library module stripping
 
-When `refactor -t react-webpack` is invoked with `--collisions <file>`, every captured webpack module is classified as either *library code* (React / React-DOM / scheduler / `react/jsx-runtime` / etc.) or *application code* by matching its AST signature against a precomputed cross-app baseline. Library-flagged modules are dropped from the output, leaving just `index.js`.
+When `refactor -t react-webpack` is invoked with `--collisions <file>`, every captured webpack module is classified as either _library code_ (React / React-DOM / scheduler / `react/jsx-runtime` / etc.) or _application code_ by matching its AST signature against a precomputed cross-app baseline. Library-flagged modules are dropped from the output, leaving just `index.js`.
 
 ### Where the baseline came from
 
-The baseline is the output of the `js-recon-research/react/jsr-refactor/experiment/` pipeline. 18 minimal React apps — one per hook/API (`01-usestate-hook-webpack` through `18-forwardref-webpack`) — were each rebuilt 18 times with each of the *other* hooks injected. After every iteration, the 18 webpack bundles were hashed with `js-recon cs-mast --all-scat-permutations`, and signatures appearing in *all 18* bundles were emitted to `feature-signatures/<feature>/<scat-combo>/collisions.json`. Any of these files is a valid `--collisions` argument; they all encode the same baseline structure (React runtime), just under a different scat configuration.
+The baseline is the output of the `js-recon-research/react/jsr-refactor/experiment/` pipeline. 18 minimal React apps — one per hook/API (`01-usestate-hook-webpack` through `18-forwardref-webpack`) — were each rebuilt 18 times with each of the _other_ hooks injected. After every iteration, the 18 webpack bundles were hashed with `js-recon cs-mast --all-scat-permutations`, and signatures appearing in _all 18_ bundles were emitted to `feature-signatures/<feature>/<scat-combo>/collisions.json`. Any of these files is a valid `--collisions` argument; they all encode the same baseline structure (React runtime), just under a different scat configuration.
 
-The refactor pass uses scat = `lit,decl,loop,cond` internally, so the matching file is `feature-signatures/<any-feature>/lit-decl-loop-cond/collisions.json`. Choosing a different scat config would require changing `LIB_SIG_SCAT` in `index.ts` *and* pointing `--collisions` at the corresponding directory.
+The refactor pass uses scat = `lit,decl,loop,cond` internally, so the matching file is `feature-signatures/<any-feature>/lit-decl-loop-cond/collisions.json`. Choosing a different scat config would require changing `LIB_SIG_SCAT` in `index.ts` _and_ pointing `--collisions` at the corresponding directory.
 
 ### Future-reference guide: how this feature was built
 
@@ -128,16 +130,16 @@ The naïve approach — hardcoding "module 540 is React, module 338 is react-dom
 
 #### 2. Why CS-MAST signatures fit
 
-CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree, signatures variant) produces a content-derived SHA-256 hash for every AST node. The "scat" categories control *which* aspects of a node contribute to the hash. With `scat: ["lit","decl","loop","cond"]`:
+CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree, signatures variant) produces a content-derived SHA-256 hash for every AST node. The "scat" categories control _which_ aspects of a node contribute to the hash. With `scat: ["lit","decl","loop","cond"]`:
 
 - `lit` — literal **values** participate (numbers, strings, regex bodies)
 - `decl` — declarations participate, but only their **shape** (kind, variant), not the bound names
 - `loop` — loops participate, with child hashes sorted alphabetically (loop body ordering is canonicalised)
 - `cond` — conditionals participate
 
-Identifier *names* (`name`, `id`, `op_name`) are deliberately **excluded**. That is the crucial property: webpack/terser mangles `useState` into `u`, `useEffect` into `i`, etc., and a given local can be `e` in one bundle and `t` in another. A scat that ignored names lets the same React runtime hash identically across all bundles produced from the same source.
+Identifier _names_ (`name`, `id`, `op_name`) are deliberately **excluded**. That is the crucial property: webpack/terser mangles `useState` into `u`, `useEffect` into `i`, etc., and a given local can be `e` in one bundle and `t` in another. A scat that ignored names lets the same React runtime hash identically across all bundles produced from the same source.
 
-Operators are also excluded. We don't need them because the *structure* of the loops and conditions in the React runtime is what fingerprints it — the operator choices follow from that.
+Operators are also excluded. We don't need them because the _structure_ of the loops and conditions in the React runtime is what fingerprints it — the operator choices follow from that.
 
 #### 3. Data needed to build a baseline
 
@@ -145,8 +147,8 @@ To classify modules as library-vs-not, we need a **set of bundles where the only
 
 Concretely, the data set must satisfy:
 
-- **Toolchain consistency.** Every app uses the *same* React major, the *same* webpack major, the *same* `@babel/preset-env` target. A bundle from React 18 has different internals from React 17; mixing them would erode the count-equals-all-apps signal.
-- **Application diversity.** Each app exercises a *different* React feature (one hook or API per app: `useState`, `useEffect`, `useRef`, `Suspense`, `forwardRef`, …). The application code in app N has no overlap with app M's application code, so any signature shared between them is necessarily library code.
+- **Toolchain consistency.** Every app uses the _same_ React major, the _same_ webpack major, the _same_ `@babel/preset-env` target. A bundle from React 18 has different internals from React 17; mixing them would erode the count-equals-all-apps signal.
+- **Application diversity.** Each app exercises a _different_ React feature (one hook or API per app: `useState`, `useEffect`, `useRef`, `Suspense`, `forwardRef`, …). The application code in app N has no overlap with app M's application code, so any signature shared between them is necessarily library code.
 - **Realistic bundling.** Apps are built with `webpack --mode=production`, served, and downloaded via Puppeteer (`js-recon lazyload`), so the file we hash is the same one a real user would scan.
 - **Sufficient corpus size.** 18 apps was chosen as enough to cover the React 18 feature surface; fewer apps would risk an application-code signature accidentally colliding across the corpus.
 
@@ -160,7 +162,7 @@ The reason there are 18 iterations × 511 scat combos = 9198 files: the experime
 
 #### 4. Why "count equals all apps" defines library
 
-Inside each `collisions.json`, every record has a `count` field — the number of bundles in the corpus that produced that signature. `count == 18` (i.e., `count == maxCount` in the file) means the signature appears in *every* bundle. Since every app's application code is unique, the only way for a signature to appear in all 18 bundles is for it to come from code those bundles share — the library.
+Inside each `collisions.json`, every record has a `count` field — the number of bundles in the corpus that produced that signature. `count == 18` (i.e., `count == maxCount` in the file) means the signature appears in _every_ bundle. Since every app's application code is unique, the only way for a signature to appear in all 18 bundles is for it to come from code those bundles share — the library.
 
 The implementation in `src/refactor/index.ts` (`buildLibSigs()`) doesn't hardcode 18; it computes the maximum count from each file (`records.reduce((m, r) => …)`). When given a per-feature results directory (`<dir>/<feature>/<scat>/collisions.json`), it reads one file per feature subdir, takes each file's max-count set, and **intersects** all of them. A signature that survives the intersection is in every feature's max-count set — i.e. it appeared in all apps in every feature baseline, which makes it definitionally library code. This way the same code works for a baseline with N apps for any N, and the threshold automatically scales.
 
@@ -168,7 +170,7 @@ The implementation in `src/refactor/index.ts` (`buildLibSigs()`) doesn't hardcod
 
 ##### 5.a — Threshold: max count vs absolute majority
 
-Using `count >= maxCount` is strict: a signature is library only if it appears in *every* bundle. A relaxed threshold (e.g. `>= 0.9 * N`) would catch signatures shared by most-but-not-all bundles (e.g. a polyfill present in 17 of 18 apps), but introduces false positives: rare application-code patterns that happen to recur in 17 unrelated apps would be falsely flagged.
+Using `count >= maxCount` is strict: a signature is library only if it appears in _every_ bundle. A relaxed threshold (e.g. `>= 0.9 * N`) would catch signatures shared by most-but-not-all bundles (e.g. a polyfill present in 17 of 18 apps), but introduces false positives: rare application-code patterns that happen to recur in 17 unrelated apps would be falsely flagged.
 
 We chose the strict variant. The cost is missing a small number of library patterns (acceptable — see 5.c below); the benefit is zero false-positive risk on application code. For the 01-usestate test bundle, this still matches all 9 modules.
 
@@ -176,23 +178,23 @@ We chose the strict variant. The cost is missing a small number of library patte
 
 This subset was picked after testing several configurations against the local 01-usestate bundle (a one-off `find-usestate-sig.mjs` script on the experiment host):
 
-| Scat                       | count=18 sigs (remote) | Sigs found in local | Notes                                  |
-| -------------------------- | ---------------------- | ------------------- | -------------------------------------- |
-| `lit`                      | 4                      | 4/4                 | Too narrow — only matches 4 literals   |
-| `decl`                     | 561                    | 561/561             | Good, but misses literal-driven shape  |
-| `cond`                     | 673                    | 673/673             | Good, but no decl/loop structure       |
-| `decl-cond`                | 1219                   | 1219/1219           | Strong                                 |
-| `lit-decl-cond`            | 1223                   | 1223/1223           | Strong                                 |
-| **`lit-decl-loop-cond`**   | **1232**               | **1232/1232**       | **Chosen — best coverage**             |
-| `lit-decl-loop-cond-val-op_name` | 2200             | …                   | Bigger but no extra useful coverage    |
+| Scat                             | count=18 sigs (remote) | Sigs found in local | Notes                                 |
+| -------------------------------- | ---------------------- | ------------------- | ------------------------------------- |
+| `lit`                            | 4                      | 4/4                 | Too narrow — only matches 4 literals  |
+| `decl`                           | 561                    | 561/561             | Good, but misses literal-driven shape |
+| `cond`                           | 673                    | 673/673             | Good, but no decl/loop structure      |
+| `decl-cond`                      | 1219                   | 1219/1219           | Strong                                |
+| `lit-decl-cond`                  | 1223                   | 1223/1223           | Strong                                |
+| **`lit-decl-loop-cond`**         | **1232**               | **1232/1232**       | **Chosen — best coverage**            |
+| `lit-decl-loop-cond-val-op_name` | 2200                   | …                   | Bigger but no extra useful coverage   |
 
 `lit-decl-loop-cond` matched **1232 of 1232** baseline-shared signatures in the local bundle — i.e. every signature the experiment said was library code is indeed present in the bundle being refactored. That gives the highest possible confidence in classification.
 
-Adding `name`/`id`/`op_name` reduces the count=all-apps set because identifier names *differ* across bundles (minifier picks different short names per bundle), so signatures involving names rarely collide across all 18. That doesn't *break* the algorithm but provides no extra coverage.
+Adding `name`/`id`/`op_name` reduces the count=all-apps set because identifier names _differ_ across bundles (minifier picks different short names per bundle), so signatures involving names rarely collide across all 18. That doesn't _break_ the algorithm but provides no extra coverage.
 
 ##### 5.c — Sub-tree match, not root match
 
-`moduleIsLibrary()` iterates `tree._signatureMap.keys()` — every *actively-hashed sub-tree* in the module body — and matches each against the library set. A single match flags the whole module.
+`moduleIsLibrary()` iterates `tree._signatureMap.keys()` — every _actively-hashed sub-tree_ in the module body — and matches each against the library set. A single match flags the whole module.
 
 Root-only matching would miss many cases because the module body's root hash includes everything (function declarations, helpers, the require helper boilerplate around them). Tiny per-bundle variations (e.g. terser choosing slightly different inlining) change the root hash but leave most internal sub-trees identical. Sub-tree matching is robust to those variations.
 
@@ -200,7 +202,7 @@ The downside: any module that happens to contain a library-looking sub-tree gets
 
 ##### 5.d — What gets hashed and how
 
-The classifier hashes the module's `BlockStatement` body (not the whole `(module, exports, require) => {…}` function). The reason: the outer function wrapper is *identical* across all webpack modules in all bundles — always the same signature `(e, n, t) => {…}`. Including it would add noise (a baseline signature for the wrapper would match *every* module trivially). Hashing the body in isolation gives the cleanest signal.
+The classifier hashes the module's `BlockStatement` body (not the whole `(module, exports, require) => {…}` function). The reason: the outer function wrapper is _identical_ across all webpack modules in all bundles — always the same signature `(e, n, t) => {…}`. Including it would add noise (a baseline signature for the wrapper would match _every_ module trivially). Hashing the body in isolation gives the cleanest signal.
 
 ```javascript
 const body = (fnNode as { body: t.BlockStatement }).body;
@@ -214,7 +216,7 @@ Re-serialising via `@babel/generator` is necessary because `cs_mast_init` parses
 
 The classifier only decides "library or not". The actual stripping happens earlier in `refactorReact()`: a library-flagged module is logged (`[-] Module N matches library baseline — skipping`) and the loop `continue`s, so the module never reaches `transformModule()`/`validateAndFix()` and no file is written.
 
-The collected non-module IIFE content (the `index.js` payload — webpack bootstrap, app components, render call) is still emitted in full. We don't try to classify *inside* `index.js`; the assumption is that everything outside the numeric module map is application code, and the test corpus confirms that.
+The collected non-module IIFE content (the `index.js` payload — webpack bootstrap, app components, render call) is still emitted in full. We don't try to classify _inside_ `index.js`; the assumption is that everything outside the numeric module map is application code, and the test corpus confirms that.
 
 #### 6. Verification protocol
 
@@ -243,25 +245,25 @@ To add a baseline for a new framework (e.g. Next.js, Vue, Svelte):
 
 #### 8. Known limitations and likely failure modes
 
-- **Library naming is not recovered.** The classifier says "module N is library" but not which library. `index.js` still emits `import * as r from "./540.js"` instead of `import { useState } from "react"`. To recover names we'd need *per-library* baselines (one collisions file for each of `react`, `react-dom/client`, `react/jsx-runtime`, `scheduler`) and a "which library's baseline matches this module?" classifier. Not implemented yet.
+- **Library naming is not recovered.** The classifier says "module N is library" but not which library. `index.js` still emits `import * as r from "./540.js"` instead of `import { useState } from "react"`. To recover names we'd need _per-library_ baselines (one collisions file for each of `react`, `react-dom/client`, `react/jsx-runtime`, `scheduler`) and a "which library's baseline matches this module?" classifier. Not implemented yet.
 - **Toolchain drift erodes coverage.** A baseline produced from React 18.3.1 + webpack 5.107 + babel preset-env "default" target will not classify a React 17 bundle as cleanly. Pin the baseline source toolchain to whatever your target bundles use.
-- **CDN'd library polyfills.** A baseline app that includes a polyfill not present in production targets (e.g. `core-js` shimming) will have polyfill signatures in the count=all-apps set. Those signatures will match the same patterns in target bundles even when the target intentionally retained them. This will rarely affect *modules* (polyfills usually live alongside React internals in the same chunks) but is worth knowing.
+- **CDN'd library polyfills.** A baseline app that includes a polyfill not present in production targets (e.g. `core-js` shimming) will have polyfill signatures in the count=all-apps set. Those signatures will match the same patterns in target bundles even when the target intentionally retained them. This will rarely affect _modules_ (polyfills usually live alongside React internals in the same chunks) but is worth knowing.
 - **Vite/Rollup bundles.** Those don't use the numeric module-map pattern at all; the feature is a no-op because there are no modules to classify. The default `react-webpack` refactor already fails gracefully for those (zero modules found, just emits `index.js`).
 
 ## Per-feature patterns (18-app test corpus)
 
 All 18 `*-webpack` apps in `js-recon-research/react/jsr-refactor/features/` pass the refactor pipeline. Key findings per app:
 
-| # | Feature | Notable pattern | Implementation detail |
-|---|---------|-----------------|----------------------|
-| 01–11 | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`) | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal |
-| 08, 12, 17, 18 | Fragment | `import { Fragment } from 'react/jsx-runtime'` | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type |
-| 13 | Suspense + lazy | Split chunk: `__webpack_require__.e(chunkId).then(...)` retained intact | No mapping from webpack runtime chunk ID back to source path — expression is left as-is; does not prevent completion |
-| 14 | StrictMode | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression |
-| 15 | Profiler | `<Profiler id="App" onRender={...}>` recovered as JSX | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly |
-| 16 | createContext | Same pattern as 04; two separate context consumers | No special handling needed |
-| 17 | memo | `memo(Component)` wrapper | `memo` in `REACT_CANONICAL` |
-| 18 | forwardRef | `forwardRef((props, ref) => ...)` wrapper | `forwardRef` in `REACT_CANONICAL` |
+| #              | Feature                           | Notable pattern                                                                    | Implementation detail                                                                                                                                                       |
+| -------------- | --------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01–11          | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`)                            | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal                                                                   |
+| 08, 12, 17, 18 | Fragment                          | `import { Fragment } from 'react/jsx-runtime'`                                     | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type |
+| 13             | Suspense + lazy                   | Split chunk: `__webpack_require__.e(chunkId).then(...)` retained intact            | No mapping from webpack runtime chunk ID back to source path — expression is left as-is; does not prevent completion                                                        |
+| 14             | StrictMode                        | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression                                                             |
+| 15             | Profiler                          | `<Profiler id="App" onRender={...}>` recovered as JSX                              | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly              |
+| 16             | createContext                     | Same pattern as 04; two separate context consumers                                 | No special handling needed                                                                                                                                                  |
+| 17             | memo                              | `memo(Component)` wrapper                                                          | `memo` in `REACT_CANONICAL`                                                                                                                                                 |
+| 18             | forwardRef                        | `forwardRef((props, ref) => ...)` wrapper                                          | `forwardRef` in `REACT_CANONICAL`                                                                                                                                           |
 
 ### Key implementation decisions that arose during multi-app testing
 

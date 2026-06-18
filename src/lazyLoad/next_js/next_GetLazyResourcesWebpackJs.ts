@@ -39,7 +39,9 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] : [],
+        args: globals.getDisableSandbox()
+            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            : [],
     });
 
     const page = await browser.newPage();

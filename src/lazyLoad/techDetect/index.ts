@@ -52,7 +52,9 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         const chromiumPath = getChromiumPath();
         const browser = await puppeteer.launch({
             executablePath: chromiumPath,
-            args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] : [],
+            args: globalsUtil.getDisableSandbox()
+                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                : [],
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);

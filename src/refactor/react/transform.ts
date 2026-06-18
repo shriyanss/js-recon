@@ -328,7 +328,7 @@ function isSlicedToArrayTail(node: t.Node): boolean {
     const body = callee.body;
     if (!t.isBlockStatement(body)) return false;
     return body.body.some(
-        s =>
+        (s) =>
             t.isThrowStatement(s) &&
             t.isNewExpression(s.argument) &&
             t.isIdentifier((s.argument as t.NewExpression).callee, { name: "TypeError" })
@@ -364,7 +364,8 @@ function tryDetectSlicedToArray(decl: t.VariableDeclaration): {
         const firstAssign = exprs[0] as t.AssignmentExpression;
         if (!t.isIdentifier(firstAssign.left)) continue;
         // exprs[1]: countVar = <number>
-        if (!t.isAssignmentExpression(exprs[1]) || !t.isNumericLiteral((exprs[1] as t.AssignmentExpression).right)) continue;
+        if (!t.isAssignmentExpression(exprs[1]) || !t.isNumericLiteral((exprs[1] as t.AssignmentExpression).right))
+            continue;
         // last expr: the TypeError IIFE (possibly nested in || chain)
         if (!hasSlicedToArrayTail(exprs[exprs.length - 1])) continue;
 
@@ -413,7 +414,7 @@ function collapseSlicedToArray(statements: t.Statement[]): t.Statement[] {
         const { actualExpr, resultVar, targets } = match;
         // Sort targets by index so array pattern elements are in order
         const sorted = [...targets].sort((a, b) => a.index - b.index);
-        const pattern = t.arrayPattern(sorted.map(tgt => tgt.id as unknown as t.PatternLike));
+        const pattern = t.arrayPattern(sorted.map((tgt) => tgt.id as unknown as t.PatternLike));
         out.push(t.variableDeclaration("const", [t.variableDeclarator(pattern, actualExpr)]));
     }
     return out;
@@ -445,7 +446,11 @@ function exprToJsxName(expr: t.Expression): t.JSXIdentifier | t.JSXMemberExpress
     if (t.isIdentifier(expr)) return t.jsxIdentifier(expr.name);
     if (t.isMemberExpression(expr) && !expr.computed && t.isIdentifier(expr.property)) {
         const obj = exprToJsxName(expr.object as t.Expression);
-        if (obj) return t.jsxMemberExpression(obj as t.JSXIdentifier | t.JSXMemberExpression, t.jsxIdentifier((expr.property as t.Identifier).name));
+        if (obj)
+            return t.jsxMemberExpression(
+                obj as t.JSXIdentifier | t.JSXMemberExpression,
+                t.jsxIdentifier((expr.property as t.Identifier).name)
+            );
     }
     return null;
 }
@@ -455,7 +460,9 @@ function exprToJsxAttrValue(expr: t.Expression): t.JSXExpressionContainer | t.St
     return t.jsxExpressionContainer(expr);
 }
 
-function childToJsxChild(child: t.Expression): t.JSXElement | t.JSXFragment | t.JSXText | t.JSXExpressionContainer | t.JSXSpreadChild | null {
+function childToJsxChild(
+    child: t.Expression
+): t.JSXElement | t.JSXFragment | t.JSXText | t.JSXExpressionContainer | t.JSXSpreadChild | null {
     if (t.isStringLiteral(child)) return t.jsxText(child.value);
     if (t.isJSXElement(child) || t.isJSXFragment(child)) return child;
     // Recursively convert nested jsx(...) calls into JSX elements.
@@ -544,12 +551,15 @@ function isBabelArrayLikeToArrayHelper(stmt: t.Statement): boolean {
     const body = stmt.body.body;
     if (body.length < 2 || body.length > 4) return false;
     // Key signal: contains `for (var ... = Array(n); ...)` and a return of the array
-    const hasArrayOf = body.some(s => {
+    const hasArrayOf = body.some((s) => {
         if (!t.isForStatement(s)) return false;
         const init = s.init;
         if (!t.isVariableDeclaration(init)) return false;
         return init.declarations.some(
-            d => d.init && t.isCallExpression(d.init) && t.isIdentifier((d.init as t.CallExpression).callee, { name: "Array" })
+            (d) =>
+                d.init &&
+                t.isCallExpression(d.init) &&
+                t.isIdentifier((d.init as t.CallExpression).callee, { name: "Array" })
         );
     });
     return hasArrayOf;
@@ -584,14 +594,16 @@ function isBabelDefinePropertyHelper(stmt: t.Statement): boolean {
             t.isCallExpression(node) &&
             t.isMemberExpression((node as t.CallExpression).callee) &&
             t.isIdentifier(((node as t.CallExpression).callee as t.MemberExpression).object, { name: "Object" }) &&
-            t.isIdentifier(((node as t.CallExpression).callee as t.MemberExpression).property, { name: "defineProperty" })
+            t.isIdentifier(((node as t.CallExpression).callee as t.MemberExpression).property, {
+                name: "defineProperty",
+            })
         ) {
             const args = (node as t.CallExpression).arguments;
             if (args.length >= 3 && t.isObjectExpression(args[2])) {
                 const props = (args[2] as t.ObjectExpression).properties;
                 const keys = props
-                    .filter(p => t.isObjectProperty(p) && t.isIdentifier((p as t.ObjectProperty).key))
-                    .map(p => ((p as t.ObjectProperty).key as t.Identifier).name);
+                    .filter((p) => t.isObjectProperty(p) && t.isIdentifier((p as t.ObjectProperty).key))
+                    .map((p) => ((p as t.ObjectProperty).key as t.Identifier).name);
                 return keys.includes("enumerable") && keys.includes("configurable") && keys.includes("writable");
             }
         }
@@ -604,14 +616,19 @@ function isBabelDefinePropertyHelper(stmt: t.Statement): boolean {
             const child = (node as unknown as Record<string, unknown>)[key];
             if (!child || typeof child !== "object") continue;
             if (Array.isArray(child)) {
-                if (child.some((c: unknown) => c && typeof c === "object" && "type" in (c as object) && walk(c as t.Node))) return true;
+                if (
+                    child.some(
+                        (c: unknown) => c && typeof c === "object" && "type" in (c as object) && walk(c as t.Node)
+                    )
+                )
+                    return true;
             } else if ("type" in (child as object)) {
                 if (walk(child as t.Node)) return true;
             }
         }
         return false;
     };
-    return bodyCode.some(s => walk(s));
+    return bodyCode.some((s) => walk(s));
 }
 
 // Detect `_objectSpreadPropsHelper` / `_objectKeys`.
@@ -624,7 +641,7 @@ function isBabelObjectSpreadHelper(stmt: t.Statement): boolean {
     // First statement: var t = Object.keys(e)
     const first = body[0];
     if (!t.isVariableDeclaration(first)) return false;
-    const firstIsObjectKeys = (first as t.VariableDeclaration).declarations.some(d => {
+    const firstIsObjectKeys = (first as t.VariableDeclaration).declarations.some((d) => {
         if (!d.init || !t.isCallExpression(d.init)) return false;
         const callee = (d.init as t.CallExpression).callee;
         return (
@@ -642,10 +659,10 @@ function isBabelObjectSpreadHelper(stmt: t.Statement): boolean {
 /** Remove `var x = {}` declarations where every declarator has an empty-object init.
  *  These are webpack module-cache variables. */
 function dropEmptyObjectVars(stmts: t.Statement[]): t.Statement[] {
-    return stmts.filter(stmt => {
+    return stmts.filter((stmt) => {
         if (!t.isVariableDeclaration(stmt)) return true;
         return !stmt.declarations.every(
-            d => d.init && t.isObjectExpression(d.init) && (d.init as t.ObjectExpression).properties.length === 0
+            (d) => d.init && t.isObjectExpression(d.init) && (d.init as t.ObjectExpression).properties.length === 0
         );
     });
 }
@@ -664,8 +681,18 @@ function collectReferencedNames(stmts: t.Statement[]): Set<string> {
             if (p.parentPath?.isImportSpecifier()) return;
             if (p.parentPath?.isImportDefaultSpecifier()) return;
             if (p.parentPath?.isImportNamespaceSpecifier()) return;
-            if (p.parentPath?.isMemberExpression() && !(p.parent as t.MemberExpression).computed && p.parentPath.get("property") === p) return;
-            if (p.parentPath?.isObjectProperty() && !(p.parent as t.ObjectProperty).computed && p.parentPath.get("key") === p) return;
+            if (
+                p.parentPath?.isMemberExpression() &&
+                !(p.parent as t.MemberExpression).computed &&
+                p.parentPath.get("property") === p
+            )
+                return;
+            if (
+                p.parentPath?.isObjectProperty() &&
+                !(p.parent as t.ObjectProperty).computed &&
+                p.parentPath.get("key") === p
+            )
+                return;
             if (p.parentPath?.isJSXAttribute()) return;
             if (p.parentPath?.isJSXOpeningElement() || p.parentPath?.isJSXClosingElement()) return;
             names.add(p.node.name);
@@ -680,26 +707,25 @@ function collectReferencedNames(stmts: t.Statement[]): Set<string> {
 }
 
 /** Remove named import specifiers whose local name is not referenced in `bodyStmts`. */
-function pruneUnusedNamedImports(
-    importStmts: t.Statement[],
-    bodyStmts: t.Statement[]
-): t.Statement[] {
+function pruneUnusedNamedImports(importStmts: t.Statement[], bodyStmts: t.Statement[]): t.Statement[] {
     const refs = collectReferencedNames(bodyStmts);
-    return importStmts.map(stmt => {
-        if (!t.isImportDeclaration(stmt)) return stmt;
-        const prunedSpecifiers = stmt.specifiers.filter(spec => {
-            if (t.isImportNamespaceSpecifier(spec)) return true; // always keep namespace imports
-            if (t.isImportDefaultSpecifier(spec)) return true;
-            if (t.isImportSpecifier(spec)) {
-                const localName = t.isIdentifier(spec.local) ? spec.local.name : null;
-                return localName ? refs.has(localName) : true;
-            }
-            return true;
-        });
-        if (prunedSpecifiers.length === 0) return null; // drop empty imports
-        if (prunedSpecifiers.length === stmt.specifiers.length) return stmt; // unchanged
-        return t.importDeclaration(prunedSpecifiers, stmt.source);
-    }).filter(Boolean) as t.Statement[];
+    return importStmts
+        .map((stmt) => {
+            if (!t.isImportDeclaration(stmt)) return stmt;
+            const prunedSpecifiers = stmt.specifiers.filter((spec) => {
+                if (t.isImportNamespaceSpecifier(spec)) return true; // always keep namespace imports
+                if (t.isImportDefaultSpecifier(spec)) return true;
+                if (t.isImportSpecifier(spec)) {
+                    const localName = t.isIdentifier(spec.local) ? spec.local.name : null;
+                    return localName ? refs.has(localName) : true;
+                }
+                return true;
+            });
+            if (prunedSpecifiers.length === 0) return null; // drop empty imports
+            if (prunedSpecifiers.length === stmt.specifiers.length) return stmt; // unchanged
+            return t.importDeclaration(prunedSpecifiers, stmt.source);
+        })
+        .filter(Boolean) as t.Statement[];
 }
 
 // ---------------------------------------------------------------------------
@@ -822,9 +848,9 @@ export const transformIndexStatements = (
                     handledSpecs.add(src);
                     const used = usedExports.get(src);
                     if (used && used.size > 0) {
-                        const specifiers = [...used].sort().map(name =>
-                            t.importSpecifier(t.identifier(name), t.identifier(name))
-                        );
+                        const specifiers = [...used]
+                            .sort()
+                            .map((name) => t.importSpecifier(t.identifier(name), t.identifier(name)));
                         finalImportStmts.push(t.importDeclaration(specifiers, t.stringLiteral(src)));
                     }
                 }
@@ -851,7 +877,7 @@ export const transformIndexStatements = (
     // Pass G — remove top-level Babel helper functions and webpack module-cache vars.
     const afterG = dropEmptyObjectVars(
         afterE.filter(
-            stmt =>
+            (stmt) =>
                 !isBabelArrayLikeToArrayHelper(stmt) &&
                 !isBabelTypeofHelper(stmt) &&
                 !isBabelDefinePropertyHelper(stmt) &&

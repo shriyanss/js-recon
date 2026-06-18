@@ -43,8 +43,9 @@ The refactor command accepts an optional `--collisions <file>` argument. When pr
     - **Case 1 — direct file path**: reads the file, keeps records whose `count` equals the maximum count, and returns that `Set<string>`.
     - **Case 2 — standard directory**: walks the four directory candidates in order (`<dir>/baselines/<tech>/<scat>/collisions.json`, `<dir>/<tech>/<scat>/collisions.json`, `<dir>/<scat>/collisions.json`, `<dir>/collisions.json`) until a file is found, then applies the max-count filter. The `<scat>` segment comes from `BASELINE_SCAT_DIR[tech]` — keep that map in sync with each tech's `LIB_SIG_SCAT` constant.
     - **Case 3 — per-feature results directory**: detects `<dir>/<feature>/<scat>/collisions.json` by scanning immediate subdirectories, then **intersects** the max-count signature sets across all feature subdirs. Only one file per feature subdir is read (e.g. 18 files for 18 features). A signature that survives intersection appears in every feature's max-count set and is definitionally library code.
-    
+
     The resulting `Set<string>` of library signatures is passed down to `refactorReact()` / `refactorNext()` as the `libSigs` argument.
+
 2. `react/index.ts`'s `moduleIsLibrary()` re-hashes each module's body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and looks every sub-tree signature up in `libSigs`. If any matches, the module is dropped.
 3. The default `lit-decl-loop-cond` scat config matches the directory name used in the research experiment's output tree (`feature-signatures/<feature>/lit-decl-loop-cond/collisions.json`). Changing the scat list here means consumers must change which `collisions.json` they pass.
 

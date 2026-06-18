@@ -245,7 +245,9 @@ const handleFirewall = async (url: string, resp_text: string): Promise<string | 
         const browser = await puppeteer.launch({
             headless: true,
             executablePath: chromiumPath,
-            args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] : [],
+            args: globals.getDisableSandbox()
+                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                : [],
         });
         const page = await browser.newPage();
         await page.goto(url);
@@ -259,7 +261,9 @@ const handleFirewall = async (url: string, resp_text: string): Promise<string | 
         const browser = await puppeteer.launch({
             headless: true,
             executablePath: chromiumPath2,
-            args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"] : [],
+            args: globals.getDisableSandbox()
+                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                : [],
         });
         const page = await browser.newPage();
         await page.goto(url);

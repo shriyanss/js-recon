@@ -10,13 +10,42 @@ export interface LibraryModuleInfo {
 }
 
 export const REACT_CANONICAL = new Set([
-    "useState", "useEffect", "useRef", "useMemo", "useCallback", "useContext",
-    "useReducer", "useLayoutEffect", "useDebugValue", "useId", "useTransition",
-    "useDeferredValue", "useInsertionEffect", "useImperativeHandle", "useSyncExternalStore",
-    "createElement", "Fragment", "Component", "PureComponent", "createContext",
-    "forwardRef", "memo", "Profiler", "Suspense", "StrictMode", "createRef", "isValidElement",
-    "Children", "cloneElement", "startTransition", "lazy", "version", "createPortal",
-    "flushSync", "act", "cache",
+    "useState",
+    "useEffect",
+    "useRef",
+    "useMemo",
+    "useCallback",
+    "useContext",
+    "useReducer",
+    "useLayoutEffect",
+    "useDebugValue",
+    "useId",
+    "useTransition",
+    "useDeferredValue",
+    "useInsertionEffect",
+    "useImperativeHandle",
+    "useSyncExternalStore",
+    "createElement",
+    "Fragment",
+    "Component",
+    "PureComponent",
+    "createContext",
+    "forwardRef",
+    "memo",
+    "Profiler",
+    "Suspense",
+    "StrictMode",
+    "createRef",
+    "isValidElement",
+    "Children",
+    "cloneElement",
+    "startTransition",
+    "lazy",
+    "version",
+    "createPortal",
+    "flushSync",
+    "act",
+    "cache",
 ]);
 
 // Deliberately excludes "Fragment" — React itself also exports Fragment, so it is not
@@ -26,10 +55,10 @@ export const JSX_RUNTIME_CANONICAL = new Set(["jsx", "jsxs", "jsxDEV"]);
 export const REACT_DOM_CLIENT_CANONICAL = new Set(["createRoot", "hydrateRoot"]);
 
 const LIBRARY_SOURCE: Record<LibraryType, string> = {
-    "react": "react",
+    react: "react",
     "react-dom-client": "react-dom/client",
     "react-jsx-runtime": "react/jsx-runtime",
-    "unknown": "",
+    unknown: "",
 };
 
 export const librarySource = (type: LibraryType): string => LIBRARY_SOURCE[type];
@@ -43,9 +72,7 @@ function scanExportMap(mod: ModuleEntry): Map<string, string> {
 
     for (const stmt of body.body) {
         if (!t.isExpressionStatement(stmt)) continue;
-        const exprs = t.isSequenceExpression(stmt.expression)
-            ? stmt.expression.expressions
-            : [stmt.expression];
+        const exprs = t.isSequenceExpression(stmt.expression) ? stmt.expression.expressions : [stmt.expression];
         for (const ex of exprs) {
             if (!t.isAssignmentExpression(ex) || ex.operator !== "=") continue;
             const lhs = ex.left;
@@ -75,11 +102,11 @@ export function classifyLibraryModule(mod: ModuleEntry): LibraryModuleInfo {
     // Values cover shim modules that rename (e.g. react-dom/client: H → createRoot).
     const keys = [...exportMap.keys()];
     const vals = [...exportMap.values()];
-    if (keys.some(k => REACT_DOM_CLIENT_CANONICAL.has(k)) || vals.some(v => REACT_DOM_CLIENT_CANONICAL.has(v)))
+    if (keys.some((k) => REACT_DOM_CLIENT_CANONICAL.has(k)) || vals.some((v) => REACT_DOM_CLIENT_CANONICAL.has(v)))
         return { type: "react-dom-client", exportMap };
-    if (keys.some(k => JSX_RUNTIME_CANONICAL.has(k)) || vals.some(v => JSX_RUNTIME_CANONICAL.has(v)))
+    if (keys.some((k) => JSX_RUNTIME_CANONICAL.has(k)) || vals.some((v) => JSX_RUNTIME_CANONICAL.has(v)))
         return { type: "react-jsx-runtime", exportMap };
-    if (keys.some(k => REACT_CANONICAL.has(k)) || vals.some(v => REACT_CANONICAL.has(v)))
+    if (keys.some((k) => REACT_CANONICAL.has(k)) || vals.some((v) => REACT_CANONICAL.has(v)))
         return { type: "react", exportMap };
     return { type: "unknown", exportMap };
 }
@@ -114,10 +141,7 @@ export function getReexportTarget(mod: ModuleEntry): number | null {
  * E.g. 540 → 287 (React): if 287 is classified as 'react', 540 also becomes 'react'.
  * Runs up to 5 passes to handle chains of length > 1.
  */
-export function resolveReexportChains(
-    libModuleMap: Map<string, LibraryModuleInfo>,
-    modules: ModuleEntry[]
-): void {
+export function resolveReexportChains(libModuleMap: Map<string, LibraryModuleInfo>, modules: ModuleEntry[]): void {
     for (let pass = 0; pass < 5; pass++) {
         let changed = false;
         for (const mod of modules) {

@@ -80,10 +80,7 @@ const isLibrarySig = (sig: string | undefined, libSigs: Set<string> | undefined)
 // Hash a single module's function body using cs_mast_init and look the signature
 // up against the count=18 baseline set. Returns true when the module's body
 // matches a baseline library signature.
-const moduleIsLibrary = (
-    mod: ModuleEntry,
-    libSigs: Set<string> | undefined
-): boolean => {
+const moduleIsLibrary = (mod: ModuleEntry, libSigs: Set<string> | undefined): boolean => {
     if (!libSigs || libSigs.size === 0) return false;
     const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
     if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
