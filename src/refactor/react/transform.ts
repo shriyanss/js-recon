@@ -219,7 +219,9 @@ function resolveLibraryProp(
     // Helper: is this name actually a canonical export for this library type?
     const isCanonical = (name: string): boolean => {
         if (info.type === "react") return REACT_CANONICAL.has(name);
-        if (info.type === "react-jsx-runtime") return JSX_RUNTIME_CANONICAL.has(name);
+        // Fragment is also exported by react/jsx-runtime but excluded from JSX_RUNTIME_CANONICAL
+        // (which is used only for module classification). Accept it explicitly here for rewriting.
+        if (info.type === "react-jsx-runtime") return JSX_RUNTIME_CANONICAL.has(name) || name === "Fragment";
         if (info.type === "react-dom-client") return REACT_DOM_CLIENT_CANONICAL.has(name);
         return false;
     };
@@ -295,7 +297,7 @@ function rewriteLibraryCalls(
             record(resolved.libType, resolved.canonical);
             // Replace (0, X.Y)(...) or X.Y(...) with canonicalName(...)
             p.node.callee = t.identifier(resolved.canonical);
-            p.skip();
+            // Do NOT skip — arguments may contain further (0, X.Y)(...) or X.Y member refs.
         },
         MemberExpression(p) {
             // Rewrite X.Y in non-call positions (e.g. passed as callback value)
@@ -454,11 +456,13 @@ function exprToJsxAttrValue(expr: t.Expression): t.JSXExpressionContainer | t.St
 }
 
 function childToJsxChild(child: t.Expression): t.JSXElement | t.JSXFragment | t.JSXText | t.JSXExpressionContainer | t.JSXSpreadChild | null {
-    if (t.isStringLiteral(child)) {
-        // Convert to JSXText. Trim internal whitespace into single spaces but preserve content.
-        return t.jsxText(child.value);
-    }
+    if (t.isStringLiteral(child)) return t.jsxText(child.value);
     if (t.isJSXElement(child) || t.isJSXFragment(child)) return child;
+    // Recursively convert nested jsx(...) calls into JSX elements.
+    if (t.isCallExpression(child)) {
+        const converted = tryConvertToJSX(child);
+        if (converted) return converted;
+    }
     return t.jsxExpressionContainer(child);
 }
 
@@ -551,6 +555,90 @@ function isBabelArrayLikeToArrayHelper(stmt: t.Statement): boolean {
     return hasArrayOf;
 }
 
+// Detect `_typeof` — Babel's lazy-init typeof polyfill.
+// Shape: 1-param function whose sole body statement is
+//   return ((fnName = <conditional>), fnName(arg))
+function isBabelTypeofHelper(stmt: t.Statement): boolean {
+    if (!t.isFunctionDeclaration(stmt) || !stmt.id || stmt.params.length !== 1) return false;
+    const body = stmt.body.body;
+    if (body.length !== 1 || !t.isReturnStatement(body[0])) return false;
+    const arg = (body[0] as t.ReturnStatement).argument;
+    if (!arg || !t.isSequenceExpression(arg)) return false;
+    const exprs = (arg as t.SequenceExpression).expressions;
+    if (exprs.length !== 2) return false;
+    const first = exprs[0];
+    return (
+        t.isAssignmentExpression(first) &&
+        t.isIdentifier((first as t.AssignmentExpression).left, { name: stmt.id.name })
+    );
+}
+
+// Detect `_defineProperty` / `_toPropertyKey`+`_defineProperty` combos.
+// Shape: 3-param function whose body contains an Object.defineProperty call with
+//   { value, enumerable, configurable, writable } descriptor.
+function isBabelDefinePropertyHelper(stmt: t.Statement): boolean {
+    if (!t.isFunctionDeclaration(stmt) || !stmt.id || stmt.params.length !== 3) return false;
+    const bodyCode = stmt.body.body;
+    const hasDefProp = (node: t.Node): boolean => {
+        if (
+            t.isCallExpression(node) &&
+            t.isMemberExpression((node as t.CallExpression).callee) &&
+            t.isIdentifier(((node as t.CallExpression).callee as t.MemberExpression).object, { name: "Object" }) &&
+            t.isIdentifier(((node as t.CallExpression).callee as t.MemberExpression).property, { name: "defineProperty" })
+        ) {
+            const args = (node as t.CallExpression).arguments;
+            if (args.length >= 3 && t.isObjectExpression(args[2])) {
+                const props = (args[2] as t.ObjectExpression).properties;
+                const keys = props
+                    .filter(p => t.isObjectProperty(p) && t.isIdentifier((p as t.ObjectProperty).key))
+                    .map(p => ((p as t.ObjectProperty).key as t.Identifier).name);
+                return keys.includes("enumerable") && keys.includes("configurable") && keys.includes("writable");
+            }
+        }
+        return false;
+    };
+    // Walk statements for the defineProperty call (may be nested in return/conditional)
+    const walk = (node: t.Node): boolean => {
+        if (hasDefProp(node)) return true;
+        for (const key of Object.keys(node)) {
+            const child = (node as unknown as Record<string, unknown>)[key];
+            if (!child || typeof child !== "object") continue;
+            if (Array.isArray(child)) {
+                if (child.some((c: unknown) => c && typeof c === "object" && "type" in (c as object) && walk(c as t.Node))) return true;
+            } else if ("type" in (child as object)) {
+                if (walk(child as t.Node)) return true;
+            }
+        }
+        return false;
+    };
+    return bodyCode.some(s => walk(s));
+}
+
+// Detect `_objectSpreadPropsHelper` / `_objectKeys`.
+// Shape: 2-param function whose first statement declares a variable via Object.keys(param0)
+//   and whose body references getOwnPropertySymbols.
+function isBabelObjectSpreadHelper(stmt: t.Statement): boolean {
+    if (!t.isFunctionDeclaration(stmt) || !stmt.id || stmt.params.length !== 2) return false;
+    const body = stmt.body.body;
+    if (body.length < 2) return false;
+    // First statement: var t = Object.keys(e)
+    const first = body[0];
+    if (!t.isVariableDeclaration(first)) return false;
+    const firstIsObjectKeys = (first as t.VariableDeclaration).declarations.some(d => {
+        if (!d.init || !t.isCallExpression(d.init)) return false;
+        const callee = (d.init as t.CallExpression).callee;
+        return (
+            t.isMemberExpression(callee) &&
+            t.isIdentifier((callee as t.MemberExpression).object, { name: "Object" }) &&
+            t.isIdentifier((callee as t.MemberExpression).property, { name: "keys" })
+        );
+    });
+    if (!firstIsObjectKeys) return false;
+    // Body references getOwnPropertySymbols
+    const bodyStr = JSON.stringify(body);
+    return bodyStr.includes('"getOwnPropertySymbols"');
+}
+
 /** Remove `var x = {}` declarations where every declarator has an empty-object init.
  *  These are webpack module-cache variables. */
 function dropEmptyObjectVars(stmts: t.Statement[]): t.Statement[] {
@@ -580,6 +668,11 @@ function collectReferencedNames(stmts: t.Statement[]): Set<string> {
             if (p.parentPath?.isObjectProperty() && !(p.parent as t.ObjectProperty).computed && p.parentPath.get("key") === p) return;
             if (p.parentPath?.isJSXAttribute()) return;
             if (p.parentPath?.isJSXOpeningElement() || p.parentPath?.isJSXClosingElement()) return;
+            names.add(p.node.name);
+        },
+        JSXIdentifier(p) {
+            // JSX element names (e.g. <Fragment>) are JSXIdentifier nodes, not Identifier.
+            // Add them so their import specifiers survive Pass H pruning.
             names.add(p.node.name);
         },
     });
@@ -717,20 +810,25 @@ export const transformIndexStatements = (
             // Rewrite call-sites; collect which named exports are actually used
             const usedExports = rewriteLibraryCalls(afterB, varToLib);
 
-            // Build import declarations for library modules (named imports)
+            // Build import declarations for library modules (named imports).
+            // handledSpecs guards only the import-declaration emit (avoid duplicates when
+            // two local vars map to the same library source). The namespace-import deletion
+            // must happen for EVERY var that maps to a library, regardless of dedup.
             const handledSpecs = new Set<string>();
             for (const [varName, info] of varToLib) {
                 const src = librarySource(info.type);
-                if (!src || handledSpecs.has(src)) continue;
-                handledSpecs.add(src);
-                const used = usedExports.get(src);
-                if (used && used.size > 0) {
-                    const specifiers = [...used].sort().map(name =>
-                        t.importSpecifier(t.identifier(name), t.identifier(name))
-                    );
-                    finalImportStmts.push(t.importDeclaration(specifiers, t.stringLiteral(src)));
+                if (!src) continue;
+                if (!handledSpecs.has(src)) {
+                    handledSpecs.add(src);
+                    const used = usedExports.get(src);
+                    if (used && used.size > 0) {
+                        const specifiers = [...used].sort().map(name =>
+                            t.importSpecifier(t.identifier(name), t.identifier(name))
+                        );
+                        finalImportStmts.push(t.importDeclaration(specifiers, t.stringLiteral(src)));
+                    }
                 }
-                // Remove the old namespace import for this module
+                // Always remove the namespace import for this var, even if src was already handled.
                 const numId = varToModuleId.get(varName);
                 if (numId !== undefined) hoistedImports.delete(`./${numId}.js`);
             }
@@ -750,8 +848,16 @@ export const transformIndexStatements = (
     // Pass F — JSX recovery.
     recoverJSX(afterE);
 
-    // Pass G — remove top-level Babel array-helper functions and webpack module-cache vars.
-    const afterG = dropEmptyObjectVars(afterE.filter(stmt => !isBabelArrayLikeToArrayHelper(stmt)));
+    // Pass G — remove top-level Babel helper functions and webpack module-cache vars.
+    const afterG = dropEmptyObjectVars(
+        afterE.filter(
+            stmt =>
+                !isBabelArrayLikeToArrayHelper(stmt) &&
+                !isBabelTypeofHelper(stmt) &&
+                !isBabelDefinePropertyHelper(stmt) &&
+                !isBabelObjectSpreadHelper(stmt)
+        )
+    );
 
     // Pass H — prune named imports whose local name is no longer referenced
     //           (e.g. jsx/jsxs after JSX recovery, namespace imports that were cleared).

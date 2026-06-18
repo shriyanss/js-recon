@@ -98,6 +98,9 @@ Cleans up webpack-internal artifacts with 8 passes. Passes A–C always run; D�
 **Pass G** — Removes:
 - Babel `arrayLikeToArray` helper functions (detected by shape: 2–4 statement body containing a `for` loop that initialises `Array(n)`).
 - `var x = {}` declarations where all declarators have empty object inits (webpack module-cache variable).
+- Babel `_typeof` helper (`isBabelTypeofHelper`): detected as a 1-param function whose entire body is `return ((fnName = <conditional>), fnName(arg))` — the lazy self-reassignment pattern Babel emits for `typeof` polyfills.
+- Babel `_defineProperty` / `_toPrimitive` / `_toPropertyKey` helpers (`isBabelDefinePropertyHelper`): detected as a 3-param function whose body contains a `Object.defineProperty(obj, key, {value, enumerable, configurable, writable})` call anywhere in the tree.
+- Babel `_objectSpreadPropsHelper` helper (`isBabelObjectSpreadHelper`): detected as a 2-param function whose first statement declares a var via `Object.keys(param)` and whose body references `getOwnPropertySymbols`.
 
 **Pass H** — Prunes named import specifiers whose local name is not referenced in the body statements. Mainly catches `jsx`/`jsxs` imports that become stale after JSX recovery converts them to JSX syntax.
 
@@ -159,7 +162,7 @@ The reason there are 18 iterations × 511 scat combos = 9198 files: the experime
 
 Inside each `collisions.json`, every record has a `count` field — the number of bundles in the corpus that produced that signature. `count == 18` (i.e., `count == maxCount` in the file) means the signature appears in *every* bundle. Since every app's application code is unique, the only way for a signature to appear in all 18 bundles is for it to come from code those bundles share — the library.
 
-The implementation in `src/refactor/index.ts` doesn't hardcode 18; it computes the maximum count from the file (`records.reduce((m, r) => …)`). This way the same code works for a baseline with N apps for any N, and the threshold automatically scales.
+The implementation in `src/refactor/index.ts` (`buildLibSigs()`) doesn't hardcode 18; it computes the maximum count from each file (`records.reduce((m, r) => …)`). When given a per-feature results directory (`<dir>/<feature>/<scat>/collisions.json`), it reads one file per feature subdir, takes each file's max-count set, and **intersects** all of them. A signature that survives the intersection is in every feature's max-count set — i.e. it appeared in all apps in every feature baseline, which makes it definitionally library code. This way the same code works for a baseline with N apps for any N, and the threshold automatically scales.
 
 #### 5. Algorithmic decisions and tradeoffs
 
@@ -244,6 +247,29 @@ To add a baseline for a new framework (e.g. Next.js, Vue, Svelte):
 - **Toolchain drift erodes coverage.** A baseline produced from React 18.3.1 + webpack 5.107 + babel preset-env "default" target will not classify a React 17 bundle as cleanly. Pin the baseline source toolchain to whatever your target bundles use.
 - **CDN'd library polyfills.** A baseline app that includes a polyfill not present in production targets (e.g. `core-js` shimming) will have polyfill signatures in the count=all-apps set. Those signatures will match the same patterns in target bundles even when the target intentionally retained them. This will rarely affect *modules* (polyfills usually live alongside React internals in the same chunks) but is worth knowing.
 - **Vite/Rollup bundles.** Those don't use the numeric module-map pattern at all; the feature is a no-op because there are no modules to classify. The default `react-webpack` refactor already fails gracefully for those (zero modules found, just emits `index.js`).
+
+## Per-feature patterns (18-app test corpus)
+
+All 18 `*-webpack` apps in `js-recon-research/react/jsr-refactor/features/` pass the refactor pipeline. Key findings per app:
+
+| # | Feature | Notable pattern | Implementation detail |
+|---|---------|-----------------|----------------------|
+| 01–11 | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`) | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal |
+| 08, 12, 17, 18 | Fragment | `import { Fragment } from 'react/jsx-runtime'` | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type |
+| 13 | Suspense + lazy | Split chunk: `__webpack_require__.e(chunkId).then(...)` retained intact | No mapping from webpack runtime chunk ID back to source path — expression is left as-is; does not prevent completion |
+| 14 | StrictMode | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression |
+| 15 | Profiler | `<Profiler id="App" onRender={...}>` recovered as JSX | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly |
+| 16 | createContext | Same pattern as 04; two separate context consumers | No special handling needed |
+| 17 | memo | `memo(Component)` wrapper | `memo` in `REACT_CANONICAL` |
+| 18 | forwardRef | `forwardRef((props, ref) => ...)` wrapper | `forwardRef` in `REACT_CANONICAL` |
+
+### Key implementation decisions that arose during multi-app testing
+
+- **`JSXIdentifier` visitor in `collectReferencedNames`** — Pass H's name-collection traversal must visit `JSXIdentifier` nodes (element names like `<Fragment>`) in addition to `Identifier` nodes. Without this, `Fragment` was pruned from the named import list because its only reference was as a JSX tag, not an ES identifier.
+
+- **`p.skip()` removed from `rewriteLibraryCalls` CallExpression handler** — Arguments of rewritten calls may themselves be `(0, X.Y)(...)` or `X.Y` member references. Skipping after rewriting the callee prevents those nested sites from being rewritten. Removing `skip()` allows the traversal to descend into arguments.
+
+- **`handledSpecs` dedup scope** — The dedup guard for emitting import declarations must not gate the `hoistedImports.delete(...)` call. If two local vars map to the same library source string, the second var's namespace import would remain after stripping. The delete must happen for every var regardless of whether the import declaration was already emitted.
 
 ## Gotchas
 

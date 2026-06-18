@@ -16,6 +16,8 @@
     - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
     - Webpack require helper is detected by its `return (moduleMap[id](…), mod.exports)` return shape and stripped from `index.js`
     - Top-level `requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; remaining inline calls are replaced recursively throughout the file
+- `refactor --collisions` now accepts a per-feature results directory (a directory whose immediate subdirs each contain `<scat>/collisions.json`, e.g. a 18-feature corpus with `01-usestate-hook-webpack/lit-decl-loop-cond/collisions.json` etc.) — reads only the scat-relevant file per feature subdir, intersects the max-count signature sets across all features, and uses the intersection as the library baseline; works even when the full dataset is hundreds of GB (`refactor`)
+- `refactor -t react-webpack`: Pass G now strips three additional Babel inline helpers emitted to the IIFE body — `_typeof` (lazy self-reassignment typeof polyfill, detected by single-return body reassigning its own binding), `_defineProperty`/`_toPropertyKey`/`_toPrimitive` (property-setter helpers, detected by `Object.defineProperty` call with `{value, enumerable, configurable, writable}` descriptor), and `_objectSpreadPropsHelper` (detected by `Object.keys` first-statement + `getOwnPropertySymbols` reference) — cleaning up noise left by JSX spread and object spread (`refactor`)
 
 ### Fixed
 
