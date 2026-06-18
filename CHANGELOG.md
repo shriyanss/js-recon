@@ -27,7 +27,7 @@
 
 ### Changed
 
-- `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit (`refactor`)
+- `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit
 - Improved tool description in `globalConfig.ts`
 
 ## 1.3.1-beta.1 - 2026-06-08
