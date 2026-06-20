@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { program } from "commander";
 import lazyLoad from "./lazyLoad/index.js";
+import { FRAMEWORK_METHODS, VALID_METHODS } from "./lazyLoad/methodFilter.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
@@ -54,7 +55,7 @@ function validateAndSetTimeout(timeoutValue: string): void {
 program
     .command("lazyload")
     .description("Run lazy load module")
-    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <directory>", "Output directory", "output")
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
@@ -78,7 +79,49 @@ program
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option("--include-methods <methods>", "Comma-separated method names to run (whitelist). Use --list-methods to see valid names.")
+    .option("--exclude-methods <methods>", "Comma-separated method names to skip (blacklist). Use --list-methods to see valid names.")
+    .option("--list-methods [framework]", "Print available method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react).")
     .action(async (cmd) => {
+        // handle --list-methods before any network work
+        if (cmd.listMethods !== undefined) {
+            const filter = typeof cmd.listMethods === "string" ? cmd.listMethods : null;
+            const frameworkKeys = Object.keys(FRAMEWORK_METHODS);
+            if (filter && !frameworkKeys.includes(filter)) {
+                console.error(chalk.red(`[!] Unknown framework: "${filter}". Valid frameworks: ${frameworkKeys.join(", ")}`));
+                process.exit(1);
+            }
+            const keys = filter ? [filter] : frameworkKeys;
+            for (const fw of keys) {
+                console.log(chalk.cyan(`\n[${fw}]`));
+                for (const method of FRAMEWORK_METHODS[fw]) {
+                    console.log(chalk.green(`  - ${method}`));
+                }
+            }
+            process.exit(0);
+        }
+
+        // parse and validate method filter lists
+        const includeMethods: string[] = cmd.includeMethods
+            ? cmd.includeMethods.split(",").map((m: string) => m.trim()).filter(Boolean)
+            : [];
+        const excludeMethods: string[] = cmd.excludeMethods
+            ? cmd.excludeMethods.split(",").map((m: string) => m.trim()).filter(Boolean)
+            : [];
+
+        const allMethods = [...includeMethods, ...excludeMethods];
+        const invalid = allMethods.filter((m) => !VALID_METHODS.includes(m));
+        if (invalid.length > 0) {
+            console.error(chalk.red(`[!] Invalid method name(s): ${invalid.join(", ")}`));
+            console.error(chalk.yellow(`[i] Valid methods: ${VALID_METHODS.join(", ")}`));
+            process.exit(22);
+        }
+
+        if (!cmd.url) {
+            console.error(chalk.red("[!] Missing required option: -u, --url <url/file>"));
+            process.exit(1);
+        }
+
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
         globalsUtil.setDisableCache(cmd.disableCache);
@@ -105,7 +148,9 @@ program
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
             Number(cmd.lazyloadTimeout) * 60 * 1000,
-            Number(cmd.maxPages)
+            Number(cmd.maxPages),
+            includeMethods,
+            excludeMethods
         );
     });
 

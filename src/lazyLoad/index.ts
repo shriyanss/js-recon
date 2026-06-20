@@ -50,6 +50,7 @@ import { extractSources } from "./sourcemap.js";
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
+import { shouldRunMethod } from "./methodFilter.js";
 
 const getMapFilesRecursively = (dir: string): string[] => {
     const entries = readdirSync(dir, { withFileTypes: true });
@@ -126,7 +127,9 @@ const lazyLoad = async (
     maxIterations: number,
     maxJsSizeMb: number = 2,
     hardTimeoutMs: number = 30 * 60 * 1000,
-    maxPageVisits: number = 200
+    maxPageVisits: number = 200,
+    includeMethods: string[] = [],
+    excludeMethods: string[] = []
 ) => {
     // Hoisted so the timeout handler can stop discovery and drain downloads.
     let activeCrawler: NextJsCrawler | null = null;
@@ -195,6 +198,8 @@ const lazyLoad = async (
                         maxIterations,
                         maxPageVisits,
                         onUrlsDiscovered: (urls) => activeQueue!.push(urls),
+                        includeMethods,
+                        excludeMethods,
                     });
                     activeCrawler = crawler;
 
@@ -241,10 +246,10 @@ const lazyLoad = async (
                     const onFilesDiscovered = (files: string[]) => queue.push(files);
 
                     // run the full discovery pipeline against the entry URL
-                    const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered);
+                    const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered, includeMethods, excludeMethods);
 
                     // recurse the same pipeline through every client-side path we found
-                    await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb, onFilesDiscovered);
+                    await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb, onFilesDiscovered, includeMethods, excludeMethods);
 
                     await queue.drain();
                     queue.printSummary();
@@ -259,18 +264,24 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // find the files from the page source
-                    const jsFilesFromPageSource = await nuxt_getFromPageSource(url);
+                    const jsFilesFromPageSource = shouldRunMethod("nuxt_getFromPageSource", includeMethods, excludeMethods)
+                        ? await nuxt_getFromPageSource(url)
+                        : [];
                     queue.push(jsFilesFromPageSource);
 
-                    const jsFilesFromStringAnalysis = await nuxt_stringAnalysisJSFiles(url);
+                    const jsFilesFromStringAnalysis = shouldRunMethod("nuxt_stringAnalysisJSFiles", includeMethods, excludeMethods)
+                        ? await nuxt_stringAnalysisJSFiles(url)
+                        : [];
                     queue.push(jsFilesFromStringAnalysis);
 
                     const firstBatch = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
 
                     let jsFilesFromAST = [];
-                    console.log(chalk.cyan("[i] Analyzing functions in the files found"));
-                    for (const jsFile of firstBatch) {
-                        jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+                    if (shouldRunMethod("nuxt_astParse", includeMethods, excludeMethods)) {
+                        console.log(chalk.cyan("[i] Analyzing functions in the files found"));
+                        for (const jsFile of firstBatch) {
+                            jsFilesFromAST.push(...(await nuxt_astParse(jsFile)));
+                        }
                     }
                     queue.push(jsFilesFromAST);
                     queue.push(lazyLoadGlobals.getJsUrls());
@@ -285,15 +296,22 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // find the files from the page source
-                    const jsFilesFromPageSource = await svelte_getFromPageSource(url);
+                    const jsFilesFromPageSource = shouldRunMethod("svelte_getFromPageSource", includeMethods, excludeMethods)
+                        ? await svelte_getFromPageSource(url)
+                        : [];
                     queue.push(jsFilesFromPageSource);
 
                     // analyze the strings now
-                    const { jsFiles: jsFilesFromStringAnalysis, mapFiles: mapFilesFromStringAnalysis } =
-                        await svelte_stringAnalysisJSFiles(url);
-                    queue.push(jsFilesFromStringAnalysis);
-                    if (mapFilesFromStringAnalysis.length > 0) {
-                        queue.push(mapFilesFromStringAnalysis);
+                    let jsFilesFromStringAnalysis: string[] = [];
+                    let mapFilesFromStringAnalysis: string[] = [];
+                    if (shouldRunMethod("svelte_stringAnalysisJSFiles", includeMethods, excludeMethods)) {
+                        const result = await svelte_stringAnalysisJSFiles(url);
+                        jsFilesFromStringAnalysis = result.jsFiles;
+                        mapFilesFromStringAnalysis = result.mapFiles;
+                        queue.push(jsFilesFromStringAnalysis);
+                        if (mapFilesFromStringAnalysis.length > 0) {
+                            queue.push(mapFilesFromStringAnalysis);
+                        }
                     }
 
                     // recursively follow ESM static imports (import ... from "./chunk.js")
@@ -309,22 +327,27 @@ const lazyLoad = async (
 
                     // crawl same-origin HTML pages found via <a href> and <link href>,
                     // running the full JS-discovery pipeline on each
-                    const jsFilesFromPageCrawl = await svelte_recursivePageCrawl(url, maxJsSizeMb, (files) =>
-                        queue.push(files)
-                    );
+                    const jsFilesFromPageCrawl = shouldRunMethod("svelte_recursivePageCrawl", includeMethods, excludeMethods)
+                        ? await svelte_recursivePageCrawl(url, maxJsSizeMb, (files) => queue.push(files))
+                        : [];
 
                     // Svelte/Astro apps use client-side routing — the home page rarely has
                     // <a href> links in its server-rendered HTML. Scan downloaded JS for
                     // embedded page path strings (e.g. "/admin", "/debug") and visit each
                     // page to discover the Astro island component-url values for those routes.
                     // Iterates until no new paths or JS files are discovered.
-                    const jsFilesFromPathScan = await svelte_discoverPagesFromJs(url);
+                    const jsFilesFromPathScan = shouldRunMethod("svelte_discoverPagesFromJs", includeMethods, excludeMethods)
+                        ? await svelte_discoverPagesFromJs(url)
+                        : [];
                     if (jsFilesFromPathScan.length > 0) {
                         queue.push(jsFilesFromPathScan);
                     }
 
                     // run string analysis once more to catch JS files discovered during page crawl
-                    if (jsFilesFromPageCrawl.length > 0 || jsFilesFromPathScan.length > 0) {
+                    if (
+                        (jsFilesFromPageCrawl.length > 0 || jsFilesFromPathScan.length > 0) &&
+                        shouldRunMethod("svelte_stringAnalysisJSFiles", includeMethods, excludeMethods)
+                    ) {
                         const { jsFiles: jsFilesFromStringAnalysis2, mapFiles: mapFilesFromStringAnalysis2 } =
                             await svelte_stringAnalysisJSFiles(url);
                         queue.push(jsFilesFromStringAnalysis2);
@@ -345,21 +368,25 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // find the files from the page source
-                    const jsFilesFromPageSource = await angular_getFromPageSource(url);
+                    const jsFilesFromPageSource = shouldRunMethod("angular_getFromPageSource", includeMethods, excludeMethods)
+                        ? await angular_getFromPageSource(url)
+                        : [];
                     queue.push(jsFilesFromPageSource);
 
                     // files using the main.js
-                    let mainJsUrl: string | undefined;
-                    for (const jsFile of jsFilesFromPageSource) {
-                        if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
-                            mainJsUrl = jsFile;
-                            break;
+                    if (shouldRunMethod("angular_getFromMainJs", includeMethods, excludeMethods)) {
+                        let mainJsUrl: string | undefined;
+                        for (const jsFile of jsFilesFromPageSource) {
+                            if (jsFile.match(/main[a-zA-Z0-9\-]*\.js/)) {
+                                mainJsUrl = jsFile;
+                                break;
+                            }
                         }
-                    }
 
-                    if (mainJsUrl) {
-                        const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
-                        queue.push(jsFilesFromMainJs);
+                        if (mainJsUrl) {
+                            const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
+                            queue.push(jsFilesFromMainJs);
+                        }
                     }
 
                     await queue.drain();
@@ -372,28 +399,36 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // Seed: <script src> tags + <link rel="modulepreload"> (Vite vendor chunks)
-                    const jsFilesFromPageSource = await react_getScriptTags(url, maxJsSizeMb, output);
+                    const jsFilesFromPageSource = shouldRunMethod("react_getScriptTags", includeMethods, excludeMethods)
+                        ? await react_getScriptTags(url, maxJsSizeMb, output)
+                        : [];
                     queue.push(jsFilesFromPageSource);
 
                     // webpack-style chunk path builders (CRA / custom webpack configs)
-                    const webpackChunkPaths = await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource);
+                    const webpackChunkPaths = shouldRunMethod("react_webpackChunkPaths", includeMethods, excludeMethods)
+                        ? await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource)
+                        : [];
                     queue.push(webpackChunkPaths);
 
                     // Recursively follow ESM imports and Vite __vite_mapDeps references.
                     // visited starts empty so the seed files are fetched and parsed in the first round.
                     const visited = new Set<string>();
-                    let toFollow = [...new Set([...jsFilesFromPageSource, ...webpackChunkPaths])];
-                    while (toFollow.length > 0) {
-                        const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
-                        if (newFiles.length === 0) break;
-                        console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
-                        queue.push(newFiles);
-                        toFollow = newFiles;
+                    if (shouldRunMethod("react_followImports", includeMethods, excludeMethods)) {
+                        let toFollow = [...new Set([...jsFilesFromPageSource, ...webpackChunkPaths])];
+                        while (toFollow.length > 0) {
+                            const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                            if (newFiles.length === 0) break;
+                            console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
+                            queue.push(newFiles);
+                            toFollow = newFiles;
+                        }
                     }
 
                     // Sourcemaps for everything discovered
-                    const sourcemapUrls = await react_sourcemapUrls([...visited]);
-                    queue.push(sourcemapUrls);
+                    if (shouldRunMethod("react_sourcemapUrls", includeMethods, excludeMethods)) {
+                        const sourcemapUrls = await react_sourcemapUrls([...visited]);
+                        queue.push(sourcemapUrls);
+                    }
 
                     await queue.drain();
                     queue.printSummary();
