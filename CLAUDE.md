@@ -24,6 +24,7 @@ npm run start -- <subcommand> [options]
 | `run`         | Run all of the above in sequence (primary interface)                               |
 | `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
 | `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
+| `cs-mast`     | Compute CS-MAST structural hashes for downloaded JS files; find hash collisions    |
 
 ## Key source files
 
@@ -285,6 +286,50 @@ For each suggestion: apply a fix commit to `dev` for correctness bugs or convent
 ### Stop before merge
 
 Do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
+
+## cs-mast
+
+`cs-mast` computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every `.js` file found recursively under an output directory, then optionally finds and reports structural collisions — files sharing the same root signature.
+
+**Source:** `src/cs_mast/index.ts`
+
+**Fixed hashing config:**
+
+```typescript
+{ hash: 'sha256', lang: 'js', prsr: '@babel/parser',
+  scat: ['lit', 'decl', 'loop', 'cond'], sinc: [],
+  sourceType: 'unambiguous' }
+```
+
+`rootSignature` on the `File` root node is empty (the File type isn't in any scat category), so `buildSignatureFromConfig(CS_MAST_CONFIG, tree.rootHash)` is used to construct the full PHC string from the root hash.
+
+**Options:**
+
+- `-o / --output <dir>` — directory to scan (default: `output`)
+- `--ct / --collision-table` — find and print collision table to stdout
+- `--min-collisions <n>` — minimum occurrences to report (default: 2)
+- `--co / --collision-output <file>` — write collision data to a file (independent of `--ct`)
+- `--cf / --collision-format json|csv` — output format (default: csv)
+
+**`--co` path resolution:** if the given path is a directory or has no extension, the file is written as `collisions.<fmt>` in the current working directory.
+
+**Output fields:** `signature` (full CS-MAST-S PHC string), `count`, `files`.
+
+**Testing:**
+
+```bash
+npm run build
+node build/index.js cs-mast -o output --ct --min-collisions 2
+node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
+```
+
+## refactor `--collisions <file>`
+
+`refactor -t react-webpack` accepts a `--collisions <file>` argument that points at a `collisions.json` produced by `cs-mast --all-scat-permutations` over a cross-app baseline. Modules whose body signature is in the baseline set are classified as library code (React / React-DOM / jsx-runtime / scheduler / …) and dropped from the output, leaving only `index.js`.
+
+Plumbing: `src/index.ts` (CLI) → `src/refactor/index.ts` (resolves the path via `resolveCollisionsPath()` — accepts either a file or a baseline-tree directory like `../js-recon-cs-mast-s/`; builds `Set<string>` of signatures with `count >= max count`) → `src/refactor/react/index.ts` (`moduleIsLibrary()` hashes each module body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and matches against the set). Detailed rationale + build history in `src/refactor/react/CLAUDE.md`.
+
+The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<tech>/<scat>/collisions.json`). See its `README.md` for layout and provenance.
 
 ## Security / confidentiality
 

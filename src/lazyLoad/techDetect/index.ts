@@ -3,6 +3,7 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "../../utility/puppeteerInstance.js";
 import * as globalsUtil from "../../utility/globals.js";
+import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import path from "path";
 import { checkNextJS } from "./checkNextJS.js";
 import { checkNuxtJS } from "./checkNuxtJS.js";
@@ -49,8 +50,12 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     let pageSource = "";
     const interceptedUrls: string[] = [];
     if (!globalsUtil.getCacheOnly()) {
+        const chromiumPath = getChromiumPath();
         const browser = await puppeteer.launch({
-            args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+            executablePath: chromiumPath,
+            args: globalsUtil.getDisableSandbox()
+                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                : [],
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);
