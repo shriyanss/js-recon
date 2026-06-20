@@ -79,16 +79,27 @@ program
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
-    .option("--include-methods <methods>", "Comma-separated method names to run (whitelist). Use --list-methods to see valid names.")
-    .option("--exclude-methods <methods>", "Comma-separated method names to skip (blacklist). Use --list-methods to see valid names.")
-    .option("--list-methods [framework]", "Print available method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react).")
+    .option(
+        "--include-methods <methods>",
+        "Comma-separated method names to run (whitelist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--exclude-methods <methods>",
+        "Comma-separated method names to skip (blacklist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--list-methods [framework]",
+        "Print available method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react)."
+    )
     .action(async (cmd) => {
         // handle --list-methods before any network work
         if (cmd.listMethods !== undefined) {
             const filter = typeof cmd.listMethods === "string" ? cmd.listMethods : null;
             const frameworkKeys = Object.keys(FRAMEWORK_METHODS);
             if (filter && !frameworkKeys.includes(filter)) {
-                console.error(chalk.red(`[!] Unknown framework: "${filter}". Valid frameworks: ${frameworkKeys.join(", ")}`));
+                console.error(
+                    chalk.red(`[!] Unknown framework: "${filter}". Valid frameworks: ${frameworkKeys.join(", ")}`)
+                );
                 process.exit(1);
             }
             const keys = filter ? [filter] : frameworkKeys;
@@ -103,10 +114,16 @@ program
 
         // parse and validate method filter lists
         const includeMethods: string[] = cmd.includeMethods
-            ? cmd.includeMethods.split(",").map((m: string) => m.trim()).filter(Boolean)
+            ? cmd.includeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
             : [];
         const excludeMethods: string[] = cmd.excludeMethods
-            ? cmd.excludeMethods.split(",").map((m: string) => m.trim()).filter(Boolean)
+            ? cmd.excludeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
             : [];
 
         const allMethods = [...includeMethods, ...excludeMethods];

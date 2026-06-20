@@ -246,10 +246,23 @@ const lazyLoad = async (
                     const onFilesDiscovered = (files: string[]) => queue.push(files);
 
                     // run the full discovery pipeline against the entry URL
-                    const { clientSidePaths } = await vue_discoverJsFiles(url, maxJsSizeMb, onFilesDiscovered, includeMethods, excludeMethods);
+                    const { clientSidePaths } = await vue_discoverJsFiles(
+                        url,
+                        maxJsSizeMb,
+                        onFilesDiscovered,
+                        includeMethods,
+                        excludeMethods
+                    );
 
                     // recurse the same pipeline through every client-side path we found
-                    await vue_recursiveClientSidePathDownload(clientSidePaths, threads, maxJsSizeMb, onFilesDiscovered, includeMethods, excludeMethods);
+                    await vue_recursiveClientSidePathDownload(
+                        clientSidePaths,
+                        threads,
+                        maxJsSizeMb,
+                        onFilesDiscovered,
+                        includeMethods,
+                        excludeMethods
+                    );
 
                     await queue.drain();
                     queue.printSummary();
@@ -264,12 +277,20 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // find the files from the page source
-                    const jsFilesFromPageSource = shouldRunMethod("nuxt_getFromPageSource", includeMethods, excludeMethods)
+                    const jsFilesFromPageSource = shouldRunMethod(
+                        "nuxt_getFromPageSource",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await nuxt_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
 
-                    const jsFilesFromStringAnalysis = shouldRunMethod("nuxt_stringAnalysisJSFiles", includeMethods, excludeMethods)
+                    const jsFilesFromStringAnalysis = shouldRunMethod(
+                        "nuxt_stringAnalysisJSFiles",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await nuxt_stringAnalysisJSFiles(url)
                         : [];
                     queue.push(jsFilesFromStringAnalysis);
@@ -296,7 +317,11 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // find the files from the page source
-                    const jsFilesFromPageSource = shouldRunMethod("svelte_getFromPageSource", includeMethods, excludeMethods)
+                    const jsFilesFromPageSource = shouldRunMethod(
+                        "svelte_getFromPageSource",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await svelte_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
@@ -327,7 +352,11 @@ const lazyLoad = async (
 
                     // crawl same-origin HTML pages found via <a href> and <link href>,
                     // running the full JS-discovery pipeline on each
-                    const jsFilesFromPageCrawl = shouldRunMethod("svelte_recursivePageCrawl", includeMethods, excludeMethods)
+                    const jsFilesFromPageCrawl = shouldRunMethod(
+                        "svelte_recursivePageCrawl",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await svelte_recursivePageCrawl(url, maxJsSizeMb, (files) => queue.push(files))
                         : [];
 
@@ -336,7 +365,11 @@ const lazyLoad = async (
                     // embedded page path strings (e.g. "/admin", "/debug") and visit each
                     // page to discover the Astro island component-url values for those routes.
                     // Iterates until no new paths or JS files are discovered.
-                    const jsFilesFromPathScan = shouldRunMethod("svelte_discoverPagesFromJs", includeMethods, excludeMethods)
+                    const jsFilesFromPathScan = shouldRunMethod(
+                        "svelte_discoverPagesFromJs",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await svelte_discoverPagesFromJs(url)
                         : [];
                     if (jsFilesFromPathScan.length > 0) {
@@ -368,7 +401,11 @@ const lazyLoad = async (
                     activeQueue = queue;
 
                     // find the files from the page source
-                    const jsFilesFromPageSource = shouldRunMethod("angular_getFromPageSource", includeMethods, excludeMethods)
+                    const jsFilesFromPageSource = shouldRunMethod(
+                        "angular_getFromPageSource",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await angular_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);

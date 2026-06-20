@@ -172,9 +172,7 @@ class NextJsCrawler {
         const exc = this.excludeMethods;
 
         // 1. Script tags on the landing page
-        const jsFromScriptTag = shouldRunMethod("next_GetJSScript", inc, exc)
-            ? await next_getJSScript(this.url)
-            : [];
+        const jsFromScriptTag = shouldRunMethod("next_GetJSScript", inc, exc) ? await next_getJSScript(this.url) : [];
         this.techniqueEfficiencyMapping["next_getJSScript"] = [
             ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
             ...jsFromScriptTag,
@@ -328,9 +326,7 @@ class NextJsCrawler {
             const normalized = this.normalizePageUrl(u);
 
             // Fetch scripts first — used for both fingerprinting and URL registration.
-            const extra = shouldRunMethod("next_GetJSScript", inc, exc)
-                ? await next_getJSScript(u)
-                : [];
+            const extra = shouldRunMethod("next_GetJSScript", inc, exc) ? await next_getJSScript(u) : [];
 
             if (!extra || !Array.isArray(extra)) {
                 console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
