@@ -83,7 +83,6 @@
 
 ### Fixed
 
-
 - Bumped versions for dependencies
 - Fixed container
 

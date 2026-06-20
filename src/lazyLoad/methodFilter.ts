@@ -28,27 +28,15 @@ export const FRAMEWORK_METHODS: Record<string, string[]> = {
         "vue_severalJsFilesHome",
         "vue_SingleJsFileOnHome",
     ],
-    nuxt_js: [
-        "nuxt_getFromPageSource",
-        "nuxt_stringAnalysisJSFiles",
-        "nuxt_astParse",
-    ],
+    nuxt_js: ["nuxt_getFromPageSource", "nuxt_stringAnalysisJSFiles", "nuxt_astParse"],
     svelte: [
         "svelte_getFromPageSource",
         "svelte_stringAnalysisJSFiles",
         "svelte_recursivePageCrawl",
         "svelte_discoverPagesFromJs",
     ],
-    angular: [
-        "angular_getFromPageSource",
-        "angular_getFromMainJs",
-    ],
-    react: [
-        "react_getScriptTags",
-        "react_webpackChunkPaths",
-        "react_sourcemapUrls",
-        "react_followImports",
-    ],
+    angular: ["angular_getFromPageSource", "angular_getFromMainJs"],
+    react: ["react_getScriptTags", "react_webpackChunkPaths", "react_sourcemapUrls", "react_followImports"],
 };
 
 export const VALID_METHODS: string[] = Object.values(FRAMEWORK_METHODS).flat();
