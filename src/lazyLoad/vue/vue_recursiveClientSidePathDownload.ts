@@ -21,7 +21,9 @@ const vue_recursiveClientSidePathDownload = async (
     clientSidePaths: string[],
     threads: number = 1,
     maxJsSizeMb: number = 2,
-    onFilesDiscovered?: (files: string[]) => void
+    onFilesDiscovered?: (files: string[]) => void,
+    includeMethods: string[] = [],
+    excludeMethods: string[] = []
 ): Promise<string[]> => {
     const allJsFiles = new Set<string>();
     const visitedPaths = new Set<string>();
@@ -96,7 +98,9 @@ const vue_recursiveClientSidePathDownload = async (
                         const { jsFiles, clientSidePaths: newPaths } = await vue_discoverJsFiles(
                             path,
                             maxJsSizeMb,
-                            onFilesDiscovered
+                            onFilesDiscovered,
+                            includeMethods,
+                            excludeMethods
                         );
 
                         for (const file of jsFiles) {

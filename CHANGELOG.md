@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.4.1-alpha.2 - 2026-06-20
+
+### Fixed
+
+- `lazyload`: `--include-methods`, `--exclude-methods`, and `--list-methods` flags were listed as Added in v1.4.1-alpha.1 but the CLI wiring was absent from that release; they are now fully implemented and functional
+- `lazyload`: `--list-methods` works without `-u`; the URL option is now validated manually so `--list-methods` can run standalone
+- `refactor`: `-l`/`--list` no longer errors with "Mapped JSON file does not exist" when listing technologies — the list early-return now runs before the file-existence check
+
 ## 1.4.1-alpha.1 - 2026-06-20
 
 ### Added

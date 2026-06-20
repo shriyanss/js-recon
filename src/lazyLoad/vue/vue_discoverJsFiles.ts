@@ -8,6 +8,7 @@ import vue_reconstructSourceMaps from "./vue_reconstructSourceMaps.js";
 import vue_getClientSidePaths from "./vue_getClientSidePaths.js";
 import vue_viteMapDeps from "./vue_viteMapDeps.js";
 import vue_stringJsFiles from "./vue_stringJsFiles.js";
+import { shouldRunMethod } from "../methodFilter.js";
 
 export interface VueDiscoveryResult {
     jsFiles: string[];
@@ -29,9 +30,14 @@ export interface VueDiscoveryResult {
 const vue_discoverJsFiles = async (
     url: string,
     maxJsSizeMb: number = 2,
-    onFilesDiscovered?: (files: string[]) => void
+    onFilesDiscovered?: (files: string[]) => void,
+    includeMethods: string[] = [],
+    excludeMethods: string[] = []
 ): Promise<VueDiscoveryResult> => {
     let jsFiles: string[] = [];
+
+    const inc = includeMethods;
+    const exc = excludeMethods;
 
     const emit = (files: string[]) => {
         jsFiles.push(...files);
@@ -41,53 +47,72 @@ const vue_discoverJsFiles = async (
     };
 
     // first, get all the JS files from the page source
-    emit(await vue_pageSrc(url));
+    if (shouldRunMethod("vue_pageSrc", inc, exc)) {
+        emit(await vue_pageSrc(url));
+    }
 
     // method 1: through runtime.<hash>.js
-    emit(await vue_runtimeJs(url));
+    if (shouldRunMethod("vue_RuntimeJs", inc, exc)) {
+        emit(await vue_runtimeJs(url));
+    }
 
     // single JS file on the page (typically dev-mode)
-    const fromSingleJs = await vue_singleJsFileOnHome(url);
-    emit(fromSingleJs);
-    if (fromSingleJs.length > 0) {
-        console.log(chalk.green(`[✓] Found ${fromSingleJs.length} files from the single JS file on home`));
+    if (shouldRunMethod("vue_SingleJsFileOnHome", inc, exc)) {
+        const fromSingleJs = await vue_singleJsFileOnHome(url);
+        emit(fromSingleJs);
+        if (fromSingleJs.length > 0) {
+            console.log(chalk.green(`[✓] Found ${fromSingleJs.length} files from the single JS file on home`));
+        }
     }
 
     // several JS files referenced directly on the page
-    emit(await vue_severalJsFilesHome(url));
+    if (shouldRunMethod("vue_severalJsFilesHome", inc, exc)) {
+        emit(await vue_severalJsFilesHome(url));
+    }
 
     // scan page-loaded JS files for Vite's __vite__mapDeps chunk manifest
-    const fromViteMapDeps = await vue_viteMapDeps(jsFiles, maxJsSizeMb);
-    emit(fromViteMapDeps);
-    if (fromViteMapDeps.length > 0) {
-        console.log(chalk.green(`[✓] Found ${fromViteMapDeps.length} files from __vite__mapDeps`));
+    if (shouldRunMethod("vue_viteMapDeps", inc, exc)) {
+        const fromViteMapDeps = await vue_viteMapDeps(jsFiles, maxJsSizeMb);
+        emit(fromViteMapDeps);
+        if (fromViteMapDeps.length > 0) {
+            console.log(chalk.green(`[✓] Found ${fromViteMapDeps.length} files from __vite__mapDeps`));
+        }
     }
 
     // walk the import graph of everything found so far
-    const fromImports = await vue_jsImports(url, jsFiles, maxJsSizeMb);
-    emit(fromImports);
-    if (fromImports.length > 0) {
-        console.log(chalk.green(`[✓] Found ${fromImports.length} files from import statements`));
+    if (shouldRunMethod("vue_jsImports", inc, exc)) {
+        const fromImports = await vue_jsImports(url, jsFiles, maxJsSizeMb);
+        emit(fromImports);
+        if (fromImports.length > 0) {
+            console.log(chalk.green(`[✓] Found ${fromImports.length} files from import statements`));
+        }
     }
 
     // scan string literals inside known JS files for .js references
-    const fromStringRefs = await vue_stringJsFiles(jsFiles, maxJsSizeMb);
-    emit(fromStringRefs);
-    if (fromStringRefs.length > 0) {
-        console.log(chalk.green(`[✓] Found ${fromStringRefs.length} files from string literal JS references`));
+    if (shouldRunMethod("vue_stringJsFiles", inc, exc)) {
+        const fromStringRefs = await vue_stringJsFiles(jsFiles, maxJsSizeMb);
+        emit(fromStringRefs);
+        if (fromStringRefs.length > 0) {
+            console.log(chalk.green(`[✓] Found ${fromStringRefs.length} files from string literal JS references`));
+        }
     }
 
     // reconstruct sourceMappingURL references
-    const fromSourceMaps = await vue_reconstructSourceMaps(url, jsFiles);
-    emit(fromSourceMaps);
-    if (fromSourceMaps.length > 0) {
-        console.log(chalk.green(`[✓] Found ${fromSourceMaps.length} files from reconstructing source maps`));
+    if (shouldRunMethod("vue_reconstructSourceMaps", inc, exc)) {
+        const fromSourceMaps = await vue_reconstructSourceMaps(url, jsFiles);
+        emit(fromSourceMaps);
+        if (fromSourceMaps.length > 0) {
+            console.log(chalk.green(`[✓] Found ${fromSourceMaps.length} files from reconstructing source maps`));
+        }
     }
 
     jsFiles = [...new Set(jsFiles)].map((f) => (f.startsWith("//") ? "https:" + f : f));
 
     // surface client-side paths so the caller can recurse into them
-    const clientSidePaths = await vue_getClientSidePaths(url, jsFiles, maxJsSizeMb);
+    let clientSidePaths: string[] = [];
+    if (shouldRunMethod("vue_getClientSidePaths", inc, exc)) {
+        clientSidePaths = await vue_getClientSidePaths(url, jsFiles, maxJsSizeMb);
+    }
 
     return { jsFiles, clientSidePaths: [...new Set(clientSidePaths)] };
 };

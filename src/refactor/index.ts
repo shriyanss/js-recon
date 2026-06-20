@@ -124,18 +124,18 @@ const refactor = async (
 ): Promise<void> => {
     console.log(chalk.cyan("[i] Loading refactor module..."));
 
+    if (list) {
+        console.log(chalk.cyan("[i] Listing available technologies"));
+        for (const key of Object.keys(availableTechs) as Array<keyof typeof availableTechs>) {
+            console.log(chalk.green(`- ${key}: ${availableTechs[key]}`));
+        }
+        return;
+    }
+
     // check if the file exists
     if (!fs.existsSync(mappedJson)) {
         console.error(chalk.red("[!] Mapped JSON file does not exist"));
         process.exit(7);
-    }
-
-    if (list) {
-        console.log(chalk.cyan("[i] Listing available technologies"));
-        for (const tech of Object.keys(availableTechs)) {
-            console.log(chalk.green(`- ${tech}: ${availableTechs[tech]}`));
-        }
-        return;
     }
 
     // verify if the tech provided is valid
