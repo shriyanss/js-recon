@@ -6,13 +6,16 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 
 ## Files
 
-- `index.ts` — entrypoint. Dispatches by tech (`next`, `react`).
+- `index.ts` — entrypoint. Dispatches by tech (`next`, `react-webpack`).
 - `next/index.ts` — Next.js refactor implementation. Walks the AST, normalizes identifier names where possible, runs Prettier on the output, writes to a sibling directory in `output/`.
 - `react/index.ts` — React refactor implementation. Detects each webpack module function under `var e = { <numericId>: function(module, exports, require) { ... } }` (and 2-param re-export modules `function(module, exports) { module.exports = require(N) }`), rewrites `require(<n>)` to `require("./<n>.js")`, captures exports via `Object.defineProperty(<exports>, ...)`, `<require>.d(<exports>, { ... })`, and `<exports>.<minProp> = <X>.<canonical>` assignments. Classifies modules by content fingerprint (`react` via `<X>.current.<hook>(...)` call shape; `react/jsx-runtime` via exports of both `jsx` and `jsxs`; `react-dom/client` via export of `createRoot`); resolves re-export chains. Rewrites bundled user-code callsites documented in `refactor_observations/00-bundled-shape-shared.md`:
     - `(0, <reactLocal>.<hook>)(args)` → `<hook>(args)` + `import { <hook> } from "react";`
     - `(0, <jsxLocal>.jsx)(args)` → `jsx(args)` + `import { jsx, jsxs, Fragment } from "react/jsx-runtime";`
     - `<reactDomLocal>.<minProp>(args)` → `createRoot(args)` using the module's export map.
       Any unrecognised `(0, X.Y)(args)` is still flattened to `X.Y(args)`. Outputs the import lines at the top of the chunk file.
+    - In addition to the per-module numeric files, all IIFE body statements that are NOT part of the module map (helpers, app component functions, the `ReactDOM.render(…)` entrypoint) are collected, transformed, and written to `index.js`.
+    - The webpack require helper function (detected by its `return (moduleMap[id](...), mod.exports)` return shape) is stripped from `index.js`.
+    - Top-level `var x = requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; any remaining inline `requireFn(N)` calls inside nested functions are replaced with the imported identifier.
 
 ## Patterns / gotchas
 
@@ -25,10 +28,28 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 ## How to test changes here
 
 ```bash
-npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react> -o /tmp/refactored
+npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react-webpack> -o /tmp/refactored
 ```
 
 Spot-check the refactored output by hand.
+
+## `--collisions <file>` (library module stripping)
+
+The refactor command accepts an optional `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
+
+**Pipeline in this directory:**
+
+1. `index.ts` accepts a file path, a standard baseline-tree directory, or a per-feature results directory for `--collisions`. `buildLibSigs()` handles three cases and returns `{ sigs: Set<string>; desc: string } | null` directly (the caller no longer loads the file itself):
+    - **Case 1 — direct file path**: reads the file, keeps records whose `count` equals the maximum count, and returns that `Set<string>`.
+    - **Case 2 — standard directory**: walks the four directory candidates in order (`<dir>/baselines/<tech>/<scat>/collisions.json`, `<dir>/<tech>/<scat>/collisions.json`, `<dir>/<scat>/collisions.json`, `<dir>/collisions.json`) until a file is found, then applies the max-count filter. The `<scat>` segment comes from `BASELINE_SCAT_DIR[tech]` — keep that map in sync with each tech's `LIB_SIG_SCAT` constant.
+    - **Case 3 — per-feature results directory**: detects `<dir>/<feature>/<scat>/collisions.json` by scanning immediate subdirectories, then **intersects** the max-count signature sets across all feature subdirs. Only one file per feature subdir is read (e.g. 18 files for 18 features). A signature that survives intersection appears in every feature's max-count set and is definitionally library code.
+
+    The resulting `Set<string>` of library signatures is passed down to `refactorReact()` / `refactorNext()` as the `libSigs` argument.
+
+2. `react/index.ts`'s `moduleIsLibrary()` re-hashes each module's body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and looks every sub-tree signature up in `libSigs`. If any matches, the module is dropped.
+3. The default `lit-decl-loop-cond` scat config matches the directory name used in the research experiment's output tree (`feature-signatures/<feature>/lit-decl-loop-cond/collisions.json`). Changing the scat list here means consumers must change which `collisions.json` they pass.
+
+See `react/CLAUDE.md` for the full build history and signature-matching rationale. The user-facing docs are at `js-recon-docs/docs/docs/modules/refactor/react-webpack.md` under "Library module stripping (with `--collisions`)".
 
 ## See also
 

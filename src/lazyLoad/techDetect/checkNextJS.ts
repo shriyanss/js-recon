@@ -9,26 +9,35 @@
 export const checkNextJS = async ($) => {
     let detected = false;
     let evidence = "";
-    // iterate through each HTML tag, and file tag value that starts with `/_next/`
+
+    // __NEXT_DATA__ script tag is injected by Next.js on every SSR/SSG page
+    const nextDataEl = $("script#__NEXT_DATA__");
+    if (nextDataEl.length > 0) {
+        return { detected: true, evidence: "script#__NEXT_DATA__" };
+    }
+
+    // iterate through each HTML tag, check src, srcset, imageSrcSet, and href for /_next/
     $("*").each((_, el) => {
+        if (detected) return;
         const tag = $(el).get(0).tagName;
 
-        // check the value of three attributes
         const src = $(el).attr("src");
         const srcSet = $(el).attr("srcset");
         const imageSrcSet = $(el).attr("imageSrcSet");
+        const href = $(el).attr("href");
 
-        if (src || srcSet || imageSrcSet) {
-            if (src && src.includes("/_next/")) {
-                detected = true;
-                evidence = `${tag} :: ${src}`;
-            } else if (srcSet && srcSet.includes("/_next/")) {
-                detected = true;
-                evidence = `${tag} :: ${srcSet}`;
-            } else if (imageSrcSet && imageSrcSet.includes("/_next/")) {
-                detected = true;
-                evidence = `${tag} :: ${imageSrcSet}`;
-            }
+        if (src && src.includes("/_next/")) {
+            detected = true;
+            evidence = `${tag} :: ${src}`;
+        } else if (srcSet && srcSet.includes("/_next/")) {
+            detected = true;
+            evidence = `${tag} :: ${srcSet}`;
+        } else if (imageSrcSet && imageSrcSet.includes("/_next/")) {
+            detected = true;
+            evidence = `${tag} :: ${imageSrcSet}`;
+        } else if (href && href.includes("/_next/")) {
+            detected = true;
+            evidence = `${tag} :: ${href}`;
         }
     });
 

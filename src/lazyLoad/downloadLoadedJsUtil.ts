@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import * as globalsUtil from "../utility/globals.js";
 import puppeteer from "../utility/puppeteerInstance.js";
+import { getChromiumPath } from "../utility/getChromiumPath.js";
 
 /**
  * Downloads all the lazy loaded JS files from a given URL.
@@ -13,9 +14,13 @@ const downloadLoadedJs = async (url) => {
         return; // Return undefined as per JSDoc
     }
 
+    const chromiumPath = getChromiumPath();
     const browser = await puppeteer.launch({
         headless: true,
-        args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+        executablePath: chromiumPath,
+        args: globalsUtil.getDisableSandbox()
+            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            : [],
     });
 
     const page = await browser.newPage();

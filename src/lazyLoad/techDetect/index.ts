@@ -3,6 +3,7 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "../../utility/puppeteerInstance.js";
 import * as globalsUtil from "../../utility/globals.js";
+import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import path from "path";
 import { checkNextJS } from "./checkNextJS.js";
 import { checkNuxtJS } from "./checkNuxtJS.js";
@@ -49,8 +50,12 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     let pageSource = "";
     const interceptedUrls: string[] = [];
     if (!globalsUtil.getCacheOnly()) {
+        const chromiumPath = getChromiumPath();
         const browser = await puppeteer.launch({
-            args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+            executablePath: chromiumPath,
+            args: globalsUtil.getDisableSandbox()
+                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                : [],
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);
@@ -63,11 +68,10 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         });
         try {
             await page.goto(url, {
-                waitUntil: "domcontentloaded",
+                waitUntil: "load",
                 timeout: 30000,
             });
-            // Give client-side frameworks a brief window to render
-            await page.waitForSelector("html", { timeout: 10000 }).catch(() => {});
+            // Give client-side frameworks (and bot-challenge redirects) a brief window to settle
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
@@ -158,6 +162,9 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         }
         if (interceptedUrl.includes("/_next/")) {
             return { name: "next", evidence: `intercepted request: ${interceptedUrl}` };
+        }
+        if (interceptedUrl.includes("/_app/immutable/")) {
+            return { name: "svelte", evidence: `intercepted request: ${interceptedUrl}` };
         }
     }
 

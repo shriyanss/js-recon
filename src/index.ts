@@ -17,6 +17,7 @@ import mcp from "./mcp/index.js";
 import load from "./load/index.js";
 import fingerprint from "./fingerprint/index.js";
 import { applyHeapLimit } from "./utility/heap.js";
+import csMast from "./cs_mast/index.js";
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -223,9 +224,9 @@ program
         "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
         "3"
     )
-    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .action(async (cmd) => {
-        applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
+        if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setOpenapiChunkTag(cmd.openapiChunkTag);
@@ -271,8 +272,12 @@ program
     .option("-o, --output <directory>", "Output directory", "output_refactored")
     .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
     .option("-l, --list", "List available technologies", false)
+    .option(
+        "--collisions <file>",
+        "Path to a CS-MAST collisions.json (count=18 sigs from cross-app baseline). Modules whose body signature is in this set are treated as library code and skipped."
+    )
     .action(async (cmd) => {
-        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list);
+        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions);
     });
 
 program
@@ -349,10 +354,10 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
-    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM, default 0)", "0")
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
     .action(async (cmd) => {
-        applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
+        if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
@@ -437,6 +442,24 @@ program
             refreshClaudeCreds: cmd.refreshClaudeCreds,
             claudeClientId: cmd.claudeClientId,
         });
+    });
+
+program
+    .command("cs-mast")
+    .description("Compute CS-MAST hashes for downloaded JS files and find structural collisions")
+    .option("-o, --output <directory>", "Output directory to scan for JS files", "output")
+    .option("--ct, --collision-table", "Find and display hash collisions", false)
+    .option("--min-collisions <n>", "Minimum times a hash must appear to be reported", "2")
+    .option("--co, --collision-output <file>", "Write collision results to a file")
+    .option("--cf, --collision-format <format>", "Output format for collision file: json or csv", "csv")
+    .action(async (cmd) => {
+        await csMast(
+            cmd.output,
+            cmd.collisionTable,
+            parseInt(cmd.minCollisions, 10),
+            cmd.collisionOutput,
+            cmd.collisionFormat
+        );
     });
 
 program.parse(process.argv);

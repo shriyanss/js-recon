@@ -1,5 +1,50 @@
 # Change Log
 
+## 1.4.1-alpha.1 - 2026-06-20
+
+### Added
+
+- `lazyload`: `--include-methods <methods>` and `--exclude-methods <methods>` flags for selective method execution. Comma-separated method names are matched against the file-based method registry in `src/lazyLoad/methodFilter.ts`; invalid names exit with code 22. Methods are named after their source files (e.g. `next_bruteForceJsFiles`).
+- `lazyload`: `--list-methods [framework]` flag prints all available method names grouped by framework (`next_js`, `vue`, `nuxt_js`, `svelte`, `angular`, `react`) and exits. Optionally pass a framework name to filter the output.
+- `lazyload`: `--research` now tracks and writes technique efficiency output for all frameworks (Vue, Nuxt, Angular, React, Svelte), not just Next.js.
+
+- `cs-mast`: new subcommand that computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every downloaded `.js` file and finds structural hash collisions across targets (`cs-mast`)
+    - `--ct / --collision-table`: print a collision table sorted by frequency (files sharing the same CS-MAST-S root signature)
+    - `--min-collisions <n>`: minimum number of files that must share a signature to appear in the table (default: 2)
+    - `--co / --collision-output <file>`: write collision results to a file; independent of `--ct` (file is written without printing the table if `--ct` is omitted)
+    - `--cf / --collision-format json|csv`: output format (default: csv); if `--co` is a directory or has no extension, the file is written as `collisions.<fmt>` in the current working directory
+    - Uses `@shriyanss/cs-mast` with `scat: [lit, decl, loop, cond]`, SHA-256, `sourceType: unambiguous`; parse errors are skipped with a warning
+
+- `refactor -t react-webpack`: new React webpack refactor mode that splits a webpack 5 bundle into individual ES module files (`refactor`)
+    - Numeric module map (`var e = { 540: fn, … }`) is extracted and each module written to `<id>.js` with full ES import/export conversion (require→import hoisting, exports→named/default export rewriting, outer wrapper stripped)
+    - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
+    - Webpack require helper is detected by its `return (moduleMap[id](…), mod.exports)` return shape and stripped from `index.js`
+    - Top-level `requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; remaining inline calls are replaced recursively throughout the file
+- `refactor --collisions` now accepts a per-feature results directory (a directory whose immediate subdirs each contain `<scat>/collisions.json`, e.g. a 18-feature corpus with `01-usestate-hook-webpack/lit-decl-loop-cond/collisions.json` etc.) — reads only the scat-relevant file per feature subdir, intersects the max-count signature sets across all features, and uses the intersection as the library baseline; works even when the full dataset is hundreds of GB (`refactor`)
+- `refactor -t react-webpack`: Pass G now strips three additional Babel inline helpers emitted to the IIFE body — `_typeof` (lazy self-reassignment typeof polyfill, detected by single-return body reassigning its own binding), `_defineProperty`/`_toPropertyKey`/`_toPrimitive` (property-setter helpers, detected by `Object.defineProperty` call with `{value, enumerable, configurable, writable}` descriptor), and `_objectSpreadPropsHelper` (detected by `Object.keys` first-statement + `getOwnPropertySymbols` reference) — cleaning up noise left by JSX spread and object spread (`refactor`)
+
+### Fixed
+
+- Puppeteer browser launch now resolves a usable Chrome/Chromium via a new `getChromiumPath` utility (`PUPPETEER_EXECUTABLE_PATH` env var → well-known system paths → `which`) and passes it as `executablePath`; also adds `--disable-dev-shm-usage` to the sandbox-disabled arg list — fixes crashes on systems where Puppeteer's bundled Chrome is absent or has missing shared libraries (`lazyload`, `makeReq`)
+- `refactor --collisions`: `scanExportMap` now records a self-reference when a module export's RHS is a complex expression (e.g. a function declaration) so it participates in canonical library classification checks instead of being silently dropped (`refactor`)
+- `refactor --collisions`: added `Profiler` to `REACT_CANONICAL` export set (`refactor`)
+
+### Changed
+
+- `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit
+- Improved tool description in `globalConfig.ts`
+
+## 1.3.1-beta.1 - 2026-06-08
+
+### Added
+
+### Changed
+
+### Fixed
+
+- `--max-heap` on `map` and `run` is now opt-in: without the flag, no process re-exec occurs and the existing `--max-old-space-size` from the npm start script is preserved. Previously, the default `0` caused every invocation to re-exec with `os.totalmem()` as the heap ceiling, which could trigger OOM kills on memory-constrained hosts and changed the default runtime for all users who never specified the flag. (`map`, `run`)
+- XHR and HTTP-client taint resolvers (`vue_resolveXhr`, `vue_resolveHttpClient`) now sort the JS file list alphabetically before applying the 50 MB caller-lookup cap. Previously the cap was applied in `readdirSync` order, which is filesystem-dependent and made the included file set non-deterministic across runs — on large bundles this could silently exclude different API call sites depending on inode ordering. (`map`)
+
 ## 1.3.1 - 2026-06-16
 
 ### Added

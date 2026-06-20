@@ -222,7 +222,8 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
 
     files = files
         .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
-        .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
+        .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory())
+        .sort();
 
     const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     const MAX_TOTAL_CALLER_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
