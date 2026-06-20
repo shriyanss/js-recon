@@ -1,8 +1,12 @@
 # Change Log
 
-## 1.4.1-alpha.1 - (unreleased)
+## 1.4.1-alpha.1 - 2026-06-20
 
 ### Added
+
+- `lazyload`: `--include-methods <methods>` and `--exclude-methods <methods>` flags for selective method execution. Comma-separated method names are matched against the file-based method registry in `src/lazyLoad/methodFilter.ts`; invalid names exit with code 22. Methods are named after their source files (e.g. `next_bruteForceJsFiles`).
+- `lazyload`: `--list-methods [framework]` flag prints all available method names grouped by framework (`next_js`, `vue`, `nuxt_js`, `svelte`, `angular`, `react`) and exits. Optionally pass a framework name to filter the output.
+- `lazyload`: `--research` now tracks and writes technique efficiency output for all frameworks (Vue, Nuxt, Angular, React, Svelte), not just Next.js.
 
 - `cs-mast`: new subcommand that computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every downloaded `.js` file and finds structural hash collisions across targets (`cs-mast`)
     - `--ct / --collision-table`: print a collision table sorted by frequency (files sharing the same CS-MAST-S root signature)
