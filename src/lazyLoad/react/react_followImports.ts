@@ -49,9 +49,7 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
                     // file that contains the mapDeps table, so "../nodes/0.js" in
                     // _app/immutable/entry/app.js correctly becomes
                     // _app/immutable/nodes/0.js rather than /nodes/0.js.
-                    const resolved = p.startsWith("/")
-                        ? new URL(p, baseUrl).href
-                        : new URL(p, fileUrl).href;
+                    const resolved = p.startsWith("/") ? new URL(p, baseUrl).href : new URL(p, fileUrl).href;
                     found.push(resolved);
                 } catch {
                     /* skip */
