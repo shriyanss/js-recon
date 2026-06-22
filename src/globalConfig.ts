@@ -2,7 +2,7 @@ const githubURL = "https://github.com/shriyanss/js-recon";
 const modulesDocs = "https://js-recon.io/docs/category/modules";
 const version = "1.4.1-alpha.3";
 const toolDesc =
-    "Static analysis tool that maps API endpoints and detects client-side security issues by analyzing webpack/turbopack bundles";
+    "JavaScript Enumeration and SAST";
 const axiosNonHttpMethods = ["isAxiosError"]; // methods available in axios, which are not for making HTTP requests
 
 let CONFIG = {
