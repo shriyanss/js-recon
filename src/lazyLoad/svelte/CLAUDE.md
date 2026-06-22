@@ -16,6 +16,7 @@ Discovers and downloads SvelteKit JS chunks. SvelteKit's client routing emits pe
 - **`_app/immutable/` is the canonical path.** SvelteKit hashes all assets; URLs are stable per build but unique per deploy.
 - **Route-driven crawl.** Unlike Next/Vue, SvelteKit's chunks are most reliably surfaced by visiting each route. Recursion bound matters — don't remove it.
 - **No source maps in prod by default.** SvelteKit strips them; don't bother retry-fetching.
+- **`adapter-node` inline boot script.** SvelteKit's Node adapter emits an inline `<script>` block (no `src` attribute) that uses `Promise.all([import("./_app/immutable/entry/start.js"), ...])` to bootstrap the client. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments — the extracted entry-point paths seed the `react_followImports` loop that discovers the rest of the chunk graph. Do not remove this branch or the entire downstream pipeline collapses (0 JS files).
 
 ## How to test changes here
 

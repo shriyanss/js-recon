@@ -48,6 +48,19 @@ const svelte_getFromPageSource = async (url) => {
             } else {
                 foundUrls.push(await resolvePath(url, srcAttr));
             }
+        } else {
+            // SvelteKit adapter-node boots the client via an inline <script> block using
+            // Promise.all([import("./_app/immutable/entry/start.js"), ...]) — no src attribute.
+            // Extract the string arguments from every import("...") call in the tag body.
+            const body = $(scriptTag).html() ?? "";
+            for (const m of body.matchAll(/\bimport\(\s*["']([^"']+\.js)["']\s*\)/g)) {
+                const importPath = m[1];
+                if (importPath.startsWith("http")) {
+                    foundUrls.push(importPath);
+                } else {
+                    foundUrls.push(await resolvePath(url, importPath));
+                }
+            }
         }
     }
 

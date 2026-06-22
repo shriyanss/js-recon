@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.4.1-alpha.3 - (unreleased)
+
+### Added
+
+### Changed
+
+### Fixed
+
+- `lazyload` (svelte): `svelte_getFromPageSource` now extracts JS entry-point paths from inline `<script>` bodies by matching `import("...")` call arguments. SvelteKit `adapter-node` boots the client via `Promise.all([import("./_app/immutable/entry/start.js"), ...])` with no `src` attribute, which the previous HTML-attribute-only parser missed entirely, causing 0 JS files to be downloaded. The fix seeds the entry-point URLs so the downstream ESM import-following loop (`react_followImports`) can traverse the full chunk graph.
+- `lazyload` (react): `react_followImports` `__vite_mapDeps` handler now correctly resolves SvelteKit's file-relative chunk paths (`"../nodes/0.js"`) in addition to Vue/React's root-relative paths (`"/assets/chunk.js"`). Previously all non-absolute paths had `/` prepended before URL resolution, causing `"../nodes/0.js"` to become `"/../nodes/0.js"` which the URL constructor normalized to `"/nodes/0.js"` — a wrong origin-root path that produced 404 responses. The fix resolves paths starting with `/` against `baseUrl` (origin root) and all other paths against `fileUrl` (the chunk containing the mapDeps table). This eliminates 32 spurious "Failed to write file" errors per SvelteKit run; the correct 34 chunk files were still downloaded via `svelte_stringAnalysisJSFiles`, so analysis results were unaffected.
+
 ## 1.4.1-alpha.2 - 2026-06-20
 
 ### Fixed

@@ -85,6 +85,12 @@ npm run start -- <subcommand> [options]
 
 `lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"` and `"vue"` only get lazyload; the rest of the pipeline is skipped with a warning.
 
+**SvelteKit `adapter-node` boot pattern**: SvelteKit's Node adapter does not emit `<link rel="modulepreload">` or `<script src="...">` for its entry chunks. Instead it uses an inline `<script>` block: `Promise.all([import("./_app/immutable/entry/start.js"), ...])`. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments (added in v1.4.1-alpha.3). Without those seed URLs the entire downstream pipeline (string analysis, ESM import following, page crawl) produces nothing.
+
+**SvelteKit `adapter-static` (SSG/SPA) boot pattern**: The static builds produce a shell HTML file (`404.html` for SSG, `index.html` for SPA) that contains both `<link rel="modulepreload">` tags for all initial chunks AND the same inline `import()` boot script as adapter-node. `svelte_getFromPageSource` picks up 17+ JS URLs from the modulepreload links plus 2 from the inline script, giving a much larger seed set than the adapter-node case.
+
+**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React emit `m.f = ["/assets/chunk.js", ...]` (root-relative paths). `react_followImports` differentiates by checking `p.startsWith("/")` — absolute paths resolve against the origin (`baseUrl`), relative paths resolve against the chunk's own URL (`fileUrl`). See `src/lazyload/react/CLAUDE.md` for details.
+
 ### Batch mode
 
 When `-u` points to a file of URLs, each line is processed sequentially. For each URL:
