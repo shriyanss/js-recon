@@ -31,6 +31,7 @@ export const FRAMEWORK_METHODS: Record<string, string[]> = {
     nuxt_js: ["nuxt_getFromPageSource", "nuxt_stringAnalysisJSFiles", "nuxt_astParse"],
     svelte: [
         "svelte_getFromPageSource",
+        "svelte_getVersionJson",
         "svelte_stringAnalysisJSFiles",
         "svelte_recursivePageCrawl",
         "svelte_discoverPagesFromJs",

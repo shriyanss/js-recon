@@ -21,6 +21,7 @@ import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
 import svelte_recursivePageCrawl from "./svelte/svelte_recursivePageCrawl.js";
 import svelte_discoverPagesFromJs from "./svelte/svelte_discoverPagesFromJs.js";
+import svelte_getVersionJson from "./svelte/svelte_getVersionJson.js";
 
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
@@ -325,6 +326,24 @@ const lazyLoad = async (
                         ? await svelte_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
+
+                    // probe /<appDir>/version.json — SvelteKit serves this for the `updated` store
+                    // but never references it from HTML or JS, so it is invisible to all other steps
+                    const appDir = (() => {
+                        for (const f of jsFilesFromPageSource) {
+                            try {
+                                const m = new URL(f).pathname.match(/^\/([^/]+)\/immutable\//);
+                                if (m) return m[1];
+                            } catch {}
+                        }
+                        return "_app";
+                    })();
+                    const versionJsonFiles = shouldRunMethod("svelte_getVersionJson", includeMethods, excludeMethods)
+                        ? await svelte_getVersionJson(url, appDir)
+                        : [];
+                    if (versionJsonFiles.length > 0) {
+                        queue.push(versionJsonFiles);
+                    }
 
                     // analyze the strings now
                     let jsFilesFromStringAnalysis: string[] = [];

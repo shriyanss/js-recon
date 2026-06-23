@@ -4,6 +4,8 @@
 
 ### Added
 
+- `lazyload` (svelte): `svelte_getVersionJson` — probes `/<appDir>/version.json` when SvelteKit is detected. SvelteKit generates this file at build time and serves it for the `updated` store; because it has no `<script src>`, `<link href>`, or `import()` reference anywhere it is invisible to all other discovery steps and must be fetched directly. The `appDir` is derived from the entry-point URLs already discovered (default: `_app`). The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods svelte_getVersionJson`.
+
 ### Changed
 
 ### Fixed
