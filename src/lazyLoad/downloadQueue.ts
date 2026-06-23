@@ -92,7 +92,7 @@ export class DownloadQueue {
         if (this.ignoredFiles.length > 0) {
             progressLog(
                 chalk.yellow(
-                    `[i] Ignored ${this.ignoredFiles.length} JS files across ${this.ignoredDomains.length} domain(s) - ${this.ignoredDomains.join(", ")}`
+                    `[i] Ignored ${this.ignoredFiles.length} files across ${this.ignoredDomains.length} domain(s) - ${this.ignoredDomains.join(", ")}`
                 )
             );
         }

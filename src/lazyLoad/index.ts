@@ -15,6 +15,7 @@ import { next_buildId_RSC } from "./next_js/next_buildId.js";
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
 import nuxt_stringAnalysisJSFiles from "./nuxt_js/nuxt_stringAnalysisJSFiles.js";
 import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
+import nuxt_getBuildsManifest from "./nuxt_js/nuxt_getBuildsManifest.js";
 
 // Svelte
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
@@ -307,6 +308,11 @@ const lazyLoad = async (
                     }
                     queue.push(jsFilesFromAST);
                     queue.push(lazyLoadGlobals.getJsUrls());
+
+                    const buildsManifestFiles = shouldRunMethod("nuxt_getBuildsManifest", includeMethods, excludeMethods)
+                        ? await nuxt_getBuildsManifest(url)
+                        : [];
+                    queue.push(buildsManifestFiles);
 
                     await queue.drain();
                     queue.printSummary();
