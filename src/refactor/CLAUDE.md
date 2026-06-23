@@ -6,7 +6,10 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 
 ## Files
 
-- `index.ts` — entrypoint. Dispatches by tech (`next`, `react-webpack`).
+- `index.ts` — entrypoint. Dispatches by tech (`next`, `react-webpack`). Also contains `loadRemoteLibSigs()`, which fetches and intersects `collisions.json` files from the HuggingFace dataset by default.
+- `remote/hf-client.ts` — all HuggingFace dataset interaction isolated in one place. Contains `TECH_TO_BRANCH` mapping, URL builders, `fetchText()`, `listCollisionsFiles()`, `fetchCollisionsJson()`, `validateRemoteBranch()`, `getSampleSize()`, `getTechnology()`.
+- `remote/config.ts` — reads/writes `~/.js-recon/refactor/config.json` (currently only `maxCacheSizeMb`, default 512 MB). Creates the config dir and a default config if missing.
+- `remote/cache.ts` — manages two cache layers: (1) the file list cache (`~/.js-recon/refactor/cs-mast-s-list-cache.json`, refreshed every 7 days or on `--refresh-cache`); (2) per-file signature cache (`~/.js-recon/refactor/signature_cache/<branch>/<subpath>/collisions.json` + `cached_at.txt`). Eviction runs whenever a new file is saved and the cache dir exceeds `maxCacheSizeMb` — oldest entries are deleted until the dir is below 50% of the limit.
 - `next/index.ts` — Next.js refactor implementation. Walks the AST, normalizes identifier names where possible, runs Prettier on the output, writes to a sibling directory in `output/`.
 - `react/index.ts` — React refactor implementation. Detects each webpack module function under `var e = { <numericId>: function(module, exports, require) { ... } }` (and 2-param re-export modules `function(module, exports) { module.exports = require(N) }`), rewrites `require(<n>)` to `require("./<n>.js")`, captures exports via `Object.defineProperty(<exports>, ...)`, `<require>.d(<exports>, { ... })`, and `<exports>.<minProp> = <X>.<canonical>` assignments. Classifies modules by content fingerprint (`react` via `<X>.current.<hook>(...)` call shape; `react/jsx-runtime` via exports of both `jsx` and `jsxs`; `react-dom/client` via export of `createRoot`); resolves re-export chains. Rewrites bundled user-code callsites documented in `refactor_observations/00-bundled-shape-shared.md`:
     - `(0, <reactLocal>.<hook>)(args)` → `<hook>(args)` + `import { <hook> } from "react";`
@@ -35,7 +38,12 @@ Spot-check the refactored output by hand.
 
 ## `--collisions <file>` (library module stripping)
 
-The refactor command accepts an optional `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
+Library module stripping now has **two sources** for signatures, checked in priority order:
+
+1. **`--collisions <local-path>`** (explicit override) — unchanged from before; accepts a file, standard directory, or per-feature results directory. See the three cases in `buildLibSigs()`.
+2. **Remote HuggingFace dataset** (default) — when `--collisions` is absent and `--no-remote` is not set, `loadRemoteLibSigs()` in `index.ts` fetches `collisions.json` files from `https://huggingface.co/datasets/shriyanss/cs-mast-s-dataset` on the branch mapped by `TECH_TO_BRANCH` (e.g. `react-webpack` → `react-small`). Files are cached locally under `~/.js-recon/refactor/signature_cache/`.
+
+The refactor command also accepts the legacy `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
 
 **Pipeline in this directory:**
 

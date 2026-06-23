@@ -343,10 +343,23 @@ program
     .option("-l, --list", "List available technologies", false)
     .option(
         "--collisions <file>",
-        "Path to a CS-MAST collisions.json (count=18 sigs from cross-app baseline). Modules whose body signature is in this set are treated as library code and skipped."
+        "Local path to a CS-MAST collisions.json (or directory). Overrides the default remote HuggingFace signatures."
     )
+    .option(
+        "--sq, --signature-quality <number>",
+        "Minimum signature quality threshold (0–100). A signature is used only when (count/sample_size)*100 >= threshold.",
+        "100"
+    )
+    .option("--refresh-cache", "Force refresh the remote file list cache", false)
+    .option("--skip-cache-checks", "Skip cache age and 404-triggered refresh checks", false)
+    .option("--no-remote", "Disable remote HuggingFace signature fetch; run without library stripping unless --collisions is provided")
     .action(async (cmd) => {
-        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions);
+        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions, {
+            signatureQuality: Number(cmd.signatureQuality ?? 100),
+            refreshCache: !!cmd.refreshCache,
+            skipCacheChecks: !!cmd.skipCacheChecks,
+            noRemote: cmd.remote === false,
+        });
     });
 
 program
