@@ -66,6 +66,7 @@ export type RemoteLibSigsOptions = {
     signatureQuality: number; // 0-100; default 100
     refreshCache: boolean;
     skipCacheChecks: boolean;
+    scat?: string[]; // override CS-MAST scat categories; if omitted, uses BASELINE_SCAT_DIR[tech]
 };
 
 // Parses a collisions.json file and returns signatures whose count equals the maximum.
@@ -88,10 +89,12 @@ const loadCollisionsFile = (filePath: string): Set<string> => {
 //   - a per-feature results directory → detects <dir>/<feature>/<scat>/collisions.json
 //       and intersects max-count signatures across all feature subdirs (reads only
 //       the relevant scat files, not the full dataset tree)
-const buildLibSigs = (input: string, tech: string): LibSigsResult | null => {
+const buildLibSigs = (input: string, tech: string, scatOverride?: string[]): LibSigsResult | null => {
     if (!fs.existsSync(input)) return null;
     const stat = fs.statSync(input);
-    const scat = BASELINE_SCAT_DIR[tech];
+    const scat = scatOverride
+        ? [...scatOverride].sort().join("-")
+        : BASELINE_SCAT_DIR[tech];
 
     // Case 1: direct file path
     if (stat.isFile()) {
@@ -157,7 +160,9 @@ const loadRemoteLibSigs = async (
     const branch = TECH_TO_BRANCH[tech];
     if (!branch) return null;
 
-    const scatDir = BASELINE_SCAT_DIR[tech];
+    const scatDir = opts.scat
+        ? [...opts.scat].sort().join("-")
+        : BASELINE_SCAT_DIR[tech];
     if (!scatDir) return null;
 
     // Load and validate config.
@@ -434,7 +439,7 @@ const refactor = async (
     let libSigs: Set<string> | undefined;
     if (collisionsFile) {
         // Explicit local path — use existing resolver unchanged.
-        const result = buildLibSigs(collisionsFile, tech);
+        const result = buildLibSigs(collisionsFile, tech, remoteOpts?.scat);
         if (!result) {
             console.log(chalk.red(`[!] Could not resolve library signatures from: ${collisionsFile}`));
             const scat = BASELINE_SCAT_DIR[tech];
@@ -529,9 +534,12 @@ const refactor = async (
             }
         }
 
+        if (remoteOpts?.scat) {
+            console.log(chalk.cyan(`[i] Using custom scat config: ${remoteOpts.scat.join(",")}`));
+        }
         const writtenFiles: string[] = [];
         for (const [, value] of sortedEntries) {
-            const result: RefactorReactResult = await refactorReact(value, libSigs, accLibModuleMap);
+            const result: RefactorReactResult = await refactorReact(value, libSigs, accLibModuleMap, false, remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined);
             // Merge this chunk's library classifications into the accumulator.
             for (const [id, info] of result.libModuleMap) {
                 accLibModuleMap.set(id, info);

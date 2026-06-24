@@ -99,7 +99,7 @@ const LIB_CLASSIFICATION_THRESHOLD = 0.51;
 // Hash a single module's function body using cs_mast_init and look the signature
 // up against the count=18 baseline set. Returns true when the fraction of the
 // module's sub-tree signatures that match the baseline exceeds LIB_CLASSIFICATION_THRESHOLD.
-const moduleIsLibrary = (mod: ModuleEntry, libSigs: Set<string> | undefined): boolean => {
+const moduleIsLibrary = (mod: ModuleEntry, libSigs: Set<string> | undefined, scatOverride?: ScatCategory[]): boolean => {
     if (!libSigs || libSigs.size === 0) return false;
     const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
     if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
@@ -108,7 +108,7 @@ const moduleIsLibrary = (mod: ModuleEntry, libSigs: Set<string> | undefined): bo
         const code = generate(body).code;
         const tree = cs_mast_init(code, {
             hash: "sha256",
-            scat: LIB_SIG_SCAT,
+            scat: scatOverride ?? LIB_SIG_SCAT,
             sinc: [],
             lang: "js",
             prsr: "@babel/parser",
@@ -169,7 +169,8 @@ const refactorReact = async (
     chunk: Chunk,
     libSigs?: Set<string>,
     externalLibModuleMap?: Map<string, LibraryModuleInfo>,
-    classifyAllAsLibrary?: boolean
+    classifyAllAsLibrary?: boolean,
+    scatOverride?: ScatCategory[]
 ): Promise<RefactorReactResult> => {
     console.log(chalk.cyan(`[i] Processing React bundle: ${chunk.id}`));
 
@@ -278,7 +279,7 @@ const refactorReact = async (
     for (const mod of modules) {
         // classifyAllAsLibrary: used for vendor chunks outside mapped.json where we want
         // to extract library export maps without generating any output files.
-        const isLib = classifyAllAsLibrary || (!isLazyBundle && moduleIsLibrary(mod, libSigs));
+        const isLib = classifyAllAsLibrary || (!isLazyBundle && moduleIsLibrary(mod, libSigs, scatOverride));
         // Detect style-loader and CSS content modules regardless of baseline signatures.
         if (!classifyAllAsLibrary && !isLib && !isLazyBundle) {
             const styleLoaderType = isStyleLoaderModule(mod) ? "style-loader" : isCssModuleEntry(mod) ? "css-module" : null;

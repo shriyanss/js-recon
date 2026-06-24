@@ -1612,6 +1612,7 @@ export const renameRouteComponents = (statements: t.Statement[]): t.Statement[] 
                     }
                     break;
                 }
+                if (!ancestor.parentPath) break;
                 ancestor = ancestor.parentPath;
             }
             p.skip();

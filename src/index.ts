@@ -353,12 +353,20 @@ program
     .option("--refresh-cache", "Force refresh the remote file list cache", false)
     .option("--skip-cache-checks", "Skip cache age and 404-triggered refresh checks", false)
     .option("--no-remote", "Disable remote HuggingFace signature fetch; run without library stripping unless --collisions is provided")
+    .option(
+        "--scat <categories>",
+        "Override the CS-MAST scat categories used for library signature matching. Comma-separated list of: lit,id,op,decl,loop,cond,name,val,op_name (e.g. --scat lit,decl,cond). Overrides the default lit-decl-loop-cond config."
+    )
     .action(async (cmd) => {
+        const scat: string[] | undefined = cmd.scat
+            ? (cmd.scat as string).split(",").map((s: string) => s.trim()).filter(Boolean)
+            : undefined;
         await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions, {
             signatureQuality: Number(cmd.signatureQuality ?? 100),
             refreshCache: !!cmd.refreshCache,
             skipCacheChecks: !!cmd.skipCacheChecks,
             noRemote: cmd.remote === false,
+            scat,
         });
     });
 
