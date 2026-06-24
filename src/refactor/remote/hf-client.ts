@@ -1,12 +1,12 @@
-// HuggingFace dataset client for CS-MAST-S signature retrieval.
+// HuggingFace bucket client for CS-MAST-S signature retrieval.
 // All remote interaction is isolated here so the storage backend can be swapped
 // without touching the rest of the refactor pipeline.
 
-export const HF_DATASET = "shriyanss/cs-mast-s-dataset";
+export const HF_BUCKET = "shriyanss/cs-mast-s-dataset";
 
-// Maps refactor tech identifier to the HuggingFace dataset branch that holds its signatures.
+// Maps refactor tech identifier to the HuggingFace bucket path prefix that holds its signatures.
 export const TECH_TO_BRANCH: Record<string, string> = {
-    "react-webpack": "react-small",
+    "react-webpack": "react/webpack/small",
 };
 
 export type CollisionRecord = {
@@ -23,13 +23,17 @@ type HfTreeEntry = {
 
 // --- URL builders ---
 
-export const getHfRawUrl = (branch: string, subpath: string): string =>
-    `https://huggingface.co/datasets/${HF_DATASET}/raw/${branch}/${subpath}`;
-
-export const getHfApiTreeUrl = (branch: string, subdir?: string): string => {
-    const base = `https://huggingface.co/api/datasets/${HF_DATASET}/tree/${branch}`;
-    return subdir ? `${base}/${subdir}` : base;
+// Bucket resolve URL: fetches raw file content.
+// The full path (prefix + subpath) is URL-encoded as one component per the bucket API contract.
+export const getHfRawUrl = (prefix: string, subpath: string): string => {
+    const fullPath = encodeURIComponent(`${prefix}/${subpath}`);
+    return `https://huggingface.co/buckets/${HF_BUCKET}/resolve/${fullPath}`;
 };
+
+// Bucket tree URL: lists immediate children of a prefix (non-recursive by default).
+// Returns items whose `path` field is the full path from bucket root.
+export const getHfApiTreeUrl = (prefix: string): string =>
+    `https://huggingface.co/api/buckets/${HF_BUCKET}/tree/${encodeURIComponent(prefix)}`;
 
 // --- Low-level fetch helpers ---
 
@@ -75,16 +79,50 @@ export const validateRemoteBranch = async (branch: string): Promise<boolean> => 
 
 // --- File listing ---
 
-// Lists feature subdirectory names at the top level of a branch (non-recursive).
-const listTopLevelDirs = async (branch: string): Promise<string[]> => {
-    const text = await fetchText(getHfApiTreeUrl(branch));
-    if (text === null) return [];
-    try {
-        const entries = JSON.parse(text) as HfTreeEntry[];
-        return entries.filter((e) => e.type === "directory").map((e) => e.path);
-    } catch {
-        return [];
+// Extracts the next-page URL from a `Link: <url>; rel="next"` header, or null if absent.
+const parseNextLink = (linkHeader: string | null): string | null => {
+    if (!linkHeader) return null;
+    const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    return match ? match[1] : null;
+};
+
+// Lists feature subdirectory names immediately under a bucket prefix.
+// The bucket tree API returns a flat list of file entries (no directory-type entries) and
+// paginates at 1000 entries. We follow Link: rel="next" headers to collect all pages, then
+// extract unique first-level path segments from all file paths after stripping the prefix.
+const listTopLevelDirs = async (prefix: string): Promise<string[]> => {
+    const dirs = new Set<string>();
+    const prefixSlash = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    let url: string | null = getHfApiTreeUrl(prefix);
+
+    while (url) {
+        let resp: Response;
+        try {
+            resp = await fetch(url);
+        } catch {
+            break;
+        }
+        if (resp.status === 429) throw new Error(`Rate limited by HuggingFace (url: ${url})`);
+        if (!resp.ok) break;
+
+        const text = await resp.text();
+        try {
+            const entries = JSON.parse(text) as HfTreeEntry[];
+            for (const e of entries) {
+                const rel = e.path.startsWith(prefixSlash) ? e.path.slice(prefixSlash.length) : e.path;
+                const parts = rel.split("/");
+                // Only treat as a feature dir if the entry is nested (parts.length > 1),
+                // skipping top-level files like sample_size, technology, README.md.
+                if (parts.length > 1 && parts[0]) dirs.add(parts[0]);
+            }
+        } catch {
+            break;
+        }
+
+        url = parseNextLink(resp.headers.get("link"));
     }
+
+    return Array.from(dirs);
 };
 
 // Returns relative paths of all collisions.json files under `<featureDir>/<scatDir>/collisions.json`

@@ -11,8 +11,23 @@ export const isInModuleMap = (path: NodePath): boolean => {
     if (!objectParent || !objectParent.isObjectExpression()) return false;
     const objHolder = objectParent.parentPath;
     if (!objHolder) return false;
+    // Standard IIFE format: var X = { numId: fn }
     if (objHolder.isVariableDeclarator()) return true;
     if (objHolder.isAssignmentExpression()) return true;
+    // Lazy chunk format: (self.webpackChunk...).push([[chunkIds], {numId: fn}])
+    // The module-map ObjectExpression is an element of the ArrayExpression argument to .push()
+    if (objHolder.isArrayExpression()) {
+        const arrayHolder = objHolder.parentPath;
+        if (arrayHolder?.isCallExpression()) {
+            const callee = (arrayHolder.node as t.CallExpression).callee;
+            if (
+                t.isMemberExpression(callee) &&
+                t.isIdentifier((callee as t.MemberExpression).property, { name: "push" })
+            ) {
+                return true;
+            }
+        }
+    }
     return false;
 };
 

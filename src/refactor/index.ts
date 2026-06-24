@@ -1,18 +1,58 @@
 import chalk from "chalk";
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 import { Chunks } from "../utility/interfaces.js";
 import prettier from "prettier";
 
 // Next.js
 import refactorNext from "./next/index.js";
 // React
-import refactorReact from "./react/index.js";
+import refactorReact, { RefactorReactResult } from "./react/index.js";
+import type { LibraryModuleInfo } from "./react/library-classify.js";
 
 // Remote HuggingFace client + cache
 import { TECH_TO_BRANCH, getHfRawUrl, fetchCollisionsJson, listCollisionsFiles, validateRemoteBranch, getSampleSize, getTechnology, CollisionRecord } from "./remote/hf-client.js";
 import { loadRefactorConfig, validateRefactorConfig } from "./remote/config.js";
 import { loadListCache, saveListCache, shouldRefreshListCache, loadCachedSignature, saveSignatureToCache, isSignatureCacheFresh, validateCaches } from "./remote/cache.js";
+
+/**
+ * Derives the assets directory from the URL embedded in any chunk's code comment.
+ * Chunks have a header like `// File Source: http://localhost:3001/assets/foo.js`.
+ * Returns null if the assets directory cannot be determined or does not exist.
+ */
+function findAssetsDir(chunks: Chunks, mappedJsonPath: string): string | null {
+    for (const chunk of Object.values(chunks)) {
+        const firstLine = (chunk.code ?? "").split("\n")[0];
+        const urlMatch = firstLine.match(/\/\/ File Source: (https?:\/\/[^\s]+)/);
+        if (!urlMatch) continue;
+        try {
+            const url = new URL(urlMatch[1]);
+            const port = url.port;
+            const hostname = url.hostname + (port ? `_${port}` : "");
+            const assetsDir = path.join(path.dirname(path.resolve(mappedJsonPath)), "output", hostname, "assets");
+            if (fs.existsSync(assetsDir)) return assetsDir;
+        } catch {
+            continue;
+        }
+    }
+    return null;
+}
+
+/**
+ * Returns paths to .js files in `assetsDir` that are NOT covered by any chunk in `chunks`.
+ * Chunks cover a file when `path.basename(chunk.file)` matches the assets filename.
+ */
+function findVendorChunkFiles(chunks: Chunks, assetsDir: string): string[] {
+    const coveredFiles = new Set<string>();
+    for (const chunk of Object.values(chunks)) {
+        if (chunk.file) coveredFiles.add(path.basename(chunk.file));
+    }
+    return fs
+        .readdirSync(assetsDir)
+        .filter((f) => f.endsWith(".js") && !coveredFiles.has(f))
+        .map((f) => path.join(assetsDir, f));
+}
 
 // Maps a refactor tech to the scat-combo directory name in a baseline tree.
 // Must match LIB_SIG_SCAT in src/refactor/<tech>/index.ts (sorted alphabetically, joined with "-").
@@ -133,18 +173,18 @@ const loadRemoteLibSigs = async (
         console.log(chalk.yellow(`[!] Cache validation warning: ${w} (will refresh)`));
     }
 
-    // Validate remote branch has required metadata files.
-    console.log(chalk.cyan(`[i] Validating remote branch "${branch}"...`));
+    // Validate remote bucket prefix has required metadata files.
+    console.log(chalk.cyan(`[i] Validating remote bucket prefix "${branch}"...`));
     const branchOk = await validateRemoteBranch(branch);
     if (!branchOk) {
-        console.log(chalk.red(`[!] Remote branch "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`));
+        console.log(chalk.red(`[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`));
         return null;
     }
 
-    // Verify the branch technology matches.
+    // Verify the bucket prefix technology matches.
     const remoteTech = await getTechnology(branch);
     if (remoteTech !== tech) {
-        console.log(chalk.red(`[!] Remote branch "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`));
+        console.log(chalk.red(`[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`));
         return null;
     }
 
@@ -153,7 +193,7 @@ const loadRemoteLibSigs = async (
     // Build / refresh file list cache.
     let listCache = cacheWarnings.length > 0 ? null : loadListCache();
     if (shouldRefreshListCache(listCache, opts)) {
-        console.log(chalk.cyan(`[i] Refreshing remote file list cache for branch "${branch}"...`));
+        console.log(chalk.cyan(`[i] Refreshing remote file list cache for bucket prefix "${branch}"...`));
         const paths = await listCollisionsFiles(branch, scatDir);
         const now = Date.now();
         const branches: Record<string, string[]> = listCache?.branches ?? {};
@@ -229,7 +269,7 @@ const loadRemoteLibSigs = async (
         return null;
     }
 
-    console.log(chalk.cyan(`[i] Loaded ${intersection.size} library signatures from remote (${loadedCount} files, branch: ${branch})`));
+    console.log(chalk.cyan(`[i] Loaded ${intersection.size} library signatures from remote (${loadedCount} files, bucket prefix: ${branch})`));
     return { sigs: intersection, desc: `remote:${branch} (${loadedCount} files, quality>=${opts.signatureQuality}%)` };
 };
 
@@ -237,6 +277,103 @@ const availableTechs = {
     next: "Next.js",
     "react-webpack": "React (webpack)",
 };
+
+/**
+ * Scaffolds a minimal webpack project in `outputDir` (package.json,
+ * webpack.config.js, index.html), then runs `npm install` + `npm run build`
+ * as a build check.  Uses babel-loader so JSX in .js files is handled without
+ * renaming.
+ *
+ * The entry file is the first written file that contains `createRoot(` — i.e.
+ * the app entry point.  If no such file is found, the first written file is used.
+ */
+function runBuildCheck(outputDir: string, writtenFiles: string[]): void {
+    if (writtenFiles.length === 0) return;
+
+    // Find the entry file: the module that calls createRoot().
+    const entryFile = writtenFiles.find((f) => {
+        try { return fs.readFileSync(f, "utf8").includes("createRoot("); }
+        catch { return false; }
+    }) ?? writtenFiles[0];
+    const entryRelative = `./${path.basename(entryFile)}`;
+
+    console.log(chalk.cyan(`[i] Setting up webpack build check in ${outputDir}/ (entry: ${entryRelative})`));
+
+    // package.json — no "type": "module" so webpack.config.js can use CommonJS require
+    const pkg = {
+        name: "refactored-app",
+        version: "1.0.0",
+        scripts: { build: "webpack" },
+        dependencies: {
+            react: "^18.3.1",
+            "react-dom": "^18.3.1",
+            "react-router-dom": "^6.27.0",
+        },
+        devDependencies: {
+            "@babel/core": "^7.25.0",
+            "@babel/preset-env": "^7.25.0",
+            "@babel/preset-react": "^7.25.0",
+            "babel-loader": "^9.2.1",
+            "html-webpack-plugin": "^5.6.0",
+            webpack: "^5.95.0",
+            "webpack-cli": "^5.1.4",
+        },
+    };
+    fs.writeFileSync(path.join(outputDir, "package.json"), JSON.stringify(pkg, null, 2));
+
+    // webpack.config.js — babel-loader with preset-react handles JSX in .js files
+    const webpackConfig = `const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+module.exports = {
+  mode: 'production',
+  entry: '${entryRelative}',
+  output: { path: path.resolve(__dirname, 'dist'), filename: 'bundle.js', clean: true },
+  module: {
+    rules: [{
+      test: /\\.jsx?$/,
+      exclude: /node_modules/,
+      use: {
+        loader: 'babel-loader',
+        options: {
+          presets: [
+            ['@babel/preset-env', { targets: 'defaults' }],
+            ['@babel/preset-react', { runtime: 'automatic' }],
+          ],
+        },
+      },
+    }],
+  },
+  resolve: { extensions: ['.js', '.jsx'] },
+  plugins: [new HtmlWebpackPlugin({ template: './index.html' })],
+};
+`;
+    fs.writeFileSync(path.join(outputDir, "webpack.config.js"), webpackConfig);
+
+    // index.html — HtmlWebpackPlugin injects the bundle script automatically
+    const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><title>Refactored App</title></head>
+  <body><div id="root"></div></body>
+</html>
+`;
+    fs.writeFileSync(path.join(outputDir, "index.html"), indexHtml);
+
+    console.log(chalk.cyan("[i] Installing dependencies..."));
+    try {
+        execSync("npm install", { cwd: outputDir, stdio: "inherit" });
+    } catch {
+        console.log(chalk.red("[!] npm install failed — skipping build check"));
+        return;
+    }
+
+    console.log(chalk.cyan("[i] Running build check..."));
+    try {
+        execSync("npm run build", { cwd: outputDir, stdio: "inherit" });
+        console.log(chalk.green("[✓] Build check passed"));
+    } catch {
+        console.log(chalk.red("[!] Build check failed — review output above"));
+    }
+}
 
 /**
  * Refactors JavaScript code chunks based on technology-specific patterns.
@@ -334,8 +471,8 @@ const refactor = async (
     }
 
     // iterate through the chunks
-    for (const [key, value] of Object.entries(chunks)) {
-        if (tech === "next") {
+    if (tech === "next") {
+        for (const [, value] of Object.entries(chunks)) {
             const moduleFiles = await refactorNext(value);
             for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
                 const formatted = await prettier.format(rawCode, {
@@ -346,18 +483,80 @@ const refactor = async (
                 fs.writeFileSync(`${outputDir}/${moduleId}.js`, formatted);
                 console.log(chalk.green(`[✓] Module ${moduleId} written to ${outputDir}/${moduleId}.js`));
             }
-        } else if (tech === "react-webpack") {
-            const moduleFiles = await refactorReact(value, libSigs);
-            for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
+        }
+    } else if (tech === "react-webpack") {
+        // Sort chunks so the main bundle (contains library module definitions) is processed
+        // first.  Its libModuleMap is then available when processing lazy chunks that import
+        // those same library module IDs (e.g. 540=React, 848=jsx-runtime, 671=react-router-dom).
+        const sortedEntries = Object.entries(chunks).sort(([a], [b]) => {
+            const aIsLazy = /^\d+_/.test(a);
+            const bIsLazy = /^\d+_/.test(b);
+            if (!aIsLazy && bIsLazy) return -1; // main bundle first
+            if (aIsLazy && !bIsLazy) return 1;
+            return 0;
+        });
+
+        // Accumulated library module map — grows as main bundles are processed.
+        // Passed to each subsequent chunk so lazy chunks can rewrite library imports.
+        const accLibModuleMap = new Map<string, LibraryModuleInfo>();
+
+        // Pre-scan vendor chunks from the assets directory that are not in mapped.json.
+        // These files (e.g. vendor-router.*.js, vendor-react-dom.*.js) contain library
+        // modules whose export maps must be classified before processing application chunks.
+        const assetsDir = findAssetsDir(chunks, mappedJson);
+        if (assetsDir) {
+            const vendorFiles = findVendorChunkFiles(chunks, assetsDir);
+            for (const vendorFile of vendorFiles) {
+                console.log(chalk.cyan(`[i] Pre-scanning vendor chunk: ${path.basename(vendorFile)}`));
+                const vendorCode = fs.readFileSync(vendorFile, "utf8");
+                const vendorChunk = {
+                    id: path.basename(vendorFile, ".js"),
+                    description: "",
+                    loadedOn: [] as [],
+                    containsFetch: false,
+                    isAxiosLibrary: false,
+                    exports: [] as string[],
+                    callStack: [] as [],
+                    code: vendorCode,
+                    imports: [] as string[],
+                    file: vendorFile,
+                };
+                const vendorResult = await refactorReact(vendorChunk, undefined, undefined, true);
+                for (const [id, info] of vendorResult.libModuleMap) {
+                    accLibModuleMap.set(id, info);
+                    console.log(chalk.gray(`  [-] Vendor module ${id} → ${info.type} (${info.exportMap.size} exports)`));
+                }
+            }
+        }
+
+        const writtenFiles: string[] = [];
+        for (const [, value] of sortedEntries) {
+            const result: RefactorReactResult = await refactorReact(value, libSigs, accLibModuleMap);
+            // Merge this chunk's library classifications into the accumulator.
+            for (const [id, info] of result.libModuleMap) {
+                accLibModuleMap.set(id, info);
+            }
+            for (const [moduleId, rawCode] of Object.entries(result.files)) {
                 const formatted = await prettier.format(rawCode, {
                     parser: "babel",
                     singleQuote: true,
                     trailingComma: "none",
                 });
-                fs.writeFileSync(`${outputDir}/${moduleId}.js`, formatted);
+                // Skip writing empty files (e.g. index.js after webpack runtime stripping).
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                writtenFiles.push(filePath);
                 console.log(chalk.green(`[✓] Module ${moduleId} written to ${outputDir}/${moduleId}.js`));
             }
         }
+
+        // Build check — scaffold a minimal Vite project and verify the refactored
+        // code compiles.
+        runBuildCheck(outputDir, writtenFiles);
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));
