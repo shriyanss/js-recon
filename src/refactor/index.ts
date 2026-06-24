@@ -55,9 +55,20 @@ function findVendorChunkFiles(chunks: Chunks, assetsDir: string): string[] {
 }
 
 // Maps a refactor tech to the scat-combo directory name in a baseline tree.
-// Must match LIB_SIG_SCAT in src/refactor/<tech>/index.ts (sorted alphabetically, joined with "-").
+// The directory name is the scat categories joined by "-" in the order they appear in
+// ALL_SCAT_CATEGORIES (matching the naming convention used by jsr-cs-mast-s-gen/experiment/csmast.mjs).
 const BASELINE_SCAT_DIR: Record<string, string> = {
     "react-webpack": "lit-decl-loop-cond",
+};
+
+// Canonical ordering of scat categories (matches ALL_SCAT_CATEGORIES in csmast.mjs).
+// Used when converting a user-supplied --scat list to a bucket directory name.
+const ALL_SCAT_CATEGORIES = ["lit", "id", "op", "decl", "loop", "cond", "name", "val", "op_name"] as const;
+
+// Converts a scat list to the bucket directory name, preserving canonical category order.
+const scatToDir = (scat: string[]): string => {
+    const scatSet = new Set(scat);
+    return ALL_SCAT_CATEGORIES.filter((c) => scatSet.has(c)).join("-") || scat.join("-");
 };
 
 type LibSigsResult = { sigs: Set<string>; desc: string };
@@ -92,9 +103,7 @@ const loadCollisionsFile = (filePath: string): Set<string> => {
 const buildLibSigs = (input: string, tech: string, scatOverride?: string[]): LibSigsResult | null => {
     if (!fs.existsSync(input)) return null;
     const stat = fs.statSync(input);
-    const scat = scatOverride
-        ? [...scatOverride].sort().join("-")
-        : BASELINE_SCAT_DIR[tech];
+    const scat = scatOverride ? scatToDir(scatOverride) : BASELINE_SCAT_DIR[tech];
 
     // Case 1: direct file path
     if (stat.isFile()) {
@@ -160,9 +169,7 @@ const loadRemoteLibSigs = async (
     const branch = TECH_TO_BRANCH[tech];
     if (!branch) return null;
 
-    const scatDir = opts.scat
-        ? [...opts.scat].sort().join("-")
-        : BASELINE_SCAT_DIR[tech];
+    const scatDir = opts.scat ? scatToDir(opts.scat) : BASELINE_SCAT_DIR[tech];
     if (!scatDir) return null;
 
     // Load and validate config.
