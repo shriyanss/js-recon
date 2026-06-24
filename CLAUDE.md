@@ -2,6 +2,16 @@
 
 Static analysis tool that maps API endpoints and detects client-side security issues by analyzing Next.js (webpack/turbopack) and Vue.js bundles. Written in TypeScript, compiled to `build/` before running.
 
+## STRICT: Repository hygiene
+
+**Research artifacts must never be committed to this repo.** This is a public tool repository. Its git history must contain only tool source code, tests, docs, and configuration. Never commit:
+
+- Experiment scripts, research notes, or analysis results
+- Files from `js-recon-research/` or any private workspace directory
+- Prompt logs, observation markdown files, or scratch files
+
+Research outputs belong in the private sibling workspace outside this repo. If an experiment script or results file is needed as reference, keep it in the private workspace only.
+
 ## Build & run
 
 ```bash
