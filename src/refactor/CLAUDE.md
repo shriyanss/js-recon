@@ -47,6 +47,8 @@ Library module stripping now has **two sources** for signatures, checked in prio
 
 The refactor command also accepts the legacy `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
 
+**`--scat <categories>`** overrides the CS-MAST scat category set used for both the remote signature download (bucket directory name resolution) and the module classifier (`LIB_SIG_SCAT` in `react/index.ts`). The value is a comma-separated list of categories from `ALL_SCAT_CATEGORIES = ["lit","id","op","decl","loop","cond","name","val","op_name"]`. The `scatToDir()` helper in `index.ts` maps the user-supplied list to the canonical bucket directory name by filtering `ALL_SCAT_CATEGORIES` in order (so `--scat cond,lit` → `"lit-cond"`, matching jsr-cs-mast-s-gen's naming convention).
+
 **Pipeline in this directory:**
 
 1. `index.ts` accepts a file path, a standard baseline-tree directory, or a per-feature results directory for `--collisions`. `buildLibSigs()` handles three cases and returns `{ sigs: Set<string>; desc: string } | null` directly (the caller no longer loads the file itself):
