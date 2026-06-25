@@ -6,10 +6,10 @@ Splits a Vite-bundled (rolldown) React application into human-readable ES module
 
 ## File layout
 
-| File                 | Responsibility                                                                                                             |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`           | Entry point: classifies chunks, orchestrates the multi-pass transform, returns `Record<chunkKey, code>` |
-| `vendor-analyze.ts`  | `analyzeVendorChunk(code)` — parses the vendor chunk and returns a `Map<exportedName, VendorExportInfo>` used to classify interop vars |
+| File                | Responsibility                                                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`          | Entry point: classifies chunks, orchestrates the multi-pass transform, returns `Record<chunkKey, code>`                                |
+| `vendor-analyze.ts` | `analyzeVendorChunk(code)` — parses the vendor chunk and returns a `Map<exportedName, VendorExportInfo>` used to classify interop vars |
 
 ## Vite/rolldown bundle format
 
@@ -19,11 +19,11 @@ A Vite production build (rolldown bundler) produces:
 - **`vendor-react-*.js`** — CJS library wrappers and direct react-router-dom exports. Contains `var X = t(factory)` wrappers for React/jsx-runtime/react-dom, and function declarations for react-router-dom APIs with `.displayName` assignments.
 - **`vendor-react-dom-*.js`** — Additional vendor chunk when react-dom is split separately. Same structure.
 - **App chunks** (`index-*.js`, `Home-*.js`, etc.) — application code. Each chunk:
-  - Imports rolldown interop helpers from the runtime chunk (usually skipped by the refactor)
-  - Imports vendor exports by short alias: `import { r as n, t, s as a } from './vendor-react-*.js'`
-  - Uses CJS interop: `var i = n(t(), 1)` (`__toESM(getter(), 1)`) or bare `var a = r()` (getter call)
-  - Calls library APIs as `(0, i.useState)(args)` or `(0, a.jsxs)(tag, props)`
-  - Template literal tags: rolldown uses `` `div` `` (template literal) instead of `"div"` for intrinsic HTML element names in jsx/jsxs calls
+    - Imports rolldown interop helpers from the runtime chunk (usually skipped by the refactor)
+    - Imports vendor exports by short alias: `import { r as n, t, s as a } from './vendor-react-*.js'`
+    - Uses CJS interop: `var i = n(t(), 1)` (`__toESM(getter(), 1)`) or bare `var a = r()` (getter call)
+    - Calls library APIs as `(0, i.useState)(args)` or `(0, a.jsxs)(tag, props)`
+    - Template literal tags: rolldown uses `` `div` `` (template literal) instead of `"div"` for intrinsic HTML element names in jsx/jsxs calls
 
 ## Transform passes
 
@@ -34,6 +34,7 @@ All vendor chunks are identified (filename matches `/vendor[-_]react/i`). Each i
 
 **Step 2 — App chunk classification (per chunk)**  
 `buildLocalVarToVendorExport(statements, vendorExportMaps)` maps each local import alias (e.g. `n` imported from the vendor chunk) to its `VendorExportInfo`. Then `detectInteropVars(statements, toEsmLocalName, localVarToVendorExport)` scans all `var` declarations and classifies two patterns:
+
 - `var x = toEsm(getter(), 1)` — CJS interop via `__toESM`
 - `var x = getter()` — bare getter call (direct CJS unwrap)
 
@@ -53,6 +54,7 @@ Rewrites library API calls from the indirect call pattern to bare identifiers: `
 
 **Steps 3e–3j (shared passes from `react/transform.ts`)**  
 `applyModuleCleanupPasses()` runs passes that are shared with the webpack refactor:
+
 - **Pass E** — `slicedToArray` collapse (array destructure recovery)
 - **Pass F** — JSX recovery: `jsx('div', {...})` → `<div ...>`. Handles both string literal and template literal tag names (`` `div` `` → `div`).
 - **Pass G** — Removes Babel helper functions (`_typeof`, `_defineProperty`, etc.)
@@ -61,11 +63,13 @@ Rewrites library API calls from the indirect call pattern to bare identifiers: `
 ## Vendor chunk analysis (`vendor-analyze.ts`)
 
 `analyzeVendorChunk(code)` returns `Map<exportedName, VendorExportInfo>` where each entry describes:
+
 - `canonicalName` — the library API name (e.g. `"react"`, `"react/jsx-runtime"`, `"Link"`)
 - `library` — the library package (`"react"`, `"react/jsx-runtime"`, `"react-dom/client"`, `"react-router-dom"`)
 - `isCjsGetter` — whether this export is a CJS module getter (needs interop unwrapping)
 
 **CJS wrapper detection** uses `classifyFactory()` which inspects the factory AST directly:
+
 - Checks for `createRoot` → `react-dom/client`
 - Checks for `${exportsParam}.jsx =` and `${exportsParam}.jsxs =` → `react/jsx-runtime`
 - Checks for `react.element` / `ReactCurrentOwner` → `react`
@@ -77,6 +81,7 @@ Wrapper chains are resolved: `var r = t((e, t) => { t.exports = n() })` (where `
 ## Build check (`index.ts` → `runViteBuildCheck()`)
 
 After writing refactored files, a Vite scaffold is created in the output directory:
+
 - `package.json` with `react`, `react-dom`, `react-router-dom`, `@vitejs/plugin-react`, `vite`
 - `vite.config.js` with `plugins: [react()]` and the entry file in `build.rollupOptions.input`
 - `index.html` pointing to the entry
@@ -107,14 +112,24 @@ The build check runs automatically after writing files. A passing build (`[✓] 
 To generate a `mapped.json` from a Vite `dist/assets` directory:
 
 ```javascript
-const fs = require('fs'), path = require('path');
-const dir = 'dist/assets';
+const fs = require("fs"),
+    path = require("path");
+const dir = "dist/assets";
 const chunks = {};
-for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.js'))) {
-    const key = f.replace(/\.js$/, '');
-    chunks[key] = { id: key, code: fs.readFileSync(path.join(dir, f), 'utf8'),
-                    file: 'assets/' + f, description: '', loadedOn: [],
-                    containsFetch: false, isAxiosLibrary: false, exports: [], callStack: [], imports: [] };
+for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".js"))) {
+    const key = f.replace(/\.js$/, "");
+    chunks[key] = {
+        id: key,
+        code: fs.readFileSync(path.join(dir, f), "utf8"),
+        file: "assets/" + f,
+        description: "",
+        loadedOn: [],
+        containsFetch: false,
+        isAxiosLibrary: false,
+        exports: [],
+        callStack: [],
+        imports: [],
+    };
 }
-fs.writeFileSync('mapped.json', JSON.stringify(chunks, null, 2));
+fs.writeFileSync("mapped.json", JSON.stringify(chunks, null, 2));
 ```

@@ -98,7 +98,11 @@ export const transformModule = (mod: ModuleEntry): t.Statement[] => {
             if (!method) return null;
 
             // r.r(t) → drop
-            if (method === "r" && expr.arguments.length === 1 && t.isIdentifier(expr.arguments[0], { name: exportsParam })) {
+            if (
+                method === "r" &&
+                expr.arguments.length === 1 &&
+                t.isIdentifier(expr.arguments[0], { name: exportsParam })
+            ) {
                 return [];
             }
 
@@ -665,7 +669,8 @@ function collapseSlicedToArrayCalls(stmts: t.Statement[], helperNames: Set<strin
                     !(nd.init as t.MemberExpression).computed ||
                     !t.isIdentifier((nd.init as t.MemberExpression).object, { name: tempName }) ||
                     !t.isNumericLiteral((nd.init as t.MemberExpression).property)
-                ) break;
+                )
+                    break;
                 targets.push({
                     id: nd.id as t.Identifier,
                     index: ((nd.init as t.MemberExpression).property as t.NumericLiteral).value,
@@ -758,11 +763,7 @@ function collapseSlicedToArrayDeep(statements: t.Statement[]): t.Statement[] {
 function exprToJsxName(expr: t.Expression): t.JSXIdentifier | t.JSXMemberExpression | null {
     if (t.isStringLiteral(expr)) return t.jsxIdentifier(expr.value);
     // Handle template literals with no expressions: `div` → "div"
-    if (
-        t.isTemplateLiteral(expr) &&
-        expr.expressions.length === 0 &&
-        expr.quasis.length === 1
-    ) {
+    if (t.isTemplateLiteral(expr) && expr.expressions.length === 0 && expr.quasis.length === 1) {
         const raw = expr.quasis[0].value.cooked ?? expr.quasis[0].value.raw;
         if (raw) return t.jsxIdentifier(raw);
     }
@@ -788,11 +789,7 @@ function childToJsxChild(
 ): t.JSXElement | t.JSXFragment | t.JSXText | t.JSXExpressionContainer | t.JSXSpreadChild | null {
     if (t.isStringLiteral(child)) return t.jsxText(child.value);
     // Template literal with no expressions: `Dashboard` → JSXText
-    if (
-        t.isTemplateLiteral(child) &&
-        child.expressions.length === 0 &&
-        child.quasis.length === 1
-    ) {
+    if (t.isTemplateLiteral(child) && child.expressions.length === 0 && child.quasis.length === 1) {
         const raw = child.quasis[0].value.cooked ?? child.quasis[0].value.raw;
         if (raw !== undefined) return t.jsxText(raw);
     }
@@ -808,9 +805,7 @@ function childToJsxChild(
 // Detect Babel's compiled object-spread IIFE:
 //   (function(target) { for(var i=1; i<arguments.length; i++){...} return target; })(base, spread1, ...)
 // Returns { base, spreads } if matched, null otherwise.
-function tryUnpackSpreadIIFE(
-    expr: t.Expression
-): { base: t.Expression; spreads: t.Expression[] } | null {
+function tryUnpackSpreadIIFE(expr: t.Expression): { base: t.Expression; spreads: t.Expression[] } | null {
     if (!t.isCallExpression(expr)) return null;
     const callee = expr.callee;
     if (!t.isFunctionExpression(callee)) return null;
@@ -857,11 +852,7 @@ function propsArgToAttrsAndChildren(propsArg: t.Expression): {
             if (!t.isObjectProperty(prop) || prop.computed) continue;
             const keyNode = prop.key;
             const valNode = prop.value as t.Expression;
-            const keyName = t.isIdentifier(keyNode)
-                ? keyNode.name
-                : t.isStringLiteral(keyNode)
-                  ? keyNode.value
-                  : null;
+            const keyName = t.isIdentifier(keyNode) ? keyNode.name : t.isStringLiteral(keyNode) ? keyNode.value : null;
             if (!keyName) continue;
             if (keyName === "children") {
                 if (t.isArrayExpression(valNode)) {
@@ -954,8 +945,7 @@ function tryConvertToJSX(call: t.CallExpression): t.JSXElement | t.JSXFragment |
     }
 
     const jsxAttrs = attrs.filter(
-        (a): a is t.JSXAttribute | t.JSXSpreadAttribute =>
-            t.isJSXAttribute(a) || t.isJSXSpreadAttribute(a)
+        (a): a is t.JSXAttribute | t.JSXSpreadAttribute => t.isJSXAttribute(a) || t.isJSXSpreadAttribute(a)
     );
     const selfClosing = children.length === 0;
     const openingElement = t.jsxOpeningElement(jsxName, jsxAttrs, selfClosing);
@@ -1101,8 +1091,7 @@ function isBabelObjectSpread2Helper(stmt: t.Statement): boolean {
     // Must have a for loop that reads arguments.length, then calls Object.defineProperties
     const hasArgumentsLength = JSON.stringify(body).includes('"arguments"');
     const hasDefineProperties =
-        JSON.stringify(body).includes('"defineProperties"') ||
-        JSON.stringify(body).includes('"defineProperty"');
+        JSON.stringify(body).includes('"defineProperties"') || JSON.stringify(body).includes('"defineProperty"');
     return hasArgumentsLength && hasDefineProperties;
 }
 
@@ -1132,11 +1121,7 @@ const NAMED_BABEL_ARRAY_HELPERS = new Set([
 ]);
 
 function isNamedBabelArrayHelper(stmt: t.Statement): boolean {
-    return (
-        t.isFunctionDeclaration(stmt) &&
-        stmt.id != null &&
-        NAMED_BABEL_ARRAY_HELPERS.has(stmt.id.name)
-    );
+    return t.isFunctionDeclaration(stmt) && stmt.id != null && NAMED_BABEL_ARRAY_HELPERS.has(stmt.id.name);
 }
 
 /** Remove `var x = {}` declarations where every declarator has an empty-object init.
@@ -1270,7 +1255,13 @@ export const applyLibraryImportRewriting = (
         }
     }
     if (cssImportVars.size > 0) {
-        const CSS_INJECT_PROPS = new Set(["styleTagTransform", "setAttributes", "insert", "domAPI", "insertStyleElement"]);
+        const CSS_INJECT_PROPS = new Set([
+            "styleTagTransform",
+            "setAttributes",
+            "insert",
+            "domAPI",
+            "insertStyleElement",
+        ]);
 
         // Find CSS wrapper vars: var x = <expr>.n(libVar) for any library import.
         // webpack's .n() (interopRequireDefault) only appears in the CSS injection
@@ -1284,10 +1275,14 @@ export const applyLibraryImportRewriting = (
                 if (!t.isCallExpression(decl.init)) continue;
                 const callee = (decl.init as t.CallExpression).callee;
                 const args = (decl.init as t.CallExpression).arguments;
-                if (t.isMemberExpression(callee) && !(callee as t.MemberExpression).computed &&
+                if (
+                    t.isMemberExpression(callee) &&
+                    !(callee as t.MemberExpression).computed &&
                     t.isIdentifier((callee as t.MemberExpression).property, { name: "n" }) &&
-                    args.length === 1 && t.isIdentifier(args[0]) &&
-                    allLibVars.has((args[0] as t.Identifier).name)) {
+                    args.length === 1 &&
+                    t.isIdentifier(args[0]) &&
+                    allLibVars.has((args[0] as t.Identifier).name)
+                ) {
                     cssWrapperVars.add((decl.id as t.Identifier).name);
                 }
             }
@@ -1310,14 +1305,19 @@ export const applyLibraryImportRewriting = (
 
         const isCssMemberRef = (e: t.Expression): boolean => {
             if (!t.isMemberExpression(e) || (e as t.MemberExpression).computed) return false;
-            return t.isIdentifier((e as t.MemberExpression).object) &&
-                cssImportVars.has(((e as t.MemberExpression).object as t.Identifier).name);
+            return (
+                t.isIdentifier((e as t.MemberExpression).object) &&
+                cssImportVars.has(((e as t.MemberExpression).object as t.Identifier).name)
+            );
         };
 
         const hasLogicalCssRef = (e: t.Expression): boolean => {
             if (isCssMemberRef(e)) return true;
             if (t.isLogicalExpression(e))
-                return hasLogicalCssRef((e as t.LogicalExpression).left) || hasLogicalCssRef((e as t.LogicalExpression).right);
+                return (
+                    hasLogicalCssRef((e as t.LogicalExpression).left) ||
+                    hasLogicalCssRef((e as t.LogicalExpression).right)
+                );
             return false;
         };
 
@@ -1325,9 +1325,14 @@ export const applyLibraryImportRewriting = (
             if (!t.isExpressionStatement(stmt)) return false;
             const expr = stmt.expression;
             // g.styleTagTransform = ..., g.setAttributes = ..., etc.
-            if (t.isAssignmentExpression(expr) && t.isMemberExpression(expr.left) &&
-                !(expr.left as t.MemberExpression).computed && t.isIdentifier((expr.left as t.MemberExpression).property) &&
-                CSS_INJECT_PROPS.has(((expr.left as t.MemberExpression).property as t.Identifier).name)) return true;
+            if (
+                t.isAssignmentExpression(expr) &&
+                t.isMemberExpression(expr.left) &&
+                !(expr.left as t.MemberExpression).computed &&
+                t.isIdentifier((expr.left as t.MemberExpression).property) &&
+                CSS_INJECT_PROPS.has(((expr.left as t.MemberExpression).property as t.Identifier).name)
+            )
+                return true;
             // cssWrapperVar()(cssModuleVar.A, configObj)
             if (t.isCallExpression(expr) && t.isCallExpression(expr.callee)) {
                 const innerCallee = (expr.callee as t.CallExpression).callee;
@@ -1346,15 +1351,19 @@ export const applyLibraryImportRewriting = (
                     if (!t.isIdentifier(decl.id)) return true;
                     const name = (decl.id as t.Identifier).name;
                     if (cssWrapperVars.has(name)) return false;
-                    if (cssConfigObjVars.has(name) && decl.init &&
-                        t.isObjectExpression(decl.init) && (decl.init as t.ObjectExpression).properties.length === 0)
+                    if (
+                        cssConfigObjVars.has(name) &&
+                        decl.init &&
+                        t.isObjectExpression(decl.init) &&
+                        (decl.init as t.ObjectExpression).properties.length === 0
+                    )
                         return false;
                     return true;
                 });
                 if (remaining.length === 0) continue;
-                filteredStmts.push(remaining.length < stmt.declarations.length
-                    ? t.variableDeclaration(stmt.kind, remaining)
-                    : stmt);
+                filteredStmts.push(
+                    remaining.length < stmt.declarations.length ? t.variableDeclaration(stmt.kind, remaining) : stmt
+                );
                 continue;
             }
             filteredStmts.push(stmt);
@@ -1414,9 +1423,7 @@ export const applyLibraryImportRewriting = (
             continue;
         }
         const numId = parseInt(match[1], 10);
-        const isLibrary = [...varToModuleId.entries()].some(
-            ([vn, id]) => id === numId && varToLib.has(vn)
-        );
+        const isLibrary = [...varToModuleId.entries()].some(([vn, id]) => id === numId && varToLib.has(vn));
         if (!isLibrary) {
             finalImportStmts.push(decl);
             continue;
@@ -1424,9 +1431,7 @@ export const applyLibraryImportRewriting = (
         // Library module: keep the namespace import only if the namespace var is
         // still used as a namespace object (i.e. some exports were not resolved).
         const hasRemainingRefs = (decl as t.ImportDeclaration).specifiers.some(
-            (spec) =>
-                t.isImportNamespaceSpecifier(spec) &&
-                namespaceObjRefs.has((spec.local as t.Identifier).name)
+            (spec) => t.isImportNamespaceSpecifier(spec) && namespaceObjRefs.has((spec.local as t.Identifier).name)
         );
         if (hasRemainingRefs) finalImportStmts.push(decl);
     }
@@ -1515,7 +1520,8 @@ export const renameRouteComponents = (statements: t.Statement[]): t.Statement[] 
             const body = (arg as t.ArrowFunctionExpression | t.FunctionExpression).body;
             // body is `import('./N.js')` — a CallExpression with an Import callee
             const importCall = t.isBlockStatement(body)
-                ? (body as t.BlockStatement).body.length === 1 && t.isReturnStatement((body as t.BlockStatement).body[0])
+                ? (body as t.BlockStatement).body.length === 1 &&
+                  t.isReturnStatement((body as t.BlockStatement).body[0])
                     ? ((body as t.BlockStatement).body[0] as t.ReturnStatement).argument
                     : null
                 : (body as t.Expression);
@@ -1558,8 +1564,8 @@ export const renameRouteComponents = (statements: t.Statement[]): t.Statement[] 
                                 ? ((val as t.JSXExpressionContainer).expression as t.JSXElement)
                                 : null
                             : t.isJSXElement(val)
-                            ? (val as t.JSXElement)
-                            : null;
+                              ? (val as t.JSXElement)
+                              : null;
                         if (jsxEl) {
                             const tagName = jsxEl.openingElement.name;
                             if (t.isJSXIdentifier(tagName)) elementVarName = (tagName as t.JSXIdentifier).name;
@@ -1716,13 +1722,19 @@ export const transformIndexStatements = (
     // is webpack infrastructure.  Also strip the runtime temp-var declarations that
     // have no init / empty-collection init and 3+ declarators.
     const containsRequireFnMember = (node: t.Node, fnName: string): boolean => {
-        if (t.isMemberExpression(node) && t.isIdentifier((node as t.MemberExpression).object, { name: fnName })) return true;
+        if (t.isMemberExpression(node) && t.isIdentifier((node as t.MemberExpression).object, { name: fnName }))
+            return true;
         for (const key of Object.keys(node)) {
             const child = (node as unknown as Record<string, unknown>)[key];
             if (child && typeof child === "object") {
                 if (Array.isArray(child)) {
                     for (const item of child) {
-                        if (item && typeof (item as unknown as Record<string, unknown>).type === "string" && containsRequireFnMember(item as t.Node, fnName)) return true;
+                        if (
+                            item &&
+                            typeof (item as unknown as Record<string, unknown>).type === "string" &&
+                            containsRequireFnMember(item as t.Node, fnName)
+                        )
+                            return true;
                     }
                 } else if (typeof (child as unknown as Record<string, unknown>).type === "string") {
                     if (containsRequireFnMember(child as t.Node, fnName)) return true;
@@ -1735,7 +1747,8 @@ export const transformIndexStatements = (
         if (!t.isVariableDeclaration(stmt) || stmt.declarations.length < 3) return false;
         return stmt.declarations.every((decl) => {
             if (!decl.init) return true;
-            if (t.isObjectExpression(decl.init) && (decl.init as t.ObjectExpression).properties.length === 0) return true;
+            if (t.isObjectExpression(decl.init) && (decl.init as t.ObjectExpression).properties.length === 0)
+                return true;
             if (t.isArrayExpression(decl.init) && (decl.init as t.ArrayExpression).elements.length === 0) return true;
             if (t.isUnaryExpression(decl.init) && (decl.init as t.UnaryExpression).operator === "void") return true;
             return false;
@@ -1746,7 +1759,10 @@ export const transformIndexStatements = (
         let isRuntime = isRuntimeTempVarDecl(stmt);
         if (!isRuntime) {
             for (const fnName of requireFnNames) {
-                if (containsRequireFnMember(stmt, fnName)) { isRuntime = true; break; }
+                if (containsRequireFnMember(stmt, fnName)) {
+                    isRuntime = true;
+                    break;
+                }
             }
         }
         if (!isRuntime) afterA1.push(stmt);

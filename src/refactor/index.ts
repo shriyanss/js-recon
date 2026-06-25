@@ -14,9 +14,26 @@ import type { LibraryModuleInfo } from "./react/library-classify.js";
 import refactorVite from "./react-vite/index.js";
 
 // Remote HuggingFace client + cache
-import { TECH_TO_BRANCH, getHfRawUrl, fetchCollisionsJson, listCollisionsFiles, validateRemoteBranch, getSampleSize, getTechnology, CollisionRecord } from "./remote/hf-client.js";
+import {
+    TECH_TO_BRANCH,
+    getHfRawUrl,
+    fetchCollisionsJson,
+    listCollisionsFiles,
+    validateRemoteBranch,
+    getSampleSize,
+    getTechnology,
+    CollisionRecord,
+} from "./remote/hf-client.js";
 import { loadRefactorConfig, validateRefactorConfig } from "./remote/config.js";
-import { loadListCache, saveListCache, shouldRefreshListCache, loadCachedSignature, saveSignatureToCache, isSignatureCacheFresh, validateCaches } from "./remote/cache.js";
+import {
+    loadListCache,
+    saveListCache,
+    shouldRefreshListCache,
+    loadCachedSignature,
+    saveSignatureToCache,
+    isSignatureCacheFresh,
+    validateCaches,
+} from "./remote/cache.js";
 
 /**
  * Derives the assets directory from the URL embedded in any chunk's code comment.
@@ -165,10 +182,7 @@ const buildLibSigs = (input: string, tech: string, scatOverride?: string[]): Lib
 
 // Loads library signatures from the remote HuggingFace dataset.
 // Returns null if the branch is not configured for `tech` or if validation fails.
-const loadRemoteLibSigs = async (
-    tech: string,
-    opts: RemoteLibSigsOptions
-): Promise<LibSigsResult | null> => {
+const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Promise<LibSigsResult | null> => {
     const branch = TECH_TO_BRANCH[tech];
     if (!branch) return null;
 
@@ -192,14 +206,22 @@ const loadRemoteLibSigs = async (
     console.log(chalk.cyan(`[i] Validating remote bucket prefix "${branch}"...`));
     const branchOk = await validateRemoteBranch(branch);
     if (!branchOk) {
-        console.log(chalk.red(`[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`));
+        console.log(
+            chalk.red(
+                `[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`
+            )
+        );
         return null;
     }
 
     // Verify the bucket prefix technology matches.
     const remoteTech = await getTechnology(branch);
     if (remoteTech !== tech) {
-        console.log(chalk.red(`[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`));
+        console.log(
+            chalk.red(
+                `[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`
+            )
+        );
         return null;
     }
 
@@ -227,7 +249,11 @@ const loadRemoteLibSigs = async (
         return null;
     }
 
-    console.log(chalk.cyan(`[i] Loading ${matchingPaths.length} remote signature files (quality threshold: ${opts.signatureQuality}%)...`));
+    console.log(
+        chalk.cyan(
+            `[i] Loading ${matchingPaths.length} remote signature files (quality threshold: ${opts.signatureQuality}%)...`
+        )
+    );
 
     let intersection: Set<string> | null = null;
     let loadedCount = 0;
@@ -262,9 +288,7 @@ const loadRemoteLibSigs = async (
         }
 
         // Apply signature quality filter: (count / sampleSize) * 100 >= threshold
-        const filtered = records.filter(
-            (r) => sampleSize > 0 && (r.count / sampleSize) * 100 >= opts.signatureQuality
-        );
+        const filtered = records.filter((r) => sampleSize > 0 && (r.count / sampleSize) * 100 >= opts.signatureQuality);
 
         // Intersect with previous sets.
         const sigSet = new Set(filtered.map((r) => r.signature));
@@ -280,11 +304,17 @@ const loadRemoteLibSigs = async (
     }
 
     if (!intersection || intersection.size === 0) {
-        console.log(chalk.yellow(`[!] Remote signatures loaded but intersection is empty (quality threshold may be too high)`));
+        console.log(
+            chalk.yellow(`[!] Remote signatures loaded but intersection is empty (quality threshold may be too high)`)
+        );
         return null;
     }
 
-    console.log(chalk.cyan(`[i] Loaded ${intersection.size} library signatures from remote (${loadedCount} files, bucket prefix: ${branch})`));
+    console.log(
+        chalk.cyan(
+            `[i] Loaded ${intersection.size} library signatures from remote (${loadedCount} files, bucket prefix: ${branch})`
+        )
+    );
     return { sigs: intersection, desc: `remote:${branch} (${loadedCount} files, quality>=${opts.signatureQuality}%)` };
 };
 
@@ -307,10 +337,14 @@ function runBuildCheck(outputDir: string, writtenFiles: string[]): void {
     if (writtenFiles.length === 0) return;
 
     // Find the entry file: the module that calls createRoot().
-    const entryFile = writtenFiles.find((f) => {
-        try { return fs.readFileSync(f, "utf8").includes("createRoot("); }
-        catch { return false; }
-    }) ?? writtenFiles[0];
+    const entryFile =
+        writtenFiles.find((f) => {
+            try {
+                return fs.readFileSync(f, "utf8").includes("createRoot(");
+            } catch {
+                return false;
+            }
+        }) ?? writtenFiles[0];
     const entryRelative = `./${path.basename(entryFile)}`;
 
     console.log(chalk.cyan(`[i] Setting up webpack build check in ${outputDir}/ (entry: ${entryRelative})`));
@@ -415,22 +449,21 @@ function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
     for (const f of jsxFiles) {
         let content = fs.readFileSync(f, "utf8");
         // Replace ./Foo.js with ./Foo.jsx only when Foo.jsx exists as an output file.
-        content = content.replace(
-            /(import\([`'"])(\.\/[^`'"]+?)\.js([`'"]\))/g,
-            (_match, open, stem, close) => {
-                const candidate = path.basename(stem) + ".jsx";
-                return outputFileBasenames.has(candidate)
-                    ? `${open}${stem}.jsx${close}`
-                    : _match;
-            }
-        );
+        content = content.replace(/(import\([`'"])(\.\/[^`'"]+?)\.js([`'"]\))/g, (_match, open, stem, close) => {
+            const candidate = path.basename(stem) + ".jsx";
+            return outputFileBasenames.has(candidate) ? `${open}${stem}.jsx${close}` : _match;
+        });
         fs.writeFileSync(f, content);
     }
 
-    const entryFile = jsxFiles.find((f) => {
-        try { return fs.readFileSync(f, "utf8").includes("createRoot("); }
-        catch { return false; }
-    }) ?? jsxFiles[0];
+    const entryFile =
+        jsxFiles.find((f) => {
+            try {
+                return fs.readFileSync(f, "utf8").includes("createRoot(");
+            } catch {
+                return false;
+            }
+        }) ?? jsxFiles[0];
     const entryRelative = `./${path.basename(entryFile)}`;
 
     console.log(chalk.cyan(`[i] Setting up Vite build check in ${outputDir}/ (entry: ${entryRelative})`));
@@ -638,7 +671,9 @@ const refactor = async (
                 const vendorResult = await refactorReact(vendorChunk, undefined, undefined, true);
                 for (const [id, info] of vendorResult.libModuleMap) {
                     accLibModuleMap.set(id, info);
-                    console.log(chalk.gray(`  [-] Vendor module ${id} → ${info.type} (${info.exportMap.size} exports)`));
+                    console.log(
+                        chalk.gray(`  [-] Vendor module ${id} → ${info.type} (${info.exportMap.size} exports)`)
+                    );
                 }
             }
         }
@@ -648,7 +683,13 @@ const refactor = async (
         }
         const writtenFiles: string[] = [];
         for (const [, value] of sortedEntries) {
-            const result: RefactorReactResult = await refactorReact(value, libSigs, accLibModuleMap, false, remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined);
+            const result: RefactorReactResult = await refactorReact(
+                value,
+                libSigs,
+                accLibModuleMap,
+                false,
+                remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined
+            );
             // Merge this chunk's library classifications into the accumulator.
             for (const [id, info] of result.libModuleMap) {
                 accLibModuleMap.set(id, info);

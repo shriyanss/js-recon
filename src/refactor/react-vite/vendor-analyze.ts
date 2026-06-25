@@ -35,9 +35,8 @@ function classifyFactory(
 ): "react" | "react-dom/client" | "react/jsx-runtime" | null {
     // Derive the exports parameter name (first param, e.g. "e")
     const exportsParam = factory.params[0];
-    const exportsParamName = exportsParam && t.isIdentifier(exportsParam)
-        ? (exportsParam as t.Identifier).name
-        : "exports";
+    const exportsParamName =
+        exportsParam && t.isIdentifier(exportsParam) ? (exportsParam as t.Identifier).name : "exports";
 
     let bodyCode: string;
     try {
@@ -52,10 +51,7 @@ function classifyFactory(
     }
     // react/jsx-runtime: exports both jsx and jsxs via the exports parameter
     // Pattern: exportsParam.jsx = ..., exportsParam.jsxs = ...
-    if (
-        bodyCode.includes(`${exportsParamName}.jsx =`) &&
-        bodyCode.includes(`${exportsParamName}.jsxs =`)
-    ) {
+    if (bodyCode.includes(`${exportsParamName}.jsx =`) && bodyCode.includes(`${exportsParamName}.jsxs =`)) {
         return "react/jsx-runtime";
     }
     // React: uses Symbol.for react.element / react.transitional.element sentinel
@@ -117,10 +113,7 @@ export function analyzeVendorChunk(code: string): Map<string, VendorExportInfo> 
 
     // Step 2: Find all `var X = commonJSLocalName(fn)` patterns — CJS module getters.
     // Track local var name → library type
-    const cjsVarToLibrary = new Map<
-        string,
-        "react" | "react-dom/client" | "react/jsx-runtime"
-    >();
+    const cjsVarToLibrary = new Map<string, "react" | "react-dom/client" | "react/jsx-runtime">();
 
     // wrappedBy: varName → name of the CJS var it re-exports (for chain resolution)
     const wrappedBy = new Map<string, string>();
@@ -138,10 +131,7 @@ export function analyzeVendorChunk(code: string): Map<string, VendorExportInfo> 
                 const args = decl.init.arguments;
                 if (args.length !== 1) continue;
                 const factory = args[0];
-                if (
-                    !t.isArrowFunctionExpression(factory) &&
-                    !t.isFunctionExpression(factory)
-                ) continue;
+                if (!t.isArrowFunctionExpression(factory) && !t.isFunctionExpression(factory)) continue;
                 if (!t.isBlockStatement(factory.body)) continue;
 
                 const body = factory.body.body;
@@ -176,7 +166,10 @@ export function analyzeVendorChunk(code: string): Map<string, VendorExportInfo> 
                 for (const stmt of body) {
                     if (!t.isExpressionStatement(stmt)) continue;
                     const found = extractWrappedVar(stmt.expression);
-                    if (found) { wrappedVarName = found; break; }
+                    if (found) {
+                        wrappedVarName = found;
+                        break;
+                    }
                 }
 
                 if (wrappedVarName) {
@@ -185,9 +178,7 @@ export function analyzeVendorChunk(code: string): Map<string, VendorExportInfo> 
                 }
 
                 // Classify this factory directly
-                const libType = classifyFactory(
-                    factory as t.ArrowFunctionExpression | t.FunctionExpression
-                );
+                const libType = classifyFactory(factory as t.ArrowFunctionExpression | t.FunctionExpression);
                 if (libType) {
                     cjsVarToLibrary.set(localVarName, libType);
                 }
@@ -219,11 +210,7 @@ export function analyzeVendorChunk(code: string): Map<string, VendorExportInfo> 
             let canonicalName: string | null = null;
             if (t.isStringLiteral(rhs)) {
                 canonicalName = rhs.value;
-            } else if (
-                t.isTemplateLiteral(rhs) &&
-                rhs.expressions.length === 0 &&
-                rhs.quasis.length === 1
-            ) {
+            } else if (t.isTemplateLiteral(rhs) && rhs.expressions.length === 0 && rhs.quasis.length === 1) {
                 // Template literal with no expressions: `Link` etc.
                 canonicalName = rhs.quasis[0].value.cooked ?? rhs.quasis[0].value.raw;
             }
@@ -267,9 +254,7 @@ export function analyzeVendorChunk(code: string): Map<string, VendorExportInfo> 
         if (node.declaration) continue; // skip `export const ...`
         for (const spec of node.specifiers) {
             if (!t.isExportSpecifier(spec)) continue;
-            const localName = t.isIdentifier(spec.local)
-                ? spec.local.name
-                : (spec.local as t.StringLiteral).value;
+            const localName = t.isIdentifier(spec.local) ? spec.local.name : (spec.local as t.StringLiteral).value;
             const exportedName = t.isIdentifier(spec.exported)
                 ? spec.exported.name
                 : (spec.exported as t.StringLiteral).value;

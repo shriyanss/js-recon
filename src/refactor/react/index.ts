@@ -10,7 +10,14 @@ import { cs_mast_init, ScatCategory } from "@shriyanss/cs-mast";
 import { Chunk } from "../../utility/interfaces.js";
 import { isInModuleMap } from "./helpers.js";
 import { validateAndFix } from "./validator.js";
-import { ModuleEntry, transformModule, transformIndexStatements, applyModuleCleanupPasses, applyLibraryImportRewriting, renameRouteComponents } from "./transform.js";
+import {
+    ModuleEntry,
+    transformModule,
+    transformIndexStatements,
+    applyModuleCleanupPasses,
+    applyLibraryImportRewriting,
+    renameRouteComponents,
+} from "./transform.js";
 import { LibraryModuleInfo, classifyLibraryModule, resolveReexportChains } from "./library-classify.js";
 
 const traverse = _traverse.default;
@@ -99,7 +106,11 @@ const LIB_CLASSIFICATION_THRESHOLD = 0.51;
 // Hash a single module's function body using cs_mast_init and look the signature
 // up against the count=18 baseline set. Returns true when the fraction of the
 // module's sub-tree signatures that match the baseline exceeds LIB_CLASSIFICATION_THRESHOLD.
-const moduleIsLibrary = (mod: ModuleEntry, libSigs: Set<string> | undefined, scatOverride?: ScatCategory[]): boolean => {
+const moduleIsLibrary = (
+    mod: ModuleEntry,
+    libSigs: Set<string> | undefined,
+    scatOverride?: ScatCategory[]
+): boolean => {
     if (!libSigs || libSigs.size === 0) return false;
     const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
     if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
@@ -261,7 +272,8 @@ const refactorReact = async (
     // Modules in lazy chunks are always application code — skip library classification for them.
     // Also don't generate index.js from the push statement (it contains no bootstrap logic).
     const iifeBody = findIifeBody(ast.program);
-    const isLazyBundle = iifeBody === null && ast.program.body.length > 0 && ast.program.body.every(isLazyChunkPushStmt);
+    const isLazyBundle =
+        iifeBody === null && ast.program.body.length > 0 && ast.program.body.every(isLazyChunkPushStmt);
     if (isLazyBundle) {
         console.log(chalk.cyan(`[i] Detected lazy chunk format — skipping library classification`));
     }
@@ -282,7 +294,11 @@ const refactorReact = async (
         const isLib = classifyAllAsLibrary || (!isLazyBundle && moduleIsLibrary(mod, libSigs, scatOverride));
         // Detect style-loader and CSS content modules regardless of baseline signatures.
         if (!classifyAllAsLibrary && !isLib && !isLazyBundle) {
-            const styleLoaderType = isStyleLoaderModule(mod) ? "style-loader" : isCssModuleEntry(mod) ? "css-module" : null;
+            const styleLoaderType = isStyleLoaderModule(mod)
+                ? "style-loader"
+                : isCssModuleEntry(mod)
+                  ? "css-module"
+                  : null;
             if (styleLoaderType !== null) {
                 console.log(chalk.gray(`[-] Module ${mod.id} detected as ${styleLoaderType} — skipping`));
                 libModuleMap.set(mod.id, { type: styleLoaderType, exportMap: new Map() });
@@ -313,16 +329,11 @@ const refactorReact = async (
 
     // Merged map: prefer locally-classified entries over external ones (local classification
     // is more precise for this specific bundle version).
-    const mergedLibMap = new Map<string, LibraryModuleInfo>([
-        ...(externalLibModuleMap ?? []),
-        ...libModuleMap,
-    ]);
+    const mergedLibMap = new Map<string, LibraryModuleInfo>([...(externalLibModuleMap ?? []), ...libModuleMap]);
 
     // Apply Pass D (library-aware import rewriting) using the merged map, then validate.
     for (const { id, statements } of pendingModules) {
-        const afterD = mergedLibMap.size > 0
-            ? applyLibraryImportRewriting(statements, mergedLibMap)
-            : statements;
+        const afterD = mergedLibMap.size > 0 ? applyLibraryImportRewriting(statements, mergedLibMap) : statements;
         const afterRename = renameRouteComponents(afterD);
         const code = validateAndFix(afterRename, id);
         if (code === null) {
@@ -347,7 +358,10 @@ const refactorReact = async (
         }
         if (indexStatements.length > 0) {
             console.log(chalk.cyan(`[i] Writing ${indexStatements.length} non-module statements to index.js`));
-            const transformed = transformIndexStatements(indexStatements, mergedLibMap.size > 0 ? mergedLibMap : undefined);
+            const transformed = transformIndexStatements(
+                indexStatements,
+                mergedLibMap.size > 0 ? mergedLibMap : undefined
+            );
             const indexCode = validateAndFix(transformed, "index");
             if (indexCode !== null) files["index"] = indexCode;
         }

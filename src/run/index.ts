@@ -613,7 +613,15 @@ export default async (cmd: any): Promise<void> => {
                 process.exit(12);
             }
 
-            await processUrl(cmd.url, cmd.output, ".", cmd, false, cmd._includeMethods ?? [], cmd._excludeMethods ?? []);
+            await processUrl(
+                cmd.url,
+                cmd.output,
+                ".",
+                cmd,
+                false,
+                cmd._includeMethods ?? [],
+                cmd._excludeMethods ?? []
+            );
         } else {
             // since this is a file, we need to first load the URLs in the memory remove empty strings
             const urls = fs
@@ -651,7 +659,15 @@ export default async (cmd: any): Promise<void> => {
                 }
 
                 fs.mkdirSync(thisTargetDir, { recursive: true });
-                await processUrl(url, thisTargetDir, thisTargetDir, cmd, true, cmd._includeMethods ?? [], cmd._excludeMethods ?? []);
+                await processUrl(
+                    url,
+                    thisTargetDir,
+                    thisTargetDir,
+                    cmd,
+                    true,
+                    cmd._includeMethods ?? [],
+                    cmd._excludeMethods ?? []
+                );
             }
         }
     } finally {

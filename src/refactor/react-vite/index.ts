@@ -180,17 +180,13 @@ function rewriteViteLibraryCalls(
         usedExports.get(src)!.add(name);
     };
 
-    const resolveViteProp = (
-        varName: string,
-        prop: string
-    ): { canonical: string; libType: LibraryType } | null => {
+    const resolveViteProp = (varName: string, prop: string): { canonical: string; libType: LibraryType } | null => {
         const info = varToLib.get(varName);
         if (!info || info.libType === "unknown") return null;
 
         const isCanonical = (name: string): boolean => {
             if (info.libType === "react") return REACT_CANONICAL.has(name);
-            if (info.libType === "react-jsx-runtime")
-                return JSX_RUNTIME_CANONICAL.has(name) || name === "Fragment";
+            if (info.libType === "react-jsx-runtime") return JSX_RUNTIME_CANONICAL.has(name) || name === "Fragment";
             if (info.libType === "react-dom-client") return REACT_DOM_CLIENT_CANONICAL.has(name);
             if (info.libType === "react-router-dom") return REACT_ROUTER_DOM_CANONICAL.has(name);
             return false;
@@ -272,9 +268,7 @@ function removeViteMapDeps(statements: t.Statement[]): t.Statement[] {
     return statements.filter((stmt) => {
         if (!t.isVariableDeclaration(stmt)) return true;
         return !stmt.declarations.some(
-            (d) =>
-                t.isIdentifier(d.id) &&
-                (d.id as t.Identifier).name === "__vite__mapDeps"
+            (d) => t.isIdentifier(d.id) && (d.id as t.Identifier).name === "__vite__mapDeps"
         );
     });
 }
@@ -289,18 +283,14 @@ function removeModulepreloadIIFE(statements: t.Statement[]): t.Statement[] {
         const expr = stmt.expression;
         if (!t.isCallExpression(expr)) return true;
         const callee = expr.callee;
-        if (
-            !t.isFunctionExpression(callee) &&
-            !t.isArrowFunctionExpression(callee)
-        )
-            return true;
+        if (!t.isFunctionExpression(callee) && !t.isArrowFunctionExpression(callee)) return true;
         // Detect modulepreload setup by looking for `relList` or `modulepreload` in body
         try {
             const bodyCode = generate(callee).code;
             if (
                 bodyCode.includes("relList") ||
                 bodyCode.includes("modulepreload") ||
-                bodyCode.includes("createElement") && bodyCode.includes("link")
+                (bodyCode.includes("createElement") && bodyCode.includes("link"))
             ) {
                 return false;
             }
@@ -339,9 +329,7 @@ function simplifyViteMapDepsImports(statements: t.Statement[]): void {
             if (!t.isImport(innerBody.callee)) return;
             // We found: lazy(() => wrapper(() => import('./X.js'), __vite__mapDeps(...)))
             // Simplify to: lazy(() => import('./X.js'))
-            p.node.arguments = [
-                t.arrowFunctionExpression([], innerBody),
-            ];
+            p.node.arguments = [t.arrowFunctionExpression([], innerBody)];
         },
     });
 }
@@ -448,15 +436,11 @@ function applyRenames(statements: t.Statement[], renames: Map<string, string>): 
 // Build new library import declarations from usedExports
 // ---------------------------------------------------------------------------
 
-function buildLibImportStatements(
-    usedExports: Map<string, Set<string>>
-): t.ImportDeclaration[] {
+function buildLibImportStatements(usedExports: Map<string, Set<string>>): t.ImportDeclaration[] {
     const decls: t.ImportDeclaration[] = [];
     for (const [libPath, names] of usedExports) {
         if (names.size === 0) continue;
-        const specifiers = Array.from(names).map((name) =>
-            t.importSpecifier(t.identifier(name), t.identifier(name))
-        );
+        const specifiers = Array.from(names).map((name) => t.importSpecifier(t.identifier(name), t.identifier(name)));
         decls.push(t.importDeclaration(specifiers, t.stringLiteral(libPath)));
     }
     return decls;
@@ -497,10 +481,7 @@ function collectReferencedNames(stmts: t.Statement[]): Set<string> {
     return names;
 }
 
-function pruneUnusedNamedImports(
-    importStmts: t.Statement[],
-    bodyStmts: t.Statement[]
-): t.Statement[] {
+function pruneUnusedNamedImports(importStmts: t.Statement[], bodyStmts: t.Statement[]): t.Statement[] {
     const refs = collectReferencedNames(bodyStmts);
     return importStmts
         .map((stmt) => {
@@ -532,10 +513,7 @@ function pruneUnusedNamedImports(
  * @param libSigs - Optional set of library signatures for module stripping (not used for Vite)
  * @returns Record<filename, refactoredCode>
  */
-export default async function refactorVite(
-    chunks: Chunks,
-    _libSigs?: Set<string>
-): Promise<Record<string, string>> {
+export default async function refactorVite(chunks: Chunks, _libSigs?: Set<string>): Promise<Record<string, string>> {
     const result: Record<string, string> = {};
 
     // Step 1: Collect all vendor chunks and detect the rolldown runtime chunk
@@ -604,11 +582,7 @@ export default async function refactorVite(
         const localVarToVendorExport = buildLocalVarToVendorExport(statements, vendorExportMaps);
 
         // Step 3c: Detect interop vars and classify them using vendor export info
-        const { interopVarNames, varToLib } = detectInteropVars(
-            statements,
-            toEsmLocalName,
-            localVarToVendorExport
-        );
+        const { interopVarNames, varToLib } = detectInteropVars(statements, toEsmLocalName, localVarToVendorExport);
 
         // Step 3d: Vite Pass D — rewrite (0, X.prop)(args) → prop(args)
         const usedExports = rewriteViteLibraryCalls(statements, varToLib);
@@ -621,10 +595,7 @@ export default async function refactorVite(
         const cleanedBody = applyModuleCleanupPasses(bodyStatements);
 
         // Step 3g: Apply Pass H (prune unused imports)
-        const prunedLibImports = pruneUnusedNamedImports(
-            libImportDecls as t.Statement[],
-            cleanedBody
-        );
+        const prunedLibImports = pruneUnusedNamedImports(libImportDecls as t.Statement[], cleanedBody);
 
         // Step 3h: Simplify __vite__mapDeps lazy imports
         simplifyViteMapDepsImports(cleanedBody);
@@ -634,9 +605,10 @@ export default async function refactorVite(
 
         // Step 3j: Rewrite direct vendor imports using all vendor export maps
         const vendorImportStmts = statements.filter((s) => t.isImportDeclaration(s));
-        const vendorResult = vendorExportMaps.size > 0
-            ? rewriteVendorImports(vendorImportStmts, vendorExportMaps)
-            : { newStatements: vendorImportStmts, renames: new Map<string, string>() };
+        const vendorResult =
+            vendorExportMaps.size > 0
+                ? rewriteVendorImports(vendorImportStmts, vendorExportMaps)
+                : { newStatements: vendorImportStmts, renames: new Map<string, string>() };
 
         // Remove rolldown-runtime imports from the resulting statement list
         const filteredNonVendorImports = vendorResult.newStatements.filter((s) => {

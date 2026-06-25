@@ -309,7 +309,11 @@ const lazyLoad = async (
                     queue.push(jsFilesFromAST);
                     queue.push(lazyLoadGlobals.getJsUrls());
 
-                    const buildsManifestFiles = shouldRunMethod("nuxt_getBuildsManifest", includeMethods, excludeMethods)
+                    const buildsManifestFiles = shouldRunMethod(
+                        "nuxt_getBuildsManifest",
+                        includeMethods,
+                        excludeMethods
+                    )
                         ? await nuxt_getBuildsManifest(url)
                         : [];
                     queue.push(buildsManifestFiles);

@@ -35,8 +35,7 @@ export const saveListCache = (data: ListCache): void => {
     fs.writeFileSync(getListCachePath(), JSON.stringify(data, null, 2));
 };
 
-export const isListCacheStale = (cache: ListCache): boolean =>
-    Date.now() - cache.generatedAt > ONE_WEEK_MS;
+export const isListCacheStale = (cache: ListCache): boolean => Date.now() - cache.generatedAt > ONE_WEEK_MS;
 
 export const shouldRefreshListCache = (
     cache: ListCache | null,
@@ -50,16 +49,13 @@ export const shouldRefreshListCache = (
 
 // --- Signature file cache ---
 
-const getSignatureCacheRoot = (): string =>
-    path.join(getRefactorConfigDir(), "signature_cache");
+const getSignatureCacheRoot = (): string => path.join(getRefactorConfigDir(), "signature_cache");
 
 // subpath is the relative file path from the HF branch root,
 // e.g. "01-usestate-hook-webpack/lit-decl-loop-cond/collisions.json"
 const getSignatureCacheDir = (branch: string, subpath: string): string => {
     // Strip the trailing "/collisions.json" to get the directory path.
-    const dir = subpath.endsWith("/collisions.json")
-        ? subpath.slice(0, -"/collisions.json".length)
-        : subpath;
+    const dir = subpath.endsWith("/collisions.json") ? subpath.slice(0, -"/collisions.json".length) : subpath;
     return path.join(getSignatureCacheRoot(), branch, dir);
 };
 
@@ -130,8 +126,7 @@ const getDirSizeBytes = (dir: string): number => {
     return total;
 };
 
-export const getCacheDirSizeMb = (): number =>
-    getDirSizeBytes(getSignatureCacheRoot()) / (1024 * 1024);
+export const getCacheDirSizeMb = (): number => getDirSizeBytes(getSignatureCacheRoot()) / (1024 * 1024);
 
 // Deletes oldest cached entries until the cache dir is below 50% of maxSizeMb.
 export const runEvictionIfNeeded = (maxSizeMb: number): void => {

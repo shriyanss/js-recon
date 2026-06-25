@@ -258,16 +258,16 @@ To add a baseline for a new framework (e.g. Next.js, Vue, Svelte):
 
 All 18 `*-webpack` apps in `js-recon-research/react/jsr-refactor/features/` pass the refactor pipeline. Key findings per app:
 
-| #              | Feature                           | Notable pattern                                                                    | Implementation detail                                                                                                                                                       |
-| -------------- | --------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01–11          | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`)                            | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal                                                                   |
-| 08, 12, 17, 18 | Fragment                          | `import { Fragment } from 'react/jsx-runtime'`                                     | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type |
+| #              | Feature                           | Notable pattern                                                                    | Implementation detail                                                                                                                                                                                                                                  |
+| -------------- | --------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 01–11          | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`)                            | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal                                                                                                                                              |
+| 08, 12, 17, 18 | Fragment                          | `import { Fragment } from 'react/jsx-runtime'`                                     | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type                                                                            |
 | 13             | Suspense + lazy                   | Split chunk: `__webpack_require__.e(N).then(...)` converted to `import('./N.js')`  | Pass 4.5 detects the `.e(N).then(.bind(r,N))` shape and replaces it with a real dynamic import; `renameRouteComponents` (run after Pass D) renames the `lazy(...)` declarations to PascalCase names derived from their `<Route path="...">` attributes |
-| 14             | StrictMode                        | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression                                                             |
-| 15             | Profiler                          | `<Profiler id="App" onRender={...}>` recovered as JSX                              | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly              |
-| 16             | createContext                     | Same pattern as 04; two separate context consumers                                 | No special handling needed                                                                                                                                                  |
-| 17             | memo                              | `memo(Component)` wrapper                                                          | `memo` in `REACT_CANONICAL`                                                                                                                                                 |
-| 18             | forwardRef                        | `forwardRef((props, ref) => ...)` wrapper                                          | `forwardRef` in `REACT_CANONICAL`                                                                                                                                           |
+| 14             | StrictMode                        | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression                                                                                                                                        |
+| 15             | Profiler                          | `<Profiler id="App" onRender={...}>` recovered as JSX                              | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly                                                                                         |
+| 16             | createContext                     | Same pattern as 04; two separate context consumers                                 | No special handling needed                                                                                                                                                                                                                             |
+| 17             | memo                              | `memo(Component)` wrapper                                                          | `memo` in `REACT_CANONICAL`                                                                                                                                                                                                                            |
+| 18             | forwardRef                        | `forwardRef((props, ref) => ...)` wrapper                                          | `forwardRef` in `REACT_CANONICAL`                                                                                                                                                                                                                      |
 
 ### Key implementation decisions that arose during multi-app testing
 
@@ -301,9 +301,14 @@ function pathToComponentName(fullPath: string): string {
     if (fullPath === "/" || fullPath === "") return "Home";
     const isIndex = fullPath.endsWith("/index");
     const base = isIndex ? fullPath.slice(0, -"/index".length) : fullPath;
-    const segments = base.replace(/^\//, "").split("/").filter(s => s && !s.startsWith(":"));
+    const segments = base
+        .replace(/^\//, "")
+        .split("/")
+        .filter((s) => s && !s.startsWith(":"));
     if (segments.length === 0) return "Home";
-    const name = segments.map(s => s.charAt(0).toUpperCase() + s.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase())).join("");
+    const name = segments
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase()))
+        .join("");
     return isIndex ? `${name}Dashboard` : name;
 }
 ```
