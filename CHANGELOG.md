@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.4.1-alpha.3 - (unreleased)
+## 1.4.1-alpha.3 - 2026-06-25
 
 ### Added
 
@@ -25,9 +25,13 @@
 
 - `lazyload` (svelte): `svelte_getVersionJson` — probes `/<appDir>/version.json` when SvelteKit is detected. SvelteKit generates this file at build time and serves it for the `updated` store; because it has no `<script src>`, `<link href>`, or `import()` reference anywhere it is invisible to all other discovery steps and must be fetched directly. The `appDir` is derived from the entry-point URLs already discovered (default: `_app`). The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods svelte_getVersionJson`.
 
+- `run` (nuxt): Full 4-step pipeline support for Nuxt.js apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload because `nuxt` was not in the supported-techs allowlist; Nuxt targets now run the same pipeline as Vue.
+
+- `lazyload` (nuxt): `nuxt_getBuildsManifest` — probes `/_nuxt/builds/latest.json` and derives `/_nuxt/builds/meta/<id>.json` from it. Both files are fetched at runtime by the Nuxt client for incremental-deployment support but are never referenced from HTML or JS string literals, making them invisible to all other discovery steps. The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods nuxt_getBuildsManifest`.
+
 ### Changed
 
-- `refactor -t react-webpack`: remote signatures now load from the HuggingFace bucket `shriyanss/cs-mast-s-dataset` (bucket prefix `react/webpack/small`) instead of the old dataset branch `react-small`. The bucket uses a structured prefix layout (`main/`, `react/webpack/small/`, `react/webpack/large/`). The local cache key changes from `react-small/` to `react/webpack/small/`, automatically invalidating any stale cache.
+- `refactor -t react-webpack`: remote signatures now load from the HuggingFace bucket `shriyanss/cs-mast-s-dataset` (bucket prefix `react/webpack/large`) instead of the old dataset branch `react-small`. The bucket uses a structured prefix layout (`main/`, `react/webpack/small/`, `react/webpack/large/`). The local cache key changes from `react-small/` to `react/webpack/large/`, automatically invalidating any stale cache.
 
 ### Fixed
 
