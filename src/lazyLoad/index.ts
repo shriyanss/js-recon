@@ -15,12 +15,14 @@ import { next_buildId_RSC } from "./next_js/next_buildId.js";
 import nuxt_getFromPageSource from "./nuxt_js/nuxt_getFromPageSource.js";
 import nuxt_stringAnalysisJSFiles from "./nuxt_js/nuxt_stringAnalysisJSFiles.js";
 import nuxt_astParse from "./nuxt_js/nuxt_astParse.js";
+import nuxt_getBuildsManifest from "./nuxt_js/nuxt_getBuildsManifest.js";
 
 // Svelte
 import svelte_getFromPageSource from "./svelte/svelte_getFromPageSource.js";
 import svelte_stringAnalysisJSFiles from "./svelte/svelte_stringAnalysisJSFiles.js";
 import svelte_recursivePageCrawl from "./svelte/svelte_recursivePageCrawl.js";
 import svelte_discoverPagesFromJs from "./svelte/svelte_discoverPagesFromJs.js";
+import svelte_getVersionJson from "./svelte/svelte_getVersionJson.js";
 
 // Angular
 import angular_getFromPageSource from "./angular/angular_getFromPageSource.js";
@@ -307,6 +309,15 @@ const lazyLoad = async (
                     queue.push(jsFilesFromAST);
                     queue.push(lazyLoadGlobals.getJsUrls());
 
+                    const buildsManifestFiles = shouldRunMethod(
+                        "nuxt_getBuildsManifest",
+                        includeMethods,
+                        excludeMethods
+                    )
+                        ? await nuxt_getBuildsManifest(url)
+                        : [];
+                    queue.push(buildsManifestFiles);
+
                     await queue.drain();
                     queue.printSummary();
                 } else if (tech.name === "svelte") {
@@ -325,6 +336,24 @@ const lazyLoad = async (
                         ? await svelte_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
+
+                    // probe /<appDir>/version.json — SvelteKit serves this for the `updated` store
+                    // but never references it from HTML or JS, so it is invisible to all other steps
+                    const appDir = (() => {
+                        for (const f of jsFilesFromPageSource) {
+                            try {
+                                const m = new URL(f).pathname.match(/^\/([^/]+)\/immutable\//);
+                                if (m) return m[1];
+                            } catch {}
+                        }
+                        return "_app";
+                    })();
+                    const versionJsonFiles = shouldRunMethod("svelte_getVersionJson", includeMethods, excludeMethods)
+                        ? await svelte_getVersionJson(url, appDir)
+                        : [];
+                    if (versionJsonFiles.length > 0) {
+                        queue.push(versionJsonFiles);
+                    }
 
                     // analyze the strings now
                     let jsFilesFromStringAnalysis: string[] = [];

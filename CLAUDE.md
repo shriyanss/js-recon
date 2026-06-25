@@ -2,6 +2,16 @@
 
 Static analysis tool that maps API endpoints and detects client-side security issues by analyzing Next.js (webpack/turbopack) and Vue.js bundles. Written in TypeScript, compiled to `build/` before running.
 
+## STRICT: Repository hygiene
+
+**Research artifacts must never be committed to this repo.** This is a public tool repository. Its git history must contain only tool source code, tests, docs, and configuration. Never commit:
+
+- Experiment scripts, research notes, or analysis results
+- Files from `js-recon-research/` or any private workspace directory
+- Prompt logs, observation markdown files, or scratch files
+
+Research outputs belong in the private sibling workspace outside this repo. If an experiment script or results file is needed as reference, keep it in the private workspace only.
+
 ## Build & run
 
 ```bash
@@ -81,9 +91,22 @@ npm run start -- <subcommand> [options]
 3. **Analyze** — same rule loading as Next.js; `-r/--rules` is forwarded here too
 4. **Report** — same as Next.js; if `endpoints.json` doesn't exist it is written as `[]` since Vue endpoints extraction isn't implemented yet
 
+### Angular pipeline (4 steps)
+
+1. **Lazyload** — downloads Angular CLI (esbuild) bundles: `main-HASH.js`, lazy route chunks (`chunk-HASH.js`); sets `globalsUtil.getTech()` to `"angular"`
+2. **Map** — scans `output/<host>/` for all Angular JS chunks; resolves `HttpClient` calls (`n.get(url)`, `n.post(url, body)`) via the shared HTTP-client resolver and `fetch()` calls via the shared fetch resolver; generates `mapped.json` and `mapped-openapi.json`
+3. **Analyze** — runs all rules whose `tech` array includes `"angular"` (or `"all"`); includes the Angular-specific `detect_angular_bypass_security_trust` rule that fires on `bypassSecurityTrust*` calls
+4. **Report** — same as Vue; `endpoints.json` is written as `[]` if missing since Angular endpoints extraction is not yet implemented
+
 ### Tech detection flow
 
-`lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"` and `"vue"` only get lazyload; the rest of the pipeline is skipped with a warning.
+`lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"`, `"vue"`, `"nuxt"`, `"react"`, `"svelte"`, and `"angular"` only get lazyload; the rest of the pipeline is skipped with a warning.
+
+**SvelteKit `adapter-node` boot pattern**: SvelteKit's Node adapter does not emit `<link rel="modulepreload">` or `<script src="...">` for its entry chunks. Instead it uses an inline `<script>` block: `Promise.all([import("./_app/immutable/entry/start.js"), ...])`. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments (added in v1.4.1-alpha.3). Without those seed URLs the entire downstream pipeline (string analysis, ESM import following, page crawl) produces nothing.
+
+**SvelteKit `adapter-static` (SSG/SPA) boot pattern**: The static builds produce a shell HTML file (`404.html` for SSG, `index.html` for SPA) that contains both `<link rel="modulepreload">` tags for all initial chunks AND the same inline `import()` boot script as adapter-node. `svelte_getFromPageSource` picks up 17+ JS URLs from the modulepreload links plus 2 from the inline script, giving a much larger seed set than the adapter-node case.
+
+**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React emit `m.f = ["/assets/chunk.js", ...]` (root-relative paths). `react_followImports` differentiates by checking `p.startsWith("/")` — absolute paths resolve against the origin (`baseUrl`), relative paths resolve against the chunk's own URL (`fileUrl`). See `src/lazyload/react/CLAUDE.md` for details.
 
 ### Batch mode
 
@@ -113,6 +136,12 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 
 - Declared in `src/index.ts` on both the `lazyload` and `run` commands: `.option("--max-pages <pages>", ..., "200")`
 - Threaded through `lazyLoad()` as `maxPageVisits` and forwarded to `NextJsCrawler` constructor. Default `200` matches the hardcoded cap previously in the crawler; pass `0` to disable. Prevents OOM on event-heavy Next.js sites where the recursive page queue fans out to hundreds of pages.
+
+**Example — `--include-methods` / `--exclude-methods` / `--list-methods` flags:**
+
+- Declared in `src/index.ts` on **both** the `lazyload` and `run` commands as `.option()` (not `requiredOption` — `--list-methods` must exit before the URL is required).
+- `--list-methods` is handled early in **both** action handlers before any network work: prints method names and calls `process.exit(0)`.
+- The method lists are parsed and validated in each action handler; stored on `cmd._includeMethods` / `cmd._excludeMethods` for the `run` action, which then threads them into `processUrl()` and from there into all three `lazyLoad()` calls as the last two positional parameters.
 
 ## Interactive-mode commands
 
@@ -323,7 +352,15 @@ node build/index.js cs-mast -o output --ct --min-collisions 2
 node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
 ```
 
-## refactor `--collisions <file>`
+## refactor
+
+The `refactor` command supports three techs:
+
+- **`react-webpack`** — webpack 5 React bundles. Splits a numeric module map into per-module ES files, rewrites require→import, recovers JSX. See `src/refactor/react/CLAUDE.md`.
+- **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
+- **`next`** — Next.js bundles (legacy).
+
+### refactor `--collisions <file>` (react-webpack only)
 
 `refactor -t react-webpack` accepts a `--collisions <file>` argument that points at a `collisions.json` produced by `cs-mast --all-scat-permutations` over a cross-app baseline. Modules whose body signature is in the baseline set are classified as library code (React / React-DOM / jsx-runtime / scheduler / …) and dropped from the output, leaving only `index.js`.
 

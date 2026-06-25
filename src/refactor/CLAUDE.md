@@ -6,7 +6,12 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 
 ## Files
 
-- `index.ts` — entrypoint. Dispatches by tech (`next`, `react-webpack`).
+- `index.ts` — entrypoint. Dispatches by tech (`next`, `react-webpack`, `react-vite`). Also contains `loadRemoteLibSigs()`, which fetches and intersects `collisions.json` files from the HuggingFace dataset by default.
+- `remote/hf-client.ts` — all HuggingFace bucket interaction isolated in one place. Contains `TECH_TO_BRANCH` mapping, URL builders, `fetchText()`, `listCollisionsFiles()`, `fetchCollisionsJson()`, `validateRemoteBranch()`, `getSampleSize()`, `getTechnology()`.
+- `remote/config.ts` — reads/writes `~/.js-recon/refactor/config.json` (currently only `maxCacheSizeMb`, default 512 MB). Creates the config dir and a default config if missing.
+- `remote/cache.ts` — manages two cache layers: (1) the file list cache (`~/.js-recon/refactor/cs-mast-s-list-cache.json`, refreshed every 7 days or on `--refresh-cache`); (2) per-file signature cache (`~/.js-recon/refactor/signature_cache/<branch>/<subpath>/collisions.json` + `cached_at.txt`). Eviction runs whenever a new file is saved and the cache dir exceeds `maxCacheSizeMb` — oldest entries are deleted until the dir is below 50% of the limit.
+- `react-vite/index.ts` — Vite React refactor implementation. Analyzes vendor chunks (`vendor-react-*.js`) to build library export maps, classifies CJS interop vars (`var x = __toESM(getter(), 1)` or bare `var x = getter()`), rewrites `(0, x.prop)(args)` calls to bare canonical names, rewrites vendor import statements to canonical library imports, then runs shared cleanup passes (E/F/G/H from `react/transform.ts`). After writing output files, runs a Vite build check to validate the refactored JSX compiles correctly.
+- `react-vite/vendor-analyze.ts` — `analyzeVendorChunk(code)` parses a Vite vendor chunk and returns a `Map<exportedName, VendorExportInfo>` classifying each export as React/jsx-runtime/react-dom/react-router-dom.
 - `next/index.ts` — Next.js refactor implementation. Walks the AST, normalizes identifier names where possible, runs Prettier on the output, writes to a sibling directory in `output/`.
 - `react/index.ts` — React refactor implementation. Detects each webpack module function under `var e = { <numericId>: function(module, exports, require) { ... } }` (and 2-param re-export modules `function(module, exports) { module.exports = require(N) }`), rewrites `require(<n>)` to `require("./<n>.js")`, captures exports via `Object.defineProperty(<exports>, ...)`, `<require>.d(<exports>, { ... })`, and `<exports>.<minProp> = <X>.<canonical>` assignments. Classifies modules by content fingerprint (`react` via `<X>.current.<hook>(...)` call shape; `react/jsx-runtime` via exports of both `jsx` and `jsxs`; `react-dom/client` via export of `createRoot`); resolves re-export chains. Rewrites bundled user-code callsites documented in `refactor_observations/00-bundled-shape-shared.md`:
     - `(0, <reactLocal>.<hook>)(args)` → `<hook>(args)` + `import { <hook> } from "react";`
@@ -16,6 +21,8 @@ Optional pass that rewrites minified chunks into a more readable form for human 
     - In addition to the per-module numeric files, all IIFE body statements that are NOT part of the module map (helpers, app component functions, the `ReactDOM.render(…)` entrypoint) are collected, transformed, and written to `index.js`.
     - The webpack require helper function (detected by its `return (moduleMap[id](...), mod.exports)` return shape) is stripped from `index.js`.
     - Top-level `var x = requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; any remaining inline `requireFn(N)` calls inside nested functions are replaced with the imported identifier.
+    - **Pass 4.5**: webpack async chunk loading `requireParam.e(N).then(requireParam.bind(requireParam, N))` is converted to `import('./N.js')` (applied in `transformModule` before stripping the wrapper, only when `requireParam` is known).
+    - **`renameRouteComponents`**: after Pass D resolves `lazy` as a bare identifier, this pass traverses the JSX `<Routes>` tree, accumulates path segments, and renames minified lazy-component variables to descriptive PascalCase names (e.g. `/admin/users` → `AdminUsers`). The Suspense fallback becomes `Loading`, the root App function becomes `App`.
 
 ## Patterns / gotchas
 
@@ -28,14 +35,21 @@ Optional pass that rewrites minified chunks into a more readable form for human 
 ## How to test changes here
 
 ```bash
-npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react-webpack> -o /tmp/refactored
+npx tsc && node build/index.js refactor -m output/<host>/mapped.json -t <next|react-webpack|react-vite> -o /tmp/refactored
 ```
 
-Spot-check the refactored output by hand.
+For `react-vite`, the build check runs automatically after writing files — a passing `[✓] Vite build check passed` line confirms the output compiles. Spot-check individual files by hand for JSX correctness and correct import names.
 
 ## `--collisions <file>` (library module stripping)
 
-The refactor command accepts an optional `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
+Library module stripping now has **two sources** for signatures, checked in priority order:
+
+1. **`--collisions <local-path>`** (explicit override) — unchanged from before; accepts a file, standard directory, or per-feature results directory. See the three cases in `buildLibSigs()`.
+2. **Remote HuggingFace bucket** (default) — when `--collisions` is absent and `--no-remote` is not set, `loadRemoteLibSigs()` in `index.ts` fetches `collisions.json` files from `https://huggingface.co/buckets/shriyanss/cs-mast-s-dataset` on the bucket prefix mapped by `TECH_TO_BRANCH` (e.g. `react-webpack` → `react/webpack/small`). Files are cached locally under `~/.js-recon/refactor/signature_cache/`.
+
+The refactor command also accepts the legacy `--collisions <file>` argument. When provided, it points at a CS-MAST `collisions.json` file produced by `cs-mast --all-scat-permutations` over a cross-app baseline (the `js-recon-research` 18-React-feature experiment). Modules whose body signature is in the baseline set are treated as library code and skipped during refactor.
+
+**`--scat <categories>`** overrides the CS-MAST scat category set used for both the remote signature download (bucket directory name resolution) and the module classifier (`LIB_SIG_SCAT` in `react/index.ts`). The value is a comma-separated list of categories from `ALL_SCAT_CATEGORIES = ["lit","id","op","decl","loop","cond","name","val","op_name"]`. The `scatToDir()` helper in `index.ts` maps the user-supplied list to the canonical bucket directory name by filtering `ALL_SCAT_CATEGORIES` in order (so `--scat cond,lit` → `"lit-cond"`, matching jsr-cs-mast-s-gen's naming convention).
 
 **Pipeline in this directory:**
 

@@ -44,7 +44,11 @@ All passes iterate only over **top-level** `body.body` statements to avoid placi
 
 4. **Pass 4** — Remaining inline `<requireParam>(N)` calls replaced with the hoisted identifier (or a synthesized `_jsr_module_N` if not yet seen)
 
-5. **Step 5** — Strip the outer function wrapper: prepend `import *` statements, return `[...importStmts, ...body.body]`
+5. **Pass 4.5** — Convert webpack async chunk-loading expressions to true dynamic imports:
+   `<requireParam>.e(N).then(<requireParam>.bind(<requireParam>, N))` → `import('./N.js')`
+   Only runs when `requireParam` is known. Detects the exact three-part shape (`.e(N)` call on `requireParam`, `.then(...)` call, `.bind(requireParam, N)` as the sole `.then` argument) and replaces the whole expression with a real `import()` call. Uses `t.callExpression(t.import(), [t.stringLiteral('./N.js')])`.
+
+6. **Step 5** — Strip the outer function wrapper: prepend `import *` statements, return `[...importStmts, ...body.body]`
 
 ## Validator (in `validator.ts`)
 
@@ -254,16 +258,16 @@ To add a baseline for a new framework (e.g. Next.js, Vue, Svelte):
 
 All 18 `*-webpack` apps in `js-recon-research/react/jsr-refactor/features/` pass the refactor pipeline. Key findings per app:
 
-| #              | Feature                           | Notable pattern                                                                    | Implementation detail                                                                                                                                                       |
-| -------------- | --------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01–11          | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`)                            | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal                                                                   |
-| 08, 12, 17, 18 | Fragment                          | `import { Fragment } from 'react/jsx-runtime'`                                     | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type |
-| 13             | Suspense + lazy                   | Split chunk: `__webpack_require__.e(chunkId).then(...)` retained intact            | No mapping from webpack runtime chunk ID back to source path — expression is left as-is; does not prevent completion                                                        |
-| 14             | StrictMode                        | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression                                                             |
-| 15             | Profiler                          | `<Profiler id="App" onRender={...}>` recovered as JSX                              | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly              |
-| 16             | createContext                     | Same pattern as 04; two separate context consumers                                 | No special handling needed                                                                                                                                                  |
-| 17             | memo                              | `memo(Component)` wrapper                                                          | `memo` in `REACT_CANONICAL`                                                                                                                                                 |
-| 18             | forwardRef                        | `forwardRef((props, ref) => ...)` wrapper                                          | `forwardRef` in `REACT_CANONICAL`                                                                                                                                           |
+| #              | Feature                           | Notable pattern                                                                    | Implementation detail                                                                                                                                                                                                                                  |
+| -------------- | --------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 01–11          | Hooks (useState…useDeferredValue) | Array-destructure collapse (`const [a, b] = hook(...)`)                            | Pass E `collapseSlicedToArrayDeep` detects `TypeError("Invalid attempt to destructure...")` as the signal                                                                                                                                              |
+| 08, 12, 17, 18 | Fragment                          | `import { Fragment } from 'react/jsx-runtime'`                                     | `Fragment` excluded from `JSX_RUNTIME_CANONICAL` (would misclassify React module); accepted explicitly in `resolveLibraryProp`'s `isCanonical` for `react-jsx-runtime` type                                                                            |
+| 13             | Suspense + lazy                   | Split chunk: `__webpack_require__.e(N).then(...)` converted to `import('./N.js')`  | Pass 4.5 detects the `.e(N).then(.bind(r,N))` shape and replaces it with a real dynamic import; `renameRouteComponents` (run after Pass D) renames the `lazy(...)` declarations to PascalCase names derived from their `<Route path="...">` attributes |
+| 14             | StrictMode                        | jsx-runtime module exports `jsx` as inline function: `n.jsx = function(...) {...}` | `scanExportMap` fallback: `map.set(minName, minName)` for any RHS that is not an Identifier or MemberExpression                                                                                                                                        |
+| 15             | Profiler                          | `<Profiler id="App" onRender={...}>` recovered as JSX                              | `"Profiler"` in `REACT_CANONICAL`; `childToJsxChild` recursively calls `tryConvertToJSX` so nested `jsx(...)` calls inside Profiler children convert correctly                                                                                         |
+| 16             | createContext                     | Same pattern as 04; two separate context consumers                                 | No special handling needed                                                                                                                                                                                                                             |
+| 17             | memo                              | `memo(Component)` wrapper                                                          | `memo` in `REACT_CANONICAL`                                                                                                                                                                                                                            |
+| 18             | forwardRef                        | `forwardRef((props, ref) => ...)` wrapper                                          | `forwardRef` in `REACT_CANONICAL`                                                                                                                                                                                                                      |
 
 ### Key implementation decisions that arose during multi-app testing
 
@@ -272,6 +276,44 @@ All 18 `*-webpack` apps in `js-recon-research/react/jsr-refactor/features/` pass
 - **`p.skip()` removed from `rewriteLibraryCalls` CallExpression handler** — Arguments of rewritten calls may themselves be `(0, X.Y)(...)` or `X.Y` member references. Skipping after rewriting the callee prevents those nested sites from being rewritten. Removing `skip()` allows the traversal to descend into arguments.
 
 - **`handledSpecs` dedup scope** — The dedup guard for emitting import declarations must not gate the `hoistedImports.delete(...)` call. If two local vars map to the same library source string, the second var's namespace import would remain after stripping. The delete must happen for every var regardless of whether the import declaration was already emitted.
+
+## `renameRouteComponents` (in `transform.ts`)
+
+After Pass D (`applyLibraryImportRewriting`) resolves `lazy` as a bare identifier, `renameRouteComponents` runs on the resulting `index.js` statements to give descriptive names to minified lazy-component variables.
+
+### Steps
+
+1. **Find lazy declarations** — scan for `VariableDeclarator`s whose init is `lazy(() => import('./N.js'))`. `lazy` must be a bare `Identifier` (not a namespace member), and the arrow body must be a `CallExpression` with `t.isImport(callee)`. Records `numericId → bindingName`.
+2. **Traverse `<Route>` JSX** — uses an `enter`/`exit` visitor stack to accumulate nested path segments. For nested routes, the full path is built by joining parent segments + child `path` attribute.
+3. **Generate semantic names** — `pathToComponentName(fullPath)` converts a URL path to PascalCase: `/admin/users` → `AdminUsers`, `/admin/index` → `AdminDashboard` (the `index` suffix becomes `Dashboard` to reflect the index-route role).
+4. **Find the App component** — the function containing a `<Routes>` JSX element.
+5. **Find the Loading component** — the identifier in the Suspense `fallback` attribute.
+6. **Rename** — uses `scope.rename(oldName, newName)` for ES bindings, then falls back to an explicit `JSXIdentifier` traversal for JSX tag names that `scope.rename` misses.
+
+### Ordering constraint
+
+`renameRouteComponents` must run **after** `applyLibraryImportRewriting` (Pass D). At that point `lazy` is a bare identifier resolved from the React library map. Before Pass D it is still a namespace member expression like `(0, r.lazy)(...)` and the `lazy` detection step returns nothing.
+
+### `pathToComponentName` helper
+
+```typescript
+function pathToComponentName(fullPath: string): string {
+    if (fullPath === "/" || fullPath === "") return "Home";
+    const isIndex = fullPath.endsWith("/index");
+    const base = isIndex ? fullPath.slice(0, -"/index".length) : fullPath;
+    const segments = base
+        .replace(/^\//, "")
+        .split("/")
+        .filter((s) => s && !s.startsWith(":"));
+    if (segments.length === 0) return "Home";
+    const name = segments
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase()))
+        .join("");
+    return isIndex ? `${name}Dashboard` : name;
+}
+```
+
+Dynamic segments (`:id`, `:slug`) are filtered out so `/post/:id` → `Post` (not `PostId`).
 
 ## Gotchas
 

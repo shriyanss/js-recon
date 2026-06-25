@@ -36,14 +36,20 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
     }
 
     // Vite __vite_mapDeps initialiser: m.f=["assets/chunk1.js","assets/chunk2.js",...]
+    // SvelteKit uses relative paths ("../nodes/0.js") while Vue/React use root-relative
+    // ("/assets/chunk.js"). Resolve with fileUrl as base so both work correctly.
     const mapDepsMatch = content.match(/m\.f\s*=\s*(\[[^\]]+\])/);
     if (mapDepsMatch) {
         try {
             const arr: string[] = JSON.parse(mapDepsMatch[1]);
             for (const p of arr) {
                 try {
-                    // Vite asset paths are relative to the origin root
-                    const resolved = new URL(p.startsWith("/") ? p : "/" + p, baseUrl).href;
+                    // Absolute paths (starting with /) → resolve against origin root.
+                    // Relative paths (./.. prefix, or bare names) → resolve against the
+                    // file that contains the mapDeps table, so "../nodes/0.js" in
+                    // _app/immutable/entry/app.js correctly becomes
+                    // _app/immutable/nodes/0.js rather than /nodes/0.js.
+                    const resolved = p.startsWith("/") ? new URL(p, baseUrl).href : new URL(p, fileUrl).href;
                     found.push(resolved);
                 } catch {
                     /* skip */

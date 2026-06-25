@@ -28,6 +28,8 @@ For detailed installation and setup process, please refer to the [Installation p
 
 The features in JS Recon tool are built after thorough research on apps running different frameworks.
 
+Full pipeline support (lazyload → map → analyze → report) is available for: **Next.js**, **Vue.js**, **Nuxt.js**, **React**, **Svelte/Astro**, and **Angular** (v17+ / esbuild).
+
 Please refer to the [Framework Support](https://js-recon.io/docs/docs/framework-support) page for detailed information on feature compatibility across different frameworks.
 
 ## Quick Start

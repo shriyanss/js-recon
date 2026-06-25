@@ -1,5 +1,46 @@
 # Change Log
 
+## 1.4.1-alpha.3 - 2026-06-25
+
+### Added
+
+- `run`: `--include-methods`, `--exclude-methods`, and `--list-methods` flags are now available on the `run` command, mirroring the same flags on `lazyload`. All three lazyload passes inside the `run` pipeline (initial, subsequent-requests, and re-pass) honour the method filter. `--list-methods [framework]` prints available method names and exits before any network work, so it can be used without a `-u` target URL.
+
+- `run` (angular): Full 4-step pipeline support for Angular apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload with a warning; Angular targets now get the same depth of analysis as React and Vue. The map step resolves Angular `HttpClient` calls (`n.get(url)`, `n.post(url, body)`, etc.) via the shared HTTP-client resolver and native `fetch()` calls via the shared fetch resolver; the analyze step runs all rules whose `tech` array includes `"angular"` (or `"all"`); the report step generates the HTML/SQLite report as for other frameworks.
+
+- `map`: Angular support via new `angular_js/` module. `getAngularConnections` reads Angular CLI (esbuild) chunks from the download directory and emits one chunk per JS file. Polyfill bundles (`polyfills-*.js`) are excluded (vendor code only). Registered as a new tech option (`-t angular`) alongside `next`, `vue`, `react`, and `svelte`.
+
+- `analyze`: Angular added as a valid `tech` value in rule YAML and the Zod schema. Rules whose `tech` array lists `angular` (or `all`) now run when `--tech angular` is set (or when `run` detects Angular automatically).
+
+- `rules` (angular): New rule `detect_angular_bypass_security_trust` detects calls to `bypassSecurityTrustHtml`, `bypassSecurityTrustScript`, `bypassSecurityTrustStyle`, `bypassSecurityTrustUrl`, and `bypassSecurityTrustResourceUrl` — Angular's DomSanitizer bypass methods that disable built-in XSS protection. Severity: high. Added `angular` to the `tech` array of all 17 existing AST rules that previously covered only `next`, `vue`, `react`, and `svelte`.
+
+- `refactor -t react-vite`: new Vite (rolldown) React refactor mode. Takes a `mapped.json` whose chunks are Vite-produced ESM files and outputs one `.jsx` file per app chunk with library boilerplate removed and readable source recovered:
+    - Analyzes all vendor chunks (`vendor-react-*.js`) to classify every export as `react`, `react/jsx-runtime`, `react-dom/client`, or `react-router-dom`
+    - Detects CJS interop vars — both `__toESM(getter(), 1)` and bare `getter()` forms — and rewrites `(0, x.prop)(args)` calls to bare canonical names (`useState(args)`, `jsx(...)`, etc.)
+    - Rewrites the vendor import statement to direct canonical library imports (`import { useState, useEffect } from 'react'`, etc.)
+    - Reuses shared cleanup passes from the webpack refactor: `slicedToArray` collapse, JSX recovery (handles rolldown's template literal tag names `` `div` ``), Babel helper removal, unused-import pruning
+    - Runs a Vite build check after writing output: scaffolds a minimal Vite project in the output directory, renames `.js` → `.jsx`, rewrites relative dynamic imports, installs dependencies, and runs `vite build` to confirm the refactored code compiles
+
+- `refactor -t react-webpack`: new `--scat <categories>` flag overrides the CS-MAST scat category set used for both the remote signature download and the module classifier. Accepts a comma-separated list of categories from `lit,id,op,decl,loop,cond,name,val,op_name` (e.g. `--scat lit,decl,cond`). The flag correctly maps to bucket directory names following the canonical `ALL_SCAT_CATEGORIES` ordering (the same ordering used by `jsr-cs-mast-s-gen`), so `--scat lit,cond,decl` and `--scat decl,lit,cond` both resolve to the `lit-decl-cond` bucket directory.
+
+- `lazyload` (svelte): `svelte_getVersionJson` — probes `/<appDir>/version.json` when SvelteKit is detected. SvelteKit generates this file at build time and serves it for the `updated` store; because it has no `<script src>`, `<link href>`, or `import()` reference anywhere it is invisible to all other discovery steps and must be fetched directly. The `appDir` is derived from the entry-point URLs already discovered (default: `_app`). The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods svelte_getVersionJson`.
+
+- `run` (nuxt): Full 4-step pipeline support for Nuxt.js apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload because `nuxt` was not in the supported-techs allowlist; Nuxt targets now run the same pipeline as Vue.
+
+- `lazyload` (nuxt): `nuxt_getBuildsManifest` — probes `/_nuxt/builds/latest.json` and derives `/_nuxt/builds/meta/<id>.json` from it. Both files are fetched at runtime by the Nuxt client for incremental-deployment support but are never referenced from HTML or JS string literals, making them invisible to all other discovery steps. The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods nuxt_getBuildsManifest`.
+
+### Changed
+
+- `refactor -t react-webpack`: remote signatures now load from the HuggingFace bucket `shriyanss/cs-mast-s-dataset` (bucket prefix `react/webpack/large`) instead of the old dataset branch `react-small`. The bucket uses a structured prefix layout (`main/`, `react/webpack/small/`, `react/webpack/large/`). The local cache key changes from `react-small/` to `react/webpack/large/`, automatically invalidating any stale cache.
+
+### Fixed
+
+- `refactor -t react-webpack`: lazy-loaded components are now converted to true dynamic `import()` calls (Pass 4.5). Previously, webpack's async chunk-loading expression `__webpack_require__.e(N).then(__webpack_require__.bind(__webpack_require__, N))` was emitted as-is with `__webpack_require__` undefined in the output, causing a runtime `ReferenceError`. Pass 4.5 detects this pattern by matching the `.e(N)` / `.bind(requireParam, N)` shape and replaces it with `import('./N.js')`, producing a valid dynamic import that works in any ES module environment.
+- `refactor -t react-webpack`: minified route-component variable names are now renamed to descriptive names derived from their `<Route path="…">` attributes. `renameRouteComponents` traverses the JSX `<Routes>` tree, accumulates path segments, generates a PascalCase component name per route (e.g. `/admin/users` → `AdminUsers`, `/admin/index` → `AdminDashboard`), and renames the corresponding `lazy(() => import('./N.js'))` declarations via `scope.rename`. The Suspense fallback component is renamed `Loading`. The App component function is renamed `App`.
+
+- `lazyload` (svelte): `svelte_getFromPageSource` now extracts JS entry-point paths from inline `<script>` bodies by matching `import("...")` call arguments. SvelteKit `adapter-node` boots the client via `Promise.all([import("./_app/immutable/entry/start.js"), ...])` with no `src` attribute, which the previous HTML-attribute-only parser missed entirely, causing 0 JS files to be downloaded. The fix seeds the entry-point URLs so the downstream ESM import-following loop (`react_followImports`) can traverse the full chunk graph.
+- `lazyload` (react): `react_followImports` `__vite_mapDeps` handler now correctly resolves SvelteKit's file-relative chunk paths (`"../nodes/0.js"`) in addition to Vue/React's root-relative paths (`"/assets/chunk.js"`). Previously all non-absolute paths had `/` prepended before URL resolution, causing `"../nodes/0.js"` to become `"/../nodes/0.js"` which the URL constructor normalized to `"/nodes/0.js"` — a wrong origin-root path that produced 404 responses. The fix resolves paths starting with `/` against `baseUrl` (origin root) and all other paths against `fileUrl` (the chunk containing the mapDeps table). This eliminates 32 spurious "Failed to write file" errors per SvelteKit run; the correct 34 chunk files were still downloaded via `svelte_stringAnalysisJSFiles`, so analysis results were unaffected.
+
 ## 1.4.1-alpha.2 - 2026-06-20
 
 ### Fixed

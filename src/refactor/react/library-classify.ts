@@ -1,7 +1,17 @@
 import * as t from "@babel/types";
+import _generator from "@babel/generator";
 import { ModuleEntry } from "./transform.js";
 
-export type LibraryType = "react" | "react-dom-client" | "react-jsx-runtime" | "unknown";
+const generate = (_generator as unknown as { default: typeof _generator }).default ?? _generator;
+
+export type LibraryType =
+    | "react"
+    | "react-dom-client"
+    | "react-jsx-runtime"
+    | "react-router-dom"
+    | "style-loader"
+    | "css-module"
+    | "unknown";
 
 export interface LibraryModuleInfo {
     type: LibraryType;
@@ -54,10 +64,48 @@ export const REACT_CANONICAL = new Set([
 export const JSX_RUNTIME_CANONICAL = new Set(["jsx", "jsxs", "jsxDEV"]);
 export const REACT_DOM_CLIENT_CANONICAL = new Set(["createRoot", "hydrateRoot"]);
 
+// Ordered: hooks first (most specific detection via string patterns), then child
+// components (Route before Routes to avoid ambiguity in error messages), then
+// wrapper/parent components.
+export const REACT_ROUTER_DOM_CANONICAL = new Set([
+    // Hooks — detected by backtick-quoted name or call pattern in error strings
+    "useNavigate",
+    "useLocation",
+    "useSearchParams",
+    "useParams",
+    "useMatch",
+    "useMatches",
+    "useRoutes",
+    "useOutlet",
+    "useOutletContext",
+    "useNavigationType",
+    "useResolvedPath",
+    "useHref",
+    "useLinkClickHandler",
+    "useInRouterContext",
+    "useBlocker",
+    "useBeforeUnload",
+    // Child/inner components — Route before Routes to match <Route> first in error messages
+    "Route",
+    "Link",
+    "NavLink",
+    "Navigate",
+    "Outlet",
+    // Wrapper/parent components
+    "Routes",
+    "BrowserRouter",
+    "HashRouter",
+    "MemoryRouter",
+    "RouterProvider",
+]);
+
 const LIBRARY_SOURCE: Record<LibraryType, string> = {
     react: "react",
     "react-dom-client": "react-dom/client",
     "react-jsx-runtime": "react/jsx-runtime",
+    "react-router-dom": "react-router-dom",
+    "style-loader": "",
+    "css-module": "",
     unknown: "",
 };
 
@@ -95,6 +143,165 @@ function scanExportMap(mod: ModuleEntry): Map<string, string> {
     return map;
 }
 
+/** Reads `requireParam.d(exportsParam, {key: () => localVar})` webpack ESM registration patterns. */
+function scanNdExportKeys(mod: ModuleEntry): Map<string, string> {
+    const map = new Map<string, string>(); // exportedKey → localVarName
+    const { exportsParam, requireParam } = mod;
+    if (!exportsParam || !requireParam) return map;
+    const body = (mod.fnPath.node as { body?: t.Node }).body;
+    if (!body || !t.isBlockStatement(body)) return map;
+
+    for (const stmt of (body as t.BlockStatement).body) {
+        if (!t.isExpressionStatement(stmt)) continue;
+        const exprs = t.isSequenceExpression(stmt.expression)
+            ? (stmt.expression.expressions as t.Expression[])
+            : [stmt.expression];
+        for (const expr of exprs) {
+            if (!t.isCallExpression(expr)) continue;
+            const callee = expr.callee;
+            if (!t.isMemberExpression(callee) || callee.computed) continue;
+            if (!t.isIdentifier(callee.object, { name: requireParam })) continue;
+            if (!t.isIdentifier(callee.property, { name: "d" })) continue;
+            if (expr.arguments.length < 2) continue;
+            if (!t.isIdentifier(expr.arguments[0], { name: exportsParam })) continue;
+            const objArg = expr.arguments[1];
+            if (!t.isObjectExpression(objArg)) continue;
+            for (const prop of (objArg as t.ObjectExpression).properties) {
+                if (!t.isObjectProperty(prop) || prop.computed) continue;
+                const key = t.isIdentifier(prop.key)
+                    ? (prop.key as t.Identifier).name
+                    : t.isStringLiteral(prop.key)
+                      ? prop.key.value
+                      : null;
+                if (!key) continue;
+                const val = prop.value as t.Expression;
+                // Arrow: () => localVar
+                if (t.isArrowFunctionExpression(val) && t.isIdentifier(val.body)) {
+                    map.set(key, (val.body as t.Identifier).name);
+                }
+            }
+        }
+    }
+    return map;
+}
+
+/** Reads `localVar.displayName = "CanonicalName"` patterns in the module body. */
+function scanDisplayNames(mod: ModuleEntry): Map<string, string> {
+    const map = new Map<string, string>(); // localVarName → displayName
+    const body = (mod.fnPath.node as { body?: t.Node }).body;
+    if (!body || !t.isBlockStatement(body)) return map;
+
+    for (const stmt of (body as t.BlockStatement).body) {
+        if (!t.isExpressionStatement(stmt)) continue;
+        const exprs = t.isSequenceExpression(stmt.expression)
+            ? (stmt.expression.expressions as t.Expression[])
+            : [stmt.expression];
+        for (const expr of exprs) {
+            if (!t.isAssignmentExpression(expr) || expr.operator !== "=") continue;
+            const lhs = expr.left;
+            if (!t.isMemberExpression(lhs) || lhs.computed) continue;
+            if (!t.isIdentifier(lhs.property, { name: "displayName" })) continue;
+            if (!t.isIdentifier(lhs.object)) continue;
+            const rhs = expr.right;
+            if (!t.isStringLiteral(rhs)) continue;
+            map.set((lhs.object as t.Identifier).name, rhs.value);
+        }
+    }
+    return map;
+}
+
+/**
+ * Extracts the most specific canonical name hint from generated body code.
+ *
+ * Priority order (descending confidence):
+ *   1. Backtick-quoted: `canonical` in string literal (e.g. "cannot use `useSearchParams`")
+ *   2. Call-site mention: canonical( in code (e.g. "useLocation() may be used")
+ *   3. JSX element mention: <canonical> in string (e.g. "A <Route> is only ever")
+ *   4. Outlet — .outlet property access is unique to the Outlet component
+ *   5. useParams — ?.params return from route matches is unique to useParams
+ *   6. BrowserRouter — basename: as destructuring prop key is unique to BrowserRouter
+ */
+function extractCanonicalFromCode(bodyCode: string, canonicalSet: Set<string>): string | null {
+    // Priority 1: backtick-quoted form inside error strings
+    for (const canonical of canonicalSet) {
+        if (bodyCode.includes("`" + canonical + "`")) return canonical;
+    }
+    // Priority 2: call-site mention (e.g. "useLocation() may be used only in...")
+    for (const canonical of canonicalSet) {
+        if (bodyCode.includes(canonical + "(")) return canonical;
+    }
+    // Priority 3: JSX element mention (e.g. "A <Route> is only ever to be used as child of <Routes>")
+    // Route is in the set before Routes so <Route> matches first, avoiding ambiguity.
+    for (const canonical of canonicalSet) {
+        if (bodyCode.includes("<" + canonical + ">")) return canonical;
+    }
+    // Priority 4: Outlet — the .outlet property of the router context is unique
+    if (canonicalSet.has("Outlet") && bodyCode.includes(".outlet")) return "Outlet";
+    // Priority 5: useParams — returns ?.params from the deepest route match
+    if (canonicalSet.has("useParams") && bodyCode.includes("?.params")) return "useParams";
+    // Priority 6: BrowserRouter — basename as a destructuring prop key
+    if (canonicalSet.has("BrowserRouter") && bodyCode.includes("basename:")) return "BrowserRouter";
+    // Priority 7: Routes — the only react-router-dom component whose props destructure
+    // both `children` and `location`. Destructuring keys survive minification.
+    if (canonicalSet.has("Routes") && bodyCode.includes("children:") && bodyCode.includes("location:")) return "Routes";
+    return null;
+}
+
+/**
+ * Builds an {exportedKey → canonicalName} map for modules that use the webpack ESM
+ * registration format `requireParam.d(exportsParam, {key: ()=>localVar})`.
+ * Combines displayName assignments and body-code scanning to recover canonical names.
+ */
+function buildNdCanonicalMap(mod: ModuleEntry, canonicalSet: Set<string>): Map<string, string> {
+    const result = new Map<string, string>();
+
+    const keyToLocal = scanNdExportKeys(mod);
+    if (keyToLocal.size === 0) return result;
+
+    const displayNames = scanDisplayNames(mod);
+
+    // Build localVar → declaration node map from the module body
+    const body = (mod.fnPath.node as { body?: t.Node }).body;
+    if (!body || !t.isBlockStatement(body)) return result;
+
+    const localToNode = new Map<string, t.Node>();
+    for (const stmt of (body as t.BlockStatement).body) {
+        if (t.isFunctionDeclaration(stmt) && stmt.id) {
+            localToNode.set(stmt.id.name, stmt);
+        }
+        if (t.isVariableDeclaration(stmt)) {
+            for (const decl of stmt.declarations) {
+                if (t.isIdentifier(decl.id) && decl.init) {
+                    localToNode.set((decl.id as t.Identifier).name, decl.init);
+                }
+            }
+        }
+    }
+
+    for (const [exportKey, localVar] of keyToLocal) {
+        // displayName is the highest-confidence signal (e.g. Link.displayName = "Link")
+        const fromDisplay = displayNames.get(localVar);
+        if (fromDisplay && canonicalSet.has(fromDisplay)) {
+            result.set(exportKey, fromDisplay);
+            continue;
+        }
+
+        // Scan the function/variable body code for canonical name hints
+        const node = localToNode.get(localVar);
+        if (node) {
+            try {
+                const code = generate(node).code;
+                const canonical = extractCanonicalFromCode(code, canonicalSet);
+                if (canonical) result.set(exportKey, canonical);
+            } catch {
+                // generation failed — skip
+            }
+        }
+    }
+
+    return result;
+}
+
 export function classifyLibraryModule(mod: ModuleEntry): LibraryModuleInfo {
     const exportMap = scanExportMap(mod);
     // Check both keys (prop names as exported, e.g. "jsx") AND values (canonical from RHS, e.g. "createRoot").
@@ -108,6 +315,18 @@ export function classifyLibraryModule(mod: ModuleEntry): LibraryModuleInfo {
         return { type: "react-jsx-runtime", exportMap };
     if (keys.some((k) => REACT_CANONICAL.has(k)) || vals.some((v) => REACT_CANONICAL.has(v)))
         return { type: "react", exportMap };
+
+    // Try the webpack ESM registration format (n.d) with canonical name recovery.
+    // Used by vendor chunks like react-router-dom that register exports via
+    // requireParam.d(exportsParam, {key: () => localVar}) instead of exportsParam.key = val.
+    const ndMap = buildNdCanonicalMap(mod, REACT_ROUTER_DOM_CANONICAL);
+    if (ndMap.size > 0) {
+        const ndVals = [...ndMap.values()];
+        if (ndVals.some((v) => REACT_ROUTER_DOM_CANONICAL.has(v))) {
+            return { type: "react-router-dom", exportMap: ndMap };
+        }
+    }
+
     return { type: "unknown", exportMap };
 }
 
@@ -122,7 +341,12 @@ export function getReexportTarget(mod: ModuleEntry): number | null {
     if (stmts.length !== 1) return null;
     const stmt = stmts[0];
     if (!t.isExpressionStatement(stmt)) return null;
-    const expr = stmt.expression;
+    let expr = stmt.expression;
+    // Handle SequenceExpression wrapping: `(DCE_check, e.exports = t(N))` — take last element.
+    if (t.isSequenceExpression(expr)) {
+        const exprs = (expr as t.SequenceExpression).expressions;
+        expr = exprs[exprs.length - 1] as t.Expression;
+    }
     if (!t.isAssignmentExpression(expr) || expr.operator !== "=") return null;
     const lhs = expr.left;
     if (!t.isMemberExpression(lhs) || lhs.computed) return null;
