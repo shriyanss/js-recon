@@ -6,7 +6,8 @@ export const HF_BUCKET = "shriyanss/cs-mast-s-dataset";
 
 // Maps refactor tech identifier to the HuggingFace bucket path prefix that holds its signatures.
 export const TECH_TO_BRANCH: Record<string, string> = {
-    "react-webpack": "react/webpack/small",
+    "react-webpack": "react/webpack/large",
+    "react-vite": "react/vite/large",
 };
 
 export type CollisionRecord = {

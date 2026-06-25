@@ -757,6 +757,15 @@ function collapseSlicedToArrayDeep(statements: t.Statement[]): t.Statement[] {
 
 function exprToJsxName(expr: t.Expression): t.JSXIdentifier | t.JSXMemberExpression | null {
     if (t.isStringLiteral(expr)) return t.jsxIdentifier(expr.value);
+    // Handle template literals with no expressions: `div` → "div"
+    if (
+        t.isTemplateLiteral(expr) &&
+        expr.expressions.length === 0 &&
+        expr.quasis.length === 1
+    ) {
+        const raw = expr.quasis[0].value.cooked ?? expr.quasis[0].value.raw;
+        if (raw) return t.jsxIdentifier(raw);
+    }
     if (t.isIdentifier(expr)) return t.jsxIdentifier(expr.name);
     if (t.isMemberExpression(expr) && !expr.computed && t.isIdentifier(expr.property)) {
         const obj = exprToJsxName(expr.object as t.Expression);
@@ -778,6 +787,15 @@ function childToJsxChild(
     child: t.Expression
 ): t.JSXElement | t.JSXFragment | t.JSXText | t.JSXExpressionContainer | t.JSXSpreadChild | null {
     if (t.isStringLiteral(child)) return t.jsxText(child.value);
+    // Template literal with no expressions: `Dashboard` → JSXText
+    if (
+        t.isTemplateLiteral(child) &&
+        child.expressions.length === 0 &&
+        child.quasis.length === 1
+    ) {
+        const raw = child.quasis[0].value.cooked ?? child.quasis[0].value.raw;
+        if (raw !== undefined) return t.jsxText(raw);
+    }
     if (t.isJSXElement(child) || t.isJSXFragment(child)) return child;
     // Recursively convert nested jsx(...) calls into JSX elements.
     if (t.isCallExpression(child)) {

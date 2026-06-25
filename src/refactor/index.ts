@@ -10,6 +10,8 @@ import refactorNext from "./next/index.js";
 // React
 import refactorReact, { RefactorReactResult } from "./react/index.js";
 import type { LibraryModuleInfo } from "./react/library-classify.js";
+// React (Vite)
+import refactorVite from "./react-vite/index.js";
 
 // Remote HuggingFace client + cache
 import { TECH_TO_BRANCH, getHfRawUrl, fetchCollisionsJson, listCollisionsFiles, validateRemoteBranch, getSampleSize, getTechnology, CollisionRecord } from "./remote/hf-client.js";
@@ -59,6 +61,7 @@ function findVendorChunkFiles(chunks: Chunks, assetsDir: string): string[] {
 // ALL_SCAT_CATEGORIES (matching the naming convention used by jsr-cs-mast-s-gen/experiment/csmast.mjs).
 const BASELINE_SCAT_DIR: Record<string, string> = {
     "react-webpack": "lit-decl-loop-cond",
+    "react-vite": "lit-decl-loop-cond",
 };
 
 // Canonical ordering of scat categories (matches ALL_SCAT_CATEGORIES in csmast.mjs).
@@ -288,6 +291,7 @@ const loadRemoteLibSigs = async (
 const availableTechs = {
     next: "Next.js",
     "react-webpack": "React (webpack)",
+    "react-vite": "React (Vite)",
 };
 
 /**
@@ -384,6 +388,104 @@ module.exports = {
         console.log(chalk.green("[✓] Build check passed"));
     } catch {
         console.log(chalk.red("[!] Build check failed — review output above"));
+    }
+}
+
+/**
+ * Scaffolds a minimal Vite project in `outputDir` and runs `npm install` + `npm run build`
+ * as a build check. Uses @vitejs/plugin-react so JSX in .js files is handled.
+ *
+ * The entry file is the first written file that contains `createRoot(`.
+ */
+function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
+    if (writtenFiles.length === 0) return;
+
+    // Rename .js files to .jsx — Vite's import analysis can't parse JSX in .js files,
+    // and refactored Vite chunks always contain JSX. The original source files were .jsx.
+    const jsxFiles = writtenFiles.map((f) => {
+        if (!f.endsWith(".js")) return f;
+        const jsxPath = f.replace(/\.js$/, ".jsx");
+        fs.renameSync(f, jsxPath);
+        return jsxPath;
+    });
+
+    // After renaming to .jsx, update relative dynamic imports inside each file:
+    // import('./Foo.js') → import('./Foo.jsx') — only for same-dir relative imports.
+    const outputFileBasenames = new Set(jsxFiles.map((f) => path.basename(f)));
+    for (const f of jsxFiles) {
+        let content = fs.readFileSync(f, "utf8");
+        // Replace ./Foo.js with ./Foo.jsx only when Foo.jsx exists as an output file.
+        content = content.replace(
+            /(import\([`'"])(\.\/[^`'"]+?)\.js([`'"]\))/g,
+            (_match, open, stem, close) => {
+                const candidate = path.basename(stem) + ".jsx";
+                return outputFileBasenames.has(candidate)
+                    ? `${open}${stem}.jsx${close}`
+                    : _match;
+            }
+        );
+        fs.writeFileSync(f, content);
+    }
+
+    const entryFile = jsxFiles.find((f) => {
+        try { return fs.readFileSync(f, "utf8").includes("createRoot("); }
+        catch { return false; }
+    }) ?? jsxFiles[0];
+    const entryRelative = `./${path.basename(entryFile)}`;
+
+    console.log(chalk.cyan(`[i] Setting up Vite build check in ${outputDir}/ (entry: ${entryRelative})`));
+
+    const pkg = {
+        name: "refactored-app",
+        version: "1.0.0",
+        type: "module",
+        scripts: { build: "vite build" },
+        dependencies: {
+            react: "^18.3.1",
+            "react-dom": "^18.3.1",
+            "react-router-dom": "^6.27.0",
+        },
+        devDependencies: {
+            "@vitejs/plugin-react": "^4.3.1",
+            vite: "^5.4.0",
+        },
+    };
+    fs.writeFileSync(path.join(outputDir, "package.json"), JSON.stringify(pkg, null, 2));
+
+    const viteConfig = `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({
+  plugins: [react()],
+  build: { rollupOptions: { input: '${entryRelative}' } },
+});
+`;
+    fs.writeFileSync(path.join(outputDir, "vite.config.js"), viteConfig);
+
+    const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><title>Refactored App</title></head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="${entryRelative}"></script>
+  </body>
+</html>
+`;
+    fs.writeFileSync(path.join(outputDir, "index.html"), indexHtml);
+
+    console.log(chalk.cyan("[i] Installing dependencies..."));
+    try {
+        execSync("npm install", { cwd: outputDir, stdio: "inherit" });
+    } catch {
+        console.log(chalk.red("[!] npm install failed — skipping build check"));
+        return;
+    }
+
+    console.log(chalk.cyan("[i] Running Vite build check..."));
+    try {
+        execSync("npm run build", { cwd: outputDir, stdio: "inherit" });
+        console.log(chalk.green("[✓] Vite build check passed"));
+    } catch {
+        console.log(chalk.red("[!] Vite build check failed — review output above"));
     }
 }
 
@@ -569,9 +671,42 @@ const refactor = async (
             }
         }
 
-        // Build check — scaffold a minimal Vite project and verify the refactored
+        // Build check — scaffold a minimal webpack project and verify the refactored
         // code compiles.
         runBuildCheck(outputDir, writtenFiles);
+    } else if (tech === "react-vite") {
+        const viteFiles = await refactorVite(chunks, libSigs);
+        const writtenFiles: string[] = [];
+        for (const [chunkKey, rawCode] of Object.entries(viteFiles)) {
+            let formatted: string;
+            try {
+                formatted = await prettier.format(rawCode, {
+                    parser: "babel",
+                    singleQuote: true,
+                    trailingComma: "none",
+                });
+            } catch {
+                formatted = rawCode;
+            }
+            if (formatted.trim().length === 0) {
+                console.log(chalk.gray(`[~] Chunk ${chunkKey} is empty after refactoring — skipping`));
+                continue;
+            }
+            // Use the original chunk basename so dynamic imports (which reference
+            // the original Vite filenames) resolve correctly in the build check.
+            const chunkInfo = chunks[chunkKey];
+            const originalFile = chunkInfo ? (chunkInfo.file ?? chunkInfo.id) : null;
+            const outputBasename = originalFile
+                ? path.basename(originalFile)
+                : chunkKey.replace(/[/\\]/g, "_").replace(/\.js$/, "") + ".js";
+            const filePath = `${outputDir}/${outputBasename}`;
+            fs.writeFileSync(filePath, formatted);
+            writtenFiles.push(filePath);
+            console.log(chalk.green(`[✓] Chunk ${chunkKey} written to ${filePath}`));
+        }
+
+        // Build check with Vite scaffold
+        runViteBuildCheck(outputDir, writtenFiles);
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));

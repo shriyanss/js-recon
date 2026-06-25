@@ -346,7 +346,15 @@ node build/index.js cs-mast -o output --ct --min-collisions 2
 node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
 ```
 
-## refactor `--collisions <file>`
+## refactor
+
+The `refactor` command supports three techs:
+
+- **`react-webpack`** — webpack 5 React bundles. Splits a numeric module map into per-module ES files, rewrites require→import, recovers JSX. See `src/refactor/react/CLAUDE.md`.
+- **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
+- **`next`** — Next.js bundles (legacy).
+
+### refactor `--collisions <file>` (react-webpack only)
 
 `refactor -t react-webpack` accepts a `--collisions <file>` argument that points at a `collisions.json` produced by `cs-mast --all-scat-permutations` over a cross-app baseline. Modules whose body signature is in the baseline set are classified as library code (React / React-DOM / jsx-runtime / scheduler / …) and dropped from the output, leaving only `index.js`.
 
