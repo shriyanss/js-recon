@@ -4,6 +4,8 @@
 
 ### Added
 
+- `run`: `--include-methods`, `--exclude-methods`, and `--list-methods` flags are now available on the `run` command, mirroring the same flags on `lazyload`. All three lazyload passes inside the `run` pipeline (initial, subsequent-requests, and re-pass) honour the method filter. `--list-methods [framework]` prints available method names and exits before any network work, so it can be used without a `-u` target URL.
+
 - `run` (angular): Full 4-step pipeline support for Angular apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload with a warning; Angular targets now get the same depth of analysis as React and Vue. The map step resolves Angular `HttpClient` calls (`n.get(url)`, `n.post(url, body)`, etc.) via the shared HTTP-client resolver and native `fetch()` calls via the shared fetch resolver; the analyze step runs all rules whose `tech` array includes `"angular"` (or `"all"`); the report step generates the HTML/SQLite report as for other frameworks.
 
 - `map`: Angular support via new `angular_js/` module. `getAngularConnections` reads Angular CLI (esbuild) chunks from the download directory and emits one chunk per JS file. Polyfill bundles (`polyfills-*.js`) are excluded (vendor code only). Registered as a new tech option (`-t angular`) alongside `next`, `vue`, `react`, and `svelte`.

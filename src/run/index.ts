@@ -70,7 +70,9 @@ const processUrl = async (
     outputDir: string,
     workingDir: string,
     cmd: any,
-    isBatch: boolean
+    isBatch: boolean,
+    includeMethods: string[] = [],
+    excludeMethods: string[] = []
 ): Promise<void> => {
     const targetHost = new URL(url).host.replace(":", "_");
 
@@ -100,7 +102,9 @@ const processUrl = async (
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
             Number(cmd.lazyloadTimeout) * 60 * 1000,
-            Number(cmd.maxPages)
+            Number(cmd.maxPages),
+            includeMethods,
+            excludeMethods
         ),
         getSkipStepPromise(),
     ]);
@@ -446,7 +450,9 @@ const processUrl = async (
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
             Number(cmd.lazyloadTimeout) * 60 * 1000,
-            Number(cmd.maxPages)
+            Number(cmd.maxPages),
+            includeMethods,
+            excludeMethods
         ),
         getSkipStepPromise(),
     ]);
@@ -485,7 +491,9 @@ const processUrl = async (
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
             Number(cmd.lazyloadTimeout) * 60 * 1000,
-            Number(cmd.maxPages)
+            Number(cmd.maxPages),
+            includeMethods,
+            excludeMethods
         ),
         getSkipStepPromise(),
     ]);
@@ -605,7 +613,7 @@ export default async (cmd: any): Promise<void> => {
                 process.exit(12);
             }
 
-            await processUrl(cmd.url, cmd.output, ".", cmd, false);
+            await processUrl(cmd.url, cmd.output, ".", cmd, false, cmd._includeMethods ?? [], cmd._excludeMethods ?? []);
         } else {
             // since this is a file, we need to first load the URLs in the memory remove empty strings
             const urls = fs
@@ -643,7 +651,7 @@ export default async (cmd: any): Promise<void> => {
                 }
 
                 fs.mkdirSync(thisTargetDir, { recursive: true });
-                await processUrl(url, thisTargetDir, thisTargetDir, cmd, true);
+                await processUrl(url, thisTargetDir, thisTargetDir, cmd, true, cmd._includeMethods ?? [], cmd._excludeMethods ?? []);
             }
         }
     } finally {

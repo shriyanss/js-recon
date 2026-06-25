@@ -137,6 +137,12 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 - Declared in `src/index.ts` on both the `lazyload` and `run` commands: `.option("--max-pages <pages>", ..., "200")`
 - Threaded through `lazyLoad()` as `maxPageVisits` and forwarded to `NextJsCrawler` constructor. Default `200` matches the hardcoded cap previously in the crawler; pass `0` to disable. Prevents OOM on event-heavy Next.js sites where the recursive page queue fans out to hundreds of pages.
 
+**Example — `--include-methods` / `--exclude-methods` / `--list-methods` flags:**
+
+- Declared in `src/index.ts` on **both** the `lazyload` and `run` commands as `.option()` (not `requiredOption` — `--list-methods` must exit before the URL is required).
+- `--list-methods` is handled early in **both** action handlers before any network work: prints method names and calls `process.exit(0)`.
+- The method lists are parsed and validated in each action handler; stored on `cmd._includeMethods` / `cmd._excludeMethods` for the `run` action, which then threads them into `processUrl()` and from there into all three `lazyLoad()` calls as the last two positional parameters.
+
 ## Interactive-mode commands
 
 The `map -i` blessed UI dispatches user input through `interactive_helpers/commandHandler.ts`. The same handler runs headlessly when commands are supplied via `-c/--command`:

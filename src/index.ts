@@ -407,7 +407,7 @@ program
 program
     .command("run")
     .description("Run all modules")
-    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")
     .option(
         "-c, --command <command>",
@@ -446,7 +446,67 @@ program
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
     .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option(
+        "--include-methods <methods>",
+        "Comma-separated lazyload method names to run (whitelist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--exclude-methods <methods>",
+        "Comma-separated lazyload method names to skip (blacklist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--list-methods [framework]",
+        "Print available lazyload method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react)."
+    )
     .action(async (cmd) => {
+        // handle --list-methods before any network work
+        if (cmd.listMethods !== undefined) {
+            const filter = typeof cmd.listMethods === "string" ? cmd.listMethods : null;
+            const frameworkKeys = Object.keys(FRAMEWORK_METHODS);
+            if (filter && !frameworkKeys.includes(filter)) {
+                console.error(
+                    chalk.red(`[!] Unknown framework: "${filter}". Valid frameworks: ${frameworkKeys.join(", ")}`)
+                );
+                process.exit(1);
+            }
+            const keys = filter ? [filter] : frameworkKeys;
+            for (const fw of keys) {
+                console.log(chalk.cyan(`\n[${fw}]`));
+                for (const method of FRAMEWORK_METHODS[fw]) {
+                    console.log(chalk.green(`  - ${method}`));
+                }
+            }
+            process.exit(0);
+        }
+
+        // parse and validate method filter lists
+        const includeMethods: string[] = cmd.includeMethods
+            ? cmd.includeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
+            : [];
+        const excludeMethods: string[] = cmd.excludeMethods
+            ? cmd.excludeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
+            : [];
+        const allMethods = [...includeMethods, ...excludeMethods];
+        const invalid = allMethods.filter((m) => !VALID_METHODS.includes(m));
+        if (invalid.length > 0) {
+            console.error(chalk.red(`[!] Invalid method name(s): ${invalid.join(", ")}`));
+            console.error(chalk.yellow(`[i] Valid methods: ${VALID_METHODS.join(", ")}`));
+            process.exit(22);
+        }
+        cmd._includeMethods = includeMethods;
+        cmd._excludeMethods = excludeMethods;
+
+        if (!cmd.url) {
+            console.error(chalk.red("[!] Missing required option: -u, --url <url/file>"));
+            process.exit(1);
+        }
+
         if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
