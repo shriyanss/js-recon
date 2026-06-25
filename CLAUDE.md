@@ -91,9 +91,16 @@ npm run start -- <subcommand> [options]
 3. **Analyze** — same rule loading as Next.js; `-r/--rules` is forwarded here too
 4. **Report** — same as Next.js; if `endpoints.json` doesn't exist it is written as `[]` since Vue endpoints extraction isn't implemented yet
 
+### Angular pipeline (4 steps)
+
+1. **Lazyload** — downloads Angular CLI (esbuild) bundles: `main-HASH.js`, lazy route chunks (`chunk-HASH.js`); sets `globalsUtil.getTech()` to `"angular"`
+2. **Map** — scans `output/<host>/` for all Angular JS chunks; resolves `HttpClient` calls (`n.get(url)`, `n.post(url, body)`) via the shared HTTP-client resolver and `fetch()` calls via the shared fetch resolver; generates `mapped.json` and `mapped-openapi.json`
+3. **Analyze** — runs all rules whose `tech` array includes `"angular"` (or `"all"`); includes the Angular-specific `detect_angular_bypass_security_trust` rule that fires on `bypassSecurityTrust*` calls
+4. **Report** — same as Vue; `endpoints.json` is written as `[]` if missing since Angular endpoints extraction is not yet implemented
+
 ### Tech detection flow
 
-`lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"` and `"vue"` only get lazyload; the rest of the pipeline is skipped with a warning.
+`lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"`, `"vue"`, `"nuxt"`, `"react"`, `"svelte"`, and `"angular"` only get lazyload; the rest of the pipeline is skipped with a warning.
 
 **SvelteKit `adapter-node` boot pattern**: SvelteKit's Node adapter does not emit `<link rel="modulepreload">` or `<script src="...">` for its entry chunks. Instead it uses an inline `<script>` block: `Promise.all([import("./_app/immutable/entry/start.js"), ...])`. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments (added in v1.4.1-alpha.3). Without those seed URLs the entire downstream pipeline (string analysis, ESM import following, page crawl) produces nothing.
 

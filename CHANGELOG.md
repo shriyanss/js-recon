@@ -4,6 +4,14 @@
 
 ### Added
 
+- `run` (angular): Full 4-step pipeline support for Angular apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload with a warning; Angular targets now get the same depth of analysis as React and Vue. The map step resolves Angular `HttpClient` calls (`n.get(url)`, `n.post(url, body)`, etc.) via the shared HTTP-client resolver and native `fetch()` calls via the shared fetch resolver; the analyze step runs all rules whose `tech` array includes `"angular"` (or `"all"`); the report step generates the HTML/SQLite report as for other frameworks.
+
+- `map`: Angular support via new `angular_js/` module. `getAngularConnections` reads Angular CLI (esbuild) chunks from the download directory and emits one chunk per JS file. Polyfill bundles (`polyfills-*.js`) are excluded (vendor code only). Registered as a new tech option (`-t angular`) alongside `next`, `vue`, `react`, and `svelte`.
+
+- `analyze`: Angular added as a valid `tech` value in rule YAML and the Zod schema. Rules whose `tech` array lists `angular` (or `all`) now run when `--tech angular` is set (or when `run` detects Angular automatically).
+
+- `rules` (angular): New rule `detect_angular_bypass_security_trust` detects calls to `bypassSecurityTrustHtml`, `bypassSecurityTrustScript`, `bypassSecurityTrustStyle`, `bypassSecurityTrustUrl`, and `bypassSecurityTrustResourceUrl` — Angular's DomSanitizer bypass methods that disable built-in XSS protection. Severity: high. Added `angular` to the `tech` array of all 17 existing AST rules that previously covered only `next`, `vue`, `react`, and `svelte`.
+
 - `refactor -t react-webpack`: new `--scat <categories>` flag overrides the CS-MAST scat category set used for both the remote signature download and the module classifier. Accepts a comma-separated list of categories from `lit,id,op,decl,loop,cond,name,val,op_name` (e.g. `--scat lit,decl,cond`). The flag correctly maps to bucket directory names following the canonical `ALL_SCAT_CATEGORIES` ordering (the same ordering used by `jsr-cs-mast-s-gen`), so `--scat lit,cond,decl` and `--scat decl,lit,cond` both resolve to the `lit-decl-cond` bucket directory.
 
 - `lazyload` (svelte): `svelte_getVersionJson` — probes `/<appDir>/version.json` when SvelteKit is detected. SvelteKit generates this file at build time and serves it for the `updated` store; because it has no `<script src>`, `<link href>`, or `import()` reference anywhere it is invisible to all other discovery steps and must be fetched directly. The `appDir` is derived from the entry-point URLs already discovered (default: `_app`). The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods svelte_getVersionJson`.

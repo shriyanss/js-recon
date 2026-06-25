@@ -12,6 +12,7 @@ Powers the `map` subcommand. Parses downloaded JS bundles (webpack / turbopack /
 - `vue_js/` — Vite/webpack resolvers for Vue. Hosts the framework-agnostic HTTP-client and XHR resolvers reused by React/Svelte. See `vue_js/CLAUDE.md`.
 - `react_js/` — React-specific connection and fetch resolvers; delegates XHR / HTTP-client to `vue_js/`. See `react_js/CLAUDE.md`.
 - `svelte_js/` — Svelte interactive shim; delegates resolution to `vue_js/`. See `svelte_js/CLAUDE.md`.
+- `angular_js/` — Angular (esbuild) connection extractor and resolvers; delegates HTTP-client and fetch resolution to `vue_js/`. See `angular_js/CLAUDE.md`.
 
 ## Patterns / gotchas
 
@@ -30,7 +31,7 @@ Skip `lazyload` while iterating — reuse already-downloaded chunks:
 ```bash
 npx tsc
 node --max-old-space-size=8192 build/index.js map \
-  -d output/<host>/static/js -o /tmp/jsr-mapped -t <next|vue|react|svelte> -f json
+  -d output/<host>/static/js -o /tmp/jsr-mapped -t <next|vue|react|svelte|angular> -f json
 ```
 
 Grep `mapped-openapi.json` for the URL fragment you expect. Final acceptance: `npm run cleanup && npm run start -- run -u <target> -y -k` per root `CLAUDE.md`.

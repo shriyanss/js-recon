@@ -32,6 +32,10 @@ import getReactConnections from "./react_js/getReactConnections.js";
 import reactInteractive, { runCommands as reactRunCommands } from "./react_js/interactive.js";
 import react_resolveFetch from "./react_js/react_resolveFetch.js";
 
+// Angular
+import getAngularConnections from "./angular_js/getAngularConnections.js";
+import angularInteractive, { runCommands as angularRunCommands } from "./angular_js/interactive.js";
+
 // XHR resolution (shared across Vite-based techs)
 import vue_resolveXhr from "./vue_js/vue_resolveXhr.js";
 import vue_resolveHttpClient from "./vue_js/vue_resolveHttpClient.js";
@@ -41,6 +45,7 @@ const availableTech = {
     vue: "Vue.JS",
     react: "React",
     svelte: "Svelte/Astro",
+    angular: "Angular",
 };
 
 const availableFormats = {
@@ -273,6 +278,43 @@ const map = async (
             await svelteRunCommands(chunks, `${output}.json`, commands);
         } else if (interactive_mode) {
             await svelteInteractive(chunks, `${output}.json`);
+        }
+
+        if (getOpenapi() === true && getGraphqlEnabled()) {
+            await resolveGraphql(directory);
+        }
+
+        if (getOpenapi() === true) {
+            const openapiSpec = generateOpenapiV3Spec(getOpenapiOutput(), chunks);
+            const openapiJson = JSON.stringify(openapiSpec, null, 2);
+            fs.writeFileSync(getOpenapiOutputFile(), openapiJson);
+            console.log(chalk.green(`[✓] Generated OpenAPI spec at ${getOpenapiOutputFile()}`));
+
+            const postmanCollection = generatePostmanCollection(getOpenapiOutput());
+            const openapiOutputFile = getOpenapiOutputFile();
+            const postmanOutputFile = openapiOutputFile.endsWith(".json")
+                ? openapiOutputFile.replace(/\.json$/, ".postman_collection.json")
+                : `${openapiOutputFile}.postman_collection.json`;
+            fs.writeFileSync(postmanOutputFile, JSON.stringify(postmanCollection, null, 2));
+            console.log(chalk.green(`[✓] Generated Postman Collection at ${postmanOutputFile}`));
+        }
+    } else if (tech === "angular") {
+        let chunks: Chunks;
+
+        if (!existsSync(`${output}.json`)) {
+            chunks = await getAngularConnections(directory, output, formats);
+        } else {
+            chunks = JSON.parse(readFileSync(`${output}.json`, { encoding: "utf8" }));
+        }
+
+        await vue_resolveFetch(directory, "Angular");
+        await vue_resolveXhr(directory, "Angular");
+        await vue_resolveHttpClient(directory, "Angular");
+
+        if (commands.length > 0) {
+            await angularRunCommands(chunks, `${output}.json`, commands);
+        } else if (interactive_mode) {
+            await angularInteractive(chunks, `${output}.json`);
         }
 
         if (getOpenapi() === true && getGraphqlEnabled()) {

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Discovers and downloads Angular JS chunks. Angular CLI builds emit a predictable file layout (`main.<hash>.js`, `polyfills.<hash>.js`, lazy-loaded route chunks); this crawler enumerates them from page source and `main.js`.
+Discovers and downloads Angular JS chunks. Angular CLI builds emit a predictable file layout (`main-HASH.js`, `polyfills-HASH.js`, lazy-loaded route chunks); this crawler enumerates them from page source and `main.js`.
 
 ## Files
 
@@ -11,7 +11,7 @@ Discovers and downloads Angular JS chunks. Angular CLI builds emit a predictable
 
 ## Patterns / gotchas
 
-- **Pipeline stops after lazyload.** Per root `CLAUDE.md`, only Next and Vue have downstream pipeline support. Angular targets get JS downloaded and that's it — don't add wiring assumptions here.
+- **Full pipeline supported.** After lazyload, Angular targets continue through map → analyze → report (4-step pipeline). The map module (`src/map/angular_js/`) parses the downloaded chunks; the analyze module applies security rules; the report module generates the HTML/SQLite report.
 - **Two-file split is the whole crawler.** No recursion, no re-pass. Angular's lazy-load table is comprehensive; if a target's routes aren't surfacing, the parser in `angular_getFromMainJs.ts` is the only thing to look at.
 
 ## How to test changes here
@@ -24,3 +24,4 @@ ls output/<host>
 ## See also
 
 - `../techDetect/checkAngularJS.ts`
+- `../../map/angular_js/` — downstream map module.
