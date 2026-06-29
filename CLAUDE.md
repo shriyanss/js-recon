@@ -290,6 +290,7 @@ Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
 **If the job fails:** The npm package is already live. Manually update: compute `curl -fsSL <tarball-url> | sha256sum`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
 
 **One-time setup** (must be done before the first release, already completed):
+
 - `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
 - `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
 
