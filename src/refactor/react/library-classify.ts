@@ -5,13 +5,7 @@ import { ModuleEntry } from "./transform.js";
 const generate = (_generator as unknown as { default: typeof _generator }).default ?? _generator;
 
 export type LibraryType =
-    | "react"
-    | "react-dom-client"
-    | "react-jsx-runtime"
-    | "react-router-dom"
-    | "style-loader"
-    | "css-module"
-    | "unknown";
+    "react" | "react-dom-client" | "react-jsx-runtime" | "react-router-dom" | "style-loader" | "css-module" | "unknown";
 
 export interface LibraryModuleInfo {
     type: LibraryType;

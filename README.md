@@ -14,6 +14,23 @@ It can also reconstruct HTTP requests that the app makes to the server, and outp
 
 ## Installation
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap shriyanss/tap
+brew install js-recon
+```
+
+To update:
+
+```bash
+brew update && brew upgrade js-recon
+```
+
+> **Note:** After installing via Homebrew, the `lazyload` subcommand requires a Chromium browser. Run `brew info js-recon` for setup instructions.
+
+### npm (all platforms)
+
 This tool requires Node.JS and `npm` to be installed. The [official download page](https://nodejs.org/en/download) can be referred. Please install **22.17.0 (LTS)** or later. Downloading older versions might break the tool.
 
 To install the tool globally, run:
@@ -67,6 +84,7 @@ js-recon run -u https://app.example.com
 | `refactor`    | Refactors and deobfuscates webpack modules from a mapped JSON file.           | [Read Docs](https://js-recon.io/docs/docs/modules/refactor)    |
 | `load`        | Populates the response cache from a Caido or Burp Suite export.               | [Read Docs](https://js-recon.io/docs/docs/modules/load)        |
 | `cs-mast`     | Computes CS-MAST structural hashes for JS files and finds hash collisions.    | [Read Docs](https://js-recon.io/docs/docs/modules/cs-mast)     |
+| `sourcemaps`  | Extracts original source files from `.map` sourcemap files.                   | [Read Docs](https://js-recon.io/docs/docs/modules/sourcemaps)  |
 
 ## Key Features
 

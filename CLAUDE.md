@@ -35,6 +35,7 @@ npm run start -- <subcommand> [options]
 | `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
 | `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
 | `cs-mast`     | Compute CS-MAST structural hashes for downloaded JS files; find hash collisions    |
+| `sourcemaps`  | Extract source files from `.map` sourcemap file(s)                                 |
 
 ## Key source files
 
@@ -250,9 +251,10 @@ Before writing any files, gather the current state:
 5. **Push** `js-recon` dev branch: `git push origin dev`
 
 6. **Open PR** using `gh pr create`:
-   | Repo | Source | Target | Title | Body |
-   |------|--------|--------|-------|------|
-   | `shriyanss/js-recon` | `dev` | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
+
+    | Repo                 | Source | Target | Title                                       | Body                                 |
+    | -------------------- | ------ | ------ | ------------------------------------------- | ------------------------------------ |
+    | `shriyanss/js-recon` | `dev`  | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
 
 7. **Monitor js-recon CI** — use `gh pr checks <pr-number> --repo shriyanss/js-recon` and poll until all checks complete. Handle CodeRabbit suggestions (see below). Do NOT merge — wait for user approval.
 
@@ -273,6 +275,24 @@ Before writing any files, gather the current state:
     Previous tag is left to GitHub's automatic detection (do not set `--target` or `--tag` beyond the tag name itself).
 
 9. **Wait for npm publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow release`. Confirm the npm package is live at the new version before proceeding to Phase 2.
+
+### Homebrew tap (automatic, runs in parallel with Phase 2)
+
+After `publish-npm` succeeds, the `update-homebrew-tap` job in `publish-js-recon.yml` runs automatically. It:
+
+1. Computes the SHA256 of the published npm tarball from the public npmjs.org URL (no auth)
+2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+3. Updates `version`, `url`, and `sha256` in `Formula/js-recon.rb` via anchored `sed`
+4. Commits `chore: update js-recon formula to <version>` and pushes
+
+Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
+
+**If the job fails:** The npm package is already live. Manually update: compute `curl -fsSL <tarball-url> | sha256sum`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
+
+**One-time setup** (must be done before the first release, already completed):
+
+- `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
+- `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
 
 ### Phase 2 — js-recon-docs (after npm is live)
 
@@ -315,6 +335,31 @@ For each suggestion: apply a fix commit to `dev` for correctness bugs or convent
 ### Stop before merge
 
 Do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
+
+## Resolving a GitHub issue
+
+When a user asks to fix or implement a GitHub issue, follow these steps:
+
+1. **Read the issue** — `gh issue view <number> --repo shriyanss/js-recon`
+
+2. **Implement** — make the code, docs, and exit-code changes required. Follow all existing conventions (subcommand structure, CHANGELOG format, README Commands table, js-recon-docs modules page, exit_codes.md). Document new exit codes in both `CLAUDE.md` and `js-recon-docs/docs/docs/exit_codes.md`.
+
+3. **Test** — run `npm run cleanup` and exercise the new/changed functionality manually (see "Testing a change" section). Verify error paths and exit codes.
+
+4. **Commit and push to `dev`** — use a `feat(...)` or `fix(...)` commit message. Push to `origin dev`.
+
+5. **Monitor CI** — `gh run list --repo shriyanss/js-recon --branch dev --limit 3`. Watch the `Build & Prettify Code` run. If the `version_check` job fails because `CHANGELOG.md` top version doesn't match `package.json`, bump `package.json` and `src/globalConfig.ts` to match (with a `chore: bump version to <X>` commit) and repush.
+
+6. **Pull prettifier commit** — after CI passes, `git pull origin dev` to pick up the `chore: prettify code` auto-commit.
+
+7. **Close the issue** — once all CI checks pass:
+
+    ```bash
+    gh issue close <number> --repo shriyanss/js-recon --comment \
+      "Implemented in commit <short-sha> on the \`dev\` branch. Will be released in **v<version>**."
+    ```
+
+    Use the short commit hash of the feature commit (not the prettifier chore). The target release version comes from the unreleased CHANGELOG entry.
 
 ## cs-mast
 
