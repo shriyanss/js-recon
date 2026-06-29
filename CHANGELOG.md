@@ -1,10 +1,11 @@
 # Change Log
 
-## 1.4.1-alpha.4 - (unreleased)
+## 1.4.1-alpha.4 - 2026-06-29
 
 ### Added
 
 - `sourcemaps`: new subcommand to extract original source files from `.map` sourcemaps without running the full pipeline. Accepts a single `.map` file or a directory of `.map` files via `-i`/`--input`; writes recovered sources to `-o`/`--output` (default: `extracted`).
+- Homebrew tap distribution: `brew tap shriyanss/tap && brew install js-recon` installs js-recon via the `shriyanss/homebrew-tap` Homebrew tap. The formula (`Formula/js-recon.rb`) auto-updates on every npm publish via the `update-homebrew-tap` CI job in `publish-js-recon.yml`.
 
 ### Changed
 

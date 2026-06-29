@@ -276,6 +276,23 @@ Before writing any files, gather the current state:
 
 9. **Wait for npm publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow release`. Confirm the npm package is live at the new version before proceeding to Phase 2.
 
+### Homebrew tap (automatic, runs in parallel with Phase 2)
+
+After `publish-npm` succeeds, the `update-homebrew-tap` job in `publish-js-recon.yml` runs automatically. It:
+
+1. Computes the SHA256 of the published npm tarball from the public npmjs.org URL (no auth)
+2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+3. Updates `version`, `url`, and `sha256` in `Formula/js-recon.rb` via anchored `sed`
+4. Commits `chore: update js-recon formula to <version>` and pushes
+
+Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
+
+**If the job fails:** The npm package is already live. Manually update: compute `curl -fsSL <tarball-url> | sha256sum`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
+
+**One-time setup** (must be done before the first release, already completed):
+- `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
+- `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
+
 ### Phase 2 — js-recon-docs (after npm is live)
 
 10. **Fix doc gaps** — cross-check `docs/docs/modules/*.md` against `src/index.ts` and the new CHANGELOG entries. Add or update any missing flags, options, or command descriptions.

@@ -14,6 +14,23 @@ It can also reconstruct HTTP requests that the app makes to the server, and outp
 
 ## Installation
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew tap shriyanss/tap
+brew install js-recon
+```
+
+To update:
+
+```bash
+brew update && brew upgrade js-recon
+```
+
+> **Note:** After installing via Homebrew, the `lazyload` subcommand requires a Chromium browser. Run `brew info js-recon` for setup instructions.
+
+### npm (all platforms)
+
 This tool requires Node.JS and `npm` to be installed. The [official download page](https://nodejs.org/en/download) can be referred. Please install **22.17.0 (LTS)** or later. Downloading older versions might break the tool.
 
 To install the tool globally, run:
