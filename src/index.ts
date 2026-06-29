@@ -19,6 +19,7 @@ import load from "./load/index.js";
 import fingerprint from "./fingerprint/index.js";
 import { applyHeapLimit } from "./utility/heap.js";
 import csMast from "./cs_mast/index.js";
+import sourcemaps from "./sourcemaps/index.js";
 import { printBanner } from "./utility/banner.js";
 
 const args = process.argv.slice(2);
@@ -616,6 +617,15 @@ program
             cmd.collisionOutput,
             cmd.collisionFormat
         );
+    });
+
+program
+    .command("sourcemaps")
+    .description("Extract source files from .map sourcemap file(s)")
+    .requiredOption("-i, --input <path>", "Single .map file or directory containing .map files")
+    .option("-o, --output <directory>", "Output directory for extracted source files", "extracted")
+    .action(async (cmd) => {
+        await sourcemaps(cmd.input, cmd.output);
     });
 
 program.parse(process.argv);

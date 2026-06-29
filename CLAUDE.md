@@ -35,6 +35,7 @@ npm run start -- <subcommand> [options]
 | `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
 | `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
 | `cs-mast`     | Compute CS-MAST structural hashes for downloaded JS files; find hash collisions    |
+| `sourcemaps`  | Extract source files from `.map` sourcemap file(s)                                 |
 
 ## Key source files
 

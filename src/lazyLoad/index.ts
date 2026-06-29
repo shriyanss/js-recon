@@ -43,63 +43,14 @@ import downloadFiles from "./downloadFilesUtil.js";
 import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 import { DownloadQueue } from "./downloadQueue.js";
 
-// for rebuilding source maps
-import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import path from "path";
-import { join, dirname } from "path";
-import { extractSources } from "./sourcemap.js";
+import { join } from "path";
+import { extractSourceMaps } from "../sourcemaps/index.js";
 
 // import global vars
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
 import { shouldRunMethod } from "./methodFilter.js";
-
-const getMapFilesRecursively = (dir: string): string[] => {
-    const entries = readdirSync(dir, { withFileTypes: true });
-    const mapFiles: string[] = [];
-
-    for (const entry of entries) {
-        const fullPath = join(dir, entry.name);
-        if (entry.isDirectory()) {
-            mapFiles.push(...getMapFilesRecursively(fullPath));
-        } else if (entry.isFile() && entry.name.endsWith(".js.map")) {
-            mapFiles.push(fullPath);
-        }
-    }
-
-    return mapFiles;
-};
-
-/**
- * Extracts the source maps from a given directory and writes the original source files to an output directory.
- * @param {string} assetsDir The directory containing the source maps (.js.map files)
- * @param {string} outputDir The directory to write the extracted source files
- * @returns {Promise<void>}
- */
-const extractSourceMaps = async (assetsDir: string, outputDir: string) => {
-    const mapFiles = getMapFilesRecursively(assetsDir);
-    let counter = 0;
-
-    for (const mapFile of mapFiles) {
-        const raw = readFileSync(mapFile, "utf-8");
-        // Older runs prepended a `// File Source: ...` banner to .js.map files;
-        // current runs write pure JSON. Strip the leading banner if present.
-        const mapContent = raw.startsWith("//") ? raw.split("\n").slice(1).join("\n") : raw;
-        const { files } = extractSources(mapContent);
-
-        for (const file of files) {
-            if (file.path === "." || file.path === "") continue;
-            const outPath = join(outputDir, file.path);
-            mkdirSync(dirname(outPath), { recursive: true });
-            writeFileSync(outPath, file.content);
-            counter++;
-        }
-    }
-
-    if (counter !== 0) {
-        console.log(chalk.green(`[✓] Found ${counter} files from source maps - written to ${outputDir}`));
-    }
-};
 
 /**
  * Downloads the required JavaScript files for a given URL

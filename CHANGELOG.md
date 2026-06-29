@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.4.1-alpha.4 - (unreleased)
+
+### Added
+
+- `sourcemaps`: new subcommand to extract original source files from `.map` sourcemaps without running the full pipeline. Accepts a single `.map` file or a directory of `.map` files via `-i`/`--input`; writes recovered sources to `-o`/`--output` (default: `extracted`).
+
+### Changed
+
+- `lazyload`: sourcemap extraction logic moved to the new `sourcemaps` module (`src/sourcemaps/`). Behaviour is identical; `lazyload` now delegates to `extractSourceMaps` from that module rather than containing a private copy.
+
 ## 1.4.1-alpha.3 - 2026-06-25
 
 ### Added
