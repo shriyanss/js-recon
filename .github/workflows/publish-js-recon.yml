@@ -113,7 +113,6 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           SHA="${{ steps.sha256.outputs.sha256 }}"
           F="Formula/js-recon.rb"
-          sed -i "s|^  version \".*\"|  version \"${VERSION}\"|" "${F}"
           sed -i "s|^  url \"https://registry\.npmjs\.org/@shriyanss/js-recon/-/js-recon-[^\"]*\"|  url \"https://registry.npmjs.org/@shriyanss/js-recon/-/js-recon-${VERSION}.tgz\"|" "${F}"
           sed -i "s|^  sha256 \"[a-f0-9]*\"|  sha256 \"${SHA}\"|" "${F}"
 
