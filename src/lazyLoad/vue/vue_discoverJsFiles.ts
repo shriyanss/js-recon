@@ -39,6 +39,10 @@ const vue_discoverJsFiles = async (
     const inc = includeMethods;
     const exc = excludeMethods;
 
+    const normalize = (f: string) => (f.startsWith("//") ? "https:" + f : f);
+    const countNew = (files: string[], before: Set<string>): number =>
+        files.filter((f) => !before.has(normalize(f))).length;
+
     const emit = (files: string[]) => {
         jsFiles.push(...files);
         if (files.length > 0 && onFilesDiscovered) {
@@ -58,10 +62,12 @@ const vue_discoverJsFiles = async (
 
     // single JS file on the page (typically dev-mode)
     if (shouldRunMethod("vue_SingleJsFileOnHome", inc, exc)) {
+        const beforeSingleJs = new Set(jsFiles.map(normalize));
         const fromSingleJs = await vue_singleJsFileOnHome(url);
         emit(fromSingleJs);
-        if (fromSingleJs.length > 0) {
-            console.log(chalk.green(`[✓] Found ${fromSingleJs.length} files from the single JS file on home`));
+        const newSingleJs = countNew(fromSingleJs, beforeSingleJs);
+        if (newSingleJs > 0) {
+            console.log(chalk.green(`[✓] Found ${newSingleJs} new files from the single JS file on home`));
         }
     }
 
@@ -72,37 +78,45 @@ const vue_discoverJsFiles = async (
 
     // scan page-loaded JS files for Vite's __vite__mapDeps chunk manifest
     if (shouldRunMethod("vue_viteMapDeps", inc, exc)) {
+        const beforeViteMapDeps = new Set(jsFiles.map(normalize));
         const fromViteMapDeps = await vue_viteMapDeps(jsFiles, maxJsSizeMb);
         emit(fromViteMapDeps);
-        if (fromViteMapDeps.length > 0) {
-            console.log(chalk.green(`[✓] Found ${fromViteMapDeps.length} files from __vite__mapDeps`));
+        const newViteMapDeps = countNew(fromViteMapDeps, beforeViteMapDeps);
+        if (newViteMapDeps > 0) {
+            console.log(chalk.green(`[✓] Found ${newViteMapDeps} new files from __vite__mapDeps`));
         }
     }
 
     // walk the import graph of everything found so far
     if (shouldRunMethod("vue_jsImports", inc, exc)) {
+        const beforeJsImports = new Set(jsFiles.map(normalize));
         const fromImports = await vue_jsImports(url, jsFiles, maxJsSizeMb);
         emit(fromImports);
-        if (fromImports.length > 0) {
-            console.log(chalk.green(`[✓] Found ${fromImports.length} files from import statements`));
+        const newJsImports = countNew(fromImports, beforeJsImports);
+        if (newJsImports > 0) {
+            console.log(chalk.green(`[✓] Found ${newJsImports} new files from import statements`));
         }
     }
 
     // scan string literals inside known JS files for .js references
     if (shouldRunMethod("vue_stringJsFiles", inc, exc)) {
+        const beforeStringRefs = new Set(jsFiles.map(normalize));
         const fromStringRefs = await vue_stringJsFiles(jsFiles, maxJsSizeMb);
         emit(fromStringRefs);
-        if (fromStringRefs.length > 0) {
-            console.log(chalk.green(`[✓] Found ${fromStringRefs.length} files from string literal JS references`));
+        const newStringRefs = countNew(fromStringRefs, beforeStringRefs);
+        if (newStringRefs > 0) {
+            console.log(chalk.green(`[✓] Found ${newStringRefs} new files from string literal JS references`));
         }
     }
 
     // reconstruct sourceMappingURL references
     if (shouldRunMethod("vue_reconstructSourceMaps", inc, exc)) {
+        const beforeSourceMaps = new Set(jsFiles.map(normalize));
         const fromSourceMaps = await vue_reconstructSourceMaps(url, jsFiles);
         emit(fromSourceMaps);
-        if (fromSourceMaps.length > 0) {
-            console.log(chalk.green(`[✓] Found ${fromSourceMaps.length} files from reconstructing source maps`));
+        const newSourceMaps = countNew(fromSourceMaps, beforeSourceMaps);
+        if (newSourceMaps > 0) {
+            console.log(chalk.green(`[✓] Found ${newSourceMaps} new files from reconstructing source maps`));
         }
     }
 

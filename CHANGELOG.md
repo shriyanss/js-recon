@@ -1,5 +1,13 @@
 # Change Log
 
+## 1.4.1-alpha.5 - (unreleased)
+
+### Fixed
+
+- `lazyload` (nuxt): `nuxt_getFromPageSource` now prints the number of new JS files discovered (delta from the global URL set) instead of the running total. Previously the count included every URL already known from earlier in the session.
+- `lazyload` (vue): Each discovery method in `vue_discoverJsFiles` now prints only the count of URL that are genuinely new — URLs already known from earlier methods are excluded. Previously `fromImports.length`, `fromStringRefs.length`, etc. could include URLs already in the accumulator and over-count.
+- Error messages emitted by `makeReq` (fetch failures, cache errors, timeout notices, firewall detection) now use `progressError`/`progressLog` instead of `console.error`/`console.log`, so they are routed through the active progress bar's logger and no longer clutter the bar line when errors occur during a scan.
+
 ## 1.4.1-alpha.4 - 2026-06-29
 
 ### Added
