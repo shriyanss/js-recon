@@ -320,8 +320,7 @@ export const startCli = async (
                         console.log(chalk.green(`\n[✓] Switched model to: ${newModel}\n`));
                     } else if (cmdResult.output.startsWith("__SWITCH_PROVIDER__")) {
                         const newProvider = cmdResult.output.replace("__SWITCH_PROVIDER__", "") as
-                            | "openai"
-                            | "anthropic";
+                            "openai" | "anthropic";
                         const newKey = resolveApiKey(newProvider, session.cliApiKey, config);
                         if (!newKey) {
                             console.error(chalk.red(`\n[!] No API key configured for ${newProvider}.\n`));

@@ -105,13 +105,11 @@ const getTurbopackConnections = async (
 
                     const next = elements[i + 1];
                     if (!next) continue;
-                    if (
-                        !(
-                            next.isArrowFunctionExpression() ||
-                            next.isFunctionExpression() ||
-                            next.isFunctionDeclaration()
-                        )
-                    ) {
+                    if (!(
+                        next.isArrowFunctionExpression() ||
+                        next.isFunctionExpression() ||
+                        next.isFunctionDeclaration()
+                    )) {
                         continue;
                     }
 

@@ -251,9 +251,10 @@ Before writing any files, gather the current state:
 5. **Push** `js-recon` dev branch: `git push origin dev`
 
 6. **Open PR** using `gh pr create`:
-   | Repo | Source | Target | Title | Body |
-   |------|--------|--------|-------|------|
-   | `shriyanss/js-recon` | `dev` | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
+
+    | Repo                 | Source | Target | Title                                       | Body                                 |
+    | -------------------- | ------ | ------ | ------------------------------------------- | ------------------------------------ |
+    | `shriyanss/js-recon` | `dev`  | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
 
 7. **Monitor js-recon CI** — use `gh pr checks <pr-number> --repo shriyanss/js-recon` and poll until all checks complete. Handle CodeRabbit suggestions (see below). Do NOT merge — wait for user approval.
 

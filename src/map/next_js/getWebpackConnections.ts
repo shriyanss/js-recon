@@ -108,13 +108,11 @@ const getWebpackConnections = async (directory, output, formats) => {
                     object = object.get("left");
                 }
 
-                if (
-                    !(
-                        object.isMemberExpression() &&
-                        object.get("property").isIdentifier() &&
-                        (object.get("property").node as any).name.startsWith("webpackChunk")
-                    )
-                ) {
+                if (!(
+                    object.isMemberExpression() &&
+                    object.get("property").isIdentifier() &&
+                    (object.get("property").node as any).name.startsWith("webpackChunk")
+                )) {
                     return;
                 }
 
