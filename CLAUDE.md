@@ -318,6 +318,31 @@ For each suggestion: apply a fix commit to `dev` for correctness bugs or convent
 
 Do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
 
+## Resolving a GitHub issue
+
+When a user asks to fix or implement a GitHub issue, follow these steps:
+
+1. **Read the issue** — `gh issue view <number> --repo shriyanss/js-recon`
+
+2. **Implement** — make the code, docs, and exit-code changes required. Follow all existing conventions (subcommand structure, CHANGELOG format, README Commands table, js-recon-docs modules page, exit_codes.md). Document new exit codes in both `CLAUDE.md` and `js-recon-docs/docs/docs/exit_codes.md`.
+
+3. **Test** — run `npm run cleanup` and exercise the new/changed functionality manually (see "Testing a change" section). Verify error paths and exit codes.
+
+4. **Commit and push to `dev`** — use a `feat(...)` or `fix(...)` commit message. Push to `origin dev`.
+
+5. **Monitor CI** — `gh run list --repo shriyanss/js-recon --branch dev --limit 3`. Watch the `Build & Prettify Code` run. If the `version_check` job fails because `CHANGELOG.md` top version doesn't match `package.json`, bump `package.json` and `src/globalConfig.ts` to match (with a `chore: bump version to <X>` commit) and repush.
+
+6. **Pull prettifier commit** — after CI passes, `git pull origin dev` to pick up the `chore: prettify code` auto-commit.
+
+7. **Close the issue** — once all CI checks pass:
+
+    ```bash
+    gh issue close <number> --repo shriyanss/js-recon --comment \
+      "Implemented in commit <short-sha> on the \`dev\` branch. Will be released in **v<version>**."
+    ```
+
+    Use the short commit hash of the feature commit (not the prettifier chore). The target release version comes from the unreleased CHANGELOG entry.
+
 ## cs-mast
 
 `cs-mast` computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every `.js` file found recursively under an output directory, then optionally finds and reports structural collisions — files sharing the same root signature.
