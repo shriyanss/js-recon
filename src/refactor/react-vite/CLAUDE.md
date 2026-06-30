@@ -95,6 +95,19 @@ Wrapper chains are resolved: `var r = t((e, t) => { t.exports = n() })` (where `
 
 **react-router-dom detection** uses `.displayName` assignments: `` Link.displayName = `Link` `` (template literal RHS is handled explicitly). Falls back to `extractRouterDomCanonical()` heuristic scanning for backtick strings, call patterns, and JSX element names.
 
+## Vendor chunk pre-scan (`refactor/index.ts`)
+
+`refactorVite()` can only analyze vendor chunks that are present in the `chunks` object it receives. In practice, `mapped.json` is created by the `map` step with only app chunks — vendor chunks (`vendor-react-*.js`, `rolldown-runtime-*.js`) are third-party code and are excluded during mapping. Without them `vendorExportMaps` is empty and `rewriteVendorImports` has nothing to match against, leaving raw vendor import statements in the output that break the build check.
+
+The orchestrator in `refactor/index.ts` resolves this before calling `refactorVite()`:
+
+1. Calls `findAssetsDir(chunks, mappedJsonPath)` — parses the `// File Source: http://HOST:PORT/assets/...` comment in any chunk's first line to locate `<mapped.json-dir>/output/HOST_PORT/assets/`.
+2. Calls `findVendorChunkFiles(chunks, assetsDir)` — returns JS files in the assets dir not covered by any chunk in `mapped.json`.
+3. Filters to `vendor[-_]react` and `rolldown[-_]runtime` filenames only.
+4. Reads each file and injects it into `chunks` before `refactorVite()` is called.
+
+This is the same pattern used by the `react-webpack` branch for pre-scanning vendor bundles. If `findAssetsDir` returns null (e.g. chunks have no `// File Source:` header, or the output dir is missing), the pre-scan is silently skipped and `refactorVite` proceeds with whatever is in `chunks`.
+
 ## Build check (`index.ts` → `runViteBuildCheck()`)
 
 After writing refactored files, a Vite scaffold is created in the output directory:
