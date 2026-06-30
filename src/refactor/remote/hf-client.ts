@@ -7,7 +7,7 @@ export const HF_BUCKET = "shriyanss/cs-mast-s-dataset";
 // Maps refactor tech identifier to the HuggingFace bucket path prefix that holds its signatures.
 export const TECH_TO_BRANCH: Record<string, string> = {
     "react-webpack": "react/webpack/large",
-    "react-vite": "react/vite/large",
+    "react-vite": "react/vite/large-0.1.8",
 };
 
 export type CollisionRecord = {
@@ -76,6 +76,27 @@ export const validateRemoteBranch = async (branch: string): Promise<boolean> => 
         fetchText(getHfRawUrl(branch, "technology")),
     ]);
     return sampleSizeText !== null && technologyText !== null;
+};
+
+// Validates that a bucket path exists by checking the tree API returns at least one entry.
+// Use this for user-supplied paths that may not have metadata files.
+export const validateRemotePath = async (prefix: string): Promise<boolean> => {
+    const url = getHfApiTreeUrl(prefix);
+    let resp: Response;
+    try {
+        resp = await fetch(url);
+    } catch {
+        return false;
+    }
+    if (resp.status === 429) throw new Error(`Rate limited by HuggingFace (url: ${url})`);
+    if (!resp.ok) return false;
+    try {
+        const text = await resp.text();
+        const entries = JSON.parse(text) as unknown[];
+        return Array.isArray(entries) && entries.length > 0;
+    } catch {
+        return false;
+    }
 };
 
 // --- File listing ---

@@ -13,6 +13,7 @@
 //   4. Rewrites direct vendor imports using vendor export map
 //   5. Cleans up rolldown boilerplate
 
+import chalk from "chalk";
 import { parse } from "@babel/parser";
 import _traverse from "@babel/traverse";
 import * as t from "@babel/types";
@@ -22,6 +23,7 @@ import path from "path";
 
 const traverse = _traverse.default;
 
+import { cs_mast_init, ScatCategory } from "@shriyanss/cs-mast";
 import { Chunks } from "../../utility/interfaces.js";
 import { applyModuleCleanupPasses } from "../react/transform.js";
 import {
@@ -503,6 +505,32 @@ function pruneUnusedNamedImports(importStmts: t.Statement[], bodyStmts: t.Statem
 }
 
 // ---------------------------------------------------------------------------
+// CS-MAST library detection (file-level)
+// ---------------------------------------------------------------------------
+
+const LIB_SIG_SCAT: ScatCategory[] = ["lit", "decl", "loop", "cond"];
+const LIB_FILE_CLASSIFICATION_THRESHOLD = 0.51;
+
+const fileIsLibrary = (code: string, libSigs: Set<string>, scatOverride?: ScatCategory[]): boolean => {
+    if (libSigs.size === 0) return false;
+    try {
+        const tree = cs_mast_init(code, {
+            hash: "sha256",
+            scat: scatOverride ?? LIB_SIG_SCAT,
+            sinc: [],
+            lang: "js",
+            prsr: "@babel/parser",
+        });
+        const sigs = [...tree._signatureMap.keys()];
+        if (sigs.length === 0) return false;
+        const matchCount = sigs.filter((s) => libSigs.has(s)).length;
+        return matchCount / sigs.length >= LIB_FILE_CLASSIFICATION_THRESHOLD;
+    } catch {
+        return false;
+    }
+};
+
+// ---------------------------------------------------------------------------
 // Main refactor function
 // ---------------------------------------------------------------------------
 
@@ -510,10 +538,11 @@ function pruneUnusedNamedImports(importStmts: t.Statement[], bodyStmts: t.Statem
  * Refactors Vite-bundled React app chunks.
  *
  * @param chunks - Mapped chunks from the Vite app (vendor + app chunks)
- * @param libSigs - Optional set of library signatures for module stripping (not used for Vite)
+ * @param libSigs - Optional set of library signatures for CS-MAST-based chunk filtering
+ * @param scatOverride - Optional scat category override (defaults to lit-decl-loop-cond)
  * @returns Record<filename, refactoredCode>
  */
-export default async function refactorVite(chunks: Chunks, _libSigs?: Set<string>): Promise<Record<string, string>> {
+export default async function refactorVite(chunks: Chunks, libSigs?: Set<string>, scatOverride?: ScatCategory[]): Promise<Record<string, string>> {
     const result: Record<string, string> = {};
 
     // Step 1: Collect all vendor chunks and detect the rolldown runtime chunk
@@ -545,6 +574,12 @@ export default async function refactorVite(chunks: Chunks, _libSigs?: Set<string
 
         const code = chunk.code;
         if (!code || code.trim().length === 0) continue;
+
+        // CS-MAST library detection: skip chunks whose signature set matches the baseline
+        if (libSigs && libSigs.size > 0 && fileIsLibrary(code, libSigs, scatOverride)) {
+            console.log(chalk.gray(`[-] Chunk ${basename} matches library baseline — skipping`));
+            continue;
+        }
 
         let ast: t.File;
         try {

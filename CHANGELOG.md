@@ -2,6 +2,10 @@
 
 ## 1.4.1-alpha.5 - (unreleased)
 
+### Added
+
+- `refactor` (`react-vite`, `react-webpack`): new `--remote-collisions <path>` flag. Accepts a HuggingFace bucket path (e.g. `react/vite/large-0.1.8`) and uses it as the signature source instead of the automatic `TECH_TO_BRANCH` mapping. When the path does not exist in the `shriyanss/cs-mast-s-dataset` bucket the tool exits with code 25. The existing caching layer is fully reused — signatures are cached under `~/.js-recon/refactor/signature_cache/` and the file list is cached in `~/.js-recon/refactor/cs-mast-s-list-cache.json`. Feature directories that contain no collision records in the dataset are skipped during intersection rather than collapsing the result to zero.
+
 ### Fixed
 
 - `lazyload` (nuxt): `nuxt_getFromPageSource` now prints the number of new JS files discovered (delta from the global URL set) instead of the running total. Previously the count included every URL already known from earlier in the session.

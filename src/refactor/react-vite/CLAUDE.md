@@ -11,6 +11,23 @@ Splits a Vite-bundled (rolldown) React application into human-readable ES module
 | `index.ts`          | Entry point: classifies chunks, orchestrates the multi-pass transform, returns `Record<chunkKey, code>`                                |
 | `vendor-analyze.ts` | `analyzeVendorChunk(code)` — parses the vendor chunk and returns a `Map<exportedName, VendorExportInfo>` used to classify interop vars |
 
+## CS-MAST library detection (`fileIsLibrary()`)
+
+`refactorVite()` now accepts `libSigs?: Set<string>` and `scatOverride?: ScatCategory[]`.
+When `libSigs` is provided, each non-vendor, non-runtime chunk is run through `fileIsLibrary()`
+before the transform pass. Chunks whose CS-MAST signature fraction against `libSigs` exceeds
+`LIB_FILE_CLASSIFICATION_THRESHOLD` (0.51) are skipped with a `[-] Chunk X matches library baseline — skipping` log line.
+
+**Default scat for classification:** `["lit", "decl", "loop", "cond"]` (same as webpack's `LIB_SIG_SCAT`)
+
+**`scatOverride`:** When supplied (via `--scat` CLI flag), overrides `LIB_SIG_SCAT` for both
+the HF signature download path and the per-chunk classification. Threaded from `index.ts`
+as `remoteOpts?.scat`.
+
+**Difference from webpack:** webpack classifies at the module level (per `function(module, exports, require) {...}` block). Vite already produces split chunks, so classification is at the file (chunk) level.
+
+**Vendor chunk detection is still filename-based:** `isVendorChunk()` matches `/vendor[-_]react/i`. The CS-MAST detection is an additional layer that catches Vite chunks containing library code that doesn't match the vendor filename pattern.
+
 ## Vite/rolldown bundle format
 
 A Vite production build (rolldown bundler) produces:

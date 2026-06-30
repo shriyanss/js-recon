@@ -20,6 +20,7 @@ import {
     fetchCollisionsJson,
     listCollisionsFiles,
     validateRemoteBranch,
+    validateRemotePath,
     getSampleSize,
     getTechnology,
     CollisionRecord,
@@ -98,6 +99,7 @@ export type RemoteLibSigsOptions = {
     refreshCache: boolean;
     skipCacheChecks: boolean;
     scat?: string[]; // override CS-MAST scat categories; if omitted, uses BASELINE_SCAT_DIR[tech]
+    remoteCollisions?: string; // explicit HF bucket path; overrides TECH_TO_BRANCH lookup
 };
 
 // Parses a collisions.json file and returns signatures whose count equals the maximum.
@@ -182,8 +184,11 @@ const buildLibSigs = (input: string, tech: string, scatOverride?: string[]): Lib
 
 // Loads library signatures from the remote HuggingFace dataset.
 // Returns null if the branch is not configured for `tech` or if validation fails.
+// When opts.remoteCollisions is provided it is used directly as the bucket path,
+// bypassing the TECH_TO_BRANCH lookup and metadata-file validation.
+// Exits with code 25 if opts.remoteCollisions is set but the path does not exist.
 const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Promise<LibSigsResult | null> => {
-    const branch = TECH_TO_BRANCH[tech];
+    const branch = opts.remoteCollisions ?? TECH_TO_BRANCH[tech];
     if (!branch) return null;
 
     const scatDir = opts.scat ? scatToDir(opts.scat) : BASELINE_SCAT_DIR[tech];
@@ -202,34 +207,62 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
         console.log(chalk.yellow(`[!] Cache validation warning: ${w} (will refresh)`));
     }
 
-    // Validate remote bucket prefix has required metadata files.
-    console.log(chalk.cyan(`[i] Validating remote bucket prefix "${branch}"...`));
-    const branchOk = await validateRemoteBranch(branch);
-    if (!branchOk) {
-        console.log(
-            chalk.red(
-                `[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`
-            )
-        );
-        return null;
+    if (opts.remoteCollisions) {
+        // User-supplied path: validate it exists in the HF bucket.
+        console.log(chalk.cyan(`[i] Validating remote dataset path "${branch}"...`));
+        const pathExists = await validateRemotePath(branch);
+        if (!pathExists) {
+            console.error(
+                chalk.red(
+                    `[!] Remote dataset path "${branch}" not found in the shriyanss/cs-mast-s-dataset bucket.`
+                )
+            );
+            process.exit(25);
+        }
+    } else {
+        // Auto-detected branch: validate metadata files exist.
+        console.log(chalk.cyan(`[i] Validating remote bucket prefix "${branch}"...`));
+        const branchOk = await validateRemoteBranch(branch);
+        if (!branchOk) {
+            console.log(
+                chalk.red(
+                    `[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`
+                )
+            );
+            return null;
+        }
+
+        // Verify the bucket prefix technology matches.
+        const remoteTech = await getTechnology(branch);
+        if (remoteTech !== tech) {
+            console.log(
+                chalk.red(
+                    `[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`
+                )
+            );
+            return null;
+        }
     }
 
-    // Verify the bucket prefix technology matches.
-    const remoteTech = await getTechnology(branch);
-    if (remoteTech !== tech) {
-        console.log(
-            chalk.red(
-                `[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`
-            )
-        );
-        return null;
+    // Try to load the sample size for quality filtering.
+    // Custom paths may not have a sample_size file; fall back to 0 (skip quality filter).
+    let sampleSize = 0;
+    if (opts.remoteCollisions) {
+        try {
+            sampleSize = await getSampleSize(branch);
+        } catch {
+            // Custom path may not have sample_size; quality filter will be skipped (sampleSize=0)
+        }
+    } else {
+        sampleSize = await getSampleSize(branch);
     }
-
-    const sampleSize = await getSampleSize(branch);
 
     // Build / refresh file list cache.
+    // Also refresh if the specific branch is not yet in the cache (e.g. first run
+    // with a new --remote-collisions path, or a new tech added after initial cache).
     let listCache = cacheWarnings.length > 0 ? null : loadListCache();
-    if (shouldRefreshListCache(listCache, opts)) {
+    const branchMissingFromCache = !listCache?.branches[branch];
+    if (shouldRefreshListCache(listCache, opts) || branchMissingFromCache) {
         console.log(chalk.cyan(`[i] Refreshing remote file list cache for bucket prefix "${branch}"...`));
         const paths = await listCollisionsFiles(branch, scatDir);
         const now = Date.now();
@@ -272,14 +305,20 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
             records = await fetchCollisionsJson(url);
 
             if (records === null) {
-                // 404 or error — invalidate list cache unless skip-cache-checks.
-                if (!opts.skipCacheChecks) {
+                // 404 or network error.
+                // For user-specified --remote-collisions paths the list is stable;
+                // just skip this file and continue without poisoning the list cache.
+                // For auto-detected branches, invalidate the list cache so a stale
+                // entry (e.g. a deleted file) is not tried again on the next run.
+                if (!opts.remoteCollisions && !opts.skipCacheChecks) {
                     console.log(chalk.yellow(`[!] Could not fetch ${relPath} (404 or error) — refreshing list cache`));
                     const freshPaths = await listCollisionsFiles(branch, scatDir);
                     const updatedBranches = listCache?.branches ?? {};
                     updatedBranches[branch] = freshPaths;
                     saveListCache({ generatedAt: Date.now(), branches: updatedBranches });
                     listCache = { generatedAt: Date.now(), branches: updatedBranches };
+                } else {
+                    console.log(chalk.yellow(`[!] Could not fetch ${relPath} — skipping`));
                 }
                 continue;
             }
@@ -287,8 +326,17 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
             saveSignatureToCache(branch, relPath, records, config.maxCacheSizeMb);
         }
 
-        // Apply signature quality filter: (count / sampleSize) * 100 >= threshold
-        const filtered = records.filter((r) => sampleSize > 0 && (r.count / sampleSize) * 100 >= opts.signatureQuality);
+        // Apply signature quality filter: (count / sampleSize) * 100 >= threshold.
+        // When sampleSize is 0 (no sample_size file on the remote path), skip quality
+        // filtering and include all records.
+        const filtered =
+            sampleSize === 0
+                ? records
+                : records.filter((r) => (r.count / sampleSize) * 100 >= opts.signatureQuality);
+
+        // Skip feature dirs with no records — they indicate missing/empty dataset
+        // entries and would collapse the intersection to zero if included.
+        if (filtered.length === 0) continue;
 
         // Intersect with previous sets.
         const sigSet = new Set(filtered.map((r) => r.signature));
@@ -299,7 +347,6 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
                 if (!sigSet.has(sig)) intersection.delete(sig);
             }
         }
-
         loadedCount++;
     }
 
@@ -602,12 +649,15 @@ const refactor = async (
         }
         libSigs = result.sigs;
         console.log(chalk.cyan(`[i] Loaded ${libSigs.size} library signatures from ${result.desc}`));
-    } else if (!remoteOpts?.noRemote && TECH_TO_BRANCH[tech]) {
-        // Default: load from remote HuggingFace dataset.
+    } else if (remoteOpts?.remoteCollisions || (!remoteOpts?.noRemote && TECH_TO_BRANCH[tech])) {
+        // Load from remote HuggingFace dataset.
+        // --remote-collisions uses the explicit path; otherwise falls back to TECH_TO_BRANCH.
         const opts: RemoteLibSigsOptions = {
             signatureQuality: remoteOpts?.signatureQuality ?? 100,
             refreshCache: remoteOpts?.refreshCache ?? false,
             skipCacheChecks: remoteOpts?.skipCacheChecks ?? false,
+            remoteCollisions: remoteOpts?.remoteCollisions,
+            scat: remoteOpts?.scat,
         };
         const result = await loadRemoteLibSigs(tech, opts);
         if (result) {
@@ -716,7 +766,11 @@ const refactor = async (
         // code compiles.
         runBuildCheck(outputDir, writtenFiles);
     } else if (tech === "react-vite") {
-        const viteFiles = await refactorVite(chunks, libSigs);
+        const viteFiles = await refactorVite(
+            chunks,
+            libSigs,
+            remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined
+        );
         const writtenFiles: string[] = [];
         for (const [chunkKey, rawCode] of Object.entries(viteFiles)) {
             let formatted: string;
