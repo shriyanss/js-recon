@@ -213,9 +213,7 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
         const pathExists = await validateRemotePath(branch);
         if (!pathExists) {
             console.error(
-                chalk.red(
-                    `[!] Remote dataset path "${branch}" not found in the shriyanss/cs-mast-s-dataset bucket.`
-                )
+                chalk.red(`[!] Remote dataset path "${branch}" not found in the shriyanss/cs-mast-s-dataset bucket.`)
             );
             process.exit(25);
         }
@@ -330,9 +328,7 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
         // When sampleSize is 0 (no sample_size file on the remote path), skip quality
         // filtering and include all records.
         const filtered =
-            sampleSize === 0
-                ? records
-                : records.filter((r) => (r.count / sampleSize) * 100 >= opts.signatureQuality);
+            sampleSize === 0 ? records : records.filter((r) => (r.count / sampleSize) * 100 >= opts.signatureQuality);
 
         // Skip feature dirs with no records — they indicate missing/empty dataset
         // entries and would collapse the intersection to zero if included.

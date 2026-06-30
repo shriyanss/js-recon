@@ -542,7 +542,11 @@ const fileIsLibrary = (code: string, libSigs: Set<string>, scatOverride?: ScatCa
  * @param scatOverride - Optional scat category override (defaults to lit-decl-loop-cond)
  * @returns Record<filename, refactoredCode>
  */
-export default async function refactorVite(chunks: Chunks, libSigs?: Set<string>, scatOverride?: ScatCategory[]): Promise<Record<string, string>> {
+export default async function refactorVite(
+    chunks: Chunks,
+    libSigs?: Set<string>,
+    scatOverride?: ScatCategory[]
+): Promise<Record<string, string>> {
     const result: Record<string, string> = {};
 
     // Step 1: Collect all vendor chunks and detect the rolldown runtime chunk
