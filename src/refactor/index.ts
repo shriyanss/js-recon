@@ -762,6 +762,33 @@ const refactor = async (
         // code compiles.
         runBuildCheck(outputDir, writtenFiles);
     } else if (tech === "react-vite") {
+        // Pre-scan vendor chunks from the assets directory that are not in mapped.json.
+        // Vendor chunks (vendor-react-*.js) are referenced by app chunks but are typically
+        // absent from mapped.json. Without them, vendorExportMaps is empty and vendor
+        // import statements are never rewritten — leaving unresolvable references in output.
+        const vitAssetsDir = findAssetsDir(chunks, mappedJson);
+        if (vitAssetsDir) {
+            const missingFiles = findVendorChunkFiles(chunks, vitAssetsDir);
+            for (const vendorFile of missingFiles) {
+                const basename = path.basename(vendorFile);
+                if (!/vendor[-_]react/i.test(basename) && !/rolldown[-_]runtime/i.test(basename)) continue;
+                console.log(chalk.cyan(`[i] Including missing vendor chunk: ${basename}`));
+                const key = basename.replace(/\.js$/, "");
+                chunks[key] = {
+                    id: basename,
+                    description: "",
+                    loadedOn: [],
+                    containsFetch: false,
+                    isAxiosLibrary: false,
+                    exports: [],
+                    callStack: [],
+                    code: fs.readFileSync(vendorFile, "utf8"),
+                    imports: [],
+                    file: `assets/${basename}`,
+                };
+            }
+        }
+
         const viteFiles = await refactorVite(
             chunks,
             libSigs,
