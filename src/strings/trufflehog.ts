@@ -19,7 +19,11 @@ export const runTrufflehog = (directory: string): Promise<void> => {
     return new Promise((resolve) => {
         if (!isTrufflehogInstalled()) {
             console.error(chalk.red("[!] trufflehog not found in PATH."));
-            console.error(chalk.yellow("    Install: curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh"));
+            console.error(
+                chalk.yellow(
+                    "    Install: curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh"
+                )
+            );
             console.error(chalk.yellow("    Or: brew install trufflehog"));
             console.error(chalk.yellow("    Then re-run with --trufflehog."));
             process.exit(1);
