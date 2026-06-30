@@ -215,6 +215,7 @@ program
     .option("-p, --permutate", "Permutate URLs and paths found", false)
     .option("--openapi", "Generate OpenAPI specification from the paths found", false)
     .option("-s, --scan-secrets", "Scan for secrets", false)
+    .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
     .action(async (cmd) => {
         await strings(
             cmd.directory,
@@ -223,7 +224,8 @@ program
             cmd.extractedUrlPath,
             cmd.scanSecrets,
             cmd.permutate,
-            cmd.openapi
+            cmd.openapi,
+            cmd.trufflehog
         );
     });
 
@@ -433,6 +435,7 @@ program
     .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--secrets", "Scan for secrets", false)
+    .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")

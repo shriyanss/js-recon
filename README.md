@@ -90,7 +90,7 @@ js-recon run -u https://app.example.com
 
 - Downloads all dynamically loaded JS files (refered as `lazyload`) from website with supported frameworks
 - Use API gateway to rotate IP addresses to bypass firewall
-- Extract strings from the discovered JS files, and extract potential secrets, endpoints, etc. from them
+- Extract strings from the discovered JS files, and extract potential secrets, endpoints, etc. from them (built-in scanner via `--secrets`; TruffleHog integration via `--trufflehog`)
 - Endpoints modules extracts client-side paths from the app
 - Map feature analyzes the JS files and outputs it to a JSON file. An interactive mode can be then used to analyze it
 - Reconstruct HTTP requests that the app makes to the server, and output them to the OpenAPI spec

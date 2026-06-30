@@ -425,7 +425,7 @@ const processUrl = async (
     console.log(chalk.bgCyan("[2/8] Running strings to extract endpoints..."));
     resetSkipStep();
     await Promise.race([
-        strings(outputDir, stringsFile, true, extractedUrlsFile, false, false, false),
+        strings(outputDir, stringsFile, true, extractedUrlsFile, false, false, false, false),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Strings complete."));
@@ -462,7 +462,7 @@ const processUrl = async (
     console.log(chalk.bgCyan("[4/8] Running strings again to extract endpoints..."));
     resetSkipStep();
     await Promise.race([
-        strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true),
+        strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true, cmd.trufflehog),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Strings complete."));
@@ -503,7 +503,7 @@ const processUrl = async (
     console.log(chalk.bgCyan("[4.6/8] Re-running strings for chunks from the re-pass..."));
     resetSkipStep();
     await Promise.race([
-        strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true),
+        strings(outputDir, stringsFile, true, extractedUrlsFile, cmd.secrets, true, true, cmd.trufflehog),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Strings re-pass complete."));

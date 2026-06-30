@@ -6,6 +6,7 @@ import prettier from "prettier";
 import secrets from "./secrets.js";
 import permutate from "./permutate.js";
 import openapi from "./openapi.js";
+import { runTrufflehog } from "./trufflehog.js";
 
 /**
  * Recursively extracts all string literals from a given AST node.
@@ -74,7 +75,8 @@ const strings = async (
     extracted_url_path: string,
     scan_secrets: boolean,
     permutate_option: boolean,
-    openapi_option: boolean
+    openapi_option: boolean,
+    trufflehog: boolean = false
 ): Promise<undefined> => {
     console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
@@ -265,6 +267,10 @@ const strings = async (
         } else {
             console.log(chalk.green(`[✓] Found ${total_secrets} secrets`));
         }
+    }
+
+    if (trufflehog) {
+        await runTrufflehog(directory);
     }
 };
 
