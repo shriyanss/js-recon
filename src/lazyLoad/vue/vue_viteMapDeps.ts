@@ -60,11 +60,17 @@ const vue_viteMapDeps = async (jsFiles: string[], maxJsSizeMb: number = 2): Prom
                     if (!t.isArrayExpression(rhsOfOr.right)) continue;
 
                     const foundInThisFile: string[] = [];
+                    const jsOrigin = new URL(jsUrl).origin + "/";
                     for (const element of rhsOfOr.right.elements) {
                         if (!element || !t.isStringLiteral(element)) continue;
                         const val = element.value;
                         if (!val.endsWith(".js")) continue;
-                        foundInThisFile.push(new URL(val, jsUrl).href);
+                        // Explicit relative paths (./  or ../) → file-relative.
+                        // Everything else (bare "assets/x.js" or absolute "/assets/x.js")
+                        // → root-relative: resolve against origin so Vite paths like
+                        // "assets/chunk.js" don't double-up the directory segment.
+                        const isFileRelative = val.startsWith("./") || val.startsWith("../");
+                        foundInThisFile.push(new URL(val, isFileRelative ? jsUrl : jsOrigin).href);
                     }
 
                     if (foundInThisFile.length > 0) {

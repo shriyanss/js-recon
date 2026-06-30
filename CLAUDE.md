@@ -107,7 +107,7 @@ npm run start -- <subcommand> [options]
 
 **SvelteKit `adapter-static` (SSG/SPA) boot pattern**: The static builds produce a shell HTML file (`404.html` for SSG, `index.html` for SPA) that contains both `<link rel="modulepreload">` tags for all initial chunks AND the same inline `import()` boot script as adapter-node. `svelte_getFromPageSource` picks up 17+ JS URLs from the modulepreload links plus 2 from the inline script, giving a much larger seed set than the adapter-node case.
 
-**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React emit `m.f = ["/assets/chunk.js", ...]` (root-relative paths). `react_followImports` differentiates by checking `p.startsWith("/")` — absolute paths resolve against the origin (`baseUrl`), relative paths resolve against the chunk's own URL (`fileUrl`). See `src/lazyload/react/CLAUDE.md` for details.
+**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (explicit file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React can emit either `m.f = ["/assets/chunk.js", ...]` (absolute root-relative) or `m.f = ["assets/chunk.js", ...]` (bare root-relative, no leading `/`). `react_followImports` differentiates by checking for a `./` or `../` prefix: only explicitly relative paths resolve against the chunk's own URL (`fileUrl`); all others (absolute `/` or bare names) resolve against the origin (`baseUrl`). Bare names like `assets/x.js` must NOT be resolved against `fileUrl` — when the chunk is inside `assets/`, that would produce a double-directory path. See `src/lazyload/react/CLAUDE.md` for details.
 
 ### Batch mode
 
