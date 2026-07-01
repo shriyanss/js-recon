@@ -24,14 +24,20 @@ const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
 
             const contentLength = req.headers.get("content-length");
             if (contentLength && parseInt(contentLength, 10) > MAX_LAYOUT_JS_BYTES) {
-                console.log(chalk.yellow(`[!] Skipping oversized layout.js (${Math.round(parseInt(contentLength, 10) / 1024)} KB): ${url}`));
+                console.log(
+                    chalk.yellow(
+                        `[!] Skipping oversized layout.js (${Math.round(parseInt(contentLength, 10) / 1024)} KB): ${url}`
+                    )
+                );
                 continue;
             }
 
             const jsContent = await req.text();
 
             if (jsContent.length > MAX_LAYOUT_JS_BYTES) {
-                console.log(chalk.yellow(`[!] Skipping oversized layout.js (${Math.round(jsContent.length / 1024)} KB): ${url}`));
+                console.log(
+                    chalk.yellow(`[!] Skipping oversized layout.js (${Math.round(jsContent.length / 1024)} KB): ${url}`)
+                );
                 continue;
             }
 
