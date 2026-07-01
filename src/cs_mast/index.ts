@@ -56,7 +56,14 @@ async function runOnePermutation(
     permOutput: string,
     collisionFormat: string
 ): Promise<void> {
-    const cfg: CsMastConfig = { hash: "sha256", lang: "js", prsr: "@babel/parser", scat, sinc, sourceType: "unambiguous" };
+    const cfg: CsMastConfig = {
+        hash: "sha256",
+        lang: "js",
+        prsr: "@babel/parser",
+        scat,
+        sinc,
+        sourceType: "unambiguous",
+    };
     const sigMap = new Map<string, string[]>();
     for (const file of jsFiles) {
         try {
@@ -120,10 +127,16 @@ export default async (
 
     // apply scat/sinc overrides
     const activeScat: ScatCategory[] = scatOverride
-        ? (scatOverride.split(",").map((s) => s.trim()).filter(Boolean) as ScatCategory[])
-        : CS_MAST_CONFIG.scat as ScatCategory[];
+        ? (scatOverride
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean) as ScatCategory[])
+        : (CS_MAST_CONFIG.scat as ScatCategory[]);
     const activeSinc: ScatCategory[] = sincOverride
-        ? (sincOverride.split(",").map((s) => s.trim()).filter(Boolean) as ScatCategory[])
+        ? (sincOverride
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean) as ScatCategory[])
         : [];
     const activeConfig: CsMastConfig = { ...CS_MAST_CONFIG, scat: activeScat, sinc: activeSinc };
 
@@ -139,12 +152,17 @@ export default async (
         }
         if (!fs.existsSync(permOutput)) fs.mkdirSync(permOutput, { recursive: true });
         const subsets = allScatSubsets();
-        const concurrency = permConcurrency > 0 ? permConcurrency : Math.max(1, Math.floor(require("os").cpus().length / 2));
+        const concurrency =
+            permConcurrency > 0 ? permConcurrency : Math.max(1, Math.floor(require("os").cpus().length / 2));
         console.log(chalk.cyan(`[*] Running ${subsets.length} scat permutations (concurrency: ${concurrency})`));
         let done = 0;
         for (let i = 0; i < subsets.length; i += concurrency) {
             const batch = subsets.slice(i, i + concurrency);
-            await Promise.all(batch.map((scat) => runOnePermutation(jsFiles, scat, activeSinc, minCollisions, permOutput!, collisionFormat)));
+            await Promise.all(
+                batch.map((scat) =>
+                    runOnePermutation(jsFiles, scat, activeSinc, minCollisions, permOutput!, collisionFormat)
+                )
+            );
             done += batch.length;
             process.stdout.write(`\r[*] ${done}/${subsets.length} permutations done`);
         }
