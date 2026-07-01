@@ -4,6 +4,7 @@ import _generator from "@babel/generator";
 import * as t from "@babel/types";
 import {
     tryExtractTurbopackRequire,
+    tryExtractWebpackRequire,
     tryExtractRuntimeSExport,
     tryExtractDefinePropertyExport,
     tryExtractBatchIIFEExports,
@@ -11,6 +12,7 @@ import {
     isRequireDotR,
     isEsModuleMarker,
     isInteropBoilerplate,
+    tryExtractModuleExportsRhs,
     tryExtractForInExportLoop,
     extractExportsFromMap,
     makeExportStatement,
@@ -660,6 +662,8 @@ function pruneUnusedNamedImports(importStmts: t.Statement[], bodyStmts: t.Statem
     return importStmts
         .map((stmt) => {
             if (!t.isImportDeclaration(stmt)) return stmt;
+            // Side-effect imports (no specifiers) are always kept.
+            if (stmt.specifiers.length === 0) return stmt;
             const prunedSpecifiers = stmt.specifiers.filter((spec) => {
                 if (t.isImportNamespaceSpecifier(spec)) return true;
                 if (t.isImportDefaultSpecifier(spec)) return true;
@@ -705,6 +709,9 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
     const body = fnPath.node.body;
     if (!t.isBlockStatement(body)) return [];
 
+    // webpack-style: no turbopack runtime, direct requireParam(N) calls
+    const isWebpackStyle = !runtimeParam && !!requireParam;
+
     // ── Pre-scan: find for-in export loops ────────────────────────────────
     const exportMapVarNames = new Set<string>();
     const exportMapDeclNodes = new Map<string, t.VariableDeclaration>();
@@ -733,6 +740,8 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
 
     // Collect side-effect requires from sequence expressions (e.g. (ODP, r(N1), r(N2)))
     const sideEffectRequireIds = new Set<number>();
+    // Webpack CJS re-exports: e.exports = r(N) → export * from './N.js'
+    const reExportIds = new Set<number>();
 
     for (const stmt of body.body) {
         // Drop "use strict" directives (they become expressions in lax parse mode)
@@ -745,10 +754,54 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
             continue;
         }
 
-        // CJS interop boilerplate: moduleParam.exports = exportsParam.default
-        if (moduleParam && isInteropBoilerplate(stmt, moduleParam)) {
-            stmtsToRemove.add(stmt);
-            continue;
+        // moduleParam.exports = X handling
+        if (moduleParam) {
+            // Step 1: handle simple top-level e.exports = VALUE assignments
+            const cjsRhs = tryExtractModuleExportsRhs(stmt, moduleParam);
+            if (cjsRhs !== null) {
+                stmtsToRemove.add(stmt);
+                // Pure interop: e.exports = exportsParam.default → strip silently
+                if (
+                    exportsParam &&
+                    t.isMemberExpression(cjsRhs) &&
+                    !(cjsRhs as t.MemberExpression).computed &&
+                    t.isIdentifier((cjsRhs as t.MemberExpression).object, { name: exportsParam }) &&
+                    t.isIdentifier((cjsRhs as t.MemberExpression).property, { name: "default" })
+                ) {
+                    continue;
+                }
+                // Not turbopack (no runtimeParam): this is an actual CJS export
+                if (!runtimeParam) {
+                    // e.exports = requireParam(N) → re-export all from N
+                    if (requireParam) {
+                        const reExportId = tryExtractWebpackRequire(cjsRhs, requireParam);
+                        if (reExportId !== null) {
+                            reExportIds.add(reExportId);
+                            continue;
+                        }
+                    }
+                    // e.exports = VALUE → export default VALUE
+                    exportMap.set("default", cjsRhs);
+                }
+                continue;
+            }
+
+            // Step 2: strip complex nested interop patterns (e.g. conditional with module.exports=exports.default inside).
+            // Only applies when exportsParam is known (2-/3-param modules) — 1-param modules have no
+            // exports param so any e.exports=X might be a real CJS export, not interop.
+            // Also skip SequenceExpression statements — their sub-expressions are handled element-by-element below.
+            if (
+                exportsParam &&
+                (
+                    !t.isExpressionStatement(stmt) ||
+                    !t.isSequenceExpression((stmt as t.ExpressionStatement).expression)
+                )
+            ) {
+                if (isInteropBoilerplate(stmt, moduleParam, exportsParam)) {
+                    stmtsToRemove.add(stmt);
+                    continue;
+                }
+            }
         }
 
         if (t.isExpressionStatement(stmt)) {
@@ -802,6 +855,16 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
                 }
             }
 
+            // Webpack standalone side-effect require: r(N); as a lone expression statement
+            if (isWebpackStyle && requireParam) {
+                const sideEffectId = tryExtractWebpackRequire(expr, requireParam);
+                if (sideEffectId !== null) {
+                    sideEffectRequireIds.add(sideEffectId);
+                    stmtsToRemove.add(stmt);
+                    continue;
+                }
+            }
+
             // SequenceExpression: handle (ODP, !(fn)(...), r(N1), r(N2), ...) mixed sequences
             if (t.isSequenceExpression(expr)) {
                 const kept: t.Expression[] = [];
@@ -838,6 +901,19 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
                             continue;
                         }
                     }
+
+                    // Webpack side-effect require: requireParam(N) standalone in a sequence
+                    if (isWebpackStyle && requireParam) {
+                        const sideEffectId = tryExtractWebpackRequire(sub, requireParam);
+                        if (sideEffectId !== null) {
+                            sideEffectRequireIds.add(sideEffectId);
+                            continue;
+                        }
+                    }
+
+                    // Strip complex interop boilerplate sub-expressions in a sequence
+                    // (e.g. `("function"==typeof t.default||...)&&e.exports=t.default`)
+                    if (moduleParam && exportsParam && isInteropBoilerplate(t.expressionStatement(sub), moduleParam, exportsParam)) continue;
 
                     kept.push(sub);
                 }
@@ -910,15 +986,59 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
             continue;
         }
 
+        // Webpack-style: `var x = requireParam(N)` → static import
+        if (isWebpackStyle && requireParam && t.isVariableDeclaration(stmt)) {
+            const keptDeclarators: t.VariableDeclarator[] = [];
+            for (const decl of stmt.declarations) {
+                if (!t.isIdentifier(decl.id) || !decl.init) {
+                    keptDeclarators.push(decl);
+                    continue;
+                }
+                const numId = tryExtractWebpackRequire(decl.init, requireParam);
+                if (numId === null) {
+                    keptDeclarators.push(decl);
+                    continue;
+                }
+                const spec = `./${numId}.js`;
+                if (!hoistedImports.has(spec)) {
+                    hoistedImports.set(spec, (decl.id as t.Identifier).name);
+                    importNameByNumId.set(numId, (decl.id as t.Identifier).name);
+                }
+                // Declarator removed — becomes a static import
+            }
+            if (keptDeclarators.length > 0) {
+                filteredBody.push(t.variableDeclaration(stmt.kind, keptDeclarators));
+            }
+            continue;
+        }
+
         filteredBody.push(stmt);
     }
 
-    // ── Pass 3: replace remaining inline runtime.r(N) / runtime.i(N) calls ─
+    // ── Pass 3: replace remaining inline require calls ────────────────────
     if (runtimeParam) {
+        // Turbopack-style: replace runtime.r(N) / runtime.i(N)
         body.body = filteredBody;
         fnPath.traverse({
             CallExpression(p) {
                 const numId = tryExtractTurbopackRequire(p.node, runtimeParam);
+                if (numId === null) return;
+                let name = importNameByNumId.get(numId);
+                if (!name) {
+                    name = `_jsr_module_${numId}`;
+                    hoistedImports.set(`./${numId}.js`, name);
+                    importNameByNumId.set(numId, name);
+                }
+                p.replaceWith(t.identifier(name));
+                p.skip();
+            },
+        });
+    } else if (isWebpackStyle && requireParam) {
+        // Webpack-style: replace requireParam(N) direct calls
+        body.body = filteredBody;
+        fnPath.traverse({
+            CallExpression(p) {
+                const numId = tryExtractWebpackRequire(p.node, requireParam);
                 if (numId === null) return;
                 let name = importNameByNumId.get(numId);
                 if (!name) {
@@ -951,6 +1071,13 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
     }
 
     let exportStmts: t.Statement[] = [];
+
+    // webpack CJS re-exports: e.exports = r(N) → export * from './N.js'
+    for (const numId of reExportIds) {
+        const spec = `./${numId}.js`;
+        exportStmts.push(t.exportAllDeclaration(t.stringLiteral(spec)));
+    }
+
     for (const [exportName, returnExpr] of exportMap) {
         exportStmts.push(makeExportStatement(exportName, returnExpr));
     }

@@ -2,6 +2,32 @@ import * as t from "@babel/types";
 
 export const VALID_IDENT_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
+// Returns the numeric module ID if expr is `requireParam(N)` — webpack direct-call require.
+// In the webpack module format (NNN:(module,exports,require)=>{...}),
+// cross-module requires are direct function calls: require(N).
+export const tryExtractWebpackRequire = (expr: t.Node, requireParam: string): number | null => {
+    if (!requireParam) return null;
+    if (!t.isCallExpression(expr)) return null;
+    if (!t.isIdentifier(expr.callee, { name: requireParam })) return null;
+    if (expr.arguments.length !== 1) return null;
+    const arg = expr.arguments[0];
+    if (!t.isNumericLiteral(arg)) return null;
+    return (arg as t.NumericLiteral).value;
+};
+
+// Extracts the RHS of `moduleParam.exports = X`.
+// Returns the RHS expression or null if the statement doesn't match.
+export const tryExtractModuleExportsRhs = (stmt: t.Statement, moduleParam: string): t.Expression | null => {
+    if (!t.isExpressionStatement(stmt)) return null;
+    const expr = stmt.expression;
+    if (!t.isAssignmentExpression(expr) || expr.operator !== "=") return null;
+    const lhs = expr.left;
+    if (!t.isMemberExpression(lhs) || (lhs as t.MemberExpression).computed) return null;
+    if (!t.isIdentifier((lhs as t.MemberExpression).object, { name: moduleParam })) return null;
+    if (!t.isIdentifier((lhs as t.MemberExpression).property, { name: "exports" })) return null;
+    return expr.right as t.Expression;
+};
+
 // Returns the numeric module ID if expr is `runtimeParam.r(N)` or `runtimeParam.i(N)`.
 // In the turbopack module format (func_NNN = (runtime, module, exports) => {...}),
 // cross-module requires are member-expression calls: runtime.r(N) or runtime.i(N).
@@ -90,12 +116,16 @@ export const tryExtractDefinePropertyExport = (
 };
 
 // Checks whether `stmt` contains `moduleParam.exports = ...` (CJS interop boilerplate).
-export const isInteropBoilerplate = (stmt: t.Statement, moduleParam: string): boolean => {
+// Detects the CJS interop boilerplate form: `moduleParam.exports = exportsParam.default`
+// (possibly nested deep inside a conditional expression tree).
+// Only matches when the RHS is specifically `exportsParam.default` — this avoids false-positives
+// on real CJS modules where `e.exports = someLocalVar` is a legitimate export.
+export const isInteropBoilerplate = (stmt: t.Statement, moduleParam: string, exportsParam?: string): boolean => {
     if (!t.isExpressionStatement(stmt)) return false;
-    return containsModuleExportsAssignment(stmt.expression, moduleParam);
+    return containsModuleExportsDefaultAssignment(stmt.expression, moduleParam, exportsParam ?? "");
 };
 
-const containsModuleExportsAssignment = (node: t.Node, moduleParam: string): boolean => {
+const containsModuleExportsDefaultAssignment = (node: t.Node, moduleParam: string, exportsParam: string): boolean => {
     if (
         t.isAssignmentExpression(node) &&
         node.operator === "=" &&
@@ -104,7 +134,15 @@ const containsModuleExportsAssignment = (node: t.Node, moduleParam: string): boo
         t.isIdentifier((node.left as t.MemberExpression).object, { name: moduleParam }) &&
         t.isIdentifier((node.left as t.MemberExpression).property, { name: "exports" })
     ) {
-        return true;
+        // Only strip if the RHS is specifically `exportsParam.default` (interop copy-back).
+        // This avoids false-positives on real CJS modules where `e.exports = localVar`.
+        const rhs = node.right;
+        return (
+            t.isMemberExpression(rhs) &&
+            !(rhs as t.MemberExpression).computed &&
+            t.isIdentifier((rhs as t.MemberExpression).object, { name: exportsParam }) &&
+            t.isIdentifier((rhs as t.MemberExpression).property, { name: "default" })
+        );
     }
     for (const key of Object.keys(node)) {
         if (key === "type" || key === "loc" || key === "start" || key === "end") continue;
@@ -112,12 +150,16 @@ const containsModuleExportsAssignment = (node: t.Node, moduleParam: string): boo
         if (!child || typeof child !== "object") continue;
         if (Array.isArray(child)) {
             for (const item of child) {
-                if (item && typeof item.type === "string" && containsModuleExportsAssignment(item, moduleParam)) {
+                if (
+                    item &&
+                    typeof item.type === "string" &&
+                    containsModuleExportsDefaultAssignment(item, moduleParam, exportsParam)
+                ) {
                     return true;
                 }
             }
         } else if (typeof child.type === "string") {
-            if (containsModuleExportsAssignment(child, moduleParam)) return true;
+            if (containsModuleExportsDefaultAssignment(child, moduleParam, exportsParam)) return true;
         }
     }
     return false;

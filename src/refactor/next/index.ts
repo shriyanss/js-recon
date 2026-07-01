@@ -7,6 +7,87 @@ import { Chunk } from "../../utility/interfaces.js";
 import { TurboModuleEntry, WebpackModuleEntry, transformModule, transformWebpackModule } from "./transform.js";
 import { validateAndFix } from "./validator.js";
 
+/**
+ * Refactors a single Next.js (webpack) chunk into an ECMAScript module file.
+ *
+ * Chunk code format (from mapped.json): `3899:(e,t,r)=>{"use strict";...}`
+ * Param order: params[0]=module, params[1]=exports, params[2]=require
+ *
+ * Export forms handled:
+ *   - Object.defineProperty(t,"name",{get:fn}) — named exports
+ *   - for(var k in map) ODP(t,k,...) — for-in batch exports
+ *   - r.d(t,{name:()=>local}) — webpack require.d (rare)
+ *   - e.exports = VALUE — CJS default export
+ *   - e.exports = r(N) — CJS re-export (→ export * from './N.js')
+ *
+ * Require forms handled:
+ *   - var x = r(N) — hoisted to import * as x from './N.js'
+ *   - r(N) inline — replaced with hoisted identifier
+ *   - r(N); standalone — becomes import './N.js' (side-effect)
+ */
+export const refactorNextWebpack = async (chunk: Chunk): Promise<Record<string, string>> => {
+    console.log(chalk.cyan(`[i] Processing Next.js (webpack) chunk: ${chunk.id}`));
+
+    // The code field from mapped.json starts with `moduleId:` (e.g. `3899:(e,t,r)=>{...}`).
+    // Strip the numeric-ID prefix before parsing — Babel can't handle `3899:expr` at file level.
+    const strippedCode = chunk.code.replace(/^\d+:\s*/, "");
+
+    let ast: t.File;
+    try {
+        ast = parser.parse(strippedCode, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch {
+        console.log(chalk.yellow(`[!] Failed to parse webpack chunk ${chunk.id} — skipping`));
+        return {};
+    }
+
+    let captured: WebpackModuleEntry | null = null;
+
+    traverse(ast, {
+        ArrowFunctionExpression(path: NodePath<t.ArrowFunctionExpression>) {
+            // Skip nested arrow functions — only want the top-level module wrapper.
+            const parent = path.parentPath;
+            if (!parent?.isExpressionStatement() && !parent?.isProgram()) return;
+
+            const params = path.node.params;
+            if (params.length > 3) return;
+
+            const moduleParam = params[0] && t.isIdentifier(params[0]) ? (params[0] as t.Identifier).name : "";
+            const exportsParam = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
+            const requireParam = params[2] && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : "";
+
+            if (!captured) {
+                captured = {
+                    id: chunk.id,
+                    fnPath: path,
+                    runtimeParam: "",
+                    moduleParam,
+                    exportsParam,
+                    requireParam,
+                };
+            }
+            path.stop();
+        },
+    });
+
+    if (!captured) {
+        console.log(chalk.yellow(`[!] No module function found in webpack chunk ${chunk.id} — skipping`));
+        return {};
+    }
+
+    const statements = transformWebpackModule(captured);
+    const code = validateAndFix(statements, chunk.id);
+    if (code === null) {
+        console.log(chalk.yellow(`[~] Module ${chunk.id} skipped due to unresolvable syntax errors`));
+        return {};
+    }
+
+    return { [chunk.id]: code };
+};
+
 const traverse = _traverse.default;
 
 /**

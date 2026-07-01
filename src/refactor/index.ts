@@ -6,7 +6,7 @@ import { Chunks } from "../utility/interfaces.js";
 import prettier from "prettier";
 
 // Next.js
-import refactorNext from "./next/index.js";
+import refactorNext, { refactorNextWebpack } from "./next/index.js";
 // React
 import refactorReact, { RefactorReactResult } from "./react/index.js";
 import type { LibraryModuleInfo } from "./react/library-classify.js";
@@ -363,6 +363,7 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
 
 const availableTechs = {
     "next-turbopack": "Next.js (Turbopack)",
+    "next-webpack": "Next.js (webpack)",
     "react-webpack": "React (webpack)",
     "react-vite": "React (Vite)",
 };
@@ -679,6 +680,29 @@ const refactor = async (
                     trailingComma: "none",
                 });
                 // Skip writing empty files
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${filePath}`));
+            }
+        }
+    } else if (tech === "next-webpack") {
+        for (const [, value] of Object.entries(chunks)) {
+            const moduleFiles = await refactorNextWebpack(value);
+            for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
+                let formatted: string;
+                try {
+                    formatted = await prettier.format(rawCode, {
+                        parser: "babel",
+                        singleQuote: true,
+                        trailingComma: "none",
+                    });
+                } catch {
+                    formatted = rawCode;
+                }
                 if (formatted.trim().length === 0) {
                     console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
                     continue;
