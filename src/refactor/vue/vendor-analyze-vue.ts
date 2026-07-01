@@ -45,79 +45,155 @@ export type VueExportMap = Map<string, string>;
  */
 const VUE_PATTERNS: Array<{ canonical: string; pattern: (body: string) => boolean }> = [
     // _export_sfc: sets __vccOpts on component options (SFC compiler helper)
-    { canonical: "_export_sfc",        pattern: b => b.includes("__vccOpts") },
+    { canonical: "_export_sfc", pattern: (b) => b.includes("__vccOpts") },
 
     // openBlock: pushes to a shared block-stack variable
-    { canonical: "openBlock",          pattern: b => b.includes("kt.push") || b.includes(".push(be=") },
+    { canonical: "openBlock", pattern: (b) => b.includes("kt.push") || b.includes(".push(be=") },
 
     // createElementBlock: delegates to createBaseVNode with block flag
-    { canonical: "createElementBlock", pattern: b => b.includes("Il(qt(") || (b.includes("Il(") && b.includes(",!0)")) },
+    {
+        canonical: "createElementBlock",
+        pattern: (b) => b.includes("Il(qt(") || (b.includes("Il(") && b.includes(",!0)")),
+    },
 
     // createElementVNode: similar to createElementBlock but different flag
-    { canonical: "createElementVNode", pattern: b => (b.includes("Il(") || b.includes("Kl(")) && !b.includes("__v_isVNode") && !b.includes("__vccOpts") },
+    {
+        canonical: "createElementVNode",
+        pattern: (b) =>
+            (b.includes("Il(") || b.includes("Kl(")) && !b.includes("__v_isVNode") && !b.includes("__vccOpts"),
+    },
 
     // createBaseVNode / createVNode: core VNode factory — creates the {__v_isVNode: true} object
-    { canonical: "createBaseVNode",    pattern: b => b.includes("__v_isVNode:!0") || b.includes("__v_isVNode: !0") || b.includes("__v_isVNode:true") },
+    {
+        canonical: "createBaseVNode",
+        pattern: (b) => b.includes("__v_isVNode:!0") || b.includes("__v_isVNode: !0") || b.includes("__v_isVNode:true"),
+    },
 
     // createTextVNode: short function that creates a text vnode
-    { canonical: "createTextVNode",    pattern: b => b.includes("__v_isVNode") && b.length < 200 },
+    { canonical: "createTextVNode", pattern: (b) => b.includes("__v_isVNode") && b.length < 200 },
 
     // createCommentVNode: creates a comment/placeholder vnode
-    { canonical: "createCommentVNode", pattern: b => b.includes("<!--") || (b.includes("createCommentVNode") || b.includes("comment")) },
+    {
+        canonical: "createCommentVNode",
+        pattern: (b) => b.includes("<!--") || b.includes("createCommentVNode") || b.includes("comment"),
+    },
 
     // withCtx: wraps slot render functions in the parent render context
-    { canonical: "withCtx",            pattern: b => b.includes("renderCache") || b.includes("withCtx") || (b.includes("setCurrentRenderingInstance") || b.includes("currentRenderingInstance")) },
+    {
+        canonical: "withCtx",
+        pattern: (b) =>
+            b.includes("renderCache") ||
+            b.includes("withCtx") ||
+            b.includes("setCurrentRenderingInstance") ||
+            b.includes("currentRenderingInstance"),
+    },
 
     // normalizeClass: normalizes a class value to string
-    { canonical: "normalizeClass",     pattern: b => b.includes("normalizeClass") || (b.includes("Array.isArray") && b.includes("join")) },
+    {
+        canonical: "normalizeClass",
+        pattern: (b) => b.includes("normalizeClass") || (b.includes("Array.isArray") && b.includes("join")),
+    },
 
     // normalizeStyle: normalizes style value
-    { canonical: "normalizeStyle",     pattern: b => b.includes("normalizeStyle") },
+    { canonical: "normalizeStyle", pattern: (b) => b.includes("normalizeStyle") },
 
     // toDisplayString: converts a value to its string representation
-    { canonical: "toDisplayString",    pattern: b => b.includes("toDisplayString") || (b.includes("isString") && b.includes("isArray") && b.length < 300) },
+    {
+        canonical: "toDisplayString",
+        pattern: (b) =>
+            b.includes("toDisplayString") || (b.includes("isString") && b.includes("isArray") && b.length < 300),
+    },
 
     // mergeProps: merges multiple prop objects
-    { canonical: "mergeProps",         pattern: b => b.includes("mergeProps") || b.includes("onUpdate:") },
+    { canonical: "mergeProps", pattern: (b) => b.includes("mergeProps") || b.includes("onUpdate:") },
 
     // resolveComponent: resolves component by name at runtime
-    { canonical: "resolveComponent",   pattern: b => b.includes("resolveComponent") || b.includes("currentRenderingInstance") && b.includes("appContext") },
+    {
+        canonical: "resolveComponent",
+        pattern: (b) =>
+            b.includes("resolveComponent") || (b.includes("currentRenderingInstance") && b.includes("appContext")),
+    },
 
     // withDirectives: applies custom directives to a vnode
-    { canonical: "withDirectives",     pattern: b => b.includes("withDirectives") || b.includes("invokeDirectiveHook") },
+    { canonical: "withDirectives", pattern: (b) => b.includes("withDirectives") || b.includes("invokeDirectiveHook") },
 
     // vModelText / vModelCheckbox / vModelSelect: v-model directives
-    { canonical: "vModelText",         pattern: b => b.includes("vModelText") || (b.includes("composing") && b.includes("input")) },
-    { canonical: "vModelCheckbox",     pattern: b => b.includes("vModelCheckbox") || (b.includes("checkbox") && b.includes("checked")) },
-    { canonical: "vModelSelect",       pattern: b => b.includes("vModelSelect") || (b.includes("select") && b.includes("options")) },
+    {
+        canonical: "vModelText",
+        pattern: (b) => b.includes("vModelText") || (b.includes("composing") && b.includes("input")),
+    },
+    {
+        canonical: "vModelCheckbox",
+        pattern: (b) => b.includes("vModelCheckbox") || (b.includes("checkbox") && b.includes("checked")),
+    },
+    {
+        canonical: "vModelSelect",
+        pattern: (b) => b.includes("vModelSelect") || (b.includes("select") && b.includes("options")),
+    },
 
     // renderList: renders a v-for list
-    { canonical: "renderList",         pattern: b => b.includes("renderList") || (b.includes("isArray") && b.includes("isString") && b.includes("isInteger") && b.includes("isObject")) },
+    {
+        canonical: "renderList",
+        pattern: (b) =>
+            b.includes("renderList") ||
+            (b.includes("isArray") && b.includes("isString") && b.includes("isInteger") && b.includes("isObject")),
+    },
 
     // Fragment: the Fragment symbol
-    { canonical: "Fragment",           pattern: b => b.includes("Fragment") },
+    { canonical: "Fragment", pattern: (b) => b.includes("Fragment") },
 
     // ref / reactive / computed: reactivity API
-    { canonical: "ref",                pattern: b => b.includes("RefImpl") || (b.includes("__v_isRef") && b.length < 400) },
-    { canonical: "reactive",           pattern: b => b.includes("reactive") && b.includes("Proxy") },
-    { canonical: "computed",           pattern: b => b.includes("ComputedRefImpl") || (b.includes("getter") && b.includes("setter") && b.length < 800) },
+    { canonical: "ref", pattern: (b) => b.includes("RefImpl") || (b.includes("__v_isRef") && b.length < 400) },
+    { canonical: "reactive", pattern: (b) => b.includes("reactive") && b.includes("Proxy") },
+    {
+        canonical: "computed",
+        pattern: (b) =>
+            b.includes("ComputedRefImpl") || (b.includes("getter") && b.includes("setter") && b.length < 800),
+    },
 ];
 
 // Public Vue 3 API names — used to decide whether a canonical name gets imported from 'vue'.
 // _export_sfc is NOT in the public API; it is inlined as a local helper.
 export const VUE_PUBLIC_API = new Set([
-    "openBlock", "createElementBlock", "createElementVNode", "createBaseVNode",
-    "createVNode", "createTextVNode", "createCommentVNode", "createBlock",
-    "withCtx", "normalizeClass", "normalizeStyle", "toDisplayString",
-    "mergeProps", "resolveComponent", "withDirectives",
-    "vModelText", "vModelCheckbox", "vModelSelect",
-    "renderList", "Fragment",
-    "ref", "reactive", "computed",
-    "onMounted", "onUpdated", "onUnmounted", "watch", "watchEffect",
-    "defineComponent", "defineAsyncComponent",
-    "provide", "inject",
-    "useSlots", "useAttrs",
-    "Transition", "TransitionGroup", "KeepAlive", "Teleport", "Suspense",
+    "openBlock",
+    "createElementBlock",
+    "createElementVNode",
+    "createBaseVNode",
+    "createVNode",
+    "createTextVNode",
+    "createCommentVNode",
+    "createBlock",
+    "withCtx",
+    "normalizeClass",
+    "normalizeStyle",
+    "toDisplayString",
+    "mergeProps",
+    "resolveComponent",
+    "withDirectives",
+    "vModelText",
+    "vModelCheckbox",
+    "vModelSelect",
+    "renderList",
+    "Fragment",
+    "ref",
+    "reactive",
+    "computed",
+    "onMounted",
+    "onUpdated",
+    "onUnmounted",
+    "watch",
+    "watchEffect",
+    "defineComponent",
+    "defineAsyncComponent",
+    "provide",
+    "inject",
+    "useSlots",
+    "useAttrs",
+    "Transition",
+    "TransitionGroup",
+    "KeepAlive",
+    "Teleport",
+    "Suspense",
 ]);
 
 // ---------------------------------------------------------------------------

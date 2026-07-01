@@ -23,8 +23,7 @@ const traverse = _traverse.default;
 function extractModulesFromWebpackChunk(
     ast: t.File
 ): Array<{ id: string; fnNode: t.FunctionExpression | t.ArrowFunctionExpression; path: NodePath }> {
-    const results: Array<{ id: string; fnNode: t.FunctionExpression | t.ArrowFunctionExpression; path: NodePath }> =
-        [];
+    const results: Array<{ id: string; fnNode: t.FunctionExpression | t.ArrowFunctionExpression; path: NodePath }> = [];
 
     traverse(ast, {
         CallExpression(callPath) {
@@ -48,8 +47,7 @@ function extractModulesFromWebpackChunk(
             const hasModuleProps = props.some(
                 (p) =>
                     t.isObjectProperty(p) &&
-                    (t.isNumericLiteral((p as t.ObjectProperty).key) ||
-                        t.isStringLiteral((p as t.ObjectProperty).key))
+                    (t.isNumericLiteral((p as t.ObjectProperty).key) || t.isStringLiteral((p as t.ObjectProperty).key))
             );
             if (!hasModuleProps) return;
 
@@ -67,7 +65,11 @@ function extractModulesFromWebpackChunk(
                 if (!moduleId) continue;
 
                 if (!t.isFunctionExpression(val) && !t.isArrowFunctionExpression(val)) continue;
-                results.push({ id: moduleId, fnNode: val as t.FunctionExpression | t.ArrowFunctionExpression, path: callPath });
+                results.push({
+                    id: moduleId,
+                    fnNode: val as t.FunctionExpression | t.ArrowFunctionExpression,
+                    path: callPath,
+                });
             }
 
             callPath.stop();

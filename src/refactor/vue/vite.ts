@@ -52,11 +52,7 @@ function isMainIndexChunk(filename: string, code: string): boolean {
 
 function isPageChunk(filename: string, code: string): boolean {
     // Small chunk that starts with an import from the index file.
-    return (
-        code.length < 20000 &&
-        /^import\s*\{/.test(code.trim()) &&
-        code.includes("export")
-    );
+    return code.length < 20000 && /^import\s*\{/.test(code.trim()) && code.includes("export");
 }
 
 // ---------------------------------------------------------------------------
@@ -85,10 +81,7 @@ function rewriteVueIndexImport(
         const src = stmt.source.value;
         // Match if source looks like ./index-<hash>.js (or similar)
         const srcBase = path.basename(src).replace(/\.js$/, "");
-        const isIndexImport =
-            srcBase === indexBase ||
-            /^index-/.test(srcBase) ||
-            /^index$/.test(srcBase);
+        const isIndexImport = srcBase === indexBase || /^index-/.test(srcBase) || /^index$/.test(srcBase);
 
         if (!isIndexImport) return stmt;
 
@@ -124,9 +117,7 @@ function rewriteVueIndexImport(
         // Build new import declaration from 'vue' for public API names.
         const vueSpecifiers: t.ImportSpecifier[] = vueImports
             .filter(({ canonical }) => VUE_PUBLIC_API.has(canonical))
-            .map(({ canonical, local }) =>
-                t.importSpecifier(t.identifier(local), t.identifier(canonical))
-            );
+            .map(({ canonical, local }) => t.importSpecifier(t.identifier(local), t.identifier(canonical)));
 
         if (vueSpecifiers.length === 0) {
             // All specifiers were _export_sfc — drop the import statement.
@@ -213,11 +204,11 @@ export async function refactorVueVite(chunks: Chunks): Promise<Record<string, st
         let stmts = ast.program.body;
 
         // Step 2a: Rewrite the index import to canonical Vue imports.
-        const { statements: rewritten, needsExportSfc, exportSfcAliases } = rewriteVueIndexImport(
-            stmts,
-            vueExportMap,
-            indexFilename
-        );
+        const {
+            statements: rewritten,
+            needsExportSfc,
+            exportSfcAliases,
+        } = rewriteVueIndexImport(stmts, vueExportMap, indexFilename);
         stmts = rewritten;
 
         // Step 2b: Insert _export_sfc helper and aliases after all import declarations.
@@ -225,12 +216,7 @@ export async function refactorVueVite(chunks: Chunks): Promise<Record<string, st
         if (needsExportSfc) {
             const helperAst = parser.parse(EXPORT_SFC_HELPER, { sourceType: "module" });
             const aliasDecls = exportSfcAliases.map((alias) =>
-                t.variableDeclaration("const", [
-                    t.variableDeclarator(
-                        t.identifier(alias),
-                        t.identifier("_export_sfc")
-                    ),
-                ])
+                t.variableDeclaration("const", [t.variableDeclarator(t.identifier(alias), t.identifier("_export_sfc"))])
             );
             // Split existing statements: imports first, then body.
             const importStmts = stmts.filter((s) => t.isImportDeclaration(s));
