@@ -81,7 +81,7 @@ js-recon run -u https://app.example.com
 | `report`      | Generates a report from the analysis modules.                                 | [Read Docs](https://js-recon.io/docs/docs/modules/report)      |
 | `mcp`         | AI-powered interactive CLI, one-shot chat, and MCP stdio server.              | [Read Docs](https://js-recon.io/docs/docs/modules/mcp)         |
 | `fingerprint` | Detects the JavaScript framework used by a target URL (JSON/JSONL output).    | [Read Docs](https://js-recon.io/docs/docs/modules/fingerprint) |
-| `refactor`    | Refactors and deobfuscates webpack modules from a mapped JSON file.           | [Read Docs](https://js-recon.io/docs/docs/modules/refactor)    |
+| `refactor`    | Recovers readable JSX and strips library code from React (webpack/Vite) bundles. | [Read Docs](https://js-recon.io/docs/docs/modules/refactor)    |
 | `load`        | Populates the response cache from a Caido or Burp Suite export.               | [Read Docs](https://js-recon.io/docs/docs/modules/load)        |
 | `cs-mast`     | Computes CS-MAST structural hashes for JS files and finds hash collisions.    | [Read Docs](https://js-recon.io/docs/docs/modules/cs-mast)     |
 | `sourcemaps`  | Extracts original source files from `.map` sourcemap files.                   | [Read Docs](https://js-recon.io/docs/docs/modules/sourcemaps)  |

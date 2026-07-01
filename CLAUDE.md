@@ -405,6 +405,14 @@ The `refactor` command supports three techs:
 - **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
 - **`next`** — Next.js bundles (legacy).
 
+### Known react-vite bugs (discovered 2026-07-01, test against js-recon-research/react/20-cve-app)
+
+**Multi-chunk file overwrite** — `map` segments each Vite chunk into multiple sub-chunks (one per top-level function). The refactor write path processes sub-chunks sequentially, each overwriting the previous output file. Only the last sub-chunk survives. For chunks with inlined library code followed by the component function (e.g. `ApiProxy`, `Editor`, `Search`), this means the component is the survivor (last in the map order), which is the correct and useful result — but any app-specific helper functions in the same chunk are also lost.
+
+**Rename race** — When JSX is detected in a sub-chunk, the write path renames the output file `.js` → `.jsx`. When the same file is written by multiple sub-chunks, the rename is attempted on each JSX-containing chunk; all attempts after the first throw `ENOENT` because the `.js` file was already renamed. The `.jsx` file is correct; the unhandled rejection is noise. Fix: track which output files have already been renamed.
+
+**Remote signatures** — The `react/vite/large` HuggingFace bucket is currently empty. The tool falls back gracefully with a warning but remote library stripping is disabled. Symptom: `[!] No remote collisions files found for scat "lit-decl-loop-cond" in branch "react/vite/large"`. Fix: populate the bucket by running CS-MAST-S generation against a corpus of large Vite apps.
+
 ### refactor `--collisions <file>` (react-webpack only)
 
 `refactor -t react-webpack` accepts a `--collisions <file>` argument that points at a `collisions.json` produced by `cs-mast --all-scat-permutations` over a cross-app baseline. Modules whose body signature is in the baseline set are classified as library code (React / React-DOM / jsx-runtime / scheduler / …) and dropped from the output, leaving only `index.js`.
