@@ -71,7 +71,18 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
                 waitUntil: "load",
                 timeout: 30000,
             });
-            // Give client-side frameworks (and bot-challenge redirects) a brief window to settle
+            // If no framework URL was intercepted yet, we may have landed on a
+            // bot-challenge page (e.g. Vercel's challenge.v2.min.js) that fires
+            // its own load event before JS-redirecting to the real app. Wait for
+            // that redirect navigation; on sites with no redirect this times out
+            // quickly and we continue with what we have.
+            const hasFrameworkSignal = interceptedUrls.some(
+                (u) => u.includes("/_next/") || u.includes("/_nuxt/") || u.includes("/_app/immutable/")
+            );
+            if (!hasFrameworkSignal) {
+                await page.waitForNavigation({ waitUntil: "load", timeout: 5000 }).catch(() => {});
+            }
+            // Give client-side frameworks a brief window to settle
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
