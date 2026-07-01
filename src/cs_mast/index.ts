@@ -34,12 +34,68 @@ interface CollisionEntry {
     files: string[];
 }
 
+const ALL_SCAT: ScatCategory[] = ["lit", "decl", "loop", "cond", "id", "op", "name", "val", "op_name"];
+
+function allScatSubsets(): ScatCategory[][] {
+    const result: ScatCategory[][] = [];
+    for (let mask = 1; mask < 1 << ALL_SCAT.length; mask++) {
+        const subset: ScatCategory[] = [];
+        for (let i = 0; i < ALL_SCAT.length; i++) {
+            if (mask & (1 << i)) subset.push(ALL_SCAT[i]);
+        }
+        result.push(subset);
+    }
+    return result;
+}
+
+async function runOnePermutation(
+    jsFiles: string[],
+    scat: ScatCategory[],
+    sinc: ScatCategory[],
+    minCollisions: number,
+    permOutput: string,
+    collisionFormat: string
+): Promise<void> {
+    const cfg: CsMastConfig = { hash: "sha256", lang: "js", prsr: "@babel/parser", scat, sinc, sourceType: "unambiguous" };
+    const sigMap = new Map<string, string[]>();
+    for (const file of jsFiles) {
+        try {
+            const source = fs.readFileSync(file, "utf-8");
+            const tree = cs_mast_init(source, cfg);
+            const sig = buildSignatureFromConfig(cfg, tree.rootHash);
+            if (!sigMap.has(sig)) sigMap.set(sig, []);
+            sigMap.get(sig)!.push(file);
+        } catch {
+            // parse errors are silent in permutation mode
+        }
+    }
+    const collisions: CollisionEntry[] = [...sigMap.entries()]
+        .filter(([, files]) => files.length >= minCollisions)
+        .sort(([, a], [, b]) => b.length - a.length)
+        .map(([signature, files]) => ({ signature, count: files.length, files }));
+    if (collisions.length === 0) return;
+    const name = scat.join("-");
+    const outFile = path.join(permOutput, `${name}.${collisionFormat}`);
+    if (collisionFormat === "json") {
+        fs.writeFileSync(outFile, JSON.stringify(collisions, null, 2));
+    } else {
+        const rows = ["signature,count,files"];
+        for (const entry of collisions) rows.push(`"${entry.signature}",${entry.count},"${entry.files.join("|")}"`);
+        fs.writeFileSync(outFile, rows.join("\n"));
+    }
+}
+
 export default async (
     outputDir: string,
     collisionTable: boolean,
     minCollisions: number,
     collisionOutput: string | undefined,
-    collisionFormat: string
+    collisionFormat: string,
+    scatOverride: string = "",
+    sincOverride: string = "",
+    allPermutations: boolean = false,
+    permOutput: string | undefined = undefined,
+    permConcurrency: number = 0
 ): Promise<void> => {
     if (collisionOutput && !["json", "csv"].includes(collisionFormat)) {
         console.log(chalk.red(`[!] Invalid format: "${collisionFormat}". Use "json" or "csv".`));
@@ -62,9 +118,39 @@ export default async (
         process.exit(1);
     }
 
+    // apply scat/sinc overrides
+    const activeScat: ScatCategory[] = scatOverride
+        ? (scatOverride.split(",").map((s) => s.trim()).filter(Boolean) as ScatCategory[])
+        : CS_MAST_CONFIG.scat as ScatCategory[];
+    const activeSinc: ScatCategory[] = sincOverride
+        ? (sincOverride.split(",").map((s) => s.trim()).filter(Boolean) as ScatCategory[])
+        : [];
+    const activeConfig: CsMastConfig = { ...CS_MAST_CONFIG, scat: activeScat, sinc: activeSinc };
+
     console.log(chalk.cyan(`[*] Scanning JS files in: ${outputDir}`));
     const jsFiles = findJsFiles(outputDir);
     console.log(chalk.cyan(`[*] Found ${jsFiles.length} JS file(s)`));
+
+    // --all-scat-permutations mode
+    if (allPermutations) {
+        if (!permOutput) {
+            console.log(chalk.red("[!] --perm-output <dir> is required with --all-scat-permutations"));
+            process.exit(1);
+        }
+        if (!fs.existsSync(permOutput)) fs.mkdirSync(permOutput, { recursive: true });
+        const subsets = allScatSubsets();
+        const concurrency = permConcurrency > 0 ? permConcurrency : Math.max(1, Math.floor(require("os").cpus().length / 2));
+        console.log(chalk.cyan(`[*] Running ${subsets.length} scat permutations (concurrency: ${concurrency})`));
+        let done = 0;
+        for (let i = 0; i < subsets.length; i += concurrency) {
+            const batch = subsets.slice(i, i + concurrency);
+            await Promise.all(batch.map((scat) => runOnePermutation(jsFiles, scat, activeSinc, minCollisions, permOutput!, collisionFormat)));
+            done += batch.length;
+            process.stdout.write(`\r[*] ${done}/${subsets.length} permutations done`);
+        }
+        console.log(chalk.green(`\n[+] All permutations written to: ${permOutput}`));
+        return;
+    }
 
     const sigMap = new Map<string, string[]>();
     let parsed = 0;
@@ -73,10 +159,10 @@ export default async (
     for (const file of jsFiles) {
         try {
             const source = fs.readFileSync(file, "utf-8");
-            const tree = cs_mast_init(source, CS_MAST_CONFIG);
+            const tree = cs_mast_init(source, activeConfig);
             // rootSignature is empty when the File node isn't actively hashed;
             // build the full PHC string from rootHash + config instead.
-            const sig = buildSignatureFromConfig(CS_MAST_CONFIG, tree.rootHash);
+            const sig = buildSignatureFromConfig(activeConfig, tree.rootHash);
             if (!sigMap.has(sig)) sigMap.set(sig, []);
             sigMap.get(sig)!.push(file);
             parsed++;
