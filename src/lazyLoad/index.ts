@@ -459,6 +459,38 @@ const lazyLoad = async (
                 const js_urls = await downloadLoadedJs(url);
                 if (js_urls && js_urls.length > 0) {
                     console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+
+                    // Second-chance tech detection: scan downloaded URL paths for
+                    // framework signatures that Puppeteer may have missed on timeout
+                    // (e.g. Next.js served at a non-root basePath).
+                    let secondChanceTech: string | null = null;
+                    let secondChanceEvidence = "";
+                    for (const u of js_urls) {
+                        if (u.includes("/_next/")) {
+                            secondChanceTech = "next";
+                            secondChanceEvidence = u;
+                            break;
+                        }
+                        if (u.includes("/_nuxt/")) {
+                            secondChanceTech = "nuxt";
+                            secondChanceEvidence = u;
+                            break;
+                        }
+                        if (u.includes("/_app/immutable/")) {
+                            secondChanceTech = "svelte";
+                            secondChanceEvidence = u;
+                            break;
+                        }
+                    }
+                    if (secondChanceTech) {
+                        console.log(
+                            chalk.green(
+                                `[✓] Detected ${secondChanceTech} from downloaded file paths (evidence: ${secondChanceEvidence})`
+                            )
+                        );
+                        globals.setTech(secondChanceTech);
+                    }
+
                     const queue = new DownloadQueue(output, threads);
                     queue.push(js_urls);
                     await queue.drain();
