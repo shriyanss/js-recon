@@ -477,9 +477,14 @@ module.exports = {
 function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
     if (writtenFiles.length === 0) return;
 
+    // Deduplicate — callers should not pass duplicates, but guard here too so a
+    // duplicate does not cause the renameSync below to throw ENOENT on the
+    // second occurrence of the same path.
+    const uniqueFiles = [...new Set(writtenFiles)];
+
     // Rename .js files to .jsx — Vite's import analysis can't parse JSX in .js files,
     // and refactored Vite chunks always contain JSX. The original source files were .jsx.
-    const jsxFiles = writtenFiles.map((f) => {
+    const jsxFiles = uniqueFiles.map((f) => {
         if (!f.endsWith(".js")) return f;
         const jsxPath = f.replace(/\.js$/, ".jsx");
         fs.renameSync(f, jsxPath);
@@ -794,22 +799,15 @@ const refactor = async (
             libSigs,
             remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined
         );
-        const writtenFiles: string[] = [];
+
+        // Group chunk outputs by their output file path before writing.
+        // Multiple mapped.json sub-chunks can originate from the same Vite source
+        // file (one per top-level function detected by `map`). Writing each
+        // sub-chunk independently would overwrite previous writes so only the last
+        // sub-chunk would survive. Grouping and concatenating avoids the overwrite:
+        // all sub-chunks for the same file are merged into one formatted output.
+        const fileGroups = new Map<string, { codes: string[]; keys: string[] }>();
         for (const [chunkKey, rawCode] of Object.entries(viteFiles)) {
-            let formatted: string;
-            try {
-                formatted = await prettier.format(rawCode, {
-                    parser: "babel",
-                    singleQuote: true,
-                    trailingComma: "none",
-                });
-            } catch {
-                formatted = rawCode;
-            }
-            if (formatted.trim().length === 0) {
-                console.log(chalk.gray(`[~] Chunk ${chunkKey} is empty after refactoring — skipping`));
-                continue;
-            }
             // Use the original chunk basename so dynamic imports (which reference
             // the original Vite filenames) resolve correctly in the build check.
             const chunkInfo = chunks[chunkKey];
@@ -818,9 +816,45 @@ const refactor = async (
                 ? path.basename(originalFile)
                 : chunkKey.replace(/[/\\]/g, "_").replace(/\.js$/, "") + ".js";
             const filePath = `${outputDir}/${outputBasename}`;
+            if (!fileGroups.has(filePath)) {
+                fileGroups.set(filePath, { codes: [], keys: [] });
+            }
+            fileGroups.get(filePath)!.codes.push(rawCode);
+            fileGroups.get(filePath)!.keys.push(chunkKey);
+        }
+
+        const writtenFiles: string[] = [];
+        for (const [filePath, { codes, keys }] of fileGroups) {
+            // Put import-bearing code parts first so ESM import statements end up
+            // at the top of the concatenated file. Helper sub-chunks typically have
+            // no imports; the component sub-chunk that has peer imports (e.g.
+            // from ./shared-*.js) must come first or the combined file is invalid.
+            const importBearing = codes.filter((c) => /^import\s/m.test(c));
+            const rest = codes.filter((c) => !/^import\s/m.test(c));
+            const combined = [...importBearing, ...rest].join("\n\n");
+
+            let formatted: string;
+            try {
+                formatted = await prettier.format(combined, {
+                    parser: "babel",
+                    singleQuote: true,
+                    trailingComma: "none",
+                });
+            } catch {
+                formatted = combined;
+            }
+            if (formatted.trim().length === 0) {
+                console.log(chalk.gray(`[~] Chunk ${keys.join("+")} is empty after refactoring — skipping`));
+                continue;
+            }
             fs.writeFileSync(filePath, formatted);
+            // Push exactly once per output file — prevents duplicate entries in
+            // writtenFiles that would cause the rename loop in runViteBuildCheck
+            // to attempt renaming the same path twice (ENOENT on the second try).
             writtenFiles.push(filePath);
-            console.log(chalk.green(`[✓] Chunk ${chunkKey} written to ${filePath}`));
+            for (const key of keys) {
+                console.log(chalk.green(`[✓] Chunk ${key} written to ${filePath}`));
+            }
         }
 
         // Build check with Vite scaffold
