@@ -792,10 +792,7 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
             // Also skip SequenceExpression statements — their sub-expressions are handled element-by-element below.
             if (
                 exportsParam &&
-                (
-                    !t.isExpressionStatement(stmt) ||
-                    !t.isSequenceExpression((stmt as t.ExpressionStatement).expression)
-                )
+                (!t.isExpressionStatement(stmt) || !t.isSequenceExpression((stmt as t.ExpressionStatement).expression))
             ) {
                 if (isInteropBoilerplate(stmt, moduleParam, exportsParam)) {
                     stmtsToRemove.add(stmt);
@@ -913,7 +910,12 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
 
                     // Strip complex interop boilerplate sub-expressions in a sequence
                     // (e.g. `("function"==typeof t.default||...)&&e.exports=t.default`)
-                    if (moduleParam && exportsParam && isInteropBoilerplate(t.expressionStatement(sub), moduleParam, exportsParam)) continue;
+                    if (
+                        moduleParam &&
+                        exportsParam &&
+                        isInteropBoilerplate(t.expressionStatement(sub), moduleParam, exportsParam)
+                    )
+                        continue;
 
                     kept.push(sub);
                 }
