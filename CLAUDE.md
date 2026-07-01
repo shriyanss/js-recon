@@ -384,6 +384,11 @@ When a user asks to fix or implement a GitHub issue, follow these steps:
 - `--min-collisions <n>` — minimum occurrences to report (default: 2)
 - `--co / --collision-output <file>` — write collision data to a file (independent of `--ct`)
 - `--cf / --collision-format json|csv` — output format (default: csv)
+- `--scat <categories>` — comma-separated scat categories to use (default: `lit,decl,loop,cond`). Overrides the fixed config for this run.
+- `--sinc <nodes>` — comma-separated exact node types to include via sinc (e.g. `IfStatement`).
+- `--all-scat-permutations` — run all 511 non-empty scat subsets and write one collision file per subset to `--perm-output`.
+- `--perm-output <dir>` — output directory for per-permutation files (required with `--all-scat-permutations`).
+- `--perm-concurrency <n>` — parallel permutation workers (default: half of CPU count).
 
 **`--co` path resolution:** if the given path is a directory or has no extension, the file is written as `collisions.<fmt>` in the current working directory.
 
@@ -395,6 +400,7 @@ When a user asks to fix or implement a GitHub issue, follow these steps:
 npm run build
 node build/index.js cs-mast -o output --ct --min-collisions 2
 node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
+node build/index.js cs-mast -o output --all-scat-permutations --perm-output ./perm-out --cf json
 ```
 
 ## refactor
