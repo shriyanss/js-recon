@@ -3,6 +3,7 @@ import * as cheerio from "cheerio";
 import makeRequest from "../../utility/makeReq.js";
 import puppeteer from "../../utility/puppeteerInstance.js";
 import * as globalsUtil from "../../utility/globals.js";
+import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import path from "path";
 import { checkNextJS } from "./checkNextJS.js";
 import { checkNuxtJS } from "./checkNuxtJS.js";
@@ -47,19 +48,41 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
 
     // get the page source in the browser (skipped in cache-only mode — no network allowed)
     let pageSource = "";
+    const interceptedUrls: string[] = [];
     if (!globalsUtil.getCacheOnly()) {
+        const chromiumPath = getChromiumPath();
         const browser = await puppeteer.launch({
-            args: globalsUtil.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+            executablePath: chromiumPath,
+            args: globalsUtil.getDisableSandbox()
+                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                : [],
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);
+        // Intercept all requests so framework-specific URL patterns (e.g. /_nuxt/, /_next/)
+        // can be used as a detection signal even when they don't appear in parsed HTML.
+        await page.setRequestInterception(true);
+        page.on("request", (req) => {
+            interceptedUrls.push(req.url());
+            req.continue().catch(() => {});
+        });
         try {
             await page.goto(url, {
-                waitUntil: "domcontentloaded",
+                waitUntil: "load",
                 timeout: 30000,
             });
-            // Give client-side frameworks a brief window to render
-            await page.waitForSelector("html", { timeout: 10000 }).catch(() => {});
+            // If no framework URL was intercepted yet, we may have landed on a
+            // bot-challenge page (e.g. Vercel's challenge.v2.min.js) that fires
+            // its own load event before JS-redirecting to the real app. Wait for
+            // that redirect navigation; on sites with no redirect this times out
+            // quickly and we continue with what we have.
+            const hasFrameworkSignal = interceptedUrls.some(
+                (u) => u.includes("/_next/") || u.includes("/_nuxt/") || u.includes("/_app/immutable/")
+            );
+            if (!hasFrameworkSignal) {
+                await page.waitForNavigation({ waitUntil: "load", timeout: 5000 }).catch(() => {});
+            }
+            // Give client-side frameworks a brief window to settle
             await new Promise((resolve) => setTimeout(resolve, 2000));
             pageSource = await page.content();
         } catch (err) {
@@ -138,6 +161,22 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         const evidence =
             result_checkReact.evidence !== "" ? result_checkReact.evidence : result_checkReact_res.evidence;
         return { name: "react", evidence };
+    }
+
+    // Fallback: check URLs intercepted by Puppeteer during page load.
+    // Some sites load framework chunks dynamically via JavaScript rather than referencing
+    // them in static HTML attributes — those won't be caught by the HTML-based checks above.
+    // Matching on well-known path prefixes gives us a reliable signal without fetching extra files.
+    for (const interceptedUrl of interceptedUrls) {
+        if (interceptedUrl.includes("/_nuxt/")) {
+            return { name: "nuxt", evidence: `intercepted request: ${interceptedUrl}` };
+        }
+        if (interceptedUrl.includes("/_next/")) {
+            return { name: "next", evidence: `intercepted request: ${interceptedUrl}` };
+        }
+        if (interceptedUrl.includes("/_app/immutable/")) {
+            return { name: "svelte", evidence: `intercepted request: ${interceptedUrl}` };
+        }
     }
 
     return null;

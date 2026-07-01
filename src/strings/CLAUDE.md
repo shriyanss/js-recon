@@ -8,6 +8,7 @@ Powers the `strings` subcommand and pipeline steps 2, 4, and 4.6 (Next.js). Walk
 
 - `index.ts` — entrypoint. Extracts strings from each chunk, deduplicates, writes `extracted_urls.json` / `extracted_urls.txt` / `extracted_urls-openapi.json`.
 - `secrets.ts` — regex-based secret detection. Runs only when `--secrets` is set on `run` or the `strings` subcommand. Patterns intentionally noisy — secret findings flow into `analyze.json` for filtering, not directly to the report.
+- `trufflehog.ts` — invokes the external `trufflehog` binary as a subprocess. Runs only when `--trufflehog` is set. Checks that the binary is in PATH first; if missing, prints install instructions and exits non-zero. Parses JSONL output from `trufflehog filesystem <dir> --json --no-update` and prints findings in the same style as `secrets.ts`.
 - `permutate.ts` — generates URL mutations (path slashes, trailing variants) from extracted literals. Output feeds the next lazyload re-pass — small permutation explosions here cascade into many extra HTTP requests.
 - `openapi.ts` — re-shapes path inventory into the OpenAPI-compatible JSON used downstream.
 

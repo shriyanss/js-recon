@@ -12,7 +12,7 @@ const vue_singleJsFileOnHome = async (url: string) => {
     // first, get the home page content
     const req = await makeRequest(url, {});
     if (req == null) {
-        console.log(chalk.red(`Failed to fetch ${url}`));
+        console.error(chalk.red(`Failed to fetch ${url}`));
         return jsFilesFound;
     }
     const homePageContent = await req.text();
@@ -44,7 +44,7 @@ const vue_singleJsFileOnHome = async (url: string) => {
     jsFilesFound.push(new URL(jsUrl, url).href);
 
     // print the warning
-    console.log(chalk.yellow("[!] This method is MEMORY INTENSIVE. Underpowered devices may freeze"));
+    console.error(chalk.yellow("[!] This method is MEMORY INTENSIVE. Underpowered devices may freeze"));
 
     // resolve the URL
     if (jsUrl.startsWith("/") || jsUrl.startsWith("./") || jsUrl.startsWith("../")) {

@@ -15,6 +15,7 @@ const availableTechs = {
     vue: "Vue.js",
     react: "React",
     svelte: "Svelte/Astro",
+    angular: "Angular",
 };
 
 /**
@@ -60,7 +61,7 @@ const getRuleFilesRecursive = (dir: string): string[] => {
 const analyze = async (
     rulesPath: string,
     mappedJson: string,
-    tech: "next" | "vue" | "react" | "svelte",
+    tech: "next" | "vue" | "react" | "svelte" | "angular",
     list: boolean,
     openapi: string,
     validate: boolean,
@@ -77,7 +78,7 @@ const analyze = async (
 
     // check if `rules` exists
     if (!fs.existsSync(rulesPath)) {
-        console.log(chalk.red(`[!] Rules ${rulesPath} does not exist`));
+        console.error(chalk.red(`[!] Rules ${rulesPath} does not exist`));
         return;
     }
 
@@ -94,7 +95,7 @@ const analyze = async (
     const { allValid: allValidated, compatibleRuleFiles } = await validateRules(ruleFiles);
 
     if (!allValidated) {
-        console.log(chalk.red("[!] Some rules are invalid"));
+        console.error(chalk.red("[!] Some rules are invalid"));
         process.exit(20);
     }
 
@@ -114,24 +115,24 @@ const analyze = async (
 
     // check if a valid tech is passed
     if (!availableTechs[tech]) {
-        console.log(chalk.red(`[!] Invalid technology ${tech}.`));
-        console.log(chalk.yellow("[i] Run with -l/--list to see available technologies"));
+        console.error(chalk.red(`[!] Invalid technology ${tech}.`));
+        console.error(chalk.yellow("[i] Run with -l/--list to see available technologies"));
         return;
     }
 
     // check if either mappedJson or either openapi is passed
     if (!mappedJson && !openapi) {
-        console.log(chalk.red("[!] Either mappedJson or openapi must be passed"));
+        console.error(chalk.red("[!] Either mappedJson or openapi must be passed"));
         return;
     }
 
     // check if the mappedJson and openapi exists if they are not undefined
     if (mappedJson && !fs.existsSync(mappedJson)) {
-        console.log(chalk.red(`[!] Mapped JSON ${mappedJson} does not exist`));
+        console.error(chalk.red(`[!] Mapped JSON ${mappedJson} does not exist`));
         return;
     }
     if (openapi && !fs.existsSync(openapi)) {
-        console.log(chalk.red(`[!] OpenAPI spec ${openapi} does not exist`));
+        console.error(chalk.red(`[!] OpenAPI spec ${openapi} does not exist`));
         return;
     }
 

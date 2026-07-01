@@ -162,7 +162,7 @@ const load = async (caidoFile: string, targetUrl: string): Promise<void> => {
     console.log(chalk.cyan("[i] Loading 'Load' module"));
 
     if (!fs.existsSync(caidoFile)) {
-        console.log(chalk.red(`[!] Caido file not found: ${caidoFile}`));
+        console.error(chalk.red(`[!] Caido file not found: ${caidoFile}`));
         process.exit(1);
     }
 
@@ -175,7 +175,7 @@ const load = async (caidoFile: string, targetUrl: string): Promise<void> => {
         targetScheme = u.protocol;
         targetPort = u.port ? parseInt(u.port, 10) : DEFAULT_PORTS[u.protocol];
     } catch {
-        console.log(chalk.red(`[!] Invalid target URL: ${targetUrl}`));
+        console.error(chalk.red(`[!] Invalid target URL: ${targetUrl}`));
         process.exit(1);
     }
 
@@ -264,7 +264,7 @@ const load = async (caidoFile: string, targetUrl: string): Promise<void> => {
         fs.writeFileSync(cacheFile, JSON.stringify(cache));
     } catch (err: any) {
         if (err instanceof RangeError) {
-            console.log(chalk.red(`[!] Cache too large to serialize as one JSON string.`));
+            console.error(chalk.red(`[!] Cache too large to serialize as one JSON string.`));
             process.exit(1);
         }
         throw err;

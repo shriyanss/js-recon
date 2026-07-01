@@ -49,18 +49,42 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
     try {
         files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
     } catch {
-        console.log(chalk.red(`[!] Could not read directory: ${directory}`));
+        console.error(chalk.red(`[!] Could not read directory: ${directory}`));
         return;
     }
 
     files = files
         .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
-        .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
+        .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory())
+        .sort();
 
     // Build the full path list for caller lookup. XHR wrapper callers may live
     // in any file (not just those containing XMLHttpRequest), so we search all
     // JS files with a text pre-filter before parsing.
-    const allFilePaths = files.map((f) => path.join(directory, f));
+    //
+    // Apply the same per-file size guard used in the scanning loop, plus a
+    // cumulative total-size cap. Without this, sites that download hundreds of
+    // third-party library source files cause buildAliasMap to parse all of them
+    // at once, exhausting the V8 heap before any XHR entries are resolved.
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
+    const MAX_TOTAL_CALLER_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+    let callerTotalBytes = 0;
+    const allFilePaths: string[] = [];
+    for (const f of files) {
+        const fp = path.join(directory, f);
+        const sz = fs.statSync(fp).size;
+        if (sz > MAX_MAP_FILE_SIZE_BYTES) continue;
+        if (callerTotalBytes + sz > MAX_TOTAL_CALLER_SIZE_BYTES) {
+            console.error(
+                chalk.yellow(
+                    `[!] XHR caller lookup capped at 50 MB total — ${files.length - allFilePaths.length} file(s) excluded from taint analysis`
+                )
+            );
+            break;
+        }
+        callerTotalBytes += sz;
+        allFilePaths.push(fp);
+    }
     const getCallers = makeGetCallers(allFilePaths);
 
     let totalXhrCalls = 0;
@@ -73,6 +97,8 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
 
         const file = files[_i];
         const filePath = path.join(directory, file);
+
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) continue;
 
         let fileContent: string;
         try {

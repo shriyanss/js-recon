@@ -4,13 +4,28 @@
 import chalk from "chalk";
 import parser from "@babel/parser";
 import _traverse, { NodePath } from "@babel/traverse";
+import _generator from "@babel/generator";
 import * as t from "@babel/types";
+import { cs_mast_init, ScatCategory } from "@shriyanss/cs-mast";
 import { Chunk } from "../../utility/interfaces.js";
 import { isInModuleMap } from "./helpers.js";
 import { validateAndFix } from "./validator.js";
-import { ModuleEntry, transformModule, transformIndexStatements } from "./transform.js";
+import {
+    ModuleEntry,
+    transformModule,
+    transformIndexStatements,
+    applyModuleCleanupPasses,
+    applyLibraryImportRewriting,
+    renameRouteComponents,
+} from "./transform.js";
+import { LibraryModuleInfo, classifyLibraryModule, resolveReexportChains } from "./library-classify.js";
 
 const traverse = _traverse.default;
+const generate = (_generator as unknown as { default: typeof _generator }).default ?? _generator;
+
+// scat config used when computing experiment-baseline signatures (matches
+// refactor_observations/feature-signatures/<feature>/lit-decl-loop-cond/collisions.json).
+const LIB_SIG_SCAT: ScatCategory[] = ["lit", "decl", "loop", "cond"];
 
 // Returns the body statements of a top-level IIFE (e.g. `(() => { … })()`), or null.
 const findIifeBody = (program: t.Program): t.Statement[] | null => {
@@ -27,6 +42,16 @@ const findIifeBody = (program: t.Program): t.Statement[] | null => {
         }
     }
     return null;
+};
+
+// Returns true when stmt is the webpack lazy-chunk push call:
+// (self.webpackChunk...||[]).push([[chunkId,...], {moduleId: fn, ...}])
+const isLazyChunkPushStmt = (stmt: t.Statement): boolean => {
+    if (!t.isExpressionStatement(stmt)) return false;
+    const expr = stmt.expression;
+    if (!t.isCallExpression(expr)) return false;
+    const callee = expr.callee;
+    return t.isMemberExpression(callee) && t.isIdentifier((callee as t.MemberExpression).property, { name: "push" });
 };
 
 // Returns true when a VariableDeclarator's init is the webpack numeric module map
@@ -66,7 +91,98 @@ const isModuleMapDeclarator = (d: t.VariableDeclarator): boolean => {
  *              write them to `index.js` (entrypoint bootstrap, app component functions,
  *              the ReactDOM.render call, etc.).
  */
-const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
+const isLibrarySig = (sig: string | undefined, libSigs: Set<string> | undefined): boolean =>
+    !!(sig && libSigs && libSigs.has(sig));
+
+// Minimum fraction of a module's sub-tree signatures that must match the library
+// baseline before the module is classified as library code. A value of 1.0 means
+// every signature must match (too strict — misses partial-lib modules). A value
+// of 0.0 means any single match suffices (too loose — false-positives on app modules
+// that happen to share a helper with library code). 0.5 is a reasonable default:
+// pure library modules score close to 1.0 while app modules with inline CSS helpers
+// or a stray shared utility typically score well below 0.5.
+const LIB_CLASSIFICATION_THRESHOLD = 0.51;
+
+// Hash a single module's function body using cs_mast_init and look the signature
+// up against the count=18 baseline set. Returns true when the fraction of the
+// module's sub-tree signatures that match the baseline exceeds LIB_CLASSIFICATION_THRESHOLD.
+const moduleIsLibrary = (
+    mod: ModuleEntry,
+    libSigs: Set<string> | undefined,
+    scatOverride?: ScatCategory[]
+): boolean => {
+    if (!libSigs || libSigs.size === 0) return false;
+    const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
+    if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
+    const body = (fnNode as { body: t.BlockStatement }).body;
+    try {
+        const code = generate(body).code;
+        const tree = cs_mast_init(code, {
+            hash: "sha256",
+            scat: scatOverride ?? LIB_SIG_SCAT,
+            sinc: [],
+            lang: "js",
+            prsr: "@babel/parser",
+        });
+        const sigs = [...tree._signatureMap.keys()];
+        if (sigs.length === 0) return false;
+        const matchCount = sigs.filter((sig) => isLibrarySig(sig, libSigs)).length;
+        const fraction = matchCount / sigs.length;
+        return fraction >= LIB_CLASSIFICATION_THRESHOLD;
+    } catch {
+        // unparseable / unhashable — fall through and treat as non-library
+    }
+    return false;
+};
+
+// Returns true when a 1-param module looks like a style-loader runtime helper.
+// Matches the addStyles module (contains domAPI + update) and the
+// styleTagTransform module (sets cssText or calls createTextNode).
+const isStyleLoaderModule = (mod: ModuleEntry): boolean => {
+    if (mod.paramCount !== 1) return false;
+    const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
+    if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
+    const body = (fnNode as { body: t.BlockStatement }).body;
+    try {
+        const code = generate(body).code;
+        if (code.includes("domAPI") && code.includes("update")) return true;
+        if (code.includes("styleSheet") && code.includes("cssText")) return true;
+        if (code.includes("styleTagTransform") || code.includes("insertStyleElement")) return true;
+    } catch {
+        // unparseable
+    }
+    return false;
+};
+
+// Returns true when a 3-param module is a CSS content module (pushes a CSS array
+// with an id + CSS string via requireParam.d).
+const isCssModuleEntry = (mod: ModuleEntry): boolean => {
+    if (mod.paramCount !== 3) return false;
+    const fnNode = mod.fnPath.node as t.FunctionExpression | t.ArrowFunctionExpression | t.ObjectMethod;
+    if (!t.isBlockStatement((fnNode as { body?: t.Node }).body)) return false;
+    const body = (fnNode as { body: t.BlockStatement }).body;
+    try {
+        const code = generate(body).code;
+        // CSS content modules push an array of [moduleId, cssString, ""] and register via .d
+        if (code.includes(".push(") && code.includes(".id,") && code.includes(".d(")) return true;
+    } catch {
+        // unparseable
+    }
+    return false;
+};
+
+export type RefactorReactResult = {
+    files: Record<string, string>;
+    libModuleMap: Map<string, LibraryModuleInfo>;
+};
+
+const refactorReact = async (
+    chunk: Chunk,
+    libSigs?: Set<string>,
+    externalLibModuleMap?: Map<string, LibraryModuleInfo>,
+    classifyAllAsLibrary?: boolean,
+    scatOverride?: ScatCategory[]
+): Promise<RefactorReactResult> => {
     console.log(chalk.cyan(`[i] Processing React bundle: ${chunk.id}`));
 
     const ast = parser.parse(chunk.code, {
@@ -152,37 +268,106 @@ const refactorReact = async (chunk: Chunk): Promise<Record<string, string>> => {
 
     console.log(chalk.cyan(`[i] Found ${modules.length} modules`));
 
-    const results: Record<string, string> = {};
+    // Detect lazy chunk bundles: no IIFE wrapper, program body is entirely push() calls.
+    // Modules in lazy chunks are always application code — skip library classification for them.
+    // Also don't generate index.js from the push statement (it contains no bootstrap logic).
+    const iifeBody = findIifeBody(ast.program);
+    const isLazyBundle =
+        iifeBody === null && ast.program.body.length > 0 && ast.program.body.every(isLazyChunkPushStmt);
+    if (isLazyBundle) {
+        console.log(chalk.cyan(`[i] Detected lazy chunk format — skipping library classification`));
+    }
+
+    const files: Record<string, string> = {};
+
+    // moduleId → LibraryModuleInfo for modules that are library-classified (in this chunk)
+    const libModuleMap = new Map<string, LibraryModuleInfo>();
+
+    let libraryCount = 0;
+    // Collect non-library module statements before applying Pass D, so we can use the
+    // fully-resolved libModuleMap (including re-export chains) when rewriting imports.
+    const pendingModules: Array<{ id: string; statements: t.Statement[] }> = [];
 
     for (const mod of modules) {
-        const statements = transformModule(mod);
-        const code = validateAndFix(statements, mod.id);
-        if (code === null) {
-            console.log(chalk.yellow(`[~] Module ${mod.id} skipped due to unresolvable syntax errors`));
+        // classifyAllAsLibrary: used for vendor chunks outside mapped.json where we want
+        // to extract library export maps without generating any output files.
+        const isLib = classifyAllAsLibrary || (!isLazyBundle && moduleIsLibrary(mod, libSigs, scatOverride));
+        // Detect style-loader and CSS content modules regardless of baseline signatures.
+        if (!classifyAllAsLibrary && !isLib && !isLazyBundle) {
+            const styleLoaderType = isStyleLoaderModule(mod)
+                ? "style-loader"
+                : isCssModuleEntry(mod)
+                  ? "css-module"
+                  : null;
+            if (styleLoaderType !== null) {
+                console.log(chalk.gray(`[-] Module ${mod.id} detected as ${styleLoaderType} — skipping`));
+                libModuleMap.set(mod.id, { type: styleLoaderType, exportMap: new Map() });
+                libraryCount++;
+                continue;
+            }
+        }
+        if (isLib) {
+            console.log(chalk.gray(`[-] Module ${mod.id} matches library baseline — skipping`));
+            libraryCount++;
+            // Classify the library module so import rewriting can use proper named imports
+            const info = classifyLibraryModule(mod);
+            libModuleMap.set(mod.id, info);
             continue;
         }
-        results[mod.id] = code;
+        const statements = applyModuleCleanupPasses(transformModule(mod));
+        pendingModules.push({ id: mod.id, statements });
+    }
+    // Resolve re-export chains (e.g. 338 → 247/react-dom-client, 540 → 287/React) so shim modules
+    // get the right library type. Always run for vendor pre-scans (classifyAllAsLibrary), and for
+    // normal non-lazy chunks when a library baseline is provided.
+    if (classifyAllAsLibrary || (!isLazyBundle && libSigs && libSigs.size > 0)) {
+        if (!isLazyBundle && libSigs && libSigs.size > 0) {
+            console.log(chalk.cyan(`[i] Library modules skipped: ${libraryCount}/${modules.length}`));
+        }
+        resolveReexportChains(libModuleMap, modules);
+    }
+
+    // Merged map: prefer locally-classified entries over external ones (local classification
+    // is more precise for this specific bundle version).
+    const mergedLibMap = new Map<string, LibraryModuleInfo>([...(externalLibModuleMap ?? []), ...libModuleMap]);
+
+    // Apply Pass D (library-aware import rewriting) using the merged map, then validate.
+    for (const { id, statements } of pendingModules) {
+        const afterD = mergedLibMap.size > 0 ? applyLibraryImportRewriting(statements, mergedLibMap) : statements;
+        const afterRename = renameRouteComponents(afterD);
+        const code = validateAndFix(afterRename, id);
+        if (code === null) {
+            console.log(chalk.yellow(`[~] Module ${id} skipped due to unresolvable syntax errors`));
+            continue;
+        }
+        files[id] = code;
     }
 
     // Collect everything in the IIFE body that is NOT the module-map variable into index.js.
-    const topLevel = findIifeBody(ast.program) ?? ast.program.body;
-    const indexStatements: t.Statement[] = [];
-    for (const stmt of topLevel) {
-        if (t.isVariableDeclaration(stmt)) {
-            const remaining = stmt.declarations.filter((d) => !isModuleMapDeclarator(d));
-            if (remaining.length > 0) indexStatements.push(t.variableDeclaration(stmt.kind, remaining));
-        } else {
-            indexStatements.push(stmt);
+    // Skip this step for lazy chunks — their push statement contains no bootstrap logic.
+    if (!isLazyBundle) {
+        const topLevel = iifeBody ?? ast.program.body;
+        const indexStatements: t.Statement[] = [];
+        for (const stmt of topLevel) {
+            if (t.isVariableDeclaration(stmt)) {
+                const remaining = stmt.declarations.filter((d) => !isModuleMapDeclarator(d));
+                if (remaining.length > 0) indexStatements.push(t.variableDeclaration(stmt.kind, remaining));
+            } else {
+                indexStatements.push(stmt);
+            }
+        }
+        if (indexStatements.length > 0) {
+            console.log(chalk.cyan(`[i] Writing ${indexStatements.length} non-module statements to index.js`));
+            const transformed = transformIndexStatements(
+                indexStatements,
+                mergedLibMap.size > 0 ? mergedLibMap : undefined
+            );
+            const indexCode = validateAndFix(transformed, "index");
+            if (indexCode !== null) files["index"] = indexCode;
         }
     }
-    if (indexStatements.length > 0) {
-        console.log(chalk.cyan(`[i] Writing ${indexStatements.length} non-module statements to index.js`));
-        const transformed = transformIndexStatements(indexStatements);
-        const indexCode = validateAndFix(transformed, "index");
-        if (indexCode !== null) results["index"] = indexCode;
-    }
 
-    return results;
+    return { files, libModuleMap };
 };
 
 export default refactorReact;

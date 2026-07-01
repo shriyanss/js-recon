@@ -12,6 +12,7 @@ Powers the `map` subcommand. Parses downloaded JS bundles (webpack / turbopack /
 - `vue_js/` — Vite/webpack resolvers for Vue. Hosts the framework-agnostic HTTP-client and XHR resolvers reused by React/Svelte. See `vue_js/CLAUDE.md`.
 - `react_js/` — React-specific connection and fetch resolvers; delegates XHR / HTTP-client to `vue_js/`. See `react_js/CLAUDE.md`.
 - `svelte_js/` — Svelte interactive shim; delegates resolution to `vue_js/`. See `svelte_js/CLAUDE.md`.
+- `angular_js/` — Angular (esbuild) connection extractor and resolvers; delegates HTTP-client and fetch resolution to `vue_js/`. See `angular_js/CLAUDE.md`.
 
 ## Patterns / gotchas
 
@@ -20,6 +21,8 @@ Powers the `map` subcommand. Parses downloaded JS bundles (webpack / turbopack /
 - **GraphQL extraction is gated by `--openapi`.** `resolveGraphql` runs once per framework branch in `index.ts`, right before the OpenAPI/Postman emit block, guarded by both `getOpenapi()` and `getGraphqlEnabled()`. Operations bypass `looksLikeUrl` filtering because their path (`/{{graphqlEndpoint}}`) is a synthetic placeholder, not a resolved URL. They are grouped by the `collectionFolder` field on `OpenapiOutputItem` (see `utility/CLAUDE.md`).
 - **OpenAPI emission is filtered.** Every resolver eventually produces entries that pass through `urlUtils.looksLikeUrl` before being written. Heuristic rejects entries without `/` or scheme; partially-resolved URLs (`[call:base()]/x`) survive as long as the literal portion contains a slash. Tightening that heuristic silently drops endpoints across all frameworks.
 - **Interactive shell is per-framework** but commands are shared where possible. New commands go in BOTH `next_js/interactive_helpers/commandHandler.ts` and `vue_js/interactive_helpers/commandHandler.ts` unless intentionally Next-only (e.g. `list server_actions`).
+- **Per-file size limit (1.5 MB).** All file-reading loops in `vue_js/getViteConnections.ts`, `react_js/getReactConnections.ts`, `vue_js/vue_resolveFetch.ts`, `vue_js/vue_resolveXhr.ts`, and `vue_js/vue_resolveHttpClient.ts` skip files larger than 1.5 MB before calling Babel. This prevents OOM crashes on ad-heavy sites that download 100+ large third-party JS files. If you raise this threshold or remove the guard, test against a site with many large vendor scripts first.
+- **Caller-lookup total-size cap (50 MB).** `vue_resolveXhr` and `vue_resolveHttpClient` apply the same 1.5 MB per-file guard _and_ a 50 MB cumulative total when building `allFilePaths` for `makeGetCallers`. Without this, sites that download hundreds of small third-party source files (e.g. a polyfill or compiler source tree pulled in via unrestricted scope) cause `buildAliasMap` to parse all of them at once and exhaust the heap. The file list is sorted alphabetically before the cap is applied so the included set is deterministic across runs regardless of filesystem inode ordering. The per-file scanning loop is unaffected — it still processes every file under 1.5 MB.
 
 ## How to test changes here
 
@@ -28,7 +31,7 @@ Skip `lazyload` while iterating — reuse already-downloaded chunks:
 ```bash
 npx tsc
 node --max-old-space-size=8192 build/index.js map \
-  -d output/<host>/static/js -o /tmp/jsr-mapped -t <next|vue|react|svelte> -f json
+  -d output/<host>/static/js -o /tmp/jsr-mapped -t <next|vue|react|svelte|angular> -f json
 ```
 
 Grep `mapped-openapi.json` for the URL fragment you expect. Final acceptance: `npm run cleanup && npm run start -- run -u <target> -y -k` per root `CLAUDE.md`.

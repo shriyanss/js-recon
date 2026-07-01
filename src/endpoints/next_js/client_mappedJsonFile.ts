@@ -33,7 +33,7 @@ const client_mappedJsonFile = async (filePath: string): Promise<string[]> => {
                     errorRecovery: true,
                 });
             } catch (err) {
-                console.log(chalk.red(`[!] Failed to parse chunk ${key}: ${err}`));
+                console.error(chalk.red(`[!] Failed to parse chunk ${key}: ${err}`));
                 continue;
             }
 

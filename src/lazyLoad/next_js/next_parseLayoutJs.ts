@@ -13,12 +13,34 @@ const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
 
     // iterate through all the URLs and find the layout.*.js files
 
+    const MAX_LAYOUT_JS_BYTES = 1.5 * 1024 * 1024;
+
     for (const url of urls) {
         if (url.includes("layout-")) {
             // request the content, and parse it
             const req = await makeRequest(url);
 
+            if (!req) continue;
+
+            const contentLength = req.headers.get("content-length");
+            if (contentLength && parseInt(contentLength, 10) > MAX_LAYOUT_JS_BYTES) {
+                console.log(
+                    chalk.yellow(
+                        `[!] Skipping oversized layout.js (${Math.round(parseInt(contentLength, 10) / 1024)} KB): ${url}`
+                    )
+                );
+                continue;
+            }
+
             const jsContent = await req.text();
+
+            if (jsContent.length > MAX_LAYOUT_JS_BYTES) {
+                console.log(
+                    chalk.yellow(`[!] Skipping oversized layout.js (${Math.round(jsContent.length / 1024)} KB): ${url}`)
+                );
+                continue;
+            }
+
             let ast;
 
             try {

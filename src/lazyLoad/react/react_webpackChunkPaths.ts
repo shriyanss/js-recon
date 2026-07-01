@@ -19,14 +19,14 @@ const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFile
             // check content-length before downloading body
             const contentLength = req.headers.get("content-length");
             if (contentLength && parseInt(contentLength) > maxJsSizeMb * 1024 * 1024) {
-                console.log(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
+                console.error(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
                 continue;
             }
 
             const jsContent = await req.text();
 
             if (jsContent.length > maxJsSizeMb * 1024 * 1024) {
-                console.log(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
+                console.error(chalk.yellow(`[!] Skipping ${jsFile} (too large)`));
                 continue;
             }
 
@@ -114,14 +114,12 @@ const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFile
                                 let output = execFunc(urlBuilderFunc, parseInt(i));
                                 if (typeof output !== "string" || output.includes("undefined")) continue;
 
-                                if (
-                                    !(
-                                        output.startsWith("/") ||
-                                        output.startsWith("http") ||
-                                        output.startsWith("./") ||
-                                        output.startsWith("../")
-                                    )
-                                ) {
+                                if (!(
+                                    output.startsWith("/") ||
+                                    output.startsWith("http") ||
+                                    output.startsWith("./") ||
+                                    output.startsWith("../")
+                                )) {
                                     output = "../" + output;
                                 }
                                 const finalUrl = new URL(output, jsFile).href;

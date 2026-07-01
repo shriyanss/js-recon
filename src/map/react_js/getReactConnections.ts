@@ -38,7 +38,7 @@ const parseFilename = (filename: string): FileMeta | null => {
 const getReactConnections = async (directory: string, output: string, formats: string[]): Promise<Chunks> => {
     const maxAiThreads = globals.getAiThreads();
     if (globals.getAi().length > 0) {
-        console.log(
+        console.error(
             chalk.yellow(
                 "[!] AI integration is enabled. This may incur costs. By using this feature, you agree to the AI provider's terms of service, and accept the risk of incurring unexpected costs due to huge codebase."
             )
@@ -47,7 +47,7 @@ const getReactConnections = async (directory: string, output: string, formats: s
         if (provider === "openai") {
             const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
             if (!apiKey) {
-                console.log(
+                console.error(
                     chalk.red(
                         "[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."
                     )
@@ -59,7 +59,7 @@ const getReactConnections = async (directory: string, output: string, formats: s
     }
 
     if (fs.existsSync(`${output}.json`) && globals.getAi().length > 0) {
-        console.log(
+        console.error(
             chalk.yellow(`[!] Output file ${output}.json already exists. Skipping regeneration to save costs.`)
         );
         return JSON.parse(fs.readFileSync(`${output}.json`, "utf8"));
@@ -86,10 +86,15 @@ const getReactConnections = async (directory: string, output: string, formats: s
     const fileFuncToChunkId = new Map<string, Map<string, string>>();
 
     // Pass 1: find root-level 2-char function declarations (Vite/Rolldown minification pattern)
+    const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;
     console.log(chalk.cyan(`[i] Scanning ${files.length} React JS files for functions`));
     for (const file of files) {
         const meta = parseFilename(file);
         const filePath = path.join(directory, file);
+        if (fs.statSync(filePath).size > MAX_MAP_FILE_SIZE_BYTES) {
+            console.error(chalk.yellow(`[!] Skipping ${file} (too large for map analysis)`));
+            continue;
+        }
         let code: string;
         try {
             code = fs.readFileSync(filePath, "utf8");

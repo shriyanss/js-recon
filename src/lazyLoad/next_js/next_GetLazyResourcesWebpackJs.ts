@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import puppeteer from "../../utility/puppeteerInstance.js";
+import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
@@ -34,9 +35,13 @@ type MatchedFunction = {
  * @returns {Promise<string[]>} Deduplicated absolute URLs of discovered JS chunks.
  */
 const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> => {
+    const chromiumPath = getChromiumPath();
     const browser = await puppeteer.launch({
         headless: true,
-        args: globals.getDisableSandbox() ? ["--no-sandbox", "--disable-setuid-sandbox"] : [],
+        executablePath: chromiumPath,
+        args: globals.getDisableSandbox()
+            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            : [],
     });
 
     const page = await browser.newPage();
@@ -63,7 +68,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     try {
         await page.goto(url, { waitUntil: "networkidle0" });
     } catch {
-        console.log(chalk.yellow("[!] Timeout reached for page load. Continuing with the current state"));
+        console.error(chalk.yellow("[!] Timeout reached for page load. Continuing with the current state"));
     }
 
     await browser.close();
@@ -71,7 +76,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const jsUrls = getJsUrls();
 
     if (jsUrls.length === 0) {
-        console.log(chalk.yellow("[!] No JS files discovered during page load"));
+        console.error(chalk.yellow("[!] No JS files discovered during page load"));
         return [];
     }
 
@@ -174,7 +179,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     stopResize();
 
     if (matched.length === 0) {
-        console.log(chalk.yellow("[!] No chunk URL builder functions found in discovered JS files"));
+        console.error(chalk.yellow("[!] No chunk URL builder functions found in discovered JS files"));
         return [];
     }
 
@@ -203,7 +208,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
         }
 
         if (!approved) {
-            console.log(chalk.red("[!] Skipping function."));
+            console.error(chalk.red("[!] Skipping function."));
             continue;
         }
 

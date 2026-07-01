@@ -69,12 +69,12 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
     const { axiosExportedFrom, axiosImportedTo } = findAxiosClients(chunks);
 
     if (axiosExportedFrom.length === 0) {
-        console.log(chalk.yellow("[!] No axios clients defined in any chunk."));
+        console.error(chalk.yellow("[!] No axios clients defined in any chunk."));
         return;
     }
 
     if (Object.keys(axiosImportedTo).length === 0) {
-        console.log(chalk.yellow("[!] No chunks import any of the defined axios clients."));
+        console.error(chalk.yellow("[!] No chunks import any of the defined axios clients."));
         return;
     }
 
@@ -162,7 +162,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
                 }
             } else {
                 // This case might not be an error, just a different pattern.
-                // console.log(chalk.yellow(`[!] Could not find a function with 3 arguments in ${chunkName}`));
+                // console.error(chalk.yellow(`[!] Could not find a function with 3 arguments in ${chunkName}`));
             }
         }
 
@@ -171,7 +171,7 @@ const resolveAxios = async (chunks: Chunks, directory: string) => {
             Object.keys(axiosImportedTo).includes(chunkName) &&
             Object.keys(zDotCreateInstances).length !== 0
         ) {
-            console.log(chalk.yellow(`[!] No axios calls found in ${chunkName}`));
+            console.error(chalk.yellow(`[!] No axios calls found in ${chunkName}`));
         }
     }
 };

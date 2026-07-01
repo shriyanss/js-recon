@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { program } from "commander";
 import lazyLoad from "./lazyLoad/index.js";
+import { FRAMEWORK_METHODS, VALID_METHODS } from "./lazyLoad/methodFilter.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
@@ -16,7 +17,16 @@ import configureSandbox from "./utility/configureSandbox.js";
 import mcp from "./mcp/index.js";
 import load from "./load/index.js";
 import fingerprint from "./fingerprint/index.js";
+import { applyHeapLimit } from "./utility/heap.js";
 import csMast from "./cs_mast/index.js";
+import sourcemaps from "./sourcemaps/index.js";
+import { printBanner } from "./utility/banner.js";
+
+const args = process.argv.slice(2);
+const isVersionFlag = args.length === 1 && (args[0] === "-V" || args[0] === "--version");
+if (!isVersionFlag) {
+    await (async () => printBanner())();
+}
 
 /**
  * Main CLI application entry point for js-recon tool.
@@ -31,10 +41,19 @@ const validAiOptions = ["description"];
  * Validates a timeout string and updates the global request timeout.
  * @param timeoutValue Timeout value provided via CLI.
  */
+function parseMaxHeapMb(rawValue: string | undefined): number {
+    const parsed = parseInt(rawValue ?? "0", 10);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+        console.error(chalk.red(`[!] Invalid --max-heap value: ${rawValue}. Use 0 or a positive integer (MB).`));
+        process.exit(1);
+    }
+    return parsed;
+}
+
 function validateAndSetTimeout(timeoutValue: string): void {
     const parsedTimeout = parseInt(timeoutValue, 10);
     if (Number.isNaN(parsedTimeout) || parsedTimeout < 1) {
-        console.log(chalk.yellow(`[!] Invalid timeout value: "${timeoutValue}". Using default of 30000ms.`));
+        console.error(chalk.yellow(`[!] Invalid timeout value: "${timeoutValue}". Using default of 30000ms.`));
         globalsUtil.setRequestTimeout(30000);
     } else {
         globalsUtil.setRequestTimeout(parsedTimeout);
@@ -44,7 +63,7 @@ function validateAndSetTimeout(timeoutValue: string): void {
 program
     .command("lazyload")
     .description("Run lazy load module")
-    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <directory>", "Output directory", "output")
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
@@ -67,8 +86,67 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
-    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "0")
+    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option(
+        "--include-methods <methods>",
+        "Comma-separated method names to run (whitelist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--exclude-methods <methods>",
+        "Comma-separated method names to skip (blacklist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--list-methods [framework]",
+        "Print available method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react)."
+    )
     .action(async (cmd) => {
+        // handle --list-methods before any network work
+        if (cmd.listMethods !== undefined) {
+            const filter = typeof cmd.listMethods === "string" ? cmd.listMethods : null;
+            const frameworkKeys = Object.keys(FRAMEWORK_METHODS);
+            if (filter && !frameworkKeys.includes(filter)) {
+                console.error(
+                    chalk.red(`[!] Unknown framework: "${filter}". Valid frameworks: ${frameworkKeys.join(", ")}`)
+                );
+                process.exit(1);
+            }
+            const keys = filter ? [filter] : frameworkKeys;
+            for (const fw of keys) {
+                console.log(chalk.cyan(`\n[${fw}]`));
+                for (const method of FRAMEWORK_METHODS[fw]) {
+                    console.log(chalk.green(`  - ${method}`));
+                }
+            }
+            process.exit(0);
+        }
+
+        // parse and validate method filter lists
+        const includeMethods: string[] = cmd.includeMethods
+            ? cmd.includeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
+            : [];
+        const excludeMethods: string[] = cmd.excludeMethods
+            ? cmd.excludeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
+            : [];
+
+        const allMethods = [...includeMethods, ...excludeMethods];
+        const invalid = allMethods.filter((m) => !VALID_METHODS.includes(m));
+        if (invalid.length > 0) {
+            console.error(chalk.red(`[!] Invalid method name(s): ${invalid.join(", ")}`));
+            console.error(chalk.yellow(`[i] Valid methods: ${VALID_METHODS.join(", ")}`));
+            process.exit(22);
+        }
+
+        if (!cmd.url) {
+            console.error(chalk.red("[!] Missing required option: -u, --url <url/file>"));
+            process.exit(1);
+        }
+
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
         globalsUtil.setDisableCache(cmd.disableCache);
@@ -95,7 +173,9 @@ program
             Number(cmd.maxIterations),
             Number(cmd.maxJsSize),
             Number(cmd.lazyloadTimeout) * 60 * 1000,
-            Number(cmd.maxPages)
+            Number(cmd.maxPages),
+            includeMethods,
+            excludeMethods
         );
     });
 
@@ -135,6 +215,7 @@ program
     .option("-p, --permutate", "Permutate URLs and paths found", false)
     .option("--openapi", "Generate OpenAPI specification from the paths found", false)
     .option("-s, --scan-secrets", "Scan for secrets", false)
+    .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
     .action(async (cmd) => {
         await strings(
             cmd.directory,
@@ -143,7 +224,8 @@ program
             cmd.extractedUrlPath,
             cmd.scanSecrets,
             cmd.permutate,
-            cmd.openapi
+            cmd.openapi,
+            cmd.trufflehog
         );
     });
 
@@ -214,7 +296,9 @@ program
         "Max recursion depth for HTTP-client URL fan-out and cross-file resolution (default 3)",
         "3"
     )
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .action(async (cmd) => {
+        if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setOpenapiChunkTag(cmd.openapiChunkTag);
@@ -231,14 +315,14 @@ program
         if (globalsUtil.getAi().length !== 0) {
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
-                    console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
+                    console.error(chalk.red(`[!] Invalid AI option: ${aiType}`));
                     process.exit(1);
                 }
             }
         }
         const maxRecursionDepth = parseInt(cmd.maxRecursionDepth ?? "3", 10);
         if (!Number.isFinite(maxRecursionDepth) || maxRecursionDepth < 0) {
-            console.log(chalk.red(`[!] Invalid --max-recursion-depth: ${cmd.maxRecursionDepth}`));
+            console.error(chalk.red(`[!] Invalid --max-recursion-depth: ${cmd.maxRecursionDepth}`));
             process.exit(1);
         }
         globalsUtil.setMaxRecursionDepth(maxRecursionDepth);
@@ -260,8 +344,44 @@ program
     .option("-o, --output <directory>", "Output directory", "output_refactored")
     .option("-t, --tech <tech>", "Technology used in the JS files (run with -l/--list to see available options)")
     .option("-l, --list", "List available technologies", false)
+    .option(
+        "--collisions <file>",
+        "Local path to a CS-MAST collisions.json (or directory). Overrides the default remote HuggingFace signatures."
+    )
+    .option(
+        "--sq, --signature-quality <number>",
+        "Minimum signature quality threshold (0–100). A signature is used only when (count/sample_size)*100 >= threshold.",
+        "100"
+    )
+    .option("--refresh-cache", "Force refresh the remote file list cache", false)
+    .option("--skip-cache-checks", "Skip cache age and 404-triggered refresh checks", false)
+    .option(
+        "--no-remote",
+        "Disable remote HuggingFace signature fetch; run without library stripping unless --collisions is provided"
+    )
+    .option(
+        "--remote-collisions <path>",
+        "HuggingFace dataset path to load collision signatures from (e.g. react/vite/large-0.1.8). Overrides the automatic tech-to-branch mapping. Exits with code 25 if the path does not exist."
+    )
+    .option(
+        "--scat <categories>",
+        "Override the CS-MAST scat categories used for library signature matching. Comma-separated list of: lit,id,op,decl,loop,cond,name,val,op_name (e.g. --scat lit,decl,cond). Overrides the default lit-decl-loop-cond config."
+    )
     .action(async (cmd) => {
-        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list);
+        const scat: string[] | undefined = cmd.scat
+            ? (cmd.scat as string)
+                  .split(",")
+                  .map((s: string) => s.trim())
+                  .filter(Boolean)
+            : undefined;
+        await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions, {
+            signatureQuality: Number(cmd.signatureQuality ?? 100),
+            refreshCache: !!cmd.refreshCache,
+            skipCacheChecks: !!cmd.skipCacheChecks,
+            noRemote: cmd.remote === false,
+            remoteCollisions: cmd.remoteCollisions as string | undefined,
+            scat,
+        });
     });
 
 program
@@ -301,7 +421,7 @@ program
 program
     .command("run")
     .description("Run all modules")
-    .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
+    .option("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")
     .option(
         "-c, --command <command>",
@@ -320,6 +440,7 @@ program
     .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--secrets", "Scan for secrets", false)
+    .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
@@ -338,8 +459,70 @@ program
     .option("--max-iterations <iterations>", "Maximum number of recursive crawl iterations", "10")
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
-    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "0")
+    .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
+    .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option(
+        "--include-methods <methods>",
+        "Comma-separated lazyload method names to run (whitelist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--exclude-methods <methods>",
+        "Comma-separated lazyload method names to skip (blacklist). Use --list-methods to see valid names."
+    )
+    .option(
+        "--list-methods [framework]",
+        "Print available lazyload method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react)."
+    )
     .action(async (cmd) => {
+        // handle --list-methods before any network work
+        if (cmd.listMethods !== undefined) {
+            const filter = typeof cmd.listMethods === "string" ? cmd.listMethods : null;
+            const frameworkKeys = Object.keys(FRAMEWORK_METHODS);
+            if (filter && !frameworkKeys.includes(filter)) {
+                console.error(
+                    chalk.red(`[!] Unknown framework: "${filter}". Valid frameworks: ${frameworkKeys.join(", ")}`)
+                );
+                process.exit(1);
+            }
+            const keys = filter ? [filter] : frameworkKeys;
+            for (const fw of keys) {
+                console.log(chalk.cyan(`\n[${fw}]`));
+                for (const method of FRAMEWORK_METHODS[fw]) {
+                    console.log(chalk.green(`  - ${method}`));
+                }
+            }
+            process.exit(0);
+        }
+
+        // parse and validate method filter lists
+        const includeMethods: string[] = cmd.includeMethods
+            ? cmd.includeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
+            : [];
+        const excludeMethods: string[] = cmd.excludeMethods
+            ? cmd.excludeMethods
+                  .split(",")
+                  .map((m: string) => m.trim())
+                  .filter(Boolean)
+            : [];
+        const allMethods = [...includeMethods, ...excludeMethods];
+        const invalid = allMethods.filter((m) => !VALID_METHODS.includes(m));
+        if (invalid.length > 0) {
+            console.error(chalk.red(`[!] Invalid method name(s): ${invalid.join(", ")}`));
+            console.error(chalk.yellow(`[i] Valid methods: ${VALID_METHODS.join(", ")}`));
+            process.exit(22);
+        }
+        cmd._includeMethods = includeMethods;
+        cmd._excludeMethods = excludeMethods;
+
+        if (!cmd.url) {
+            console.error(chalk.red("[!] Missing required option: -u, --url <url/file>"));
+            process.exit(1);
+        }
+
+        if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
@@ -359,7 +542,7 @@ program
         if (globalsUtil.getAi().length !== 0) {
             for (const aiType of globalsUtil.getAi()) {
                 if (aiType !== "" && !validAiOptions.includes(aiType)) {
-                    console.log(chalk.red(`[!] Invalid AI option: ${aiType}`));
+                    console.error(chalk.red(`[!] Invalid AI option: ${aiType}`));
                     process.exit(2);
                 }
             }
@@ -452,6 +635,15 @@ program
             cmd.permOutput,
             parseInt(cmd.permConcurrency, 10)
         );
+    });
+
+program
+    .command("sourcemaps")
+    .description("Extract source files from .map sourcemap file(s)")
+    .requiredOption("-i, --input <path>", "Single .map file or directory containing .map files")
+    .option("-o, --output <directory>", "Output directory for extracted source files", "extracted")
+    .action(async (cmd) => {
+        await sourcemaps(cmd.input, cmd.output);
     });
 
 program.parse(process.argv);

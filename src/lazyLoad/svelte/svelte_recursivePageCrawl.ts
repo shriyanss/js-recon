@@ -158,7 +158,7 @@ const svelte_recursivePageCrawl = async (
                     }
                 }
             } catch (err) {
-                console.log(
+                console.error(
                     chalk.yellow(`[!] Failed to crawl ${pageUrl}: ${err instanceof Error ? err.message : String(err)}`)
                 );
             }
@@ -168,7 +168,7 @@ const svelte_recursivePageCrawl = async (
         if (newFilesThisRound === 0) {
             stagnantRounds++;
             if (stagnantRounds >= STAGNATION_LIMIT) {
-                console.log(
+                console.error(
                     chalk.yellow(`[!] Stopping page crawl: ${STAGNATION_LIMIT} consecutive rounds without new JS files`)
                 );
                 break;

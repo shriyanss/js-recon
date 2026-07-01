@@ -114,7 +114,7 @@ export const refreshClaudeCodeCreds = async (
         );
     }
 
-    console.log(chalk.yellow("[!] Refreshing Claude Code OAuth token (use --no-refresh-claude-creds to disable)."));
+    console.error(chalk.yellow("[!] Refreshing Claude Code OAuth token (use --no-refresh-claude-creds to disable)."));
 
     const body = {
         grant_type: "refresh_token",
@@ -157,7 +157,7 @@ export const refreshClaudeCodeCreds = async (
     try {
         await writeCreds(refreshed, source);
     } catch (err: any) {
-        console.log(chalk.yellow(`[!] Refreshed token, but failed to persist it back to ${source}: ${err.message}`));
+        console.error(chalk.yellow(`[!] Refreshed token, but failed to persist it back to ${source}: ${err.message}`));
     }
 
     return refreshed;
@@ -177,7 +177,7 @@ export const getUsableAccessToken = async (opts: GetTokenOptions): Promise<strin
     }
 
     if (!opts.allowRefresh) {
-        console.log(
+        console.error(
             chalk.red(
                 "[!] Claude Code OAuth token is expired and --no-refresh-claude-creds was set. Run 'claude' to re-authenticate."
             )
@@ -189,7 +189,7 @@ export const getUsableAccessToken = async (opts: GetTokenOptions): Promise<strin
         const refreshed = await refreshClaudeCodeCreds(read.creds, read.source, opts.clientId);
         return refreshed.claudeAiOauth.accessToken;
     } catch (err: any) {
-        console.log(chalk.red(`[!] ${err.message}`));
+        console.error(chalk.red(`[!] ${err.message}`));
         return null;
     }
 };

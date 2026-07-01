@@ -47,7 +47,9 @@ export const traceAxiosInstanceExports = (
     const exportName = findAxiosInstanceExport(sourceChunkId, axiosVarName, chunks);
 
     if (!exportName) {
-        console.log(chalk.yellow(`    [!] Axios instance '${axiosVarName}' in chunk ${sourceChunkId} is not exported`));
+        console.error(
+            chalk.yellow(`    [!] Axios instance '${axiosVarName}' in chunk ${sourceChunkId} is not exported`)
+        );
         return;
     }
 
@@ -59,7 +61,7 @@ export const traceAxiosInstanceExports = (
     const importingChunks = findImportingChunks(sourceChunkId, chunks);
 
     if (importingChunks.length === 0) {
-        console.log(
+        console.error(
             chalk.yellow(`    [!] No chunks import the axios instance '${exportName}' from chunk ${sourceChunkId}`)
         );
         return;
@@ -199,14 +201,14 @@ const processImportingChunk = (
     // Get the third argument (import function)
     const thirdArg = getThirdArg(ast);
     if (!thirdArg) {
-        console.log(chalk.yellow(`    [!] Could not find third argument in chunk ${importingChunkId}`));
+        console.error(chalk.yellow(`    [!] Could not find third argument in chunk ${importingChunkId}`));
         return;
     }
 
     // Find the variable that imports the axios instance
     const importVarName = findImportVariable(ast, thirdArg, sourceChunkId);
     if (!importVarName) {
-        console.log(
+        console.error(
             chalk.yellow(
                 `    [!] Could not find import variable for chunk ${sourceChunkId} in chunk ${importingChunkId}`
             )

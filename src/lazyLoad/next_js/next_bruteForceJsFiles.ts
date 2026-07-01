@@ -18,12 +18,12 @@ const next_bruteForceJsFiles = async (urls: string[]) => {
                 foundSourceMaps.push(mapFile);
             }
         } else {
-            console.log(chalk.red(`[!] Failed to request ${mapFile}`));
+            console.error(chalk.red(`[!] Failed to request ${mapFile}`));
         }
     }
 
     if (foundSourceMaps.length === 0) {
-        console.log(chalk.red("[!] No source maps found"));
+        console.error(chalk.red("[!] No source maps found"));
         return foundSourceMaps;
     }
 

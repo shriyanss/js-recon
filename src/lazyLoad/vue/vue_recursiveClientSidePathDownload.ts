@@ -21,7 +21,9 @@ const vue_recursiveClientSidePathDownload = async (
     clientSidePaths: string[],
     threads: number = 1,
     maxJsSizeMb: number = 2,
-    onFilesDiscovered?: (files: string[]) => void
+    onFilesDiscovered?: (files: string[]) => void,
+    includeMethods: string[] = [],
+    excludeMethods: string[] = []
 ): Promise<string[]> => {
     const allJsFiles = new Set<string>();
     const visitedPaths = new Set<string>();
@@ -96,7 +98,9 @@ const vue_recursiveClientSidePathDownload = async (
                         const { jsFiles, clientSidePaths: newPaths } = await vue_discoverJsFiles(
                             path,
                             maxJsSizeMb,
-                            onFilesDiscovered
+                            onFilesDiscovered,
+                            includeMethods,
+                            excludeMethods
                         );
 
                         for (const file of jsFiles) {
@@ -125,7 +129,7 @@ const vue_recursiveClientSidePathDownload = async (
             if (errors.length > 0) {
                 bar.stop();
                 for (const msg of errors) {
-                    console.log(chalk.red(msg));
+                    console.error(chalk.red(msg));
                 }
                 bar.start(knownPaths.size, visitedPaths.size, {
                     round,
@@ -140,7 +144,7 @@ const vue_recursiveClientSidePathDownload = async (
                 refreshBar();
                 if (stagnantRounds >= STAGNATION_LIMIT) {
                     bar.stop();
-                    console.log(
+                    console.error(
                         chalk.yellow(
                             `[!] Stopping recursion: ${STAGNATION_LIMIT} consecutive rounds without new JS files`
                         )

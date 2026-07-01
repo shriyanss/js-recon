@@ -12,6 +12,7 @@ import next_bruteForceJsFiles from "./next_bruteForceJsFiles.js";
 import next_getClientSidePaths from "./next_getClientSidePaths.js";
 
 import * as lazyLoadGlobals from "../globals.js";
+import { shouldRunMethod } from "../methodFilter.js";
 
 interface NextJsCrawlerOptions {
     url: string;
@@ -25,6 +26,10 @@ interface NextJsCrawlerOptions {
     maxPageVisits?: number;
     /** Called with newly discovered downloadable URLs as they are found. */
     onUrlsDiscovered?: (urls: string[]) => void;
+    /** Whitelist of method names to run (empty = run all). */
+    includeMethods?: string[];
+    /** Blacklist of method names to skip (empty = skip none). */
+    excludeMethods?: string[];
 }
 
 /**
@@ -72,7 +77,17 @@ class NextJsCrawler {
     /** Callback invoked with newly discovered downloadable URLs. */
     private readonly onUrlsDiscovered?: (urls: string[]) => void;
 
+    private readonly includeMethods: string[];
+    private readonly excludeMethods: string[];
+
     constructor(options: NextJsCrawlerOptions) {
+        if (
+            options.maxPageVisits !== undefined &&
+            (!Number.isInteger(options.maxPageVisits) || options.maxPageVisits < 0)
+        ) {
+            throw new Error("maxPageVisits must be a non-negative integer (0 = unlimited)");
+        }
+
         this.url = options.url;
         this.output = options.output;
         this.subsequentRequestsFlag = options.subsequentRequestsFlag;
@@ -80,8 +95,10 @@ class NextJsCrawler {
         this.threads = options.threads;
         this.research = options.research;
         this.MAX_ITERATIONS = options.maxIterations;
-        this.MAX_PAGE_VISITS = options.maxPageVisits ?? 0;
+        this.MAX_PAGE_VISITS = options.maxPageVisits ?? 200;
         this.onUrlsDiscovered = options.onUrlsDiscovered;
+        this.includeMethods = options.includeMethods ?? [];
+        this.excludeMethods = options.excludeMethods ?? [];
 
         this.discoveredUrls = new Set();
         this.pageScriptFingerprints = new Map();
@@ -151,8 +168,11 @@ class NextJsCrawler {
      * execute once (puppeteer-based webpack analysis, build-manifest, etc.).
      */
     private async initialDiscovery(): Promise<void> {
+        const inc = this.includeMethods;
+        const exc = this.excludeMethods;
+
         // 1. Script tags on the landing page
-        const jsFromScriptTag = await next_getJSScript(this.url);
+        const jsFromScriptTag = shouldRunMethod("next_GetJSScript", inc, exc) ? await next_getJSScript(this.url) : [];
         this.techniqueEfficiencyMapping["next_getJSScript"] = [
             ...(this.techniqueEfficiencyMapping["next_getJSScript"] || []),
             ...jsFromScriptTag,
@@ -166,41 +186,54 @@ class NextJsCrawler {
         // 1b. Client-side paths from <a href> tags on the landing page.
         // These are page URLs (not JS), so they'll be picked up by the
         // recursivePass loop which visits any newly registered non-JS URL.
-        const pathsFromAnchors = await next_getClientSidePaths(this.url);
-        this.techniqueEfficiencyMapping["next_getClientSidePaths"] = [
-            ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
-            ...pathsFromAnchors,
-        ];
-        this.emitDownloadable(this.registerUrls(pathsFromAnchors));
+        if (shouldRunMethod("next_getClientSidePaths", inc, exc)) {
+            const pathsFromAnchors = await next_getClientSidePaths(this.url);
+            this.techniqueEfficiencyMapping["next_getClientSidePaths"] = [
+                ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
+                ...pathsFromAnchors,
+            ];
+            this.emitDownloadable(this.registerUrls(pathsFromAnchors));
+        }
 
-        // 2. Webpack runtime analysis (puppeteer – expensive, run once)
-        const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
-        this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
-        lazyLoadGlobals.pushToJsUrls(jsFromWebpack);
-        this.emitDownloadable(this.registerUrls(jsFromWebpack));
+        // 2. Webpack runtime analysis (puppeteer – expensive, run once per target).
+        // Skip in subsequent-requests passes: the webpack chunk URL builders are static
+        // and were already resolved in the initial lazyload call; re-running this costs
+        // 3-6 minutes per call without discovering new URLs.
+        if (!this.subsequentRequestsFlag && shouldRunMethod("next_GetLazyResourcesWebpackJs", inc, exc)) {
+            const jsFromWebpack = await next_GetLazyResourcesWebpackJs(this.url);
+            this.techniqueEfficiencyMapping["next_GetLazyResourcesWebpackJs"] = jsFromWebpack;
+            lazyLoadGlobals.pushToJsUrls(jsFromWebpack);
+            this.emitDownloadable(this.registerUrls(jsFromWebpack));
+        }
 
         // 3. _buildManifest.js
-        const jsFromBuildManifest = await next_getLazyResourcesBuildManifestJs(this.url);
-        this.techniqueEfficiencyMapping["next_getLazyResourcesBuildManifestJs"] = jsFromBuildManifest;
-        lazyLoadGlobals.pushToJsUrls(jsFromBuildManifest);
-        this.emitDownloadable(this.registerUrls(jsFromBuildManifest));
+        if (shouldRunMethod("next_GetLazyResourcesBuildManifestJs", inc, exc)) {
+            const jsFromBuildManifest = await next_getLazyResourcesBuildManifestJs(this.url);
+            this.techniqueEfficiencyMapping["next_getLazyResourcesBuildManifestJs"] = jsFromBuildManifest;
+            lazyLoadGlobals.pushToJsUrls(jsFromBuildManifest);
+            this.emitDownloadable(this.registerUrls(jsFromBuildManifest));
+        }
 
         // 4. Subsequent requests (RSC / script-tags on known endpoints)
         if (this.subsequentRequestsFlag) {
-            const jsFromSubsequent = await subsequentRequests(
-                this.url,
-                this.urlsFile,
-                this.threads,
-                this.output,
-                lazyLoadGlobals.getJsUrls()
-            );
-            this.techniqueEfficiencyMapping["subsequentRequests"] = [...jsFromSubsequent];
-            this.emitDownloadable(this.registerUrls([...jsFromSubsequent]));
+            if (shouldRunMethod("next_SubsequentRequests", inc, exc)) {
+                const jsFromSubsequent = await subsequentRequests(
+                    this.url,
+                    this.urlsFile,
+                    this.threads,
+                    this.output,
+                    lazyLoadGlobals.getJsUrls()
+                );
+                this.techniqueEfficiencyMapping["subsequentRequests"] = [...jsFromSubsequent];
+                this.emitDownloadable(this.registerUrls([...jsFromSubsequent]));
+            }
 
-            const jsFromScriptTagsSR = await next_scriptTagsSubsequentRequests(this.url, this.urlsFile);
-            this.techniqueEfficiencyMapping["next_scriptTagsSubsequentRequests"] = jsFromScriptTagsSR;
-            lazyLoadGlobals.pushToJsUrls(jsFromScriptTagsSR);
-            this.emitDownloadable(this.registerUrls(jsFromScriptTagsSR));
+            if (shouldRunMethod("next_scriptTagsSubsequentRequests", inc, exc)) {
+                const jsFromScriptTagsSR = await next_scriptTagsSubsequentRequests(this.url, this.urlsFile);
+                this.techniqueEfficiencyMapping["next_scriptTagsSubsequentRequests"] = jsFromScriptTagsSR;
+                lazyLoadGlobals.pushToJsUrls(jsFromScriptTagsSR);
+                this.emitDownloadable(this.registerUrls(jsFromScriptTagsSR));
+            }
         }
 
         // Also pull in anything the globals accumulated
@@ -218,27 +251,33 @@ class NextJsCrawler {
      * @returns Newly discovered URLs in this pass.
      */
     private async recursivePass(jsUrls: string[]): Promise<string[]> {
+        const inc = this.includeMethods;
+        const exc = this.excludeMethods;
         let newInThisPass: string[] = [];
 
         // Promise.all pattern analysis on JS file contents
-        const jsFromPromise = await next_promiseResolve(jsUrls);
-        this.techniqueEfficiencyMapping["next_promiseResolve"] = [
-            ...(this.techniqueEfficiencyMapping["next_promiseResolve"] || []),
-            ...jsFromPromise,
-        ];
-        const newFromPromise = this.registerUrls(jsFromPromise);
-        this.emitDownloadable(newFromPromise);
-        newInThisPass.push(...newFromPromise);
+        if (shouldRunMethod("next_promiseResolve", inc, exc)) {
+            const jsFromPromise = await next_promiseResolve(jsUrls);
+            this.techniqueEfficiencyMapping["next_promiseResolve"] = [
+                ...(this.techniqueEfficiencyMapping["next_promiseResolve"] || []),
+                ...jsFromPromise,
+            ];
+            const newFromPromise = this.registerUrls(jsFromPromise);
+            this.emitDownloadable(newFromPromise);
+            newInThisPass.push(...newFromPromise);
+        }
 
         // Layout.js parsing → discovers new client-side page paths → visits them
-        const jsFromLayout = await next_parseLayoutJs(this.url, jsUrls);
-        this.techniqueEfficiencyMapping["next_parseLayoutJs"] = [
-            ...(this.techniqueEfficiencyMapping["next_parseLayoutJs"] || []),
-            ...jsFromLayout,
-        ];
-        const newFromLayout = this.registerUrls(jsFromLayout);
-        this.emitDownloadable(newFromLayout);
-        newInThisPass.push(...newFromLayout);
+        if (shouldRunMethod("next_parseLayoutJs", inc, exc)) {
+            const jsFromLayout = await next_parseLayoutJs(this.url, jsUrls);
+            this.techniqueEfficiencyMapping["next_parseLayoutJs"] = [
+                ...(this.techniqueEfficiencyMapping["next_parseLayoutJs"] || []),
+                ...jsFromLayout,
+            ];
+            const newFromLayout = this.registerUrls(jsFromLayout);
+            this.emitDownloadable(newFromLayout);
+            newInThisPass.push(...newFromLayout);
+        }
 
         // Build a queue of unvisited page URLs to walk. Seed it with:
         //   - unvisited page URLs from the input batch (anchor-derived URLs
@@ -261,6 +300,7 @@ class NextJsCrawler {
         const pageQueue: string[] = [];
         const enqueued = new Set<string>(); // tracks full URLs to avoid duplicate entries per pass
         const enqueueIfPage = (u: string) => {
+            if (this.MAX_PAGE_VISITS > 0 && this.totalPagesVisited + pageQueue.length >= this.MAX_PAGE_VISITS) return;
             if (enqueued.has(u)) return; // exact URL already queued this pass
             if (!isPageUrl(u)) return;
             enqueued.add(u);
@@ -274,7 +314,7 @@ class NextJsCrawler {
             if (this.stopped) break; // honour stop() at each iteration boundary
 
             if (this.MAX_PAGE_VISITS > 0 && this.totalPagesVisited >= this.MAX_PAGE_VISITS) {
-                console.log(
+                console.error(
                     chalk.yellow(
                         `[!] Page visit cap reached (${this.MAX_PAGE_VISITS}). Skipping remaining pages in queue.`
                     )
@@ -286,7 +326,7 @@ class NextJsCrawler {
             const normalized = this.normalizePageUrl(u);
 
             // Fetch scripts first — used for both fingerprinting and URL registration.
-            const extra = await next_getJSScript(u);
+            const extra = shouldRunMethod("next_GetJSScript", inc, exc) ? await next_getJSScript(u) : [];
 
             if (!extra || !Array.isArray(extra)) {
                 console.error(`[NextJsCrawler] Invalid return value from next_getJSScript for URL: ${u}`);
@@ -318,15 +358,17 @@ class NextJsCrawler {
 
             // Harvest <a href> links from this page so we keep expanding
             // the crawl frontier.
-            const morePaths = await next_getClientSidePaths(u);
-            this.techniqueEfficiencyMapping["next_getClientSidePaths"] = [
-                ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
-                ...morePaths,
-            ];
-            const newFromAnchors = this.registerUrls(morePaths);
-            this.emitDownloadable(newFromAnchors);
-            newInThisPass.push(...newFromAnchors);
-            for (const x of newFromAnchors) enqueueIfPage(x);
+            if (shouldRunMethod("next_getClientSidePaths", inc, exc)) {
+                const morePaths = await next_getClientSidePaths(u);
+                this.techniqueEfficiencyMapping["next_getClientSidePaths"] = [
+                    ...(this.techniqueEfficiencyMapping["next_getClientSidePaths"] || []),
+                    ...morePaths,
+                ];
+                const newFromAnchors = this.registerUrls(morePaths);
+                this.emitDownloadable(newFromAnchors);
+                newInThisPass.push(...newFromAnchors);
+                for (const x of newFromAnchors) enqueueIfPage(x);
+            }
         }
 
         return newInThisPass;
@@ -368,13 +410,13 @@ class NextJsCrawler {
         }
 
         if (this.stopped) {
-            console.log(chalk.yellow(`[!] Crawler stopped — downloading all discovered files`));
+            console.error(chalk.yellow(`[!] Crawler stopped — downloading all discovered files`));
         } else if (iteration >= this.MAX_ITERATIONS) {
-            console.log(chalk.yellow(`[!] Reached max recursive crawl iterations (${this.MAX_ITERATIONS})`));
+            console.error(chalk.yellow(`[!] Reached max recursive crawl iterations (${this.MAX_ITERATIONS})`));
         }
 
         // Phase 3 – brute-force .map files on the final set (skip if stopped by timeout)
-        if (!this.stopped) {
+        if (!this.stopped && shouldRunMethod("next_bruteForceJsFiles", this.includeMethods, this.excludeMethods)) {
             const allJsUrls = [...this.discoveredUrls].filter((u) => u.endsWith(".js") || u.endsWith(".js.map"));
             const jsFromBrute = await next_bruteForceJsFiles(allJsUrls);
             this.techniqueEfficiencyMapping["next_bruteForceJsFiles"] = jsFromBrute;

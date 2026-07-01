@@ -65,7 +65,7 @@ export const processAxiosCall = (
     const callMethod = getHttpMethod(secondProp);
     if (!callMethod) {
         if (!globalConfig.axiosNonHttpMethods.includes(secondProp)) {
-            // console.log(chalk.yellow(`[!] Unknown or unhandled axios method: ${secondProp}`));
+            // console.error(chalk.yellow(`[!] Unknown or unhandled axios method: ${secondProp}`));
         }
         return;
     }

@@ -2,6 +2,16 @@
 
 Static analysis tool that maps API endpoints and detects client-side security issues by analyzing Next.js (webpack/turbopack) and Vue.js bundles. Written in TypeScript, compiled to `build/` before running.
 
+## STRICT: Repository hygiene
+
+**Research artifacts must never be committed to this repo.** This is a public tool repository. Its git history must contain only tool source code, tests, docs, and configuration. Never commit:
+
+- Experiment scripts, research notes, or analysis results
+- Files from `js-recon-research/` or any private workspace directory
+- Prompt logs, observation markdown files, or scratch files
+
+Research outputs belong in the private sibling workspace outside this repo. If an experiment script or results file is needed as reference, keep it in the private workspace only.
+
 ## Build & run
 
 ```bash
@@ -25,6 +35,7 @@ npm run start -- <subcommand> [options]
 | `api-gateway` | Manage AWS API Gateway for IP rotation                                             |
 | `mcp`         | AI-powered CLI / one-shot chat (`-c`) / Model Context Protocol server (`--server`) |
 | `cs-mast`     | Compute CS-MAST structural hashes for downloaded JS files; find hash collisions    |
+| `sourcemaps`  | Extract source files from `.map` sourcemap file(s)                                 |
 
 ## Key source files
 
@@ -66,9 +77,9 @@ npm run start -- <subcommand> [options]
 1. **Lazyload** — downloads initial JS chunks via Puppeteer; detects framework; sets `globalsUtil.getTech()` to `"next"`
 2. **Strings** — scans downloaded JS for strings, extracts URL paths → `extracted_urls.json`
 3. **Lazyload (subsequent requests)** — re-crawls using the extracted paths to fetch dynamically loaded chunks; also fetches `buildId`
-4. **Strings (pass 2)** — re-runs strings on the expanded chunk set; generates `extracted_urls.txt` (permuted) and `extracted_urls-openapi.json`; optionally scans secrets (`--secrets`)
+4. **Strings (pass 2)** — re-runs strings on the expanded chunk set; generates `extracted_urls.txt` (permuted) and `extracted_urls-openapi.json`; optionally scans secrets (`--secrets`); optionally runs TruffleHog (`--trufflehog`)
 5. **Lazyload re-pass (step 4.5)** — a second subsequent-requests crawl to pick up chunks for dynamic routes discovered in pass 2
-6. **Strings re-pass (step 4.6)** — strings pass over the re-pass chunks
+6. **Strings re-pass (step 4.6)** — strings pass over the re-pass chunks; also runs `--secrets` / `--trufflehog` if those flags are set
 7. **Map** — parses webpack/turbopack bundles; resolves `fetch()` calls and axios usage; generates `mapped.json` and `mapped-openapi.json`; CDN-aware: if JS was served from a different host, `getCdnDir` finds the CDN output dir and passes that to map instead of `outputDir/host`
 8. **Endpoints** — extracts client-side route paths; uses `___subsequent_requests` directory presence to decide whether to pass a JS directory
 9. **Analyze** — loads YAML rules (from `-r/--rules` if provided, otherwise default rules cache); runs AST engine and request engine; writes `analyze.json`
@@ -81,9 +92,22 @@ npm run start -- <subcommand> [options]
 3. **Analyze** — same rule loading as Next.js; `-r/--rules` is forwarded here too
 4. **Report** — same as Next.js; if `endpoints.json` doesn't exist it is written as `[]` since Vue endpoints extraction isn't implemented yet
 
+### Angular pipeline (4 steps)
+
+1. **Lazyload** — downloads Angular CLI (esbuild) bundles: `main-HASH.js`, lazy route chunks (`chunk-HASH.js`); sets `globalsUtil.getTech()` to `"angular"`
+2. **Map** — scans `output/<host>/` for all Angular JS chunks; resolves `HttpClient` calls (`n.get(url)`, `n.post(url, body)`) via the shared HTTP-client resolver and `fetch()` calls via the shared fetch resolver; generates `mapped.json` and `mapped-openapi.json`
+3. **Analyze** — runs all rules whose `tech` array includes `"angular"` (or `"all"`); includes the Angular-specific `detect_angular_bypass_security_trust` rule that fires on `bypassSecurityTrust*` calls
+4. **Report** — same as Vue; `endpoints.json` is written as `[]` if missing since Angular endpoints extraction is not yet implemented
+
 ### Tech detection flow
 
-`lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"` and `"vue"` only get lazyload; the rest of the pipeline is skipped with a warning.
+`lazyLoad` sets the global tech string. If it remains `""` after lazyload, `run` exits (single URL) or skips (batch). Techs other than `"next"`, `"vue"`, `"nuxt"`, `"react"`, `"svelte"`, and `"angular"` only get lazyload; the rest of the pipeline is skipped with a warning.
+
+**SvelteKit `adapter-node` boot pattern**: SvelteKit's Node adapter does not emit `<link rel="modulepreload">` or `<script src="...">` for its entry chunks. Instead it uses an inline `<script>` block: `Promise.all([import("./_app/immutable/entry/start.js"), ...])`. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments (added in v1.4.1-alpha.3). Without those seed URLs the entire downstream pipeline (string analysis, ESM import following, page crawl) produces nothing.
+
+**SvelteKit `adapter-static` (SSG/SPA) boot pattern**: The static builds produce a shell HTML file (`404.html` for SSG, `index.html` for SPA) that contains both `<link rel="modulepreload">` tags for all initial chunks AND the same inline `import()` boot script as adapter-node. `svelte_getFromPageSource` picks up 17+ JS URLs from the modulepreload links plus 2 from the inline script, giving a much larger seed set than the adapter-node case.
+
+**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (explicit file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React can emit either `m.f = ["/assets/chunk.js", ...]` (absolute root-relative) or `m.f = ["assets/chunk.js", ...]` (bare root-relative, no leading `/`). `react_followImports` differentiates by checking for a `./` or `../` prefix: only explicitly relative paths resolve against the chunk's own URL (`fileUrl`); all others (absolute `/` or bare names) resolve against the origin (`baseUrl`). Bare names like `assets/x.js` must NOT be resolved against `fileUrl` — when the chunk is inside `assets/`, that would produce a double-directory path. See `src/lazyload/react/CLAUDE.md` for details.
 
 ### Batch mode
 
@@ -108,6 +132,17 @@ When `-u` points to a file of URLs, each line is processed sequentially. For eac
 
 - Declared in `src/index.ts` on both the `lazyload` and `run` commands: `.option("--lazyload-timeout <minutes>", ..., "30")`
 - Threaded directly into each `lazyLoad()` call as `Number(cmd.lazyloadTimeout) * 60 * 1000` (converts minutes → ms). Unlike flags that set a global, this one is passed as a parameter — no setter in the action handler.
+
+**Example — `--max-pages` flag:**
+
+- Declared in `src/index.ts` on both the `lazyload` and `run` commands: `.option("--max-pages <pages>", ..., "200")`
+- Threaded through `lazyLoad()` as `maxPageVisits` and forwarded to `NextJsCrawler` constructor. Default `200` matches the hardcoded cap previously in the crawler; pass `0` to disable. Prevents OOM on event-heavy Next.js sites where the recursive page queue fans out to hundreds of pages.
+
+**Example — `--include-methods` / `--exclude-methods` / `--list-methods` flags:**
+
+- Declared in `src/index.ts` on **both** the `lazyload` and `run` commands as `.option()` (not `requiredOption` — `--list-methods` must exit before the URL is required).
+- `--list-methods` is handled early in **both** action handlers before any network work: prints method names and calls `process.exit(0)`.
+- The method lists are parsed and validated in each action handler; stored on `cmd._includeMethods` / `cmd._excludeMethods` for the `run` action, which then threads them into `processUrl()` and from there into all three `lazyLoad()` calls as the last two positional parameters.
 
 ## Interactive-mode commands
 
@@ -184,38 +219,147 @@ npm run cleanup && npm run start -- run -u <target-url> -y -k
 
 ## Release process
 
-Releasing a new version touches four repos. Work on `dev` (js-recon, js-recon-rules) and `stage` (js-recon-docs). Do **not** touch `js-recon-research` — it is private and excluded from releases.
+Releasing a new version touches three repos. Work on `dev` (js-recon, js-recon-rules) and `stage` (js-recon-docs). Do **not** touch `js-recon-research` — it is private and excluded from releases.
 
-### Steps
+**Ordering is critical**: release js-recon first (including the GitHub release so CI publishes it to npm), then snapshot and PR js-recon-docs. This ensures the docs `version_check` CI step passes instead of failing due to a missing npm package.
 
-1. **Bump version** — update `version` in `src/globalConfig.ts` and `package.json` to the new tag (e.g. `1.3.1-alpha.4`). Both must match.
+### When a user asks to prepare a release
 
-2. **Update CHANGELOG** — add a `## <version> - <YYYY-MM-DD>` section to `CHANGELOG.md` with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections as needed. Verify every `feat`/`fix` commit since the previous tag is covered:
+Before writing any files, gather the current state:
+
+1. Check `package.json` and `src/globalConfig.ts` for the current version — both must match. If they don't, fix them first.
+2. Find the latest git tag: `git describe --tags --abbrev=0`
+3. List unreleased commits: `git log <latest-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"`
+4. Check if `CHANGELOG.md` already has an `(unreleased)` entry for the current version — if so, only the date needs to be added.
+5. Check `js-recon-rules` for unreleased commits since its last tag: `git -C ../js-recon-rules log $(git -C ../js-recon-rules describe --tags --abbrev=0)..HEAD --oneline`
+6. Check `js-recon-docs` for commits since the last version snapshot: `git -C ../js-recon-docs log --oneline -20`
+
+### Phase 1 — js-recon (release first)
+
+1. **Bump version** (if not already at the target version) — update `version` in `src/globalConfig.ts` and `package.json`. Both must match.
+
+2. **Update CHANGELOG** — if the version heading already exists as `(unreleased)`, replace it with the real date (`## <version> - <YYYY-MM-DD>`). Otherwise add the full section with `### Fixed`, `### Performance`, `### Added`, `### Changed` sub-sections. Verify every `feat`/`fix` commit since the previous tag is covered:
 
     ```bash
     git log <prev-tag>..HEAD --oneline | grep -E "^[a-f0-9]+ (feat|fix)"
     ```
 
-3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`.
+3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`. The `refactor` and `load` subcommands are easy to miss — explicitly verify they are present.
 
-4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are unreleased commits, update `CHANGELOG.md` and `version.txt`, then push.
+4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are substantive unreleased commits (not just merge/cleanup commits), update `CHANGELOG.md` and `version.txt`, push to `dev`, and open a PR (`shriyanss/js-recon-rules` dev→main, title=rules version, body=rules changelog section).
 
-5. **Update docs** (`js-recon-docs` repo, `stage` branch):
-    - Fix any option/flag gaps in `docs/docs/modules/*.md` (cross-check against `src/index.ts`).
-    - Snapshot the current docs: `npx docusaurus docs:version <version>` (run inside `js-recon-docs/`).
-    - Keep `lastVersion` in `docusaurus.config.ts` pointing to the last **stable** release (do not change it for alphas/betas).
-    - Verify: `npm run build` in `js-recon-docs/` must pass with no broken-link errors.
+5. **Push** `js-recon` dev branch: `git push origin dev`
 
-6. **Push** — push all three repos to their source branches (`dev`/`stage`).
+6. **Open PR** using `gh pr create`:
 
-7. **Open PRs** using `gh pr create`:
-   | Repo | Source | Target | Title | Body |
-   |------|--------|--------|-------|------|
-   | `shriyanss/js-recon` | `dev` | `main` | version string (e.g. `v1.3.1-alpha.4`) | `## <version>` changelog section |
-   | `shriyanss/js-recon-docs` | `stage` | `main` | version string | Brief summary of doc changes |
-   | `shriyanss/js-recon-rules` | `dev` | `main` | rules version (e.g. `v1.2.0`) | `## <version>` rules changelog section |
+    | Repo                 | Source | Target | Title                                       | Body                                 |
+    | -------------------- | ------ | ------ | ------------------------------------------- | ------------------------------------ |
+    | `shriyanss/js-recon` | `dev`  | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
 
-8. **Monitor PRs** — CodeRabbit reviews automatically. Wait for GitHub CI (version check, build, etc.) to pass. The docs CI check is expected to fail until js-recon is fully published to npm.
+7. **Monitor js-recon CI** — use `gh pr checks <pr-number> --repo shriyanss/js-recon` and poll until all checks complete. Handle CodeRabbit suggestions (see below). Do NOT merge — wait for user approval.
+
+8. **Create GitHub release** — after the PR is merged to main:
+
+    ```bash
+    gh release create v<version> \
+      --repo shriyanss/js-recon \
+      --title "v<version>" \
+      --notes "<changelog section>" \
+      --prerelease    # set for any version containing "alpha" or "beta"
+    ```
+
+    `--latest` flag rules:
+    - **Omit** `--latest` if the version contains `alpha` or `beta`
+    - **Add** `--latest` only for stable releases (no pre-release suffix in the version string)
+
+    Previous tag is left to GitHub's automatic detection (do not set `--target` or `--tag` beyond the tag name itself).
+
+9. **Wait for npm publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow release`. Confirm the npm package is live at the new version before proceeding to Phase 2.
+
+### Homebrew tap (automatic, runs in parallel with Phase 2)
+
+After `publish-npm` succeeds, the `update-homebrew-tap` job in `publish-js-recon.yml` runs automatically. It:
+
+1. Computes the SHA256 of the published npm tarball from the public npmjs.org URL (no auth)
+2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+3. Updates `version`, `url`, and `sha256` in `Formula/js-recon.rb` via anchored `sed`
+4. Commits `chore: update js-recon formula to <version>` and pushes
+
+Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
+
+**If the job fails:** The npm package is already live. Manually update: compute `curl -fsSL <tarball-url> | sha256sum`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
+
+**One-time setup** (must be done before the first release, already completed):
+
+- `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
+- `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
+
+### Phase 2 — js-recon-docs (after npm is live)
+
+10. **Fix doc gaps** — cross-check `docs/docs/modules/*.md` against `src/index.ts` and the new CHANGELOG entries. Add or update any missing flags, options, or command descriptions.
+
+11. **Snapshot** — run inside `js-recon-docs/`:
+
+    ```bash
+    npx docusaurus docs:version <version>
+    ```
+
+    This creates `versioned_docs/version-<version>/`, updates `versions.json`, and creates `versioned_sidebars/version-<version>-sidebars.json`.
+
+12. **Keep `lastVersion` stable** — `lastVersion` in `docusaurus.config.ts` stays pointing to the last stable release. Do **not** update it for alpha or beta versions.
+
+13. **Push** `js-recon-docs` stage branch and open PR:
+
+    ```bash
+    git -C ../js-recon-docs add .
+    git -C ../js-recon-docs commit -m "docs: snapshot v<version>"
+    git -C ../js-recon-docs push origin stage
+    gh pr create --repo shriyanss/js-recon-docs \
+      --head stage --base main \
+      --title "v<version>" \
+      --body "<brief summary of doc changes>"
+    ```
+
+14. **Monitor docs CI** — `version_check` should pass now that the npm package is live. CodeRabbit rate-limit comments are non-blocking.
+
+### Handling CodeRabbit
+
+After any PR is created, poll for review comments:
+
+```bash
+gh api repos/shriyanss/js-recon/pulls/<pr>/comments
+```
+
+For each suggestion: apply a fix commit to `dev` for correctness bugs or convention violations. Skip trivial style preferences. The PR updates automatically.
+
+### Stop before merge
+
+Do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addressed, present a summary to the user: what changed in each repo, PR links, CI status, CodeRabbit disposition. Wait for explicit merge approval.
+
+## Resolving a GitHub issue
+
+When a user asks to fix or implement a GitHub issue, follow these steps:
+
+1. **Read the issue** — `gh issue view <number> --repo shriyanss/js-recon`
+
+2. **Implement** — make the code, docs, and exit-code changes required. Follow all existing conventions (subcommand structure, CHANGELOG format, README Commands table, js-recon-docs modules page, exit_codes.md). Document new exit codes in both `CLAUDE.md` and `js-recon-docs/docs/docs/exit_codes.md`.
+
+3. **Test** — run `npm run cleanup` and exercise the new/changed functionality manually (see "Testing a change" section). Verify error paths and exit codes.
+
+4. **Commit and push to `dev`** — use a `feat(...)` or `fix(...)` commit message. Push to `origin dev`.
+
+5. **Monitor CI** — `gh run list --repo shriyanss/js-recon --branch dev --limit 3`. Watch the `Build & Prettify Code` run. If the `version_check` job fails because `CHANGELOG.md` top version doesn't match `package.json`, bump `package.json` and `src/globalConfig.ts` to match (with a `chore: bump version to <X>` commit) and repush.
+
+6. **Pull prettifier commit** — after CI passes, `git pull origin dev` to pick up the `chore: prettify code` auto-commit.
+
+7. **Close the issue** — once all CI checks pass:
+
+    ```bash
+    gh issue close <number> --repo shriyanss/js-recon --comment \
+      "Implemented in commit <short-sha> on the \`dev\` branch. Will be released in **v<version>**."
+    ```
+
+    Use the short commit hash of the feature commit (not the prettifier chore). The target release version comes from the unreleased CHANGELOG entry.
 
 ## cs-mast
 
@@ -252,6 +396,30 @@ npm run build
 node build/index.js cs-mast -o output --ct --min-collisions 2
 node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
 ```
+
+## refactor
+
+The `refactor` command supports three techs:
+
+- **`react-webpack`** — webpack 5 React bundles. Splits a numeric module map into per-module ES files, rewrites require→import, recovers JSX. See `src/refactor/react/CLAUDE.md`.
+- **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
+- **`next`** — Next.js bundles (legacy).
+
+### Known react-vite bugs (discovered 2026-07-01, test against js-recon-research/react/20-cve-app)
+
+**Multi-chunk file overwrite** — `map` segments each Vite chunk into multiple sub-chunks (one per top-level function). The refactor write path processes sub-chunks sequentially, each overwriting the previous output file. Only the last sub-chunk survives. For chunks with inlined library code followed by the component function (e.g. `ApiProxy`, `Editor`, `Search`), this means the component is the survivor (last in the map order), which is the correct and useful result — but any app-specific helper functions in the same chunk are also lost.
+
+**Rename race** — When JSX is detected in a sub-chunk, the write path renames the output file `.js` → `.jsx`. When the same file is written by multiple sub-chunks, the rename is attempted on each JSX-containing chunk; all attempts after the first throw `ENOENT` because the `.js` file was already renamed. The `.jsx` file is correct; the unhandled rejection is noise. Fix: track which output files have already been renamed.
+
+**Remote signatures** — The `react/vite/large` HuggingFace bucket is currently empty. The tool falls back gracefully with a warning but remote library stripping is disabled. Symptom: `[!] No remote collisions files found for scat "lit-decl-loop-cond" in branch "react/vite/large"`. Fix: populate the bucket by running CS-MAST-S generation against a corpus of large Vite apps.
+
+### refactor `--collisions <file>` (react-webpack only)
+
+`refactor -t react-webpack` accepts a `--collisions <file>` argument that points at a `collisions.json` produced by `cs-mast --all-scat-permutations` over a cross-app baseline. Modules whose body signature is in the baseline set are classified as library code (React / React-DOM / jsx-runtime / scheduler / …) and dropped from the output, leaving only `index.js`.
+
+Plumbing: `src/index.ts` (CLI) → `src/refactor/index.ts` (resolves the path via `resolveCollisionsPath()` — accepts either a file or a baseline-tree directory like `../js-recon-cs-mast-s/`; builds `Set<string>` of signatures with `count >= max count`) → `src/refactor/react/index.ts` (`moduleIsLibrary()` hashes each module body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and matches against the set). Detailed rationale + build history in `src/refactor/react/CLAUDE.md`.
+
+The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<tech>/<scat>/collisions.json`). See its `README.md` for layout and provenance.
 
 ## Security / confidentiality
 

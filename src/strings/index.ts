@@ -6,6 +6,7 @@ import prettier from "prettier";
 import secrets from "./secrets.js";
 import permutate from "./permutate.js";
 import openapi from "./openapi.js";
+import { runTrufflehog } from "./trufflehog.js";
 
 /**
  * Recursively extracts all string literals from a given AST node.
@@ -74,13 +75,14 @@ const strings = async (
     extracted_url_path: string,
     scan_secrets: boolean,
     permutate_option: boolean,
-    openapi_option: boolean
+    openapi_option: boolean,
+    trufflehog: boolean = false
 ): Promise<undefined> => {
     console.log(chalk.cyan("[i] Loading 'Strings' module"));
 
     // check if the directory exists
     if (!fs.existsSync(directory)) {
-        console.log(chalk.red("[!] Directory does not exist"));
+        console.error(chalk.red("[!] Directory does not exist"));
         process.exit(15);
     }
 
@@ -177,7 +179,7 @@ const strings = async (
 
     // if -p is enabled, but not -e, or the same case with the --openapi flag
     if ((permutate_option && !extract_urls) || (openapi_option && !extract_urls)) {
-        console.log(chalk.red("[!] Please enable -e flag for -p or --openapi flag"));
+        console.error(chalk.red("[!] Please enable -e flag for -p or --openapi flag"));
         process.exit(16);
     }
 
@@ -261,10 +263,14 @@ const strings = async (
         }
 
         if (total_secrets === 0) {
-            console.log(chalk.yellow(`[!] No secrets found`));
+            console.error(chalk.yellow(`[!] No secrets found`));
         } else {
             console.log(chalk.green(`[✓] Found ${total_secrets} secrets`));
         }
+    }
+
+    if (trufflehog) {
+        await runTrufflehog(directory);
     }
 };
 

@@ -1,8 +1,85 @@
 # Change Log
 
-## 1.4.1-alpha.1 - (unreleased)
+## 1.4.1-alpha.5 - (unreleased)
 
 ### Added
+
+- `refactor` (`react-vite`, `react-webpack`): new `--remote-collisions <path>` flag. Accepts a HuggingFace bucket path (e.g. `react/vite/large-0.1.8`) and uses it as the signature source instead of the automatic `TECH_TO_BRANCH` mapping. When the path does not exist in the `shriyanss/cs-mast-s-dataset` bucket the tool exits with code 25. The existing caching layer is fully reused — signatures are cached under `~/.js-recon/refactor/signature_cache/` and the file list is cached in `~/.js-recon/refactor/cs-mast-s-list-cache.json`. Feature directories that contain no collision records in the dataset are skipped during intersection rather than collapsing the result to zero.
+
+### Fixed
+
+- `refactor -t react-vite`: vendor chunks (`vendor-react-*.js`, `rolldown-runtime-*.js`) that are absent from `mapped.json` are now automatically located in the downloaded assets directory and injected before the refactor pass. Previously, `mapped.json` typically contained only app chunks — vendor chunks are excluded from mapping because they hold only third-party code. This left `vendorExportMaps` empty, so the `rewriteVendorImports` pass had nothing to match against and vendor import statements like `import { d as t } from './vendor-react-CLFLfR9F.js'` survived into the output, causing the Vite build check to fail with "Could not resolve". The fix uses the existing `findAssetsDir`/`findVendorChunkFiles` helpers (already used by the webpack branch) to discover the assets directory from `// File Source:` headers in chunk code.
+- `lazyload` (nuxt): `nuxt_getFromPageSource` now prints the number of new JS files discovered (delta from the global URL set) instead of the running total. Previously the count included every URL already known from earlier in the session.
+- `lazyload` (vue): Each discovery method in `vue_discoverJsFiles` now prints only the count of URL that are genuinely new — URLs already known from earlier methods are excluded. Previously `fromImports.length`, `fromStringRefs.length`, etc. could include URLs already in the accumulator and over-count.
+- Error messages emitted by `makeReq` (fetch failures, cache errors, timeout notices, firewall detection) now use `progressError`/`progressLog` instead of `console.error`/`console.log`, so they are routed through the active progress bar's logger and no longer clutter the bar line when errors occur during a scan.
+
+## 1.4.1-alpha.4 - 2026-06-29
+
+### Added
+
+- `sourcemaps`: new subcommand to extract original source files from `.map` sourcemaps without running the full pipeline. Accepts a single `.map` file or a directory of `.map` files via `-i`/`--input`; writes recovered sources to `-o`/`--output` (default: `extracted`).
+- Homebrew tap distribution: `brew tap shriyanss/tap && brew install js-recon` installs js-recon via the `shriyanss/homebrew-tap` Homebrew tap. The formula (`Formula/js-recon.rb`) auto-updates on every npm publish via the `update-homebrew-tap` CI job in `publish-js-recon.yml`.
+
+### Changed
+
+- `lazyload`: sourcemap extraction logic moved to the new `sourcemaps` module (`src/sourcemaps/`). Behaviour is identical; `lazyload` now delegates to `extractSourceMaps` from that module rather than containing a private copy.
+
+## 1.4.1-alpha.3 - 2026-06-25
+
+### Added
+
+- `run`: `--include-methods`, `--exclude-methods`, and `--list-methods` flags are now available on the `run` command, mirroring the same flags on `lazyload`. All three lazyload passes inside the `run` pipeline (initial, subsequent-requests, and re-pass) honour the method filter. `--list-methods [framework]` prints available method names and exits before any network work, so it can be used without a `-u` target URL.
+
+- `run` (angular): Full 4-step pipeline support for Angular apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload with a warning; Angular targets now get the same depth of analysis as React and Vue. The map step resolves Angular `HttpClient` calls (`n.get(url)`, `n.post(url, body)`, etc.) via the shared HTTP-client resolver and native `fetch()` calls via the shared fetch resolver; the analyze step runs all rules whose `tech` array includes `"angular"` (or `"all"`); the report step generates the HTML/SQLite report as for other frameworks.
+
+- `map`: Angular support via new `angular_js/` module. `getAngularConnections` reads Angular CLI (esbuild) chunks from the download directory and emits one chunk per JS file. Polyfill bundles (`polyfills-*.js`) are excluded (vendor code only). Registered as a new tech option (`-t angular`) alongside `next`, `vue`, `react`, and `svelte`.
+
+- `analyze`: Angular added as a valid `tech` value in rule YAML and the Zod schema. Rules whose `tech` array lists `angular` (or `all`) now run when `--tech angular` is set (or when `run` detects Angular automatically).
+
+- `rules` (angular): New rule `detect_angular_bypass_security_trust` detects calls to `bypassSecurityTrustHtml`, `bypassSecurityTrustScript`, `bypassSecurityTrustStyle`, `bypassSecurityTrustUrl`, and `bypassSecurityTrustResourceUrl` — Angular's DomSanitizer bypass methods that disable built-in XSS protection. Severity: high. Added `angular` to the `tech` array of all 17 existing AST rules that previously covered only `next`, `vue`, `react`, and `svelte`.
+
+- `refactor -t react-vite`: new Vite (rolldown) React refactor mode. Takes a `mapped.json` whose chunks are Vite-produced ESM files and outputs one `.jsx` file per app chunk with library boilerplate removed and readable source recovered:
+    - Analyzes all vendor chunks (`vendor-react-*.js`) to classify every export as `react`, `react/jsx-runtime`, `react-dom/client`, or `react-router-dom`
+    - Detects CJS interop vars — both `__toESM(getter(), 1)` and bare `getter()` forms — and rewrites `(0, x.prop)(args)` calls to bare canonical names (`useState(args)`, `jsx(...)`, etc.)
+    - Rewrites the vendor import statement to direct canonical library imports (`import { useState, useEffect } from 'react'`, etc.)
+    - Reuses shared cleanup passes from the webpack refactor: `slicedToArray` collapse, JSX recovery (handles rolldown's template literal tag names `` `div` ``), Babel helper removal, unused-import pruning
+    - Runs a Vite build check after writing output: scaffolds a minimal Vite project in the output directory, renames `.js` → `.jsx`, rewrites relative dynamic imports, installs dependencies, and runs `vite build` to confirm the refactored code compiles
+
+- `refactor -t react-webpack`: new `--scat <categories>` flag overrides the CS-MAST scat category set used for both the remote signature download and the module classifier. Accepts a comma-separated list of categories from `lit,id,op,decl,loop,cond,name,val,op_name` (e.g. `--scat lit,decl,cond`). The flag correctly maps to bucket directory names following the canonical `ALL_SCAT_CATEGORIES` ordering (the same ordering used by `jsr-cs-mast-s-gen`), so `--scat lit,cond,decl` and `--scat decl,lit,cond` both resolve to the `lit-decl-cond` bucket directory.
+
+- `lazyload` (svelte): `svelte_getVersionJson` — probes `/<appDir>/version.json` when SvelteKit is detected. SvelteKit generates this file at build time and serves it for the `updated` store; because it has no `<script src>`, `<link href>`, or `import()` reference anywhere it is invisible to all other discovery steps and must be fetched directly. The `appDir` is derived from the entry-point URLs already discovered (default: `_app`). The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods svelte_getVersionJson`.
+
+- `run` (nuxt): Full 4-step pipeline support for Nuxt.js apps — lazyload → map → analyze → report. Previously the pipeline halted after lazyload because `nuxt` was not in the supported-techs allowlist; Nuxt targets now run the same pipeline as Vue.
+
+- `lazyload` (nuxt): `nuxt_getBuildsManifest` — probes `/_nuxt/builds/latest.json` and derives `/_nuxt/builds/meta/<id>.json` from it. Both files are fetched at runtime by the Nuxt client for incremental-deployment support but are never referenced from HTML or JS string literals, making them invisible to all other discovery steps. The method is registered in `methodFilter.ts` and can be skipped via `--exclude-methods nuxt_getBuildsManifest`.
+
+### Changed
+
+- `refactor -t react-webpack`: remote signatures now load from the HuggingFace bucket `shriyanss/cs-mast-s-dataset` (bucket prefix `react/webpack/large`) instead of the old dataset branch `react-small`. The bucket uses a structured prefix layout (`main/`, `react/webpack/small/`, `react/webpack/large/`). The local cache key changes from `react-small/` to `react/webpack/large/`, automatically invalidating any stale cache.
+
+### Fixed
+
+- `refactor -t react-webpack`: lazy-loaded components are now converted to true dynamic `import()` calls (Pass 4.5). Previously, webpack's async chunk-loading expression `__webpack_require__.e(N).then(__webpack_require__.bind(__webpack_require__, N))` was emitted as-is with `__webpack_require__` undefined in the output, causing a runtime `ReferenceError`. Pass 4.5 detects this pattern by matching the `.e(N)` / `.bind(requireParam, N)` shape and replaces it with `import('./N.js')`, producing a valid dynamic import that works in any ES module environment.
+- `refactor -t react-webpack`: minified route-component variable names are now renamed to descriptive names derived from their `<Route path="…">` attributes. `renameRouteComponents` traverses the JSX `<Routes>` tree, accumulates path segments, generates a PascalCase component name per route (e.g. `/admin/users` → `AdminUsers`, `/admin/index` → `AdminDashboard`), and renames the corresponding `lazy(() => import('./N.js'))` declarations via `scope.rename`. The Suspense fallback component is renamed `Loading`. The App component function is renamed `App`.
+
+- `lazyload` (svelte): `svelte_getFromPageSource` now extracts JS entry-point paths from inline `<script>` bodies by matching `import("...")` call arguments. SvelteKit `adapter-node` boots the client via `Promise.all([import("./_app/immutable/entry/start.js"), ...])` with no `src` attribute, which the previous HTML-attribute-only parser missed entirely, causing 0 JS files to be downloaded. The fix seeds the entry-point URLs so the downstream ESM import-following loop (`react_followImports`) can traverse the full chunk graph.
+- `lazyload` (react): `react_followImports` `__vite_mapDeps` handler now correctly resolves SvelteKit's file-relative chunk paths (`"../nodes/0.js"`) in addition to Vue/React's root-relative paths (`"/assets/chunk.js"`). Previously all non-absolute paths had `/` prepended before URL resolution, causing `"../nodes/0.js"` to become `"/../nodes/0.js"` which the URL constructor normalized to `"/nodes/0.js"` — a wrong origin-root path that produced 404 responses. The fix resolves paths starting with `/` against `baseUrl` (origin root) and all other paths against `fileUrl` (the chunk containing the mapDeps table). This eliminates 32 spurious "Failed to write file" errors per SvelteKit run; the correct 34 chunk files were still downloaded via `svelte_stringAnalysisJSFiles`, so analysis results were unaffected.
+
+## 1.4.1-alpha.2 - 2026-06-20
+
+### Fixed
+
+- `lazyload`: `--include-methods`, `--exclude-methods`, and `--list-methods` flags were listed as Added in v1.4.1-alpha.1 but the CLI wiring was absent from that release; they are now fully implemented and functional
+- `lazyload`: `--list-methods` works without `-u`; the URL option is now validated manually so `--list-methods` can run standalone
+- `refactor`: `-l`/`--list` no longer errors with "Mapped JSON file does not exist" when listing technologies — the list early-return now runs before the file-existence check
+
+## 1.4.1-alpha.1 - 2026-06-20
+
+### Added
+
+- `lazyload`: `--include-methods <methods>` and `--exclude-methods <methods>` flags for selective method execution. Comma-separated method names are matched against the file-based method registry in `src/lazyLoad/methodFilter.ts`; invalid names exit with code 22. Methods are named after their source files (e.g. `next_bruteForceJsFiles`).
+- `lazyload`: `--list-methods [framework]` flag prints all available method names grouped by framework (`next_js`, `vue`, `nuxt_js`, `svelte`, `angular`, `react`) and exits. Optionally pass a framework name to filter the output.
+- `lazyload`: `--research` now tracks and writes technique efficiency output for all frameworks (Vue, Nuxt, Angular, React, Svelte), not just Next.js.
 
 - `cs-mast`: new subcommand that computes CS-MAST-S (Context-Stratified Merkelized Abstract Syntax Tree) signatures for every downloaded `.js` file and finds structural hash collisions across targets (`cs-mast`)
     - `--ct / --collision-table`: print a collision table sorted by frequency (files sharing the same CS-MAST-S root signature)
@@ -16,13 +93,60 @@
     - Non-module IIFE content (bootstrap helpers, root component, `ReactDOM.render` call) is captured into `index.js`
     - Webpack require helper is detected by its `return (moduleMap[id](…), mod.exports)` return shape and stripped from `index.js`
     - Top-level `requireFn(N)` calls in `index.js` are hoisted to `import * as x from "./N.js"`; remaining inline calls are replaced recursively throughout the file
+- `refactor --collisions` now accepts a per-feature results directory (a directory whose immediate subdirs each contain `<scat>/collisions.json`, e.g. a 18-feature corpus with `01-usestate-hook-webpack/lit-decl-loop-cond/collisions.json` etc.) — reads only the scat-relevant file per feature subdir, intersects the max-count signature sets across all features, and uses the intersection as the library baseline; works even when the full dataset is hundreds of GB (`refactor`)
+- `refactor -t react-webpack`: Pass G now strips three additional Babel inline helpers emitted to the IIFE body — `_typeof` (lazy self-reassignment typeof polyfill, detected by single-return body reassigning its own binding), `_defineProperty`/`_toPropertyKey`/`_toPrimitive` (property-setter helpers, detected by `Object.defineProperty` call with `{value, enumerable, configurable, writable}` descriptor), and `_objectSpreadPropsHelper` (detected by `Object.keys` first-statement + `getOwnPropertySymbols` reference) — cleaning up noise left by JSX spread and object spread (`refactor`)
 
 ### Fixed
 
+- Puppeteer browser launch now resolves a usable Chrome/Chromium via a new `getChromiumPath` utility (`PUPPETEER_EXECUTABLE_PATH` env var → well-known system paths → `which`) and passes it as `executablePath`; also adds `--disable-dev-shm-usage` to the sandbox-disabled arg list — fixes crashes on systems where Puppeteer's bundled Chrome is absent or has missing shared libraries (`lazyload`, `makeReq`)
+- `refactor --collisions`: `scanExportMap` now records a self-reference when a module export's RHS is a complex expression (e.g. a function declaration) so it participates in canonical library classification checks instead of being silently dropped (`refactor`)
+- `refactor --collisions`: added `Profiler` to `REACT_CANONICAL` export set (`refactor`)
+
 ### Changed
 
-- `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit (`refactor`)
+- `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit
 - Improved tool description in `globalConfig.ts`
+
+## 1.3.1-beta.1 - 2026-06-08
+
+### Added
+
+### Changed
+
+### Fixed
+
+- `--max-heap` on `map` and `run` is now opt-in: without the flag, no process re-exec occurs and the existing `--max-old-space-size` from the npm start script is preserved. Previously, the default `0` caused every invocation to re-exec with `os.totalmem()` as the heap ceiling, which could trigger OOM kills on memory-constrained hosts and changed the default runtime for all users who never specified the flag. (`map`, `run`)
+- XHR and HTTP-client taint resolvers (`vue_resolveXhr`, `vue_resolveHttpClient`) now sort the JS file list alphabetically before applying the 50 MB caller-lookup cap. Previously the cap was applied in `readdirSync` order, which is filesystem-dependent and made the included file set non-deterministic across runs — on large bundles this could silently exclude different API call sites depending on inode ordering. (`map`)
+
+## 1.3.1 - 2026-06-16
+
+### Added
+
+- `--max-heap <mb>` flag on `map` and `run` — caps the V8 heap before any analysis work starts. Default `0` uses 100% of available RAM (`os.totalmem()`); a positive integer sets an explicit MB ceiling. Implemented via process re-exec so the limit is always honoured regardless of the value in `npm run start`. Addresses SIGSEGV (exit 139) on memory-constrained hosts and containers during the map step. (`map`, `run`)
+- `--max-pages <pages>` flag on `lazyload` and `run` — caps the number of HTML pages the Next.js crawler visits across all recursive passes. Default `200` (matches the previously hardcoded limit from beta.2); set `0` to disable. Prevents OOM crashes during the lazyload step on event-heavy or listing sites where every visited page surfaces 10–20 more anchor links, causing the crawl queue to fan out to hundreds of pages and exhaust available RAM before the hard timeout fires. (`lazyload`, `run`)
+
+### Fixed
+
+- XHR and HTTP-client taint resolvers (`vue_resolveXhr`, `vue_resolveHttpClient`) now apply the same 1.5 MB per-file size guard when building the caller-lookup file set passed to `makeGetCallers`, plus a cumulative 50 MB total-size cap. Previously, on sites that downloaded hundreds of third-party library source files (e.g. a Vue app without `--strict-scope` that linked to compiler or polyfill source trees), `buildAliasMap` parsed all of them at once, exhausting the V8 heap before any XHR entry was resolved. The fix caps the caller set while leaving the per-file XHR/HTTP scanning loop unchanged. (`map`)
+
+## 1.3.1-beta.2 - 2026-06-12
+
+### Fixed
+
+- All error and warning messages (chalk.red, chalk.bgRed, chalk.yellow `[!]`, chalk.magenta `[!]`, chalk.dim `[!]`) now write to `stderr` instead of `stdout` — affects 62 source files across every subcommand; fixes machine-readable pipelines and shell redirects that expected clean stdout
+- Framework detection now falls back to checking Puppeteer-intercepted network request URLs when all HTML-attribute checks fail — catches Nuxt.js and Next.js sites that load their framework chunks dynamically (e.g. behind a Cloudflare challenge or SSO redirect) rather than referencing them in static HTML (`lazyload`)
+- Map step no longer crashes with SIGSEGV (JavaScript heap out of memory) on ad-heavy or large-bundle targets — all file-parsing loops in the Vue/React/Svelte resolvers now skip files larger than 1.5 MB before calling Babel, preventing unbounded AST memory accumulation on sites that download 100+ third-party JS files (`map`)
+- `run` now calls `process.exit(0)` after all pipeline steps complete — previously, abandoned Puppeteer navigations left by the lazyload hard timeout kept Node.js's event loop open indefinitely, causing the container to be SIGKILL'd (exit 137) even when analysis finished successfully (`run`)
+- Next.js lazyload recursive page-crawl now stops visiting pages after 200 unique page visits per crawl instance — prevents runaway crawl explosion on sites that expose many locale or language variants in their navigation, where each locale page links to every other locale causing the crawl frontier to grow exponentially and exhaust the lazyload timeout (`lazyload`)
+- Next.js fetch resolver now skips CSS stylesheet lazy-loader chunks (`markAssetError`, `fetchStyleSheet`) and Next.js internal data-fetcher chunks (`x-nextjs-data`) to avoid emitting false-positive API endpoints from framework internals (`map`)
+- Next.js fetch resolver resolves `[param:X]` URL placeholders by tracing callers of the enclosing wrapper function — tries same-module callers first, then falls back to cross-chunk exported callers; reduces unresolved placeholder markers in output (`map`)
+- Next.js fetch resolver guards `callHeaders` assignment against non-object values so a `null` or primitive returned by header resolution no longer causes a downstream crash (`map`)
+- `resolveWebpackChunkImport` in `utils.ts` now calls `resolveVariableInChunk` on identifier nodes inside template-literal expressions and function-call arguments, cutting `[var X]` placeholder noise in resolved chunk URLs (`map`)
+
+### Performance
+
+- Next.js subsequent-requests passes (steps 3/8 and 4.5/8) no longer re-run webpack chunk URL builder analysis — `next_GetLazyResourcesWebpackJs` (a full Puppeteer session) is now skipped when `subsequentRequestsFlag` is true, saving 3-6 minutes per call since the chunk URL builders are static and were already resolved in the initial lazyload (`lazyload`)
+- HTML inline-chunk scraping in `subsequentRequests` is now parallelised using the same thread-count semaphore as the RSC pass — previously sequential over all extracted paths, cutting the HTML phase from ~17 min to ~2 min for sites with 1000+ extracted paths (`lazyload`)
 
 ## 1.3.1-beta.1 - 2026-06-08
 

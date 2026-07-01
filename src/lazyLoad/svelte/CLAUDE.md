@@ -7,6 +7,7 @@ Discovers and downloads SvelteKit JS chunks. SvelteKit's client routing emits pe
 ## Files
 
 - `svelte_getFromPageSource.ts` — initial extraction from page HTML.
+- `svelte_getVersionJson.ts` — probes `/<appDir>/version.json` (SvelteKit-specific, not referenced in HTML or JS).
 - `svelte_stringAnalysisJSFiles.ts` — string-scan downloaded chunks for additional chunk URLs.
 - `svelte_discoverPagesFromJs.ts` — finds client-side route declarations in chunks.
 - `svelte_recursivePageCrawl.ts` — re-visits each discovered route to pick up route-specific chunks.
@@ -16,6 +17,8 @@ Discovers and downloads SvelteKit JS chunks. SvelteKit's client routing emits pe
 - **`_app/immutable/` is the canonical path.** SvelteKit hashes all assets; URLs are stable per build but unique per deploy.
 - **Route-driven crawl.** Unlike Next/Vue, SvelteKit's chunks are most reliably surfaced by visiting each route. Recursion bound matters — don't remove it.
 - **No source maps in prod by default.** SvelteKit strips them; don't bother retry-fetching.
+- **`adapter-node` inline boot script.** SvelteKit's Node adapter emits an inline `<script>` block (no `src` attribute) that uses `Promise.all([import("./_app/immutable/entry/start.js"), ...])` to bootstrap the client. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments — the extracted entry-point paths seed the `react_followImports` loop that discovers the rest of the chunk graph. Do not remove this branch or the entire downstream pipeline collapses (0 JS files).
+- **`version.json` is never referenced.** SvelteKit builds emit `/<appDir>/version.json` (default `/_app/version.json`) for the `updated` store. The file has no HTML `<link>`/`<script>` tag and no `import()` call anywhere — all other discovery steps miss it. `svelte_getVersionJson` probes it directly after the page-source step, once the `appDir` is known from the discovered entry-point URLs.
 
 ## How to test changes here
 

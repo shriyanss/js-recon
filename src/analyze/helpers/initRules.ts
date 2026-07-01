@@ -93,7 +93,7 @@ const initRules = async (): Promise<void> => {
     // now that this rule exists, check if the version.txt exists
     const versionPath = path.join(homeDir, "/.js-recon/rules/version.txt");
     if (!fs.existsSync(versionPath)) {
-        console.log(chalk.yellow("[!] Rules directory is corrupted. Downloading again..."));
+        console.error(chalk.yellow("[!] Rules directory is corrupted. Downloading again..."));
         // remove the rules directory
         fs.rmSync(path.join(homeDir, "/.js-recon/rules"), { recursive: true });
         await downloadRules(homeDir);
@@ -106,7 +106,7 @@ const initRules = async (): Promise<void> => {
         const release = await response.json();
         const release_tag_name = release.tag_name;
         if (`v${version}` !== release_tag_name) {
-            console.log(chalk.yellow("[!] Rules are not up to date. Downloading latest version..."));
+            console.error(chalk.yellow("[!] Rules are not up to date. Downloading latest version..."));
             // remove the rules directory
             fs.rmSync(path.join(homeDir, "/.js-recon/rules"), { recursive: true });
             await downloadRules(homeDir);

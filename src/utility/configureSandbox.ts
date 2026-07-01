@@ -8,7 +8,7 @@ import * as globalsUtil from "./globals.js";
 const configureSandbox = (cmd) => {
     if (process.env.IS_DOCKER === "true" || cmd.sandbox === false) {
         globalsUtil.setDisableSandbox(true);
-        console.log(chalk.yellow(`[!] Disabling browser sandbox`));
+        console.error(chalk.yellow(`[!] Disabling browser sandbox`));
     }
 };
 

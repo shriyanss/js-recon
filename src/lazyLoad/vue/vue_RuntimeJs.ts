@@ -12,7 +12,7 @@ import * as globals from "../../utility/globals.js";
 const vue_runtimeJs = async (url: string): Promise<string[]> => {
     const rootHtmlRes = await makeRequest(url);
     if (!rootHtmlRes) {
-        console.log(chalk.red(`[!] Failed to fetch ${url}`));
+        console.error(chalk.red(`[!] Failed to fetch ${url}`));
         return [];
     }
     const rootHtml: string = await rootHtmlRes.text();
@@ -34,7 +34,7 @@ const vue_runtimeJs = async (url: string): Promise<string[]> => {
     });
 
     if (!runtimeJsUrl) {
-        console.log(chalk.red("[!] No runtime JS file found in page source"));
+        console.error(chalk.red("[!] No runtime JS file found in page source"));
         console.log(chalk.magenta(CONFIG.notFoundMessage));
         return [];
     }
@@ -45,7 +45,7 @@ const vue_runtimeJs = async (url: string): Promise<string[]> => {
 
     const runtimeJsRes = await makeRequest(runtimeJsUrl);
     if (!runtimeJsRes) {
-        console.log(chalk.red(`[!] Failed to fetch ${runtimeJsUrl}`));
+        console.error(chalk.red(`[!] Failed to fetch ${runtimeJsUrl}`));
         return [];
     }
     const runtimeJsContent: string = await runtimeJsRes.text();
@@ -105,7 +105,7 @@ const vue_runtimeJs = async (url: string): Promise<string[]> => {
     });
 
     if (!scriptSrcFuncSource) {
-        console.log(chalk.red("[!] Could not find chunk URL builder function in runtime JS"));
+        console.error(chalk.red("[!] Could not find chunk URL builder function in runtime JS"));
         console.log(chalk.magenta(CONFIG.notFoundMessage));
         return [];
     }
@@ -116,7 +116,7 @@ const vue_runtimeJs = async (url: string): Promise<string[]> => {
     if (publicPathObj && publicPathProp) {
         console.log(chalk.green(`[✓] Public-path variable detected: ${publicPathObj}.${publicPathProp}`));
     } else {
-        console.log(
+        console.error(
             chalk.yellow(
                 "[!] Could not detect public-path variable; will resolve chunk paths against runtime.js directory regardless"
             )
@@ -133,7 +133,7 @@ const vue_runtimeJs = async (url: string): Promise<string[]> => {
             },
         ]);
         if (!confirmed) {
-            console.log(chalk.red("[!] Not executing function."));
+            console.error(chalk.red("[!] Not executing function."));
             return [];
         }
     }

@@ -12,7 +12,7 @@ const vue_reconstructSourceMaps = async (url: string, jsFilesToDownload: string[
 
     const req = await makeRequest(jsFilesToDownload[0]);
     if (req == null) {
-        console.log(chalk.red(`Failed to fetch ${jsFilesToDownload[0]}`));
+        console.error(chalk.red(`Failed to fetch ${jsFilesToDownload[0]}`));
         return sourceMapUrls;
     }
     const content = await req.text();
@@ -28,7 +28,7 @@ const vue_reconstructSourceMaps = async (url: string, jsFilesToDownload: string[
     for (const jsFile of jsFilesToDownload) {
         const req = await makeRequest(jsFile);
         if (req == null) {
-            console.log(chalk.red(`Failed to fetch ${jsFile}`));
+            console.error(chalk.red(`Failed to fetch ${jsFile}`));
             continue;
         }
         const content = await req.text();

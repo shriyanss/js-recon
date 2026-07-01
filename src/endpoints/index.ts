@@ -54,26 +54,26 @@ const endpoints = async (
     // iterate over the output format, and match it with the available output formats
     for (const format of outputFormat) {
         if (!outputFormats.includes(format)) {
-            console.log(chalk.red("[!] Invalid output format"));
+            console.error(chalk.red("[!] Invalid output format"));
             return;
         }
     }
 
     // check if the technology is present
     if (!tech) {
-        console.log(chalk.red("[!] Please provide a technology"));
+        console.error(chalk.red("[!] Please provide a technology"));
         return;
     }
 
     // check if the output file is present
     if (!output) {
-        console.log(chalk.red("[!] Please provide an output file"));
+        console.error(chalk.red("[!] Please provide an output file"));
         return;
     }
 
     // check if the url is present
     if (!url) {
-        console.log(chalk.red("[!] Please provide a URL"));
+        console.error(chalk.red("[!] Please provide a URL"));
         return;
     }
 
@@ -87,15 +87,16 @@ const endpoints = async (
 
         if (directory) {
             const subsequentRequestsDir = directory + "/___subsequent_requests";
-            // check if the subsequent requests directory exists
             if (!fs.existsSync(subsequentRequestsDir)) {
-                console.log(chalk.red("[!] Directory containing subsequent requests does not exist"));
-                // TODO: if subsequent requests directory doesn't exist, pass this, and try other methods
-                return;
+                console.error(
+                    chalk.yellow(
+                        "[!] Directory containing subsequent requests does not exist — skipping subsequent requests extraction"
+                    )
+                );
+            } else {
+                const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
+                final_client_side.push(...client_subsequentRequestsResult);
             }
-
-            const client_subsequentRequestsResult = await client_subsequentRequests(subsequentRequestsDir, url);
-            final_client_side.push(...client_subsequentRequestsResult);
 
             const client_jsFilesHrefResult = await client_jsFilesHref(directory);
             final_client_side.push(...client_jsFilesHrefResult);

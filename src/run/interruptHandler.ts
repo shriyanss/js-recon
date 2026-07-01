@@ -15,7 +15,7 @@ const showMenu = async (): Promise<void> => {
     process.removeListener("SIGINT", sigintHandler);
 
     process.stdout.write("\n");
-    console.log(chalk.yellow("[!] Interrupted. What would you like to do?"));
+    console.error(chalk.yellow("[!] Interrupted. What would you like to do?"));
     console.log(chalk.white("  1. Skip the current step"));
     if (isBatchMode) {
         console.log(chalk.white("  2. Skip the current target and move to the next"));
@@ -35,23 +35,23 @@ const showMenu = async (): Promise<void> => {
             const choice = answer.trim();
 
             if (choice === "1") {
-                console.log(chalk.yellow("[!] Skipping current step..."));
+                console.error(chalk.yellow("[!] Skipping current step..."));
                 if (skipStepResolver) {
                     skipStepResolver();
                     skipStepResolver = null;
                 }
             } else if (isBatchMode && choice === "2") {
                 skipTarget = true;
-                console.log(chalk.yellow("[!] Skipping current target..."));
+                console.error(chalk.yellow("[!] Skipping current target..."));
                 if (skipStepResolver) {
                     skipStepResolver();
                     skipStepResolver = null;
                 }
             } else if (choice === (isBatchMode ? "3" : "2")) {
-                console.log(chalk.yellow("[!] Exiting..."));
+                console.error(chalk.yellow("[!] Exiting..."));
                 process.exit(0);
             } else {
-                console.log(chalk.yellow("[!] Invalid choice. Continuing..."));
+                console.error(chalk.yellow("[!] Invalid choice. Continuing..."));
             }
 
             resolve();

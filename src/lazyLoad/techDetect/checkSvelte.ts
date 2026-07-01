@@ -10,6 +10,22 @@ export const checkSvelte = async ($) => {
     let detected = false;
     let evidence = "";
 
+    // SvelteKit: /_app/immutable/ path in src or href attributes (SvelteKit build output)
+    $("*").each((_, el) => {
+        if (detected) return;
+        const src = $(el).attr("src");
+        const href = $(el).attr("href");
+        if (src && src.includes("/_app/immutable/")) {
+            detected = true;
+            evidence = `${$(el).get(0).tagName} src :: ${src}`;
+        } else if (href && href.includes("/_app/immutable/")) {
+            detected = true;
+            evidence = `${$(el).get(0).tagName} href :: ${href}`;
+        }
+    });
+
+    if (detected) return { detected, evidence };
+
     // SvelteKit: svelte- prefixed class names or IDs
     $("*").each((_, el) => {
         const attribs = el.attribs;

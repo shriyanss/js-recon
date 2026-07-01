@@ -10,7 +10,7 @@ const parseJsFile = async (url: string, maxJsSizeMb: number) => {
     const foundUrls = new Set<string>();
     const req = await makeRequest(url);
     if (req == null) {
-        console.log(chalk.red(`Failed to fetch ${url}`));
+        console.error(chalk.red(`Failed to fetch ${url}`));
         return foundUrls;
     }
     const reqText = await req.text();
@@ -37,7 +37,7 @@ const parseJsFile = async (url: string, maxJsSizeMb: number) => {
             if (source.startsWith("./") || source.startsWith("../") || source.startsWith("/")) {
                 foundUrls.add(new URL(source, url).href);
             } else {
-                console.log(chalk.red(`Found import statement but can't resolve it: ${source} - on ${url}`));
+                console.error(chalk.red(`Found import statement but can't resolve it: ${source} - on ${url}`));
             }
         },
     });

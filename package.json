@@ -1,6 +1,6 @@
 {
     "name": "@shriyanss/js-recon",
-    "version": "1.4.1-alpha.1",
+    "version": "1.4.1-alpha.5",
     "description": "JS Recon Tool",
     "main": "build/index.js",
     "type": "module",
@@ -24,6 +24,7 @@
         "@babel/traverse": "^7.28.5",
         "@babel/types": "^7.27.6",
         "@modelcontextprotocol/sdk": "^1.29.0",
+        "@shriyanss/cli-print-img": "^1.1.0",
         "@shriyanss/cs-mast": "^0.1.2",
         "@types/chalk": "^0.4.31",
         "@types/cli-progress": "^3.11.6",
