@@ -362,7 +362,7 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
 };
 
 const availableTechs = {
-    next: "Next.js",
+    "next-turbopack": "Next.js (Turbopack)",
     "react-webpack": "React (webpack)",
     "react-vite": "React (Vite)",
 };
@@ -669,7 +669,7 @@ const refactor = async (
     }
 
     // iterate through the chunks
-    if (tech === "next") {
+    if (tech === "next-turbopack") {
         for (const [, value] of Object.entries(chunks)) {
             const moduleFiles = await refactorNext(value);
             for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
@@ -678,8 +678,14 @@ const refactor = async (
                     singleQuote: true,
                     trailingComma: "none",
                 });
-                fs.writeFileSync(`${outputDir}/${moduleId}.js`, formatted);
-                console.log(chalk.green(`[✓] Module ${moduleId} written to ${outputDir}/${moduleId}.js`));
+                // Skip writing empty files
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${filePath}`));
             }
         }
     } else if (tech === "react-webpack") {
