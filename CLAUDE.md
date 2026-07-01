@@ -405,13 +405,15 @@ node build/index.js cs-mast -o output --all-scat-permutations --perm-output ./pe
 
 ## refactor
 
-The `refactor` command supports three techs:
+The `refactor` command supports the following techs:
 
 - **`react-webpack`** — webpack 5 React bundles. Splits a numeric module map into per-module ES files, rewrites require→import, recovers JSX. See `src/refactor/react/CLAUDE.md`.
 - **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
 - **`next`** — Next.js bundles (legacy).
 - **`next-turbopack`** — Next.js Turbopack chunks. Handles both turbopack 3-param `func_NNN=(runtime,module,exports)=>{}` and 1-param `func_NNN=(runtime)=>{}` formats plus webpack-style coexisting chunks. See `src/refactor/next/CLAUDE.md`.
 - **`next-webpack`** — Next.js webpack chunks. Input format from `mapped.json`: `NNN:(module,exports,require)=>{}`. Recovers named exports (ODP, require.d), default exports (module.exports=V), re-exports (module.exports=require(N)→export*), and require hoisting. 277/280 modules recovered on a real bundle. Param order: params[0]=module, params[1]=exports, params[2]=require. See `src/refactor/next/CLAUDE.md`.
+- **`vue-webpack`** — Vue.js webpack 4/5 chunks. Container format: `(window.webpackJsonp||[]).push([[chunkIds],{moduleId:function(t,e,r){...}}])`. Each chunk file may contain multiple module functions; each is extracted and transformed. Reuses the Next.js webpack transform (same module param semantics: params[0]=module, params[1]=exports, params[2]=require). See `src/refactor/vue/index.ts`.
+- **`vue-vite`** — Vue 3 + Vite page chunks. The main index chunk (contains `__vccOpts`, all of Vue runtime) is analysed to build an export-alias→canonical-name map. Lazy page chunks then have their index imports rewritten to canonical `import {...} from 'vue'` statements. The `_export_sfc` compiler helper is inlined as a local const. See `src/refactor/vue/vite.ts` and `src/refactor/vue/vendor-analyze-vue.ts`.
 
 ### Known react-vite bugs (discovered 2026-07-01, test against js-recon-research/react/20-cve-app)
 

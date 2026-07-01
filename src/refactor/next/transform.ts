@@ -27,7 +27,7 @@ const generate = _generator.default;
 // - exports (params[2]): exports target — ODP(exports,"name",{get:fn}) sets named exports
 export type TurboModuleEntry = {
     id: string;
-    fnPath: NodePath<t.ArrowFunctionExpression>;
+    fnPath: NodePath<t.ArrowFunctionExpression | t.FunctionExpression>;
     runtimeParam: string; // first param  — runtime with .r(N)/.i(N) for requires
     moduleParam: string; // second param — module object with .exports
     exportsParam: string; // third param  — exports target for ODP
@@ -36,9 +36,10 @@ export type TurboModuleEntry = {
 
 // Webpack-style module format: NNN: (module, exports, require) => { r.d(t, {...}), r.r(t), ... }
 // Uses require.d / require.r for export registration.
+// Accepts both ArrowFunctionExpression (webpack 5) and FunctionExpression (webpack 4/Vue CLI).
 export type WebpackModuleEntry = {
     id: string;
-    fnPath: NodePath<t.ArrowFunctionExpression>;
+    fnPath: NodePath<t.ArrowFunctionExpression | t.FunctionExpression>;
     runtimeParam: string; // empty for webpack-style
     moduleParam: string;
     exportsParam: string;

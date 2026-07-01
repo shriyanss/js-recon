@@ -12,6 +12,9 @@ import refactorReact, { RefactorReactResult } from "./react/index.js";
 import type { LibraryModuleInfo } from "./react/library-classify.js";
 // React (Vite)
 import refactorVite from "./react-vite/index.js";
+// Vue
+import refactorVueWebpack from "./vue/index.js";
+import { refactorVueVite } from "./vue/vite.js";
 
 // Remote HuggingFace client + cache
 import {
@@ -366,6 +369,8 @@ const availableTechs = {
     "next-webpack": "Next.js (webpack)",
     "react-webpack": "React (webpack)",
     "react-vite": "React (Vite)",
+    "vue-webpack": "Vue.js (webpack)",
+    "vue-vite": "Vue.js (Vite)",
 };
 
 /**
@@ -889,6 +894,56 @@ const refactor = async (
 
         // Build check with Vite scaffold
         runViteBuildCheck(outputDir, writtenFiles);
+    } else if (tech === "vue-webpack") {
+        for (const [, value] of Object.entries(chunks)) {
+            const moduleFiles = await refactorVueWebpack(value);
+            for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
+                let formatted: string;
+                try {
+                    formatted = await prettier.format(rawCode, {
+                        parser: "babel",
+                        singleQuote: true,
+                        trailingComma: "none",
+                    });
+                } catch {
+                    formatted = rawCode;
+                }
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${filePath}`));
+            }
+        }
+    } else if (tech === "vue-vite") {
+        const viteFiles = await refactorVueVite(chunks);
+        for (const [chunkKey, rawCode] of Object.entries(viteFiles)) {
+            const chunkInfo = chunks[chunkKey];
+            const originalFile = chunkInfo ? (chunkInfo.file ?? chunkInfo.id) : null;
+            const outputBasename = originalFile
+                ? path.basename(originalFile)
+                : chunkKey.replace(/[/\\]/g, "_").replace(/\.js$/, "") + ".js";
+            const filePath = `${outputDir}/${outputBasename}`;
+
+            let formatted: string;
+            try {
+                formatted = await prettier.format(rawCode, {
+                    parser: "babel",
+                    singleQuote: true,
+                    trailingComma: "none",
+                });
+            } catch {
+                formatted = rawCode;
+            }
+            if (formatted.trim().length === 0) {
+                console.log(chalk.gray(`[~] Chunk ${chunkKey} is empty after refactoring — skipping`));
+                continue;
+            }
+            fs.writeFileSync(filePath, formatted);
+            console.log(chalk.green(`[✓] Chunk ${chunkKey} written to ${filePath}`));
+        }
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));
