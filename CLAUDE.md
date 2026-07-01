@@ -410,6 +410,8 @@ The `refactor` command supports three techs:
 - **`react-webpack`** — webpack 5 React bundles. Splits a numeric module map into per-module ES files, rewrites require→import, recovers JSX. See `src/refactor/react/CLAUDE.md`.
 - **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
 - **`next`** — Next.js bundles (legacy).
+- **`next-turbopack`** — Next.js Turbopack chunks. Handles both turbopack 3-param `func_NNN=(runtime,module,exports)=>{}` and 1-param `func_NNN=(runtime)=>{}` formats plus webpack-style coexisting chunks. See `src/refactor/next/CLAUDE.md`.
+- **`next-webpack`** — Next.js webpack chunks. Input format from `mapped.json`: `NNN:(module,exports,require)=>{}`. Recovers named exports (ODP, require.d), default exports (module.exports=V), re-exports (module.exports=require(N)→export*), and require hoisting. 277/280 modules recovered on a real bundle. Param order: params[0]=module, params[1]=exports, params[2]=require. See `src/refactor/next/CLAUDE.md`.
 
 ### Known react-vite bugs (discovered 2026-07-01, test against js-recon-research/react/20-cve-app)
 
