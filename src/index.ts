@@ -619,8 +619,15 @@ program
     .option("--cf, --collision-format <format>", "Output format for collision file: json or csv", "csv")
     .option("--scat <categories>", "Comma-separated scat categories (e.g. lit,decl,loop,cond)", "lit,decl,loop,cond")
     .option("--sinc <nodes>", "Comma-separated exact node types to include via sinc (e.g. IfStatement)", "")
-    .option("--all-scat-permutations", "Run all 511 non-empty scat permutations and save per-permutation collision files", false)
-    .option("--perm-output <dir>", "Output directory for per-permutation collision files (required with --all-scat-permutations)")
+    .option(
+        "--all-scat-permutations",
+        "Run all 511 non-empty scat permutations and save per-permutation collision files",
+        false
+    )
+    .option(
+        "--perm-output <dir>",
+        "Output directory for per-permutation collision files (required with --all-scat-permutations)"
+    )
     .option("--perm-concurrency <n>", "Number of parallel permutation workers (default: half of CPU count)", "0")
     .action(async (cmd) => {
         await csMast(
