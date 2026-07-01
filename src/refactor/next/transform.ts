@@ -27,7 +27,7 @@ export type TurboModuleEntry = {
     id: string;
     fnPath: NodePath<t.ArrowFunctionExpression>;
     runtimeParam: string; // first param  — runtime with .r(N)/.i(N) for requires
-    moduleParam: string;  // second param — module object with .exports
+    moduleParam: string; // second param — module object with .exports
     exportsParam: string; // third param  — exports target for ODP
     requireParam: string; // webpack-style require param (empty for pure turbopack chunks)
 };
@@ -539,7 +539,11 @@ function isBabelDefinePropertyHelper(stmt: t.Statement): boolean {
             const child = (node as unknown as Record<string, unknown>)[key];
             if (!child || typeof child !== "object") continue;
             if (Array.isArray(child)) {
-                if (child.some((c: unknown) => c && typeof c === "object" && "type" in (c as object) && walk(c as t.Node)))
+                if (
+                    child.some(
+                        (c: unknown) => c && typeof c === "object" && "type" in (c as object) && walk(c as t.Node)
+                    )
+                )
                     return true;
             } else if ("type" in (child as object)) {
                 if (walk(child as t.Node)) return true;
@@ -943,9 +947,7 @@ export const transformModule = (mod: TurboModuleEntry): t.Statement[] => {
 
     // Namespace imports
     for (const [spec, name] of hoistedImports) {
-        importStmts.push(
-            t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec))
-        );
+        importStmts.push(t.importDeclaration([t.importNamespaceSpecifier(t.identifier(name))], t.stringLiteral(spec)));
     }
 
     let exportStmts: t.Statement[] = [];

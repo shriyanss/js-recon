@@ -184,10 +184,7 @@ export const extractExportsFromMap = (objExpr: t.ObjectExpression): Map<string, 
  * Also handles the `!` unary prefix that turbopack emits to force the IIFE as an expression.
  * Returns Map<exportName, returnExpr> or null.
  */
-export const tryExtractBatchIIFEExports = (
-    expr: t.Node,
-    exportsParam: string
-): Map<string, t.Expression> | null => {
+export const tryExtractBatchIIFEExports = (expr: t.Node, exportsParam: string): Map<string, t.Expression> | null => {
     // Unwrap unary `!` if present: !(fn)(args) → (fn)(args)
     let callNode: t.Node = expr;
     if (t.isUnaryExpression(callNode) && (callNode as t.UnaryExpression).operator === "!") {

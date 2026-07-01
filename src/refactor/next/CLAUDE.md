@@ -3,7 +3,7 @@
 ## Purpose
 
 Rewrites Next.js (Turbopack) bundle chunks into readable ECMAScript module files during manual
-resolver development.  Handles both the native turbopack module format and the webpack-style
+resolver development. Handles both the native turbopack module format and the webpack-style
 modules that coexist in a turbopack bundle.
 
 ## Module formats
@@ -13,8 +13,8 @@ modules that coexist in a turbopack bundle.
 The dominant format (190/194 chunks in a typical Next.js turbopack build). The params map as:
 
 | Position  | Role    | Usage                                                                |
-|-----------|---------|----------------------------------------------------------------------|
-| params[0] | runtime | turbopack runtime — `runtime.r(N)` / `runtime.i(N)` for imports     |
+| --------- | ------- | -------------------------------------------------------------------- |
+| params[0] | runtime | turbopack runtime — `runtime.r(N)` / `runtime.i(N)` for imports      |
 | params[1] | module  | module object — `module.exports = ...` for CJS interop boilerplate   |
 | params[2] | exports | exports target — `ODP(exports,"name",{get:fn})` / for-in export loop |
 
@@ -25,6 +25,7 @@ NOT require. Requires are `runtime.r(N)` (MemberExpression), not `runtime(N)` (d
 
 Used for page component chunks (~4 chunks per bundle). The single param is the turbopack
 module context:
+
 - `runtime.i(N)` → interop import (converted to `import * as name from './N.js'`)
 - `runtime.s(["default", 0, fn])` → default export (converted to `export default fn`)
 
@@ -39,11 +40,13 @@ as the ES module marker. Rare in pure turbopack builds.
 ### Pass 1 — export collection + cleanup
 
 Recognises three export forms:
+
 - `Object.defineProperty(exports, "name", { get: () => localVar })` (direct ODP)
 - `!(function(target, map) { for(r in map) ODP(target, r, ...) })(exports, { name: fn, ... })` (turbopack IIFE batch)
 - `require.d(exports, { name: () => localVar, ... })` (webpack-style)
 
 Also drops:
+
 - `Object.defineProperty(exports, "__esModule", ...)` — interop marker
 - `require.r(exports)` — webpack ES-module marker
 - `module.exports = exports.default` — CJS interop boilerplate
@@ -70,7 +73,7 @@ IIFE) is collapsed back to a clean array destructure.
 ### Pass F — JSX recovery
 
 `jsx(tag, props)` / `jsxs(tag, props)` / `jsxDEV(tag, props)` calls are converted to JSX
-element nodes.  Handles string/identifier tags, props as JSXAttributes, `children` array, and
+element nodes. Handles string/identifier tags, props as JSXAttributes, `children` array, and
 nested jsx calls.
 
 ### Pass G — Babel helper removal
@@ -85,12 +88,12 @@ named import specifier whose local name has no reference in the body.
 
 ## Files
 
-| File            | Responsibility                                                                 |
-|-----------------|--------------------------------------------------------------------------------|
-| `index.ts`      | Entry: detects format, extracts params, calls transform, validates output       |
-| `transform.ts`  | All AST passes (1, 2, 3, E, F, G, H) for both turbopack and webpack modules   |
-| `helpers.ts`    | Pure AST pattern matchers and export/import builders                           |
-| `validator.ts`  | `validateAndFix` — iterative Babel strict-parse → downgrade/drop loop         |
+| File           | Responsibility                                                              |
+| -------------- | --------------------------------------------------------------------------- |
+| `index.ts`     | Entry: detects format, extracts params, calls transform, validates output   |
+| `transform.ts` | All AST passes (1, 2, 3, E, F, G, H) for both turbopack and webpack modules |
+| `helpers.ts`   | Pure AST pattern matchers and export/import builders                        |
+| `validator.ts` | `validateAndFix` — iterative Babel strict-parse → downgrade/drop loop       |
 
 ## Gotchas
 

@@ -52,10 +52,7 @@ const refactorNextTurbopack = async (chunk: Chunk): Promise<Record<string, strin
  * Handles `func_NNN = (module, exports, require) => { ... }` format.
  * Looks for the top-level assignment and extracts the arrow function params.
  */
-async function refactorTurbopackModule(
-    chunk: Chunk,
-    ast: t.File
-): Promise<Record<string, string>> {
+async function refactorTurbopackModule(chunk: Chunk, ast: t.File): Promise<Record<string, string>> {
     let captured: TurboModuleEntry | null = null;
 
     traverse(ast, {
@@ -65,9 +62,7 @@ async function refactorTurbopackModule(
 
             const params = path.node.params;
             if (params.length > 3) {
-                console.log(
-                    chalk.yellow(`[!] Module ${chunk.id} has ${params.length} params — skipping`)
-                );
+                console.log(chalk.yellow(`[!] Module ${chunk.id} has ${params.length} params — skipping`));
                 path.stop();
                 return;
             }
@@ -108,10 +103,7 @@ async function refactorTurbopackModule(
  * Handles webpack-style `(module, exports, require) => { ... }` format.
  * The chunk code IS the module function itself (no func_NNN= prefix).
  */
-async function refactorWebpackModule(
-    chunk: Chunk,
-    ast: t.File
-): Promise<Record<string, string>> {
+async function refactorWebpackModule(chunk: Chunk, ast: t.File): Promise<Record<string, string>> {
     let captured: WebpackModuleEntry | null = null;
 
     traverse(ast, {
