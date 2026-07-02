@@ -124,7 +124,7 @@ export class DownloadQueue {
 
     private async processOne(url: string): Promise<void> {
         try {
-            if (!url.match(/(\.mjs|\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
+            if (!url.match(/(\.mjs\.map|\.mjs|\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
                 progressLog(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
@@ -156,19 +156,19 @@ export class DownloadQueue {
             }
 
             const rawText = await res.text();
-            // .js.map payloads are JSON — adding a `//` banner would break strict
+            // .js.map / .mjs.map payloads are JSON — adding a `//` banner would break strict
             // JSON parsing later in the same function (parser: "json").
-            const file = url.match(/\.json/) || url.match(/\.js\.map/) ? rawText : `// File Source: ${url}\n${rawText}`;
+            const file = url.match(/\.json/) || url.match(/\.m?js\.map/) ? rawText : `// File Source: ${url}\n${rawText}`;
 
             let filename: string | undefined;
             try {
                 filename = url
                     .split("/")
                     .pop()
-                    ?.match(/[a-zA-Z0-9\.\-_]+\.(mjs|js(on)?(\.map)?|vue)/)?.[0];
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.(mjs(\.map)?|js(on)?(\.map)?|vue)/)?.[0];
             } catch {
                 for (const chunk of url.split("/")) {
-                    if (chunk.match(/\.(mjs|js(on)?|vue)$/)) {
+                    if (chunk.match(/\.(mjs(\.map)?|js(on)?|vue)$/)) {
                         filename = chunk;
                         break;
                     }
@@ -182,7 +182,7 @@ export class DownloadQueue {
 
             const filePath = path.join(childDir, filename);
             try {
-                if (url.match(/\.json/) || url.match(/\.js\.map/)) {
+                if (url.match(/\.json/) || url.match(/\.m?js\.map/)) {
                     const formatted =
                         file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "json" }) : file;
                     fs.writeFileSync(filePath, formatted);

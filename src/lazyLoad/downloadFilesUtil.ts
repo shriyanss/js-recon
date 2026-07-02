@@ -33,7 +33,7 @@ const downloadFiles = async (urls: string[], output: string) => {
 
     const processOne = async (url: string) => {
         try {
-            if (!url.match(/(\.mjs|\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
+            if (!url.match(/(\.mjs\.map|\.mjs|\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
                 console.log(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
@@ -65,17 +65,17 @@ const downloadFiles = async (urls: string[], output: string) => {
             }
 
             const rawText = await res.text();
-            const file = url.match(/\.json/) ? rawText : `// File Source: ${url}\n${rawText}`;
+            const file = url.match(/\.json/) || url.match(/\.m?js\.map/) ? rawText : `// File Source: ${url}\n${rawText}`;
 
             let filename: string | undefined;
             try {
                 filename = url
                     .split("/")
                     .pop()
-                    ?.match(/[a-zA-Z0-9\.\-_]+\.(mjs|js(on)?(\.map)?|vue)/)?.[0];
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.(mjs(\.map)?|js(on)?(\.map)?|vue)/)?.[0];
             } catch {
                 for (const chunk of url.split("/")) {
-                    if (chunk.match(/\.(mjs|js(on)?|vue)$/)) {
+                    if (chunk.match(/\.(mjs(\.map)?|js(on)?|vue)$/)) {
                         filename = chunk;
                         break;
                     }
@@ -89,7 +89,7 @@ const downloadFiles = async (urls: string[], output: string) => {
 
             const filePath = path.join(childDir, filename);
             try {
-                if (url.match(/\.json/) || url.match(/\.js\.map/)) {
+                if (url.match(/\.json/) || url.match(/\.m?js\.map/)) {
                     const formatted =
                         file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "json" }) : file;
                     fs.writeFileSync(filePath, formatted);
