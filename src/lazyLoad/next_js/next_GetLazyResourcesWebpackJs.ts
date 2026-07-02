@@ -36,18 +36,38 @@ type MatchedFunction = {
  */
 const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> => {
     const chromiumPath = getChromiumPath();
+    const sandboxArgs = globals.getDisableSandbox()
+        ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+        : [];
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: globals.getDisableSandbox()
-            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-            : [],
+        args: ["--disable-external-protocol-dialog", ...sandboxArgs],
     });
 
     const page = await browser.newPage();
 
     const cdp = await page.createCDPSession();
     await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
+
+    await page.evaluateOnNewDocument(() => {
+        const origOpen = window.open.bind(window);
+        window.open = (url?: string | URL, ...rest: string[]) => {
+            if (url != null && !/^https?:/i.test(String(url))) return null;
+            return origOpen(url, ...rest);
+        };
+        document.addEventListener(
+            "click",
+            (e) => {
+                const anchor = (e.target as Element).closest("a[href]") as HTMLAnchorElement | null;
+                if (anchor && !/^https?:/i.test(anchor.href)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            },
+            true
+        );
+    });
 
     await page.setRequestInterception(true);
 
@@ -65,7 +85,12 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
                 pushToJsonUrls(req_url);
             }
         }
-        await request.continue();
+
+        if (/^https?:\/\//i.test(req_url)) {
+            await request.continue();
+        } else {
+            await request.abort();
+        }
     });
 
     try {
