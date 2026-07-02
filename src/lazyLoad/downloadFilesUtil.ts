@@ -33,7 +33,10 @@ const downloadFiles = async (urls: string[], output: string) => {
 
     const processOne = async (url: string) => {
         try {
-            if (!url.match(/(\.mjs\.map|\.mjs|\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
+            if (
+                !url.match(/(\.mjs\.map|\.mjs|\.js|\.json|\.js\.map|\.vue)/) ||
+                url.match(/lang\.(css|scss|sass|less|styl)/)
+            ) {
                 console.log(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
@@ -65,7 +68,8 @@ const downloadFiles = async (urls: string[], output: string) => {
             }
 
             const rawText = await res.text();
-            const file = url.match(/\.json/) || url.match(/\.m?js\.map/) ? rawText : `// File Source: ${url}\n${rawText}`;
+            const file =
+                url.match(/\.json/) || url.match(/\.m?js\.map/) ? rawText : `// File Source: ${url}\n${rawText}`;
 
             let filename: string | undefined;
             try {
