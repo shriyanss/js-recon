@@ -49,7 +49,7 @@ const downloadLoadedJs = async (url) => {
                     e.stopImmediatePropagation();
                 }
             },
-            true,
+            true
         );
     });
 
