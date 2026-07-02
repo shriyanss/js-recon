@@ -59,12 +59,21 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);
+
+        const cdp = await page.createCDPSession();
+        await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
+
         // Intercept all requests so framework-specific URL patterns (e.g. /_nuxt/, /_next/)
         // can be used as a detection signal even when they don't appear in parsed HTML.
         await page.setRequestInterception(true);
         page.on("request", (req) => {
             interceptedUrls.push(req.url());
-            req.continue().catch(() => {});
+            // Abort non-http/s schemes (mailto:, data:, etc.) — continue() throws for them.
+            if (/^https?:\/\//i.test(req.url())) {
+                req.continue().catch(() => {});
+            } else {
+                req.abort().catch(() => {});
+            }
         });
         try {
             await page.goto(url, {

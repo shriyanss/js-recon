@@ -30,6 +30,10 @@ const downloadLoadedJs = async (url) => {
 
     const page = await browser.newPage();
 
+    // Block any file downloads — we only need request URLs, not the file contents.
+    const cdp = await page.createCDPSession();
+    await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
+
     // Belt-and-suspenders: block non-http/s navigation at the JS level too.
     // Chrome's protocol-handler path bypasses Puppeteer's request interception,
     // so we also need to override window.open and swallow clicks on non-http/s

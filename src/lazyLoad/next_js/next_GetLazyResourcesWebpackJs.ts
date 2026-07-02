@@ -46,6 +46,9 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
 
     const page = await browser.newPage();
 
+    const cdp = await page.createCDPSession();
+    await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
+
     await page.setRequestInterception(true);
 
     page.on("request", async (request) => {
