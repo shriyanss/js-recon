@@ -78,7 +78,9 @@ const getViteConnections = async (directory: string, output: string, formats: st
         encoding: "utf8",
     }) as string[];
 
-    files = files.filter((f) => (f.endsWith(".js") || f.endsWith(".mjs") || f.endsWith(".vue")) && !f.includes("___subsequent_requests"));
+    files = files.filter(
+        (f) => (f.endsWith(".js") || f.endsWith(".mjs") || f.endsWith(".vue")) && !f.includes("___subsequent_requests")
+    );
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const fileMeta = new Map<string, FileMeta>();

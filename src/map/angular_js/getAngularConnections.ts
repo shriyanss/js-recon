@@ -28,7 +28,9 @@ const getAngularConnections = async (directory: string, output: string, formats:
     console.log(chalk.cyan("[i] Getting Angular (esbuild) connections"));
 
     let files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
-    files = files.filter((f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests") && !isSkippedFile(f));
+    files = files.filter(
+        (f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests") && !isSkippedFile(f)
+    );
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const chunks: Chunks = {};

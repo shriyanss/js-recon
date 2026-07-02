@@ -68,7 +68,9 @@ const getReactConnections = async (directory: string, output: string, formats: s
     console.log(chalk.cyan("[i] Getting React (Vite/Rolldown) connections"));
 
     let files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
-    files = files.filter((f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests") && !isVendorFile(f));
+    files = files.filter(
+        (f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests") && !isVendorFile(f)
+    );
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const stemCount = new Map<string, number>();
