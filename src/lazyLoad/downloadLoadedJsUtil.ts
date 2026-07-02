@@ -15,15 +15,43 @@ const downloadLoadedJs = async (url) => {
     }
 
     const chromiumPath = getChromiumPath();
+    const sandboxArgs = globalsUtil.getDisableSandbox()
+        ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+        : [];
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: globalsUtil.getDisableSandbox()
-            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-            : [],
+        args: [
+            // Prevent Chrome from handing mailto:/tel:/etc. to the OS
+            "--disable-external-protocol-dialog",
+            ...sandboxArgs,
+        ],
     });
 
     const page = await browser.newPage();
+
+    // Belt-and-suspenders: block non-http/s navigation at the JS level too.
+    // Chrome's protocol-handler path bypasses Puppeteer's request interception,
+    // so we also need to override window.open and swallow clicks on non-http/s
+    // anchors before they reach the browser's handler dispatch.
+    await page.evaluateOnNewDocument(() => {
+        const origOpen = window.open.bind(window);
+        window.open = (url?: string | URL, ...rest: string[]) => {
+            if (url != null && !/^https?:/i.test(String(url))) return null;
+            return origOpen(url, ...rest);
+        };
+        document.addEventListener(
+            "click",
+            (e) => {
+                const anchor = (e.target as Element).closest("a[href]") as HTMLAnchorElement | null;
+                if (anchor && !/^https?:/i.test(anchor.href)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            },
+            true,
+        );
+    });
 
     await page.setRequestInterception(true);
 
