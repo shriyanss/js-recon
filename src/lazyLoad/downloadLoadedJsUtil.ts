@@ -40,9 +40,21 @@ const downloadLoadedJs = async (url) => {
         await request.continue();
     });
 
-    await page.goto(url);
+    // Use networkidle0 so we capture all JS requests without waiting for the
+    // app to finish rendering (deferred scripts executing can hang indefinitely
+    // for some framework/bundler combinations). 10s is ample for localhost.
+    try {
+        await page.goto(url, { waitUntil: "networkidle0", timeout: 10000 });
+    } catch (_) {
+        // Navigation error or timeout — use whatever URLs were captured so far.
+    }
 
-    await browser.close();
+    try {
+        await browser.close();
+    } catch (_) {
+        // browser.close() can hang if Chrome is stuck. Force-kill as fallback.
+        browser.process()?.kill("SIGKILL");
+    }
 
     return js_urls_local;
 };
