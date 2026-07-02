@@ -2,6 +2,11 @@
 
 ## 1.4.1-alpha.5 - (unreleased)
 
+### Fixed
+
+- `lazyload`, `map`, `strings`: `.mjs` (ES module) files are now fully supported across all framework pipelines. Previously, extension filters in `downloadQueue.ts`, `downloadFilesUtil.ts`, `downloadLoadedJsUtil.ts`, `react_followImports.ts`, `getReactConnections.ts`, `getViteConnections.ts`, `getAngularConnections.ts`, `vue_resolveHttpClient.ts`, `vue_resolveFetch.ts`, `vue_resolveXhr.ts`, `crossFileResolver.ts`, and `strings/index.ts` only matched `.js` files. Sites that bundle all application code as `.mjs` (e.g. Framer/Rolldown) were silently ignored — all chunks were downloaded but zero files were scanned for connections, strings, or secrets. All affected paths now match both `.js` and `.mjs`. (`run`, `lazyload`, `map`, `strings`)
+- `run` (react): The map step now receives the full `outputDir` (all downloaded hosts) rather than only the target host's subdirectory. Previously, when a React site served all its JS from a CDN host, the map step was pointed at an empty target-host directory and reported zero chunks. Now mirrors the Vue pipeline's directory-passing behaviour so CDN-hosted chunks are analysed correctly. (`run`, `map`)
+
 ### Added
 
 - `refactor` (`react-vite`, `react-webpack`): new `--remote-collisions <path>` flag. Accepts a HuggingFace bucket path (e.g. `react/vite/large-0.1.8`) and uses it as the signature source instead of the automatic `TECH_TO_BRANCH` mapping. When the path does not exist in the `shriyanss/cs-mast-s-dataset` bucket the tool exits with code 25. The existing caching layer is fully reused — signatures are cached under `~/.js-recon/refactor/signature_cache/` and the file list is cached in `~/.js-recon/refactor/cs-mast-s-list-cache.json`. Feature directories that contain no collision records in the dataset are skipped during intersection rather than collapsing the result to zero.

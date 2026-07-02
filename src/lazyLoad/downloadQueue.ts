@@ -124,7 +124,7 @@ export class DownloadQueue {
 
     private async processOne(url: string): Promise<void> {
         try {
-            if (!url.match(/(\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
+            if (!url.match(/(\.mjs|\.js|\.json|\.js\.map|\.vue)/) || url.match(/lang\.(css|scss|sass|less|styl)/)) {
                 progressLog(chalk.yellow(`[i] Ignored ${url}`));
                 return;
             }
@@ -165,10 +165,10 @@ export class DownloadQueue {
                 filename = url
                     .split("/")
                     .pop()
-                    ?.match(/[a-zA-Z0-9\.\-_]+\.(js(on)?(\.map)?|vue)/)?.[0];
+                    ?.match(/[a-zA-Z0-9\.\-_]+\.(mjs|js(on)?(\.map)?|vue)/)?.[0];
             } catch {
                 for (const chunk of url.split("/")) {
-                    if (chunk.match(/\.(js(on)?|vue)$/)) {
+                    if (chunk.match(/\.(mjs|js(on)?|vue)$/)) {
                         filename = chunk;
                         break;
                     }
@@ -195,8 +195,8 @@ export class DownloadQueue {
                         file.length <= PRETTIER_SIZE_LIMIT ? await prettier.format(file, { parser: "babel" }) : file;
                     fs.writeFileSync(filePath, formatted);
                 }
-            } catch {
-                progressError(chalk.red(`[!] Failed to write file: ${filePath}`));
+            } catch (writeErr) {
+                progressError(chalk.red(`[!] Failed to write file: ${filePath} : ${writeErr}`));
                 return;
             }
             this.downloadCount++;

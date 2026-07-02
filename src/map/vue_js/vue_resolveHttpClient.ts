@@ -221,7 +221,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
     }
 
     files = files
-        .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
+        .filter((f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory())
         .sort();
 

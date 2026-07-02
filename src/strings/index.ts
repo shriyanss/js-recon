@@ -95,7 +95,7 @@ const strings = async (
     });
 
     // filter out non JS files
-    let jsFiles = files.filter((file) => file.endsWith(".js"));
+    let jsFiles = files.filter((file) => file.endsWith(".js") || file.endsWith(".mjs"));
 
     // filter out subsequent requests files
     // jsFiles = jsFiles.filter((file) => !file.startsWith("___subsequent_requests"));

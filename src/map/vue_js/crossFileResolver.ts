@@ -213,7 +213,7 @@ const ensureGlobalIndex = (directory: string): void => {
         globalIndexBuiltFor = directory;
         return;
     }
-    files = files.filter((f) => f.endsWith(".js"));
+    files = files.filter((f) => f.endsWith(".js") || f.endsWith(".mjs"));
     for (const rel of files) {
         const abs = path.join(directory, rel);
         try {

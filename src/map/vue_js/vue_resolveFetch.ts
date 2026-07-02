@@ -125,7 +125,7 @@ const vue_resolveFetch = async (directory: string, frameworkName = "Vue.JS"): Pr
     }
 
     files = files
-        .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
+        .filter((f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const MAX_MAP_FILE_SIZE_BYTES = 1.5 * 1024 * 1024;

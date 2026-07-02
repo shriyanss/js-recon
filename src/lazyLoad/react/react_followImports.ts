@@ -11,14 +11,14 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
     const found: string[] = [];
 
     // Static imports: from "..." and import "..."
-    for (const m of content.matchAll(/\bfrom\s*["']([^"']+\.js)["']/g)) {
+    for (const m of content.matchAll(/\bfrom\s*["']([^"']+\.m?js)["']/g)) {
         try {
             found.push(new URL(m[1], fileUrl).href);
         } catch {
             /* skip */
         }
     }
-    for (const m of content.matchAll(/\bimport\s*["']([^"']+\.js)["']/g)) {
+    for (const m of content.matchAll(/\bimport\s*["']([^"']+\.m?js)["']/g)) {
         try {
             found.push(new URL(m[1], fileUrl).href);
         } catch {
@@ -27,7 +27,7 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
     }
 
     // Dynamic imports: import("...")
-    for (const m of content.matchAll(/\bimport\s*\(\s*["']([^"']+\.js)["']\s*\)/g)) {
+    for (const m of content.matchAll(/\bimport\s*\(\s*["']([^"']+\.m?js)["']\s*\)/g)) {
         try {
             found.push(new URL(m[1], fileUrl).href);
         } catch {

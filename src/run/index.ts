@@ -143,8 +143,6 @@ const processUrl = async (
         const reportFile = isBatch ? `${workingDir}/report` : "report";
         const endpointsFile = isBatch ? `${workingDir}/endpoints` : "endpoints";
 
-        const reactHostDir = `${outputDir}/${targetHost}`;
-
         console.log(chalk.bgCyan("[2/4] Running map to find functions and API calls..."));
         globalsUtil.setOpenapi(true);
         if (isBatch) {
@@ -156,7 +154,7 @@ const processUrl = async (
         }
         resetSkipStep();
         await Promise.race([
-            map(reactHostDir, mappedFileReact, ["json"], "react", false, false, cmd.command || []),
+            map(outputDir, mappedFileReact, ["json"], "react", false, false, cmd.command || []),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Map complete."));
