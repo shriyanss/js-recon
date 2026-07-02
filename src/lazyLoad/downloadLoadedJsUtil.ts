@@ -37,7 +37,13 @@ const downloadLoadedJs = async (url) => {
             js_urls_local.push(req_url);
         }
 
-        await request.continue();
+        // Only continue http/https requests — other schemes (mailto:, data:,
+        // chrome-extension:, etc.) cannot be continued and will throw.
+        if (req_url.match(/^https?:\/\//)) {
+            await request.continue();
+        } else {
+            await request.abort();
+        }
     });
 
     // Use networkidle0 so we capture all JS requests without waiting for the
