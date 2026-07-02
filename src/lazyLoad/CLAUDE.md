@@ -29,40 +29,45 @@ Powers the `lazyload` subcommand and pipeline step 1 (every framework). Visits t
 Every module that creates a Puppeteer page MUST follow these four rules. Deviating from any one can cause hangs, crashes, or OS side-effects during a scan:
 
 1. **Use `waitUntil: "networkidle0"` with a timeout on `page.goto()`.** Wrap the call in try/catch and return the partial result on error. Do NOT use `waitUntil: "load"` without a timeout in download utilities — the `load` event may never fire on some SPA patterns or service-worker-heavy sites.
-   ```typescript
-   try {
-       await page.goto(url, { waitUntil: "networkidle0", timeout: 10000 });
-   } catch (_) { /* use URLs collected so far */ }
-   ```
+
+    ```typescript
+    try {
+        await page.goto(url, { waitUntil: "networkidle0", timeout: 10000 });
+    } catch (_) {
+        /* use URLs collected so far */
+    }
+    ```
 
 2. **Wrap `browser.close()` in try/catch; SIGKILL on failure.** Chrome can become stuck after navigating to a site that started a download or a modal dialog. `browser.close()` will hang forever. Force-kill as a fallback:
-   ```typescript
-   try {
-       await browser.close();
-   } catch (_) {
-       browser.process()?.kill("SIGKILL");
-   }
-   ```
+
+    ```typescript
+    try {
+        await browser.close();
+    } catch (_) {
+        browser.process()?.kill("SIGKILL");
+    }
+    ```
 
 3. **Abort non-http/s requests in the request interceptor; never call `continue()` on them.** `request.continue()` throws for `mailto:`, `data:`, `blob:`, `chrome-extension:`, `tel:`, and any other non-http scheme. In addition to the error, some schemes invoke OS protocol handlers (mail client, phone app). Always abort first:
-   ```typescript
-   if (/^https?:\/\//i.test(req.url())) {
-       await request.continue();
-   } else {
-       await request.abort();
-   }
-   ```
+
+    ```typescript
+    if (/^https?:\/\//i.test(req.url())) {
+        await request.continue();
+    } else {
+        await request.abort();
+    }
+    ```
 
 4. **Three-layer OS protocol handler defence.** Non-http links can bypass the request interceptor (e.g. if JavaScript triggers `window.open()` before the page load event). All three layers are required:
-   - Pass `--disable-external-protocol-dialog` to Chrome at launch.
-   - Install an `evaluateOnNewDocument` guard that overrides `window.open` and prevents non-http/s anchor clicks from reaching the browser's handler dispatch.
-   - Abort non-http/s in the request interceptor (rule 3 above).
+    - Pass `--disable-external-protocol-dialog` to Chrome at launch.
+    - Install an `evaluateOnNewDocument` guard that overrides `window.open` and prevents non-http/s anchor clicks from reaching the browser's handler dispatch.
+    - Abort non-http/s in the request interceptor (rule 3 above).
 
 5. **Deny file downloads via CDP.** Issue `Page.setDownloadBehavior({ behavior: "deny" })` immediately after `page.createCDPSession()`. Download-triggering links on target pages can block the browser indefinitely and fill the output directory with unexpected files:
-   ```typescript
-   const cdp = await page.createCDPSession();
-   await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
-   ```
+    ```typescript
+    const cdp = await page.createCDPSession();
+    await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
+    ```
 
 ## How to test changes here
 
