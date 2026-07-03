@@ -111,11 +111,7 @@ async function listAvailableVersions(bundler: string): Promise<string[]> {
 
 // Fetches (or loads from cache) reliable_signatures.json for one (bundler, version, scatDir) combo.
 // Returns an array of PHC signature strings, or null if not available.
-async function fetchReliableSignatures(
-    bundler: string,
-    version: string,
-    scatDir: string
-): Promise<string[] | null> {
+async function fetchReliableSignatures(bundler: string, version: string, scatDir: string): Promise<string[] | null> {
     const cached = loadCachedReliableSigs(bundler, version, scatDir);
     if (cached !== null) return cached;
 
@@ -220,9 +216,7 @@ export async function detectReactVersion(
         return null;
     }
 
-    console.log(
-        chalk.cyan(`[i] Version detection: checking ${versions.length} versions for signature matches...`)
-    );
+    console.log(chalk.cyan(`[i] Version detection: checking ${versions.length} versions for signature matches...`));
 
     let bestMatch: VersionDetectionResult | null = null;
 

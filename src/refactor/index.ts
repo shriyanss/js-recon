@@ -384,11 +384,7 @@ const availableTechs = {
  * The entry file is the first written file that contains `createRoot(` — i.e.
  * the app entry point.  If no such file is found, the first written file is used.
  */
-function runBuildCheck(
-    outputDir: string,
-    writtenFiles: string[],
-    detectedVersion?: VersionDetectionResult
-): void {
+function runBuildCheck(outputDir: string, writtenFiles: string[], detectedVersion?: VersionDetectionResult): void {
     if (writtenFiles.length === 0) return;
 
     // Find the entry file: the module that calls createRoot().
@@ -504,11 +500,7 @@ module.exports = {
  *
  * The entry file is the first written file that contains `createRoot(`.
  */
-function runViteBuildCheck(
-    outputDir: string,
-    writtenFiles: string[],
-    detectedVersion?: VersionDetectionResult
-): void {
+function runViteBuildCheck(outputDir: string, writtenFiles: string[], detectedVersion?: VersionDetectionResult): void {
     if (writtenFiles.length === 0) return;
 
     // Deduplicate — callers should not pass duplicates, but guard here too so a
@@ -868,7 +860,12 @@ const refactor = async (
                 }
             }
 
-            const vResult = await detectReactVersion(chunks, tech, scatDir, vendorCodes.length > 0 ? vendorCodes : undefined);
+            const vResult = await detectReactVersion(
+                chunks,
+                tech,
+                scatDir,
+                vendorCodes.length > 0 ? vendorCodes : undefined
+            );
             if (vResult) {
                 console.log(
                     chalk.green(
