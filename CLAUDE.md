@@ -431,6 +431,23 @@ Plumbing: `src/index.ts` (CLI) → `src/refactor/index.ts` (resolves the path vi
 
 The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<tech>/<scat>/collisions.json`). See its `README.md` for layout and provenance.
 
+### refactor `--detect-version` (react-webpack, react-vite)
+
+`refactor -t react-webpack` and `refactor -t react-vite` accept a `--detect-version` flag that uses CS-MAST signatures to detect the React version used in the bundle.
+
+**How it works:**
+
+1. `generateBundleSignatures()` in `src/refactor/remote/version-detect.ts` runs `cs_mast_init` on every chunk in the mapped JSON (plus any vendor chunks for webpack code-split bundles) using the same scat config as library stripping (`lit-decl-loop-cond` by default).
+2. For each available React version in `version/react/<bundler>/` in the `shriyanss/cs-mast-s-dataset` HF bucket, `fetchReliableSignatures()` downloads (or loads from cache) the `reliable_signatures.json` — a list of PHC signature strings that appear in ALL feature builds for that version but NOT in any other version's build.
+3. The version with the most reliable signature matches against the bundle's signature set is returned as the detected version.
+4. The detected version's npm semver is used to pin `react` and `react-dom` in the refactored output's `package.json`.
+
+**Cache:** `~/.js-recon/refactor/version_sigs_cache/<bundler>/<version>/<scatDir>/reliable_signatures.json` + `.cached_at` (7-day TTL).
+
+**Dataset coverage:** webpack (react-0.12 through react-19), vite (react-16 through react-19).
+
+**Important:** the version detection data in the HF bucket was generated with `@shriyanss/cs-mast` v0.1.8. The tool requires cs-mast 0.1.8 or later to produce matching signatures. Using an older cs-mast version will result in zero matches.
+
 ## Security / confidentiality
 
 When a change is informed by behavior observed on a real target (URLs, endpoint names, response shapes, finding details, etc.):

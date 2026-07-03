@@ -367,6 +367,11 @@ program
         "--scat <categories>",
         "Override the CS-MAST scat categories used for library signature matching. Comma-separated list of: lit,id,op,decl,loop,cond,name,val,op_name (e.g. --scat lit,decl,cond). Overrides the default lit-decl-loop-cond config."
     )
+    .option(
+        "--detect-version",
+        "Detect the React version used in the bundle and use it in the refactored output's package.json (react-webpack and react-vite only).",
+        false
+    )
     .action(async (cmd) => {
         const scat: string[] | undefined = cmd.scat
             ? (cmd.scat as string)
@@ -381,6 +386,7 @@ program
             noRemote: cmd.remote === false,
             remoteCollisions: cmd.remoteCollisions as string | undefined,
             scat,
+            detectVersion: !!cmd.detectVersion,
         });
     });
 

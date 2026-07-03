@@ -38,6 +38,7 @@ import {
     isSignatureCacheFresh,
     validateCaches,
 } from "./remote/cache.js";
+import { detectReactVersion, VersionDetectionResult, VERSION_TECH_TO_BUNDLER } from "./remote/version-detect.js";
 
 /**
  * Derives the assets directory from the URL embedded in any chunk's code comment.
@@ -103,6 +104,7 @@ export type RemoteLibSigsOptions = {
     skipCacheChecks: boolean;
     scat?: string[]; // override CS-MAST scat categories; if omitted, uses BASELINE_SCAT_DIR[tech]
     remoteCollisions?: string; // explicit HF bucket path; overrides TECH_TO_BRANCH lookup
+    detectVersion?: boolean; // detect the React version used in the bundle
 };
 
 // Parses a collisions.json file and returns signatures whose count equals the maximum.
@@ -382,7 +384,11 @@ const availableTechs = {
  * The entry file is the first written file that contains `createRoot(` — i.e.
  * the app entry point.  If no such file is found, the first written file is used.
  */
-function runBuildCheck(outputDir: string, writtenFiles: string[]): void {
+function runBuildCheck(
+    outputDir: string,
+    writtenFiles: string[],
+    detectedVersion?: VersionDetectionResult
+): void {
     if (writtenFiles.length === 0) return;
 
     // Find the entry file: the module that calls createRoot().
@@ -398,16 +404,34 @@ function runBuildCheck(outputDir: string, writtenFiles: string[]): void {
 
     console.log(chalk.cyan(`[i] Setting up webpack build check in ${outputDir}/ (entry: ${entryRelative})`));
 
+    // Use detected React version when available, fall back to React 18.
+    const reactVersion = detectedVersion ? `^${detectedVersion.reactNpm}` : "^18.3.1";
+    const reactDomVersion = detectedVersion?.reactDomNpm
+        ? `^${detectedVersion.reactDomNpm}`
+        : detectedVersion
+          ? undefined // pre-0.14: no react-dom
+          : "^18.3.1";
+
+    if (detectedVersion) {
+        console.log(
+            chalk.cyan(
+                `[i] Using detected React version ${detectedVersion.versionKey} in package.json (react@${reactVersion})`
+            )
+        );
+    }
+
+    const dependencies: Record<string, string> = {
+        react: reactVersion,
+        ...(reactDomVersion ? { "react-dom": reactDomVersion } : {}),
+        "react-router-dom": "^6.27.0",
+    };
+
     // package.json — no "type": "module" so webpack.config.js can use CommonJS require
     const pkg = {
         name: "refactored-app",
         version: "1.0.0",
         scripts: { build: "webpack" },
-        dependencies: {
-            react: "^18.3.1",
-            "react-dom": "^18.3.1",
-            "react-router-dom": "^6.27.0",
-        },
+        dependencies,
         devDependencies: {
             "@babel/core": "^7.25.0",
             "@babel/preset-env": "^7.25.0",
@@ -480,7 +504,11 @@ module.exports = {
  *
  * The entry file is the first written file that contains `createRoot(`.
  */
-function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
+function runViteBuildCheck(
+    outputDir: string,
+    writtenFiles: string[],
+    detectedVersion?: VersionDetectionResult
+): void {
     if (writtenFiles.length === 0) return;
 
     // Deduplicate — callers should not pass duplicates, but guard here too so a
@@ -522,16 +550,34 @@ function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
 
     console.log(chalk.cyan(`[i] Setting up Vite build check in ${outputDir}/ (entry: ${entryRelative})`));
 
+    // Use detected React version when available, fall back to React 18.
+    const reactVersion = detectedVersion ? `^${detectedVersion.reactNpm}` : "^18.3.1";
+    const reactDomVersion = detectedVersion?.reactDomNpm
+        ? `^${detectedVersion.reactDomNpm}`
+        : detectedVersion
+          ? undefined
+          : "^18.3.1";
+
+    if (detectedVersion) {
+        console.log(
+            chalk.cyan(
+                `[i] Using detected React version ${detectedVersion.versionKey} in package.json (react@${reactVersion})`
+            )
+        );
+    }
+
+    const dependencies: Record<string, string> = {
+        react: reactVersion,
+        ...(reactDomVersion ? { "react-dom": reactDomVersion } : {}),
+        "react-router-dom": "^6.27.0",
+    };
+
     const pkg = {
         name: "refactored-app",
         version: "1.0.0",
         type: "module",
         scripts: { build: "vite build" },
-        dependencies: {
-            react: "^18.3.1",
-            "react-dom": "^18.3.1",
-            "react-router-dom": "^6.27.0",
-        },
+        dependencies,
         devDependencies: {
             "@vitejs/plugin-react": "^4.3.1",
             vite: "^5.4.0",
@@ -798,9 +844,46 @@ const refactor = async (
             }
         }
 
+        // Version detection — run before build check so the detected version can be
+        // written into package.json by runBuildCheck.
+        let detectedVersion: VersionDetectionResult | undefined;
+        if (remoteOpts?.detectVersion && VERSION_TECH_TO_BUNDLER[tech]) {
+            const scatDir = remoteOpts.scat
+                ? scatToDir(remoteOpts.scat)
+                : (BASELINE_SCAT_DIR[tech] ?? "lit-decl-loop-cond");
+
+            // Include vendor chunk file contents (e.g. vendor-react-dom.*.js) that hold
+            // React library code but are not present in mapped.json.  Without these, the
+            // signature set contains only app-level code and misses version-specific React
+            // library signatures.
+            const vendorCodes: string[] = [];
+            const vDetectAssetsDir = findAssetsDir(chunks, mappedJson);
+            if (vDetectAssetsDir) {
+                for (const vendorFile of findVendorChunkFiles(chunks, vDetectAssetsDir)) {
+                    try {
+                        vendorCodes.push(fs.readFileSync(vendorFile, "utf8"));
+                    } catch {
+                        // non-fatal
+                    }
+                }
+            }
+
+            const vResult = await detectReactVersion(chunks, tech, scatDir, vendorCodes.length > 0 ? vendorCodes : undefined);
+            if (vResult) {
+                console.log(
+                    chalk.green(
+                        `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
+                    )
+                );
+                detectedVersion = vResult;
+            } else {
+                console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+            }
+        }
+
         // Build check — scaffold a minimal webpack project and verify the refactored
         // code compiles.
-        runBuildCheck(outputDir, writtenFiles);
+        runBuildCheck(outputDir, writtenFiles, detectedVersion);
     } else if (tech === "react-vite") {
         // Pre-scan vendor chunks from the assets directory that are not in mapped.json.
         // Vendor chunks (vendor-react-*.js) are referenced by app chunks but are typically
@@ -892,8 +975,28 @@ const refactor = async (
             }
         }
 
+        // Version detection — run before build check so the detected version can be
+        // written into package.json by runViteBuildCheck.
+        let viteDetectedVersion: VersionDetectionResult | undefined;
+        if (remoteOpts?.detectVersion && VERSION_TECH_TO_BUNDLER[tech]) {
+            const scatDir = remoteOpts.scat
+                ? scatToDir(remoteOpts.scat)
+                : (BASELINE_SCAT_DIR[tech] ?? "lit-decl-loop-cond");
+            const vResult = await detectReactVersion(chunks, tech, scatDir);
+            if (vResult) {
+                console.log(
+                    chalk.green(
+                        `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
+                    )
+                );
+                viteDetectedVersion = vResult;
+            } else {
+                console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+            }
+        }
+
         // Build check with Vite scaffold
-        runViteBuildCheck(outputDir, writtenFiles);
+        runViteBuildCheck(outputDir, writtenFiles, viteDetectedVersion);
     } else if (tech === "vue-webpack") {
         for (const [, value] of Object.entries(chunks)) {
             const moduleFiles = await refactorVueWebpack(value);
