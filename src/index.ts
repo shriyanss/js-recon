@@ -372,6 +372,20 @@ program
         "Detect the React version used in the bundle and use it in the refactored output's package.json (react-webpack and react-vite only).",
         false
     )
+    .option(
+        "--detect-version-config <config>",
+        'Scat configuration for version detection. Use "dynamic" (default) to auto-select reliable configs, or pass comma-separated scat categories for a fixed config (e.g. lit,decl,loop,cond). Exits with code 26 if the static config has empty signatures for any known React version.'
+    )
+    .option(
+        "--detect-version-dynamic-threshold <n>",
+        "Number of scat configs to select in dynamic version detection mode (default: 3). Must be a positive integer.",
+        "3"
+    )
+    .option(
+        "--detect-version-dynamic-conf-purge",
+        "Purge the cached dynamic scat config selection (stored in ~/.js-recon/refactor/config.json) and recompute it on this run.",
+        false
+    )
     .action(async (cmd) => {
         const scat: string[] | undefined = cmd.scat
             ? (cmd.scat as string)
@@ -379,6 +393,13 @@ program
                   .map((s: string) => s.trim())
                   .filter(Boolean)
             : undefined;
+        const detectVersionDynamicThreshold = Number(cmd.detectVersionDynamicThreshold ?? 3);
+        if (!Number.isInteger(detectVersionDynamicThreshold) || detectVersionDynamicThreshold < 1) {
+            console.error(
+                `[!] --detect-version-dynamic-threshold must be a positive integer (got "${cmd.detectVersionDynamicThreshold}")`
+            );
+            process.exit(1);
+        }
         await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions, {
             signatureQuality: Number(cmd.signatureQuality ?? 100),
             refreshCache: !!cmd.refreshCache,
@@ -387,6 +408,9 @@ program
             remoteCollisions: cmd.remoteCollisions as string | undefined,
             scat,
             detectVersion: !!cmd.detectVersion,
+            detectVersionConfig: cmd.detectVersionConfig as string | undefined,
+            detectVersionDynamicThreshold,
+            detectVersionDynamicConfPurge: !!cmd.detectVersionDynamicConfPurge,
         });
     });
 

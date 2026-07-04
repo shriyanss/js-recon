@@ -28,7 +28,12 @@ import {
     getTechnology,
     CollisionRecord,
 } from "./remote/hf-client.js";
-import { loadRefactorConfig, validateRefactorConfig } from "./remote/config.js";
+import {
+    loadRefactorConfig,
+    validateRefactorConfig,
+    purgeDynamicVersionDetectionScatConfig,
+    saveDynamicVersionDetectionScatConfig,
+} from "./remote/config.js";
 import {
     loadListCache,
     saveListCache,
@@ -38,7 +43,14 @@ import {
     isSignatureCacheFresh,
     validateCaches,
 } from "./remote/cache.js";
-import { detectReactVersion, VersionDetectionResult, VERSION_TECH_TO_BUNDLER } from "./remote/version-detect.js";
+import {
+    detectReactVersion,
+    VersionDetectionResult,
+    VERSION_TECH_TO_BUNDLER,
+    listAvailableVersions,
+    selectDynamicScatConfigs,
+    validateStaticScatConfig,
+} from "./remote/version-detect.js";
 
 /**
  * Derives the assets directory from the URL embedded in any chunk's code comment.
@@ -105,6 +117,12 @@ export type RemoteLibSigsOptions = {
     scat?: string[]; // override CS-MAST scat categories; if omitted, uses BASELINE_SCAT_DIR[tech]
     remoteCollisions?: string; // explicit HF bucket path; overrides TECH_TO_BRANCH lookup
     detectVersion?: boolean; // detect the React version used in the bundle
+    // "dynamic" (default) = auto-select reliable scat configs; otherwise comma-separated scat categories.
+    detectVersionConfig?: string;
+    // Number of scat configs to use in dynamic mode (default: 3).
+    detectVersionDynamicThreshold?: number;
+    // When true, clear the cached dynamic scat config and recompute.
+    detectVersionDynamicConfPurge?: boolean;
 };
 
 // Parses a collisions.json file and returns signatures whose count equals the maximum.
@@ -615,6 +633,97 @@ export default defineConfig({
 }
 
 /**
+ * Resolves the scat dir list to use for version detection based on the user's options.
+ * Returns an empty array when version detection should be skipped (e.g., invalid static config).
+ *
+ * Dynamic mode (default):
+ *   - Reads cached dynamic scat configs from ~/.js-recon/refactor/config.json.
+ *   - If --detect-version-dynamic-conf-purge is set, clears the cache first.
+ *   - If no cached configs exist, runs selectDynamicScatConfigs() and saves the result.
+ *
+ * Static mode (user passes comma-separated categories):
+ *   - Validates that reliable_signatures.json is non-empty for all known versions.
+ *   - Exits with code 26 if the config is invalid or empty for any version.
+ */
+async function resolveVersionDetectionScatDirs(
+    bundler: string,
+    opts: RemoteLibSigsOptions
+): Promise<string[]> {
+    const detectConfig = opts.detectVersionConfig ?? "dynamic";
+
+    if (detectConfig === "dynamic") {
+        if (opts.detectVersionDynamicConfPurge) {
+            console.log(chalk.cyan("[i] Version detection: purging cached dynamic scat config..."));
+            purgeDynamicVersionDetectionScatConfig();
+        }
+
+        const cfg = loadRefactorConfig();
+        if (cfg.dynamicVersionDetectionScatConfig && cfg.dynamicVersionDetectionScatConfig.length > 0) {
+            console.log(
+                chalk.cyan(
+                    `[i] Version detection: using cached dynamic scat config (${cfg.dynamicVersionDetectionScatConfig.join(", ")})`
+                )
+            );
+            return cfg.dynamicVersionDetectionScatConfig;
+        }
+
+        // No cached config — discover versions and run dynamic selection.
+        let versions: string[];
+        try {
+            versions = await listAvailableVersions(bundler);
+        } catch (e) {
+            console.log(chalk.yellow(`[!] Version detection: could not list versions (${String(e)})`));
+            return [];
+        }
+        if (versions.length === 0) {
+            console.log(chalk.yellow(`[!] Version detection: no version data found for ${bundler}`));
+            return [];
+        }
+
+        const threshold = Math.max(1, opts.detectVersionDynamicThreshold ?? 3);
+        const selected = await selectDynamicScatConfigs(bundler, versions, threshold);
+        if (selected.length > 0) {
+            saveDynamicVersionDetectionScatConfig(selected);
+        } else {
+            console.log(chalk.yellow(`[!] Version detection: dynamic selection found no valid scat configs`));
+        }
+        return selected;
+    }
+
+    // Static config: parse comma-separated scat categories and convert to bucket dir name.
+    const categories = detectConfig
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const scatDir = scatToDir(categories);
+    if (!scatDir) {
+        console.log(chalk.red(`[!] --detect-version-config "${detectConfig}" produced an empty scat dir; check category names`));
+        process.exit(26);
+    }
+
+    // Validate by checking that reliable_signatures.json is non-empty for all versions.
+    let versions: string[];
+    try {
+        versions = await listAvailableVersions(bundler);
+    } catch (e) {
+        console.log(chalk.yellow(`[!] Version detection: could not list versions to validate static config (${String(e)})`));
+        return [];
+    }
+
+    const valid = await validateStaticScatConfig(bundler, versions, scatDir);
+    if (!valid) {
+        console.log(
+            chalk.red(
+                `[!] --detect-version-config "${detectConfig}" (scat dir: "${scatDir}") has empty reliable_signatures.json for one or more versions. Cannot use for version detection.`
+            )
+        );
+        process.exit(26);
+    }
+
+    return [scatDir];
+}
+
+/**
  * Refactors JavaScript code chunks based on technology-specific patterns.
  *
  * This function takes mapped code chunks and applies technology-specific refactoring
@@ -840,41 +949,41 @@ const refactor = async (
         // written into package.json by runBuildCheck.
         let detectedVersion: VersionDetectionResult | undefined;
         if (remoteOpts?.detectVersion && VERSION_TECH_TO_BUNDLER[tech]) {
-            const scatDir = remoteOpts.scat
-                ? scatToDir(remoteOpts.scat)
-                : (BASELINE_SCAT_DIR[tech] ?? "lit-decl-loop-cond");
-
-            // Include vendor chunk file contents (e.g. vendor-react-dom.*.js) that hold
-            // React library code but are not present in mapped.json.  Without these, the
-            // signature set contains only app-level code and misses version-specific React
-            // library signatures.
-            const vendorCodes: string[] = [];
-            const vDetectAssetsDir = findAssetsDir(chunks, mappedJson);
-            if (vDetectAssetsDir) {
-                for (const vendorFile of findVendorChunkFiles(chunks, vDetectAssetsDir)) {
-                    try {
-                        vendorCodes.push(fs.readFileSync(vendorFile, "utf8"));
-                    } catch {
-                        // non-fatal
+            const bundler = VERSION_TECH_TO_BUNDLER[tech];
+            const vScatDirs = await resolveVersionDetectionScatDirs(bundler, remoteOpts);
+            if (vScatDirs.length > 0) {
+                // Include vendor chunk file contents (e.g. vendor-react-dom.*.js) that hold
+                // React library code but are not present in mapped.json.  Without these, the
+                // signature set contains only app-level code and misses version-specific React
+                // library signatures.
+                const vendorCodes: string[] = [];
+                const vDetectAssetsDir = findAssetsDir(chunks, mappedJson);
+                if (vDetectAssetsDir) {
+                    for (const vendorFile of findVendorChunkFiles(chunks, vDetectAssetsDir)) {
+                        try {
+                            vendorCodes.push(fs.readFileSync(vendorFile, "utf8"));
+                        } catch {
+                            // non-fatal
+                        }
                     }
                 }
-            }
 
-            const vResult = await detectReactVersion(
-                chunks,
-                tech,
-                scatDir,
-                vendorCodes.length > 0 ? vendorCodes : undefined
-            );
-            if (vResult) {
-                console.log(
-                    chalk.green(
-                        `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
-                    )
+                const vResult = await detectReactVersion(
+                    chunks,
+                    tech,
+                    vScatDirs,
+                    vendorCodes.length > 0 ? vendorCodes : undefined
                 );
-                detectedVersion = vResult;
-            } else {
-                console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+                if (vResult) {
+                    console.log(
+                        chalk.green(
+                            `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
+                        )
+                    );
+                    detectedVersion = vResult;
+                } else {
+                    console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+                }
             }
         }
 
@@ -976,19 +1085,20 @@ const refactor = async (
         // written into package.json by runViteBuildCheck.
         let viteDetectedVersion: VersionDetectionResult | undefined;
         if (remoteOpts?.detectVersion && VERSION_TECH_TO_BUNDLER[tech]) {
-            const scatDir = remoteOpts.scat
-                ? scatToDir(remoteOpts.scat)
-                : (BASELINE_SCAT_DIR[tech] ?? "lit-decl-loop-cond");
-            const vResult = await detectReactVersion(chunks, tech, scatDir);
-            if (vResult) {
-                console.log(
-                    chalk.green(
-                        `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
-                    )
-                );
-                viteDetectedVersion = vResult;
-            } else {
-                console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+            const bundler = VERSION_TECH_TO_BUNDLER[tech];
+            const vScatDirs = await resolveVersionDetectionScatDirs(bundler, remoteOpts);
+            if (vScatDirs.length > 0) {
+                const vResult = await detectReactVersion(chunks, tech, vScatDirs);
+                if (vResult) {
+                    console.log(
+                        chalk.green(
+                            `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
+                        )
+                    );
+                    viteDetectedVersion = vResult;
+                } else {
+                    console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+                }
             }
         }
 

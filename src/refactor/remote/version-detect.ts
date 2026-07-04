@@ -73,7 +73,7 @@ function saveCachedReliableSigs(bundler: string, version: string, scatDir: strin
 
 // Lists available React version directories under version/react/<bundler>/ in the HF bucket.
 // Returns an array of version folder names like ["react-16", "react-17", "react-18"].
-async function listAvailableVersions(bundler: string): Promise<string[]> {
+export async function listAvailableVersions(bundler: string): Promise<string[]> {
     const prefix = `version/react/${bundler}`;
     const dirs = new Set<string>();
     let nextUrl: string | null = getHfApiTreeUrl(prefix);
@@ -107,6 +107,127 @@ async function listAvailableVersions(bundler: string): Promise<string[]> {
     }
 
     return Array.from(dirs).sort();
+}
+
+// Lists scat config directory names immediately under version/react/<bundler>/<version>/ in the HF bucket.
+// Returns strings like ["cond-name-op_name", "id-cond-name-op_name", "lit-decl-loop-cond", ...].
+async function listScatDirsForVersion(bundler: string, version: string): Promise<string[]> {
+    const prefix = `version/react/${bundler}/${version}`;
+    const dirs = new Set<string>();
+    let nextUrl: string | null = getHfApiTreeUrl(prefix);
+
+    while (nextUrl) {
+        let resp: Response;
+        try {
+            resp = await fetch(nextUrl);
+        } catch {
+            break;
+        }
+        if (resp.status === 429) throw new Error(`Rate limited by HuggingFace`);
+        if (!resp.ok) break;
+
+        const text = await resp.text();
+        try {
+            const entries = JSON.parse(text) as Array<{ path: string }>;
+            const prefixSlash = `${prefix}/`;
+            for (const e of entries) {
+                const rel = e.path.startsWith(prefixSlash) ? e.path.slice(prefixSlash.length) : e.path;
+                const parts = rel.split("/");
+                if (parts.length > 1 && parts[0]) dirs.add(parts[0]);
+            }
+        } catch {
+            break;
+        }
+
+        const linkHeader = resp.headers.get("link");
+        const match = linkHeader?.match(/<([^>]+)>;\s*rel="next"/);
+        nextUrl = match ? match[1] : null;
+    }
+
+    return Array.from(dirs).sort();
+}
+
+/**
+ * Dynamically selects up to `threshold` scat configs that have non-empty reliable_signatures.json
+ * for ALL known versions of the given bundler. A scat config is only selected if every version's
+ * reliable_signatures.json for that config is non-empty — ensuring it can be used for detection
+ * across the full version range.
+ *
+ * @param bundler   - Bundler name (e.g. "webpack", "vite")
+ * @param versions  - Available version folder names from listAvailableVersions()
+ * @param threshold - Maximum number of scat configs to select (must be positive)
+ * @returns Array of selected scatDir strings (may be shorter than threshold if insufficient data)
+ */
+export async function selectDynamicScatConfigs(
+    bundler: string,
+    versions: string[],
+    threshold: number
+): Promise<string[]> {
+    if (versions.length === 0) return [];
+
+    // Use the first version to enumerate available scat dirs; all versions share the same set.
+    const referenceVersion = versions[0];
+    console.log(
+        chalk.cyan(
+            `[i] Dynamic scat config selection: listing scat dirs for ${bundler}/${referenceVersion}...`
+        )
+    );
+
+    let scatDirs: string[];
+    try {
+        scatDirs = await listScatDirsForVersion(bundler, referenceVersion);
+    } catch (e) {
+        console.log(chalk.yellow(`[!] Dynamic scat selection: could not list scat dirs (${String(e)})`));
+        return [];
+    }
+
+    if (scatDirs.length === 0) {
+        console.log(chalk.yellow(`[!] Dynamic scat selection: no scat dirs found for ${bundler}/${referenceVersion}`));
+        return [];
+    }
+
+    const selected: string[] = [];
+
+    for (const scatDir of scatDirs) {
+        if (selected.length >= threshold) break;
+
+        // A config is usable only if reliable_signatures.json is non-empty for every known version.
+        let allNonEmpty = true;
+        for (const version of versions) {
+            const sigs = await fetchReliableSignatures(bundler, version, scatDir);
+            if (!sigs || sigs.length === 0) {
+                allNonEmpty = false;
+                break;
+            }
+        }
+
+        if (allNonEmpty) {
+            selected.push(scatDir);
+            console.log(
+                chalk.cyan(
+                    `[i] Dynamic scat config selected: ${scatDir} (${selected.length}/${threshold})`
+                )
+            );
+        }
+    }
+
+    return selected;
+}
+
+/**
+ * Validates that a static (user-supplied) scat config has non-empty reliable_signatures.json
+ * for every known version. Returns true when the config is usable; false if any version is empty.
+ */
+export async function validateStaticScatConfig(
+    bundler: string,
+    versions: string[],
+    scatDir: string
+): Promise<boolean> {
+    for (const version of versions) {
+        const sigs = await fetchReliableSignatures(bundler, version, scatDir);
+        if (!sigs || sigs.length === 0) return false;
+    }
+    return true;
 }
 
 // Fetches (or loads from cache) reliable_signatures.json for one (bundler, version, scatDir) combo.
@@ -168,7 +289,9 @@ function generateBundleSignatures(chunks: Chunks, scat: ScatCategory[], extraCod
  *
  * @param chunks      - Parsed mapped.json chunks from the target bundle
  * @param tech        - Refactor tech identifier (e.g. "react-webpack")
- * @param scatDir     - Scat directory name used for this run (e.g. "lit-decl-loop-cond")
+ * @param scatDirs    - Scat directory names to use (e.g. ["lit-decl-loop-cond", "id-cond"]). Match
+ *                      counts across all scat dirs are summed per version; the version with the
+ *                      highest total wins.
  * @param extraCodes  - Additional raw JS code strings to include in signature generation
  *                      (e.g. vendor chunk files that contain React library code but are
  *                      not present in mapped.json)
@@ -177,11 +300,12 @@ function generateBundleSignatures(chunks: Chunks, scat: ScatCategory[], extraCod
 export async function detectReactVersion(
     chunks: Chunks,
     tech: string,
-    scatDir: string,
+    scatDirs: string[],
     extraCodes?: string[]
 ): Promise<VersionDetectionResult | null> {
     const bundler = VERSION_TECH_TO_BUNDLER[tech];
     if (!bundler) return null;
+    if (scatDirs.length === 0) return null;
 
     // List available versions for this bundler
     console.log(chalk.cyan(`[i] Version detection: listing available React versions for ${bundler}...`));
@@ -198,49 +322,68 @@ export async function detectReactVersion(
         return null;
     }
 
-    // Derive ScatCategory[] from scatDir for signature generation.
-    // scatDir uses hyphens as separators and op_name uses an underscore internally —
-    // splitting on "-" yields valid ScatCategory values for all 511 combos.
-    const scat = scatDir.split("-") as ScatCategory[];
-
-    const totalCodeUnits = Object.keys(chunks).length + (extraCodes?.length ?? 0);
     console.log(
         chalk.cyan(
-            `[i] Version detection: generating signatures from ${totalCodeUnits} code unit(s) (scat: ${scatDir})...`
+            `[i] Version detection: using ${scatDirs.length} scat config(s): ${scatDirs.join(", ")}`
         )
     );
-    const bundleSigs = generateBundleSignatures(chunks, scat, extraCodes);
 
-    if (bundleSigs.size === 0) {
-        console.log(chalk.yellow(`[!] Version detection: could not generate any signatures from chunks`));
-        return null;
+    const totalCodeUnits = Object.keys(chunks).length + (extraCodes?.length ?? 0);
+
+    // Accumulate match counts per version across all scat dirs.
+    // Each scat config contributes independent signature evidence; summing gives a stronger signal.
+    const matchesPerVersion = new Map<string, number>();
+
+    for (const scatDir of scatDirs) {
+        // Derive ScatCategory[] from scatDir for signature generation.
+        // scatDir uses hyphens as separators and op_name uses an underscore internally —
+        // splitting on "-" yields valid ScatCategory values for all 511 combos.
+        const scat = scatDir.split("-") as ScatCategory[];
+
+        console.log(
+            chalk.cyan(
+                `[i] Version detection: generating signatures from ${totalCodeUnits} code unit(s) (scat: ${scatDir})...`
+            )
+        );
+        const bundleSigs = generateBundleSignatures(chunks, scat, extraCodes);
+
+        if (bundleSigs.size === 0) {
+            console.log(chalk.yellow(`[!] Version detection: no signatures generated for scat "${scatDir}", skipping`));
+            continue;
+        }
+
+        console.log(
+            chalk.cyan(`[i] Version detection: checking ${versions.length} versions for scat "${scatDir}"...`)
+        );
+
+        for (const version of versions) {
+            const reliableSigs = await fetchReliableSignatures(bundler, version, scatDir);
+            if (!reliableSigs || reliableSigs.length === 0) continue;
+
+            let matchCount = 0;
+            for (const sig of reliableSigs) {
+                if (bundleSigs.has(sig)) matchCount++;
+            }
+
+            if (matchCount > 0) {
+                matchesPerVersion.set(version, (matchesPerVersion.get(version) ?? 0) + matchCount);
+            }
+        }
     }
-
-    console.log(chalk.cyan(`[i] Version detection: checking ${versions.length} versions for signature matches...`));
 
     let bestMatch: VersionDetectionResult | null = null;
 
-    for (const version of versions) {
-        const reliableSigs = await fetchReliableSignatures(bundler, version, scatDir);
-        if (!reliableSigs || reliableSigs.length === 0) continue;
+    for (const [version, totalMatches] of matchesPerVersion.entries()) {
+        const npmInfo = REACT_VERSION_TO_NPM[version];
+        if (!npmInfo) continue;
 
-        let matchCount = 0;
-        for (const sig of reliableSigs) {
-            if (bundleSigs.has(sig)) matchCount++;
-        }
-
-        if (matchCount > 0) {
-            const npmInfo = REACT_VERSION_TO_NPM[version];
-            if (!npmInfo) continue;
-
-            if (!bestMatch || matchCount > bestMatch.matchCount) {
-                bestMatch = {
-                    versionKey: version,
-                    reactNpm: npmInfo.react,
-                    reactDomNpm: npmInfo.reactDom,
-                    matchCount,
-                };
-            }
+        if (!bestMatch || totalMatches > bestMatch.matchCount) {
+            bestMatch = {
+                versionKey: version,
+                reactNpm: npmInfo.react,
+                reactDomNpm: npmInfo.reactDom,
+                matchCount: totalMatches,
+            };
         }
     }
 
