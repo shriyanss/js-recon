@@ -168,9 +168,7 @@ export async function selectDynamicScatConfigs(
     // Use the first version to enumerate available scat dirs; all versions share the same set.
     const referenceVersion = versions[0];
     console.log(
-        chalk.cyan(
-            `[i] Dynamic scat config selection: listing scat dirs for ${bundler}/${referenceVersion}...`
-        )
+        chalk.cyan(`[i] Dynamic scat config selection: listing scat dirs for ${bundler}/${referenceVersion}...`)
     );
 
     let scatDirs: string[];
@@ -203,11 +201,7 @@ export async function selectDynamicScatConfigs(
 
         if (allNonEmpty) {
             selected.push(scatDir);
-            console.log(
-                chalk.cyan(
-                    `[i] Dynamic scat config selected: ${scatDir} (${selected.length}/${threshold})`
-                )
-            );
+            console.log(chalk.cyan(`[i] Dynamic scat config selected: ${scatDir} (${selected.length}/${threshold})`));
         }
     }
 
@@ -218,11 +212,7 @@ export async function selectDynamicScatConfigs(
  * Validates that a static (user-supplied) scat config has non-empty reliable_signatures.json
  * for every known version. Returns true when the config is usable; false if any version is empty.
  */
-export async function validateStaticScatConfig(
-    bundler: string,
-    versions: string[],
-    scatDir: string
-): Promise<boolean> {
+export async function validateStaticScatConfig(bundler: string, versions: string[], scatDir: string): Promise<boolean> {
     for (const version of versions) {
         const sigs = await fetchReliableSignatures(bundler, version, scatDir);
         if (!sigs || sigs.length === 0) return false;
@@ -322,11 +312,7 @@ export async function detectReactVersion(
         return null;
     }
 
-    console.log(
-        chalk.cyan(
-            `[i] Version detection: using ${scatDirs.length} scat config(s): ${scatDirs.join(", ")}`
-        )
-    );
+    console.log(chalk.cyan(`[i] Version detection: using ${scatDirs.length} scat config(s): ${scatDirs.join(", ")}`));
 
     const totalCodeUnits = Object.keys(chunks).length + (extraCodes?.length ?? 0);
 
@@ -352,9 +338,7 @@ export async function detectReactVersion(
             continue;
         }
 
-        console.log(
-            chalk.cyan(`[i] Version detection: checking ${versions.length} versions for scat "${scatDir}"...`)
-        );
+        console.log(chalk.cyan(`[i] Version detection: checking ${versions.length} versions for scat "${scatDir}"...`));
 
         for (const version of versions) {
             const reliableSigs = await fetchReliableSignatures(bundler, version, scatDir);

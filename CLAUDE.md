@@ -436,6 +436,7 @@ The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<t
 `refactor -t react-webpack` and `refactor -t react-vite` accept a `--detect-version` flag that uses CS-MAST signatures to detect the React version used in the bundle.
 
 **Related flags:**
+
 - `--detect-version-config <config>` — `"dynamic"` (default) or comma-separated scat categories (e.g. `lit,decl,loop,cond`).
 - `--detect-version-dynamic-threshold <n>` — number of scat configs to use in dynamic mode (default: 3).
 - `--detect-version-dynamic-conf-purge` — clears the cached dynamic scat config and recomputes.
@@ -443,14 +444,15 @@ The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<t
 **How it works:**
 
 1. **Scat config resolution** (`resolveVersionDetectionScatDirs()` in `src/refactor/index.ts`):
-   - `dynamic` mode: reads cached scat configs from `~/.js-recon/refactor/config.json`. If absent (or purged), calls `selectDynamicScatConfigs()` which lists scat dirs from the HF bucket for a reference version, then validates that each scat dir has non-empty `reliable_signatures.json` for ALL versions. Saves the result to `config.json`.
-   - Static mode: parses the user's comma-separated categories, converts to a bucket dir name via `scatToDir()`, validates against all versions, and exits with code 26 if any version's file is empty.
+    - `dynamic` mode: reads cached scat configs from `~/.js-recon/refactor/config.json`. If absent (or purged), calls `selectDynamicScatConfigs()` which lists scat dirs from the HF bucket for a reference version, then validates that each scat dir has non-empty `reliable_signatures.json` for ALL versions. Saves the result to `config.json`.
+    - Static mode: parses the user's comma-separated categories, converts to a bucket dir name via `scatToDir()`, validates against all versions, and exits with code 26 if any version's file is empty.
 2. `generateBundleSignatures()` in `src/refactor/remote/version-detect.ts` runs `cs_mast_init` on every chunk + optional extra code snippets for each selected scat config. This produces a separate signature set per scat.
 3. For each available React version, `fetchReliableSignatures()` downloads (or loads from cache) the `reliable_signatures.json` per scat config. Match counts are **summed across all scat configs** per version.
 4. The version with the highest total match count is returned as the detected version.
 5. The detected version's npm semver is used to pin `react` and `react-dom` in the refactored output's `package.json`.
 
 **Caches:**
+
 - Signature cache: `~/.js-recon/refactor/version_sigs_cache/<bundler>/<version>/<scatDir>/reliable_signatures.json` + `.cached_at` (7-day TTL).
 - Dynamic config cache: `~/.js-recon/refactor/config.json` (`dynamicVersionDetectionScatConfig` field).
 

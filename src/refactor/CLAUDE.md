@@ -72,6 +72,7 @@ See `react/CLAUDE.md` for the full build history and signature-matching rational
 `--detect-version` uses CS-MAST-S reliable signatures to identify the exact React version bundled in the target app and applies that version to `react`/`react-dom` pins in the refactored output's `package.json`.
 
 **New flags (added with multi-config support):**
+
 - `--detect-version-config <config>` — `"dynamic"` (default) or comma-separated scat categories (e.g. `lit,decl,loop,cond`). Static configs are validated against all versions; exits with code 26 if any version has an empty `reliable_signatures.json`.
 - `--detect-version-dynamic-threshold <n>` — max scat configs to select in dynamic mode (default: 3).
 - `--detect-version-dynamic-conf-purge` — purge the cached dynamic config and recompute.
@@ -79,6 +80,7 @@ See `react/CLAUDE.md` for the full build history and signature-matching rational
 **Implementation:** `src/refactor/remote/version-detect.ts` + glue in `src/refactor/index.ts`
 
 Key functions:
+
 - `listAvailableVersions(bundler)` — lists version dirs under `version/react/<bundler>/` in the HF bucket (exported).
 - `listScatDirsForVersion(bundler, version)` — lists scat config dirs under `version/react/<bundler>/<version>/`.
 - `selectDynamicScatConfigs(bundler, versions, threshold)` — iterates scat dirs, picks the first `threshold` that have non-empty `reliable_signatures.json` for ALL versions.

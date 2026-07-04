@@ -645,10 +645,7 @@ export default defineConfig({
  *   - Validates that reliable_signatures.json is non-empty for all known versions.
  *   - Exits with code 26 if the config is invalid or empty for any version.
  */
-async function resolveVersionDetectionScatDirs(
-    bundler: string,
-    opts: RemoteLibSigsOptions
-): Promise<string[]> {
+async function resolveVersionDetectionScatDirs(bundler: string, opts: RemoteLibSigsOptions): Promise<string[]> {
     const detectConfig = opts.detectVersionConfig ?? "dynamic";
 
     if (detectConfig === "dynamic") {
@@ -697,7 +694,9 @@ async function resolveVersionDetectionScatDirs(
         .filter(Boolean);
     const scatDir = scatToDir(categories);
     if (!scatDir) {
-        console.log(chalk.red(`[!] --detect-version-config "${detectConfig}" produced an empty scat dir; check category names`));
+        console.log(
+            chalk.red(`[!] --detect-version-config "${detectConfig}" produced an empty scat dir; check category names`)
+        );
         process.exit(26);
     }
 
@@ -706,7 +705,9 @@ async function resolveVersionDetectionScatDirs(
     try {
         versions = await listAvailableVersions(bundler);
     } catch (e) {
-        console.log(chalk.yellow(`[!] Version detection: could not list versions to validate static config (${String(e)})`));
+        console.log(
+            chalk.yellow(`[!] Version detection: could not list versions to validate static config (${String(e)})`)
+        );
         return [];
     }
 
