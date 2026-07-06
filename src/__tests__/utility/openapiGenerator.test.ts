@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-    getZodPlaceholderType,
-    getOpenApiType,
-    generateOpenapiV3Spec,
-} from "../../utility/openapiGenerator.js";
+import { getZodPlaceholderType, getOpenApiType, generateOpenapiV3Spec } from "../../utility/openapiGenerator.js";
 import type { OpenapiOutputItem } from "../../utility/globals.js";
 
 describe("getZodPlaceholderType", () => {

@@ -36,11 +36,7 @@ describe("permutate", () => {
     });
 
     it("deduplicates identical entries", async () => {
-        await permutate(
-            ["https://example.com/"],
-            ["/api/users"],
-            tmpFile
-        );
+        await permutate(["https://example.com/"], ["/api/users"], tmpFile);
         const content = fs.readFileSync(`${tmpFile}.txt`, "utf8");
         const lines = content.split("\n").filter((l) => l.length > 0);
         const unique = new Set(lines);
@@ -55,11 +51,7 @@ describe("permutate", () => {
     });
 
     it("produces output for multiple URLs and paths", async () => {
-        await permutate(
-            ["https://a.example.com/", "https://b.example.com/"],
-            ["/api/users", "/api/posts"],
-            tmpFile
-        );
+        await permutate(["https://a.example.com/", "https://b.example.com/"], ["/api/users", "/api/posts"], tmpFile);
         const content = fs.readFileSync(`${tmpFile}.txt`, "utf8");
         expect(content).toContain("https://a.example.com/api/users");
         expect(content).toContain("https://a.example.com/api/posts");

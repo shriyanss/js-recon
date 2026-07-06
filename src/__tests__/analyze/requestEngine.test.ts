@@ -10,18 +10,19 @@ const makeSpec = (paths: Record<string, any>): OpenAPISpec => ({
     paths,
 });
 
-const makeRule = (overrides: Partial<Rule> = {}): Rule => ({
-    id: "test-rule",
-    name: "Test Rule",
-    author: "tester",
-    description: "test",
-    js_recon_version: ">=1.0.0",
-    tech: ["next"],
-    severity: "info",
-    type: "request",
-    steps: [],
-    ...overrides,
-} as Rule);
+const makeRule = (overrides: Partial<Rule> = {}): Rule =>
+    ({
+        id: "test-rule",
+        name: "Test Rule",
+        author: "tester",
+        description: "test",
+        js_recon_version: ">=1.0.0",
+        tech: ["next"],
+        severity: "info",
+        type: "request",
+        steps: [],
+        ...overrides,
+    }) as Rule;
 
 describe("requestEngine", () => {
     it("finds endpoint when URL contains the pattern", async () => {
@@ -29,7 +30,9 @@ describe("requestEngine", () => {
             "/api/admin/users": { get: { summary: "List users", responses: { 200: { description: "ok" } } } },
         });
         const rule = makeRule({
-            steps: [{ name: "s1", message: "Found admin", request: { type: "url", condition: "contains", name: "admin" } }],
+            steps: [
+                { name: "s1", message: "Found admin", request: { type: "url", condition: "contains", name: "admin" } },
+            ],
         });
         const findings = await engine(rule, spec);
         expect(findings).toHaveLength(1);
@@ -41,7 +44,9 @@ describe("requestEngine", () => {
             "/api/public/data": { get: { summary: "Public", responses: { 200: { description: "ok" } } } },
         });
         const rule = makeRule({
-            steps: [{ name: "s1", message: "Found admin", request: { type: "url", condition: "contains", name: "admin" } }],
+            steps: [
+                { name: "s1", message: "Found admin", request: { type: "url", condition: "contains", name: "admin" } },
+            ],
         });
         const findings = await engine(rule, spec);
         expect(findings).toHaveLength(0);
@@ -80,7 +85,13 @@ describe("requestEngine", () => {
             },
         });
         const rule = makeRule({
-            steps: [{ name: "s1", message: "Has next-action", request: { type: "headers", condition: "contains", name: "next-action" } }],
+            steps: [
+                {
+                    name: "s1",
+                    message: "Has next-action",
+                    request: { type: "headers", condition: "contains", name: "next-action" },
+                },
+            ],
         });
         const findings = await engine(rule, spec);
         expect(findings).toHaveLength(1);
@@ -91,7 +102,13 @@ describe("requestEngine", () => {
             "/api/data": { get: { summary: "Data", responses: { 200: { description: "ok" } } } },
         });
         const rule = makeRule({
-            steps: [{ name: "s1", message: "No auth header", request: { type: "headers", condition: "absent", name: "Authorization" } }],
+            steps: [
+                {
+                    name: "s1",
+                    message: "No auth header",
+                    request: { type: "headers", condition: "absent", name: "Authorization" },
+                },
+            ],
         });
         const findings = await engine(rule, spec);
         expect(findings).toHaveLength(1);
@@ -108,7 +125,13 @@ describe("requestEngine", () => {
             },
         });
         const rule = makeRule({
-            steps: [{ name: "s1", message: "No auth header", request: { type: "headers", condition: "absent", name: "Authorization" } }],
+            steps: [
+                {
+                    name: "s1",
+                    message: "No auth header",
+                    request: { type: "headers", condition: "absent", name: "Authorization" },
+                },
+            ],
         });
         const findings = await engine(rule, spec);
         expect(findings).toHaveLength(0);
@@ -141,7 +164,9 @@ describe("requestEngine", () => {
             "/api/data": { get: { summary: "Get data", responses: { 200: { description: "ok" } } } },
         });
         const rule = makeRule({
-            steps: [{ name: "s1", message: "Not POST", request: { type: "method", condition: "is_not", name: "post" } }],
+            steps: [
+                { name: "s1", message: "Not POST", request: { type: "method", condition: "is_not", name: "post" } },
+            ],
         });
         const findings = await engine(rule, spec);
         expect(findings).toHaveLength(1);
@@ -160,7 +185,11 @@ describe("requestEngine", () => {
         const rule = makeRule({
             steps: [
                 { name: "s1", message: "Has admin", request: { type: "url", condition: "contains", name: "admin" } },
-                { name: "s2", message: "Has next-action", request: { type: "headers", condition: "contains", name: "next-action" } },
+                {
+                    name: "s2",
+                    message: "Has next-action",
+                    request: { type: "headers", condition: "contains", name: "next-action" },
+                },
                 { name: "s3", message: "Is POST", request: { type: "method", condition: "is", name: "post" } },
             ],
         });
@@ -175,7 +204,11 @@ describe("requestEngine", () => {
         const rule = makeRule({
             steps: [
                 { name: "s1", message: "Has admin", request: { type: "url", condition: "contains", name: "admin" } },
-                { name: "s2", message: "Has next-action", request: { type: "headers", condition: "contains", name: "next-action" } },
+                {
+                    name: "s2",
+                    message: "Has next-action",
+                    request: { type: "headers", condition: "contains", name: "next-action" },
+                },
             ],
         });
         const findings = await engine(rule, spec);

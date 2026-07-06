@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-    buildBodyExample,
-    splitPath,
-    generatePostmanCollection,
-} from "../../utility/postmanGenerator.js";
+import { buildBodyExample, splitPath, generatePostmanCollection } from "../../utility/postmanGenerator.js";
 import type { OpenapiOutputItem } from "../../utility/globals.js";
 
 const makeItem = (overrides: Partial<OpenapiOutputItem>): OpenapiOutputItem => ({
