@@ -46,10 +46,8 @@ export const extractObjectMapChunkEntries = (jsContent: string): Array<[number, 
 
                         let keyNum: number | null = null;
                         if (key.type === "NumericLiteral") keyNum = key.value;
-                        else if (key.type === "StringLiteral" && /^\d+$/.test(key.value))
-                            keyNum = parseInt(key.value);
-                        else if (key.type === "Identifier" && /^\d+$/.test(key.name))
-                            keyNum = parseInt(key.name);
+                        else if (key.type === "StringLiteral" && /^\d+$/.test(key.value)) keyNum = parseInt(key.value);
+                        else if (key.type === "Identifier" && /^\d+$/.test(key.name)) keyNum = parseInt(key.name);
 
                         if (keyNum === null) continue;
                         entries.push([keyNum, value.value]);
@@ -207,14 +205,12 @@ const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFile
                             let output = execFunc(urlBuilderFunc, parseInt(i));
                             if (typeof output !== "string" || output.includes("undefined")) continue;
 
-                            if (
-                                !(
-                                    output.startsWith("/") ||
-                                    output.startsWith("http") ||
-                                    output.startsWith("./") ||
-                                    output.startsWith("../")
-                                )
-                            ) {
+                            if (!(
+                                output.startsWith("/") ||
+                                output.startsWith("http") ||
+                                output.startsWith("./") ||
+                                output.startsWith("../")
+                            )) {
                                 output = "../" + output;
                             }
                             const finalUrl = new URL(output, jsFile).href;
