@@ -122,7 +122,11 @@ export async function detectBundler(
         );
 
         if (allPaths.length === 0) {
-            console.log(chalk.yellow(`[!] Bundler detection: no collision files for scat "${DETECTION_SCAT_DIR}" in branch "${branch}" — skipping.`));
+            console.log(
+                chalk.yellow(
+                    `[!] Bundler detection: no collision files for scat "${DETECTION_SCAT_DIR}" in branch "${branch}" — skipping.`
+                )
+            );
             continue;
         }
 
@@ -149,7 +153,9 @@ export async function detectBundler(
             }
         }
 
-        console.log(chalk.cyan(`[i] Bundler detection: ${tech} — ${matchCount} signature match(es) (threshold: ${threshold})`));
+        console.log(
+            chalk.cyan(`[i] Bundler detection: ${tech} — ${matchCount} signature match(es) (threshold: ${threshold})`)
+        );
 
         if (matchCount > bestMatchCount) {
             bestMatchCount = matchCount;
