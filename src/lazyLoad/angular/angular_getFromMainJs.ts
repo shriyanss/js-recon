@@ -4,7 +4,7 @@ import * as parser from "@babel/parser";
 import chalk from "chalk";
 import resolvePath from "../../utility/resolvePath.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Parses the main.js file of an Angular application to extract lazy-loaded module paths.

@@ -14,7 +14,7 @@ import {
 } from "./taint_utils.js";
 import { deepSubstituteBodyValue } from "./bodyResolver.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Checks whether invoking the given function body would directly execute a

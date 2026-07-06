@@ -4,7 +4,7 @@ import _traverse from "@babel/traverse";
 import chalk from "chalk";
 import t from "@babel/types";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Scans fetched JS files for Vite's __vite__mapDeps chunk manifest and returns

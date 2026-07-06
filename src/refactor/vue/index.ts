@@ -7,7 +7,7 @@ import { Chunk } from "../../utility/interfaces.js";
 import { WebpackModuleEntry, transformWebpackModule } from "../next/transform.js";
 import { validateAndFix } from "../next/validator.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Extracts the numeric module map from a webpack chunk container.

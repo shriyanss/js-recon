@@ -30,7 +30,7 @@ const stripAstNodes = (fn: EnclosingFn | null): EnclosingFn | null => {
     return root;
 };
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const HTTP_VERBS = new Set(["get", "post", "put", "delete", "patch", "head", "options"]);
 

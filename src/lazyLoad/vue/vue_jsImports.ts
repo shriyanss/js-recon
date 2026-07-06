@@ -3,7 +3,7 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import chalk from "chalk";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const parseJsFile = async (url: string, maxJsSizeMb: number) => {
     const MAX_JS_SIZE_BYTES = maxJsSizeMb * 1024 * 1024;

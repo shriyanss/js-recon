@@ -88,7 +88,7 @@ export const refactorNextWebpack = async (chunk: Chunk): Promise<Record<string, 
     return { [chunk.id]: code };
 };
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Refactors a single Next.js (Turbopack) chunk into an ECMAScript module file.

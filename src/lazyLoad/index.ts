@@ -3,7 +3,7 @@ import fs from "fs";
 import frameworkDetect from "./techDetect/index.js";
 import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import { URL } from "url";
 import * as cheerio from "cheerio";
 

@@ -3,7 +3,7 @@ import puppeteer from "../../utility/puppeteerInstance.js";
 import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import inquirer from "inquirer";
 import cliProgress from "cli-progress";
 import makeRequest from "../../utility/makeReq.js";

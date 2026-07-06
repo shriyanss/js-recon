@@ -3,7 +3,7 @@ import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import chalk from "chalk";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Searches for href attributes in JavaScript files to discover client-side paths.

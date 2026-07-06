@@ -4,7 +4,7 @@ import _traverse from "@babel/traverse";
 import parser from "@babel/parser";
 import execFunc from "../../utility/runSandboxed.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 // url param kept for API consistency with other react_* functions
 const react_webpackChunkPaths = async (_url: string, maxJsSizeMb: number, jsFiles: string[]): Promise<string[]> => {

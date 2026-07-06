@@ -16,7 +16,7 @@ import { collectInterceptorHeaders } from "./resolveAxiosHelpers/interceptorHead
 let globalInterceptorHeaders: { [key: string]: string } = {};
 export const getGlobalInterceptorHeaders = (): { [key: string]: string } => globalInterceptorHeaders;
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Gets the third argument of a function declaration or arrow function expression.

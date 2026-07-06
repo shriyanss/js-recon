@@ -13,7 +13,7 @@ import {
     makeGetCallers,
 } from "./taint_utils.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 interface XhrEntry {
     file: string;

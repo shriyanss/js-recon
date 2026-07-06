@@ -18,7 +18,7 @@ import {
     makeExportStatement,
 } from "./helpers.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 const generate = _generator.default;
 
 // Turbopack module format: func_NNN = (runtime, module, exports) => { ... }

@@ -2,7 +2,7 @@ import _traverse from "@babel/traverse";
 import parser from "@babel/parser";
 import { Chunks } from "../../../utility/interfaces.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Detects HTTP headers injected by axios request interceptors so they can be

@@ -1,6 +1,6 @@
 import { Node } from "@babel/types";
 import _traverse, { NodePath, Binding } from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 export type TaintInfo = {
     bindings: Set<NodePath>;

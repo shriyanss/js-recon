@@ -19,7 +19,7 @@ import {
     librarySource,
 } from "./library-classify.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 const generate = _generator.default;
 
 export type ModuleEntry = {

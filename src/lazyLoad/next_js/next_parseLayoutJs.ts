@@ -4,7 +4,7 @@ import _traverse from "@babel/traverse";
 import chalk from "chalk";
 import next_getJSScript from "./next_GetJSScript.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
     console.log(chalk.cyan("[i] Parsing layout.js files"));

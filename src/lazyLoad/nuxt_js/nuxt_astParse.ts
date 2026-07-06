@@ -1,6 +1,6 @@
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import execFunc from "../../utility/runSandboxed.js";
 import makeRequest from "../../utility/makeReq.js";
 import chalk from "chalk";

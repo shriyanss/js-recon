@@ -21,7 +21,7 @@ import _generator from "@babel/generator";
 import prettier from "prettier";
 import path from "path";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 import { cs_mast_init, ScatCategory } from "@shriyanss/cs-mast";
 import { Chunks } from "../../utility/interfaces.js";

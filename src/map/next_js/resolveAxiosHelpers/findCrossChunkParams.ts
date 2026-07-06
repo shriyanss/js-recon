@@ -6,7 +6,7 @@ import { astNodeToJsonString } from "./astNodeToJsonString.js";
 import chalk from "chalk";
 import pathModule from "path";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Find parameters passed to exported endpoint functions from other chunks

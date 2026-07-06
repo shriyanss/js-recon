@@ -103,7 +103,7 @@ const BASELINE_SCAT_DIR: Record<string, string> = {
 const ALL_SCAT_CATEGORIES = ["lit", "id", "op", "decl", "loop", "cond", "name", "val", "op_name"] as const;
 
 // Converts a scat list to the bucket directory name, preserving canonical category order.
-const scatToDir = (scat: string[]): string => {
+export const scatToDir = (scat: string[]): string => {
     const scatSet = new Set(scat);
     return ALL_SCAT_CATEGORIES.filter((c) => scatSet.has(c)).join("-") || scat.join("-");
 };
@@ -126,7 +126,7 @@ export type RemoteLibSigsOptions = {
 };
 
 // Parses a collisions.json file and returns signatures whose count equals the maximum.
-const loadCollisionsFile = (filePath: string): Set<string> => {
+export const loadCollisionsFile = (filePath: string): Set<string> => {
     const records = JSON.parse(fs.readFileSync(filePath, "utf8")) as Array<{
         signature: string;
         count: number;

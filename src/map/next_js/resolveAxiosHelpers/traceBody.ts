@@ -5,7 +5,7 @@ import { Node } from "@babel/types";
 import { Chunks } from "../../../utility/interfaces.js";
 import { astNodeToJsonString } from "./astNodeToJsonString.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 // AST parse cache keyed by chunk id, so that cross-chunk tracing doesn't reparse
 // the same chunk file dozens of times across recursive calls.

@@ -45,7 +45,7 @@ interface PMCollection {
     variable?: Array<{ key: string; value: string }>;
 }
 
-const buildBodyExample = (rawBody: string): string | undefined => {
+export const buildBodyExample = (rawBody: string): string | undefined => {
     if (!rawBody) return undefined;
     // The body strings we produce in traceBody.ts are JSON-ish but use
     // angle-bracketed placeholders for types (e.g. `"<string>"`). They are valid
@@ -57,7 +57,7 @@ const buildBodyExample = (rawBody: string): string | undefined => {
     }
 };
 
-const splitPath = (rawPath: string): { segments: string[]; query: Array<{ key: string; value: string }> } => {
+export const splitPath = (rawPath: string): { segments: string[]; query: Array<{ key: string; value: string }> } => {
     const [withoutQuery, queryString] = rawPath.split("?", 2);
     const segments = withoutQuery.split("/").filter(Boolean);
     const query: Array<{ key: string; value: string }> = [];

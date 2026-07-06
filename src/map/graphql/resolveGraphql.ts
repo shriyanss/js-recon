@@ -15,7 +15,7 @@ import {
 } from "graphql";
 import * as globals from "../../utility/globals.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const OPERATION_TOKEN_RE = /\b(query|mutation|subscription|fragment)\b/;
 const MIN_CANDIDATE_LEN = 20;

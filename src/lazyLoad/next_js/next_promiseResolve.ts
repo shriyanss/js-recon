@@ -4,7 +4,7 @@ import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import resolvePath from "../../utility/resolvePath.js";
 import { addCrawledUrl } from "../globals.js";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const next_promiseResolveWorker = async (url: string, jsDirBase: string): Promise<string[]> => {
     let toReturn: string[] = [];

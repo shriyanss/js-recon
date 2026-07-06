@@ -8,7 +8,7 @@ import chalk from "chalk";
 import parser from "@babel/parser";
 import { findCrossChunkParameters } from "./findCrossChunkParams.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Process exported functions that wrap axios HTTP methods.
