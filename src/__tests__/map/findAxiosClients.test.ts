@@ -50,7 +50,7 @@ describe("findAxiosClients", () => {
     it("does not include non-importing chunks in axiosImportedTo", () => {
         const chunks: Chunks = {
             "axios-lib": makeChunk({ isAxiosLibrary: true }),
-            "unrelated": makeChunk({ imports: ["other-chunk"] }),
+            unrelated: makeChunk({ imports: ["other-chunk"] }),
         };
         const result = findAxiosClients(chunks);
         expect(result.axiosImportedTo).not.toHaveProperty("unrelated");
