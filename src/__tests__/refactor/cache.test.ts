@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-    isListCacheStale,
-    shouldRefreshListCache,
-    getSignatureCacheFilePath,
-} from "../../refactor/remote/cache.js";
+import { isListCacheStale, shouldRefreshListCache, getSignatureCacheFilePath } from "../../refactor/remote/cache.js";
 import type { ListCache } from "../../refactor/remote/cache.js";
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;

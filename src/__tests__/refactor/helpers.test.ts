@@ -19,7 +19,11 @@ const generate = (_generator.default ?? _generator) as typeof _generator.default
 function captureAllObjectPropertyPaths(code: string): NodePath[] {
     const ast = parser.parse(code, { sourceType: "unambiguous" });
     const paths: NodePath[] = [];
-    traverse(ast, { ObjectProperty(p) { paths.push(p); } });
+    traverse(ast, {
+        ObjectProperty(p) {
+            paths.push(p);
+        },
+    });
     return paths;
 }
 
@@ -38,9 +42,7 @@ describe("isInModuleMap", () => {
 
     it("returns true for a property in the lazy-chunk .push() pattern", () => {
         const paths = captureAllObjectPropertyPaths("webpackChunk.push([[0], { 123: function(m,e,t){} }])");
-        const p = paths.find(
-            (_p) => t.isNumericLiteral((_p.node as t.ObjectProperty).key, { value: 123 })
-        )!;
+        const p = paths.find((_p) => t.isNumericLiteral((_p.node as t.ObjectProperty).key, { value: 123 }))!;
         expect(isInModuleMap(p)).toBe(true);
     });
 
@@ -51,9 +53,7 @@ describe("isInModuleMap", () => {
 
     it("returns false for a nested object property (not direct child of module-map holder)", () => {
         const paths = captureAllObjectPropertyPaths("var e = { outer: { inner: 1 } }");
-        const innerProp = paths.find(
-            (_p) => t.isIdentifier((_p.node as t.ObjectProperty).key, { name: "inner" })
-        )!;
+        const innerProp = paths.find((_p) => t.isIdentifier((_p.node as t.ObjectProperty).key, { name: "inner" }))!;
         expect(isInModuleMap(innerProp)).toBe(false);
     });
 });
@@ -93,7 +93,7 @@ describe("tryExtractExportsAssignment", () => {
         const expr = t.assignmentExpression(
             "=",
             t.memberExpression(t.identifier("e"), t.identifier("foo")),
-            t.identifier("bar"),
+            t.identifier("bar")
         );
         const result = tryExtractExportsAssignment(expr, "e");
         expect(result).not.toBeNull();
@@ -104,7 +104,7 @@ describe("tryExtractExportsAssignment", () => {
         const expr = t.assignmentExpression(
             "=",
             t.memberExpression(t.identifier("n"), t.identifier("foo")),
-            t.identifier("bar"),
+            t.identifier("bar")
         );
         expect(tryExtractExportsAssignment(expr, "e")).toBeNull();
     });
@@ -117,7 +117,7 @@ describe("tryExtractExportsAssignment", () => {
         const expr = t.assignmentExpression(
             "+=",
             t.memberExpression(t.identifier("e"), t.identifier("foo")),
-            t.numericLiteral(1),
+            t.numericLiteral(1)
         );
         expect(tryExtractExportsAssignment(expr, "e")).toBeNull();
     });
@@ -126,7 +126,7 @@ describe("tryExtractExportsAssignment", () => {
         const expr = t.assignmentExpression(
             "=",
             t.memberExpression(t.identifier("e"), t.stringLiteral("key"), true),
-            t.numericLiteral(1),
+            t.numericLiteral(1)
         );
         expect(tryExtractExportsAssignment(expr, "e")).toBeNull();
     });
@@ -137,11 +137,7 @@ describe("tryExtractExportsAssignment", () => {
 describe("tryExtractModuleExportsAssignment", () => {
     it("returns rhs for e.exports = rhs", () => {
         const rhs = t.objectExpression([]);
-        const expr = t.assignmentExpression(
-            "=",
-            t.memberExpression(t.identifier("e"), t.identifier("exports")),
-            rhs,
-        );
+        const expr = t.assignmentExpression("=", t.memberExpression(t.identifier("e"), t.identifier("exports")), rhs);
         expect(tryExtractModuleExportsAssignment(expr, "e")).toBe(rhs);
     });
 
@@ -149,7 +145,7 @@ describe("tryExtractModuleExportsAssignment", () => {
         const expr = t.assignmentExpression(
             "=",
             t.memberExpression(t.identifier("e"), t.identifier("default")),
-            t.numericLiteral(1),
+            t.numericLiteral(1)
         );
         expect(tryExtractModuleExportsAssignment(expr, "e")).toBeNull();
     });
@@ -158,7 +154,7 @@ describe("tryExtractModuleExportsAssignment", () => {
         const expr = t.assignmentExpression(
             "=",
             t.memberExpression(t.identifier("m"), t.identifier("exports")),
-            t.numericLiteral(1),
+            t.numericLiteral(1)
         );
         expect(tryExtractModuleExportsAssignment(expr, "e")).toBeNull();
     });

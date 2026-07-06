@@ -23,9 +23,7 @@ describe("tryStrictParse", () => {
 describe("validateAndFix", () => {
     it("returns generated code for a set of valid statements", () => {
         const stmts: t.Statement[] = [
-            t.variableDeclaration("const", [
-                t.variableDeclarator(t.identifier("x"), t.numericLiteral(42)),
-            ]),
+            t.variableDeclaration("const", [t.variableDeclarator(t.identifier("x"), t.numericLiteral(42))]),
         ];
         const result = validateAndFix(stmts, "test-module");
         expect(result).not.toBeNull();
@@ -33,9 +31,7 @@ describe("validateAndFix", () => {
     });
 
     it("returns code for an export default declaration", () => {
-        const stmts: t.Statement[] = [
-            t.exportDefaultDeclaration(t.numericLiteral(1)),
-        ];
+        const stmts: t.Statement[] = [t.exportDefaultDeclaration(t.numericLiteral(1))];
         const result = validateAndFix(stmts, "test-module");
         expect(result).not.toBeNull();
         expect(result).toContain("export default");
@@ -44,9 +40,7 @@ describe("validateAndFix", () => {
     it("returns code for an export named declaration", () => {
         const stmts: t.Statement[] = [
             t.exportNamedDeclaration(
-                t.variableDeclaration("const", [
-                    t.variableDeclarator(t.identifier("y"), t.stringLiteral("hello")),
-                ]),
+                t.variableDeclaration("const", [t.variableDeclarator(t.identifier("y"), t.stringLiteral("hello"))])
             ),
         ];
         const result = validateAndFix(stmts, "test-module");
