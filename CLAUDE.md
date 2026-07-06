@@ -207,11 +207,38 @@ When `-r` points to a single file, only that rule is loaded. When it points to a
 
 **Testing is mandatory for every change.** Before reporting a task complete:
 
-1. Run `npm run cleanup` to rebuild TypeScript.
-2. Run the `run` subcommand against the target the user provides. Do not use `analyze` or other individual subcommands as a substitute — the `run` subcommand must be used to validate end-to-end behavior.
-3. If the user has not provided a target, ask for one before proceeding.
+1. Run `npm test` to execute the unit test suite (Vitest).
+2. Run `npm run cleanup` to rebuild TypeScript.
+3. Run the `run` subcommand against the target the user provides. Do not use `analyze` or other individual subcommands as a substitute — the `run` subcommand must be used to validate end-to-end behavior.
+4. If the user has not provided a target, ask for one before proceeding.
 
-Typical test invocation:
+### Unit tests
+
+Unit tests live in `src/__tests__/` and cover pure-logic components. Test framework is **Vitest** (ESM-native, TypeScript-native — no compilation step needed).
+
+```bash
+npm test          # run all unit tests once
+npm run test:watch  # watch mode
+npm run test:build  # legacy build smoke test (node build/index.js -h)
+```
+
+Test files follow the pattern `src/__tests__/<component>/<name>.test.ts`.
+
+Covered components:
+
+| File | Tests in |
+| ---- | -------- |
+| `utility/urlUtils.ts` — `getURLDirectory` | `src/__tests__/utility/urlUtils.test.ts` |
+| `utility/replaceUrlPlaceholders.ts` — `replacePlaceholders` | `src/__tests__/utility/replaceUrlPlaceholders.test.ts` |
+| `utility/resolvePath.ts` — `resolvePath` | `src/__tests__/utility/resolvePath.test.ts` |
+| `strings/index.ts` — `extractStrings` | `src/__tests__/strings/extractStrings.test.ts` |
+| `analyze/helpers/validate.ts` — `parseVersion`, `compareVersions`, `isVersionCompatible` | `src/__tests__/analyze/versionCompat.test.ts` |
+| `map/next_js/utils.ts` — `memberChainToString` | `src/__tests__/map/memberChainToString.test.ts` |
+| `fingerprint/index.ts` — `deriveOutputPath` | `src/__tests__/fingerprint/deriveOutputPath.test.ts` |
+
+When adding new pure-logic helpers, add a corresponding test file. Components that require Puppeteer, network I/O, or the full pipeline are still validated through the `run` subcommand.
+
+Typical full test invocation:
 
 ```bash
 npm run cleanup && npm run start -- run -u <target-url> -y -k

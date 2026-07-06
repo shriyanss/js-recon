@@ -27,7 +27,7 @@ Cross-cutting utilities used by every other dir. Owns the mutable global state, 
 
 ## How to test changes here
 
-No standalone command — utilities are exercised by every subcommand. Pick the closest consumer (`map` for `urlUtils`, `lazyload` for Puppeteer, `analyze` for `makeReq`) and run that.
+Unit tests exist for `urlUtils`, `replaceUrlPlaceholders`, and `resolvePath` in `src/__tests__/utility/`. Run them with `npm test`. For helpers without unit tests (Puppeteer, makeReq, sandbox), pick the closest consumer subcommand and run that manually.
 
 ## See also
 

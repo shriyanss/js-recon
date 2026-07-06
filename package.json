@@ -11,7 +11,9 @@
     "scripts": {
         "build": "rm -rf build/ && tsc",
         "start": "node --max-old-space-size=8192 build/index.js",
-        "test": "node build/index.js -h",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:build": "node build/index.js -h",
         "cleanup": "rm -rf build output output_refactored .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json,-openapi.postman_collection.json} analyze.json test{.yaml,.js} shriyanss-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js extracted/ research.json results* out.* && tsc"
     },
     "keywords": [],
@@ -72,6 +74,7 @@
         "@types/node": "^24.12.4",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
-        "typescript": "^5.9.2"
+        "typescript": "^5.9.2",
+        "vitest": "^4.1.10"
     }
 }

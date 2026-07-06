@@ -33,7 +33,7 @@ const parseUrls = (urlArg: string): string[] => {
     return [urlArg];
 };
 
-const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
+export const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
     const ext = path.extname(outputFile);
     const base = ext ? outputFile.slice(0, -ext.length) : outputFile;
     if (format === "csv") return `${base}.csv`;

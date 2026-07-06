@@ -4,20 +4,20 @@ import yaml from "yaml";
 import { ruleSchema } from "./schemas.js";
 import CONFIG from "../../globalConfig.js";
 
-const parseVersion = (version: string): [number, number, number] => {
+export const parseVersion = (version: string): [number, number, number] => {
     const clean = version.split("-")[0];
     const parts = clean.split(".").map(Number);
     return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
 };
 
-const compareVersions = (a: [number, number, number], b: [number, number, number]): number => {
+export const compareVersions = (a: [number, number, number], b: [number, number, number]): number => {
     for (let i = 0; i < 3; i++) {
         if (a[i] !== b[i]) return a[i] - b[i];
     }
     return 0;
 };
 
-const isVersionCompatible = (requirement: string, currentVersion: string): boolean => {
+export const isVersionCompatible = (requirement: string, currentVersion: string): boolean => {
     const match = requirement.match(/^(>=|<=|>|<|==?)\s*(.+)/);
     if (!match) return false; // Invalid format
     const [, op, reqVer] = match;
