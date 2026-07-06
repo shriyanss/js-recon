@@ -12,7 +12,7 @@ Identifies which front-end framework a target uses. Single entrypoint, one check
 - `checkVueJS.ts` — `data-v-*` attrs, Vue devtools globals.
 - `checkReact.ts` — webpack manifest shape, React-specific runtime hooks.
 - `checkSvelte.ts` — Svelte hydration markers, `_app/immutable/` paths.
-- `checkAngularJS.ts` — `ng-version` attr, Angular runtime globals.
+- `checkAngularJS.ts` — multi-tier detection: (1) `data-beasties-container` HTML attr (Angular SSR/prerendering marker, visible in static HTML); (2) `ng-version` attr (set by Angular runtime on root element after bootstrapping, Puppeteer-rendered DOM only); (3) `_nghost-*` view-encapsulation CSS attr (Puppeteer only); (4) `main.js` / `main-HASH.js` content check for Zone.js patterns (`isAngularZone`, `this.ngZone`, `"routerLink"`). Checks run fastest-first and short-circuit on first positive, so the `main.js` fetch is skipped when any HTML-level signal fires.
 
 ## Patterns / gotchas
 
