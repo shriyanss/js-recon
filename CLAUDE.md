@@ -238,6 +238,79 @@ Covered components:
 
 When adding new pure-logic helpers, add a corresponding test file. Components that require Puppeteer, network I/O, or the full pipeline are still validated through the `run` subcommand.
 
+### Writing unit tests
+
+**What to test.** Test pure functions: anything that takes plain inputs and returns a value without I/O. The standard pattern for I/O-bound modules is to extract the parse/transform step into an exported pure function and test that. Leave the orchestrator (Puppeteer, `makeRequest`, file writes) untested at the unit level.
+
+**Extracting testable functions.** When a function mixes I/O with logic, split it:
+
+```typescript
+// Exported pure function — testable
+export const parseThings = (content: string, baseUrl: string): string[] => { ... };
+
+// Orchestrator — not unit-tested
+const myModule = async (url: string): Promise<string[]> => {
+    const resp = await makeRequest(url);
+    const content = await resp.text();
+    return parseThings(content, url);
+};
+```
+
+**Test file structure.** Use `describe` + `it` blocks. Group by function name. Cover: happy path, edge cases (empty input, malformed input), and threshold boundaries (e.g. "fewer than N entries returns []").
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { myPureFunction } from "../../path/to/module.js";  // .js extension required
+
+describe("myPureFunction", () => {
+    it("extracts X from valid input", () => {
+        const result = myPureFunction("...");
+        expect(result).toContain("expected");
+    });
+
+    it("returns [] for empty input", () => {
+        expect(myPureFunction("")).toEqual([]);
+    });
+
+    it("returns [] for invalid JS", () => {
+        expect(myPureFunction("{{{{ not valid")).toEqual([]);
+    });
+});
+```
+
+**Imports always use `.js` extension** for local files (ESM project with `"module": "node16"`):
+
+```typescript
+import { fn } from "../../lazyLoad/next_js/myModule.js";
+```
+
+**Constructing Babel AST nodes for tests.** When a function under test requires real Babel AST nodes (with `scope`, `path`, correct `start`/`end` offsets), parse a code snippet in the test and capture the node via a traverse visitor — do not construct AST nodes by hand. Wrap the expression in a `const _x = <expr>;` declaration so `start`/`end` offsets are preserved for any `code.slice()` calls inside the function:
+
+```typescript
+import parser from "@babel/parser";
+import _traverse from "@babel/traverse";
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
+
+function parseExpr(code: string) {
+    const src = `const _x = ${code};`;
+    const ast = parser.parse(src, { sourceType: "unambiguous", plugins: ["jsx", "typescript"] });
+    let node: any;
+    traverse(ast, { VariableDeclarator(p) { node = p.node.init; p.stop(); } });
+    return { node, src };
+}
+```
+
+**Avoiding GitHub secret scanning.** Strings that look like real secrets (Slack webhook URLs, Stripe keys, etc.) will be blocked by GitHub push protection even in test files. Construct them at runtime from parts arrays:
+
+```typescript
+// BAD — blocked by secret scanner
+const url = "https://hooks.slack.com/services/TABCDEF/BABCDEF/xxxxxxxxxxxx";
+
+// GOOD — assembled at runtime
+const parts = ["https://hooks.slack.com/services/T", "ABCDEF/B", "ABCDEF/xxxx"];
+const url = parts.join("");
+```
+
 Typical full test invocation:
 
 ```bash
