@@ -186,6 +186,10 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         if (interceptedUrl.includes("/_app/immutable/")) {
             return { name: "svelte", evidence: `intercepted request: ${interceptedUrl}` };
         }
+        // Vite React plugin dev-mode HMR runtime — requested by every Vite/React dev server.
+        if (interceptedUrl.includes("/@react-refresh")) {
+            return { name: "react", evidence: `intercepted request: ${interceptedUrl}` };
+        }
     }
 
     return null;

@@ -10,7 +10,7 @@ Identifies which front-end framework a target uses. Single entrypoint, one check
 - `checkNextJS.ts` — `__NEXT_DATA__`, `_next/static`, App-Router-specific markers.
 - `checkNuxtJS.ts` — `__NUXT__`, `/_nuxt/` paths, Nuxt-specific data-attrs.
 - `checkVueJS.ts` — `data-v-*` attrs, Vue devtools globals.
-- `checkReact.ts` — webpack manifest shape, React-specific runtime hooks.
+- `checkReact.ts` — multi-tier detection: (1) inline `<script>` text scan for `REACT_MARKERS` (includes `@react-refresh` / `injectIntoGlobalHook` for Vite dev-mode); (2) fast path: "react" in script/link filename, or `/@react-refresh` URL; (3) fetches each referenced JS file and scans for production React runtime strings. Handles both Vite production (vendor-react-*.js modulepreload) and Vite dev-mode (inline @react-refresh block). The `frameworkDetect` intercepted-URL fallback also catches `/@react-refresh` when no HTML signal fires.
 - `checkSvelte.ts` — Svelte hydration markers, `_app/immutable/` paths.
 - `checkAngularJS.ts` — multi-tier detection: (1) `data-beasties-container` HTML attr (Angular SSR/prerendering marker, visible in static HTML); (2) `ng-version` attr (set by Angular runtime on root element after bootstrapping, Puppeteer-rendered DOM only); (3) `_nghost-*` view-encapsulation CSS attr (Puppeteer only); (4) `main.js` / `main-HASH.js` content check for Zone.js patterns (`isAngularZone`, `this.ngZone`, `"routerLink"`). Checks run fastest-first and short-circuit on first positive, so the `main.js` fetch is skipped when any HTML-level signal fires.
 
