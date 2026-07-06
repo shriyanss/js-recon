@@ -6,27 +6,23 @@ import resolvePath from "../../utility/resolvePath.js";
 import { addCrawledUrl } from "../globals.js";
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
-const next_promiseResolveWorker = async (url: string, jsDirBase: string): Promise<string[]> => {
-    let toReturn: string[] = [];
-    // get the contents of the file
-    const req = await makeRequest(url);
-    if (!req || !req.ok) return toReturn;
-
-    const data = await req.text();
-
+/**
+ * Pure parser: scans `jsContent` for `Promise.all([...].map(...))` patterns and
+ * returns the resolved chunk URLs using `jsDirBase` as the prefix.
+ */
+export const extractPromiseAllChunkPaths = (jsContent: string, jsDirBase: string): string[] => {
+    const result: string[] = [];
     try {
-        const ast = parser.parse(data, {
+        const ast = parser.parse(jsContent, {
             sourceType: "unambiguous",
             plugins: ["jsx", "typescript"],
             errorRecovery: true,
         });
 
-        let matches: string[] = [];
+        const matches: string[] = [];
         traverse(ast, {
             CallExpression(path) {
                 const { node } = path;
-
-                // Check for Promise.all([...].map(...)) pattern
                 if (
                     node.callee.type === "MemberExpression" &&
                     node.callee.object.type === "Identifier" &&
@@ -53,16 +49,21 @@ const next_promiseResolveWorker = async (url: string, jsDirBase: string): Promis
             },
         });
 
-        // now that we got the match, we can use it to build the final URL
         for (const match of matches) {
             const jsFileName = match.replace("static/chunks/", "/");
-            const jsFileUrl = jsDirBase + jsFileName;
-
-            toReturn.push(jsFileUrl);
+            result.push(jsDirBase + jsFileName);
         }
-    } catch (e) {}
+    } catch {
+        // malformed content — return empty
+    }
+    return result;
+};
 
-    return toReturn;
+const next_promiseResolveWorker = async (url: string, jsDirBase: string): Promise<string[]> => {
+    const req = await makeRequest(url);
+    if (!req || !req.ok) return [];
+    const data = await req.text();
+    return extractPromiseAllChunkPaths(data, jsDirBase);
 };
 
 const next_promiseResolve = async (urls: string[]) => {

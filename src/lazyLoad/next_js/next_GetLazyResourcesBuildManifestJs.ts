@@ -6,23 +6,44 @@ import _traverse from "@babel/traverse";
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
+ * Pure parser: given the text content of a `_buildManifest.js` file and the URL
+ * it was fetched from, returns absolute URLs for every `static/chunks/` entry.
+ */
+export const parseChunksFromBuildManifest = (content: string, buildManifestUrl: string): string[] => {
+    const result: string[] = [];
+    try {
+        const ast = parser.parse(content, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+
+        const strings: string[] = [];
+        traverse(ast, {
+            StringLiteral(path) {
+                strings.push(path.node.value);
+            },
+        });
+
+        for (const s of strings) {
+            if (s.includes("static/chunks/")) {
+                result.push(new URL(`../../${s}`, buildManifestUrl).href);
+            }
+        }
+    } catch {
+        // malformed content — return empty
+    }
+    return result;
+};
+
+/**
  * Finds lazy-loaded JavaScript files from Next.js `_buildManifest.js`.
- *
- * Given a URL, this function finds the `_buildManifest.js` file in the given URL or file containing URLs.
- * It then parses the file with the Babel parser and extracts all string literals from the AST.
- * Finally, it iterates over the strings and finds any chunks (i.e., URLs containing "static/chunks/").
- * The function returns an array of absolute URLs pointing to the lazy-loaded JS files found.
- *
- * @param {string} url - The URL or path to a file containing a list of URLs to process.
- * @returns {Promise<string[] | any>} - A promise that resolves to an array of absolute URLs pointing to lazy-loaded JS files found, or undefined for invalid URL.
  */
 const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string[] | any> => {
-    // get the JS URLs
     const foundUrls = globals.getJsUrls();
     let toReturn: string[] = [];
 
     let buildManifestUrl: string = "";
-    // iterate over them, and find the build manifest
     for (const jsUrl of foundUrls) {
         if (jsUrl.endsWith("_buildManifest.js")) {
             buildManifestUrl = jsUrl;
@@ -34,38 +55,16 @@ const next_getLazyResourcesBuildManifestJs = async (url: string): Promise<string
         return [];
     }
 
-    // get the contents of that
     try {
         const response = await makeRequest(buildManifestUrl, {});
         if (!response) return [];
 
-        let buildManifestContent = await response.text();
+        const buildManifestContent = await response.text();
+        const chunks = parseChunksFromBuildManifest(buildManifestContent, buildManifestUrl);
 
-        // parse it with babel parser
-        const ast = parser.parse(buildManifestContent, {
-            sourceType: "unambiguous",
-            plugins: ["jsx", "typescript"],
-            errorRecovery: true,
-        });
-
-        let strings: string[] = [];
-
-        traverse(ast, {
-            StringLiteral(path) {
-                strings.push(path.node.value);
-            },
-        });
-
-        // iterate over the strings, and find the chunks
-
-        for (const stringTxt of strings) {
-            if (stringTxt.includes("static/chunks/")) {
-                // a chunk is found
-                // bui;d the relative URL
-                const foundUrl = new URL(`../../${stringTxt}`, buildManifestUrl).href;
-                globals.pushToJsUrls(foundUrl);
-                toReturn.push(foundUrl);
-            }
+        for (const foundUrl of chunks) {
+            globals.pushToJsUrls(foundUrl);
+            toReturn.push(foundUrl);
         }
 
         if (toReturn.length > 0) {

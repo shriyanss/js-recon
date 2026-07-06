@@ -9,24 +9,75 @@ import t from "@babel/types";
 import resolvePath from "../../utility/resolvePath.js";
 import * as globals from "../../utility/globals.js";
 
+export type ChunkBuilderFunction = {
+    name: string;
+    type: string;
+    source: string;
+};
+
+/**
+ * Pure parser: extracts all function nodes from `jsContent` whose source code
+ * ends with the pattern `".js"` followed by up to 15 characters — the signature
+ * of a webpack/Nuxt chunk URL builder function.
+ */
+export const extractChunkBuilderFunctions = (jsContent: string): ChunkBuilderFunction[] => {
+    const functions: ChunkBuilderFunction[] = [];
+    let ast: any;
+    try {
+        ast = parser.parse(jsContent, {
+            sourceType: "module",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch {
+        return functions;
+    }
+
+    const collect = (path: any, name: string, type: string) => {
+        const source = jsContent.slice(path.node.start, path.node.end);
+        if (source.match(/"\.js".{0,15}$/)) {
+            functions.push({ name, type, source });
+        }
+    };
+
+    traverse(ast, {
+        FunctionDeclaration(path) {
+            collect(path, path.node.id?.name || "(anonymous)", "FunctionDeclaration");
+        },
+        FunctionExpression(path) {
+            collect(path, (path.parent as any).id?.name || "(anonymous)", "FunctionExpression");
+        },
+        ArrowFunctionExpression(path) {
+            collect(path, (path.parent as any).id?.name || "(anonymous)", "ArrowFunctionExpression");
+        },
+        ObjectMethod(path) {
+            collect(path, (path.node.key as any).name, "ObjectMethod");
+        },
+        ClassMethod(path) {
+            collect(path, (path.node.key as any).name, "ClassMethod");
+        },
+    });
+
+    return functions;
+};
+
 /**
  * Finds all the lazy loaded JS files from a given URL using a Nuxt.js specific approach.
- * It works by first parsing the HTML of the page and then extracting all the JS files from it.
- * Then it parses the contents of each JS file and extracts all the functions from it.
- * Then it iterates through the functions, and finds out the one that ends with ".js"
- * and then asks the user to verify if this is the correct function.
- * If the user verifies, it proceeds to execute the function with all possible numbers
- * and then resolves the output to absolute URLs pointing to JavaScript files found in the page.
- * @param {string} url - The URL of the webpage to fetch and parse.
- * @returns {Promise<string[] | any>} - A promise that resolves to an array of absolute URLs pointing to
- * JavaScript files found in the page, or undefined for invalid URL.
  */
 const nuxt_astParse = async (url: string) => {
     let filesFound = [];
     const resp = await makeRequest(url, {});
     const body = await resp.text();
 
-    let ast;
+    const functions = extractChunkBuilderFunctions(body);
+
+    if (functions.length === 0) {
+        console.error(chalk.red("[!] Error parsing JS file: ", url));
+        return filesFound;
+    }
+
+    // Rebuild the full AST for later member-expression resolution.
+    let ast: any;
     try {
         ast = parser.parse(body, {
             sourceType: "module",
@@ -38,50 +89,8 @@ const nuxt_astParse = async (url: string) => {
         return filesFound;
     }
 
-    let functions = [];
-
-    traverse(ast, {
-        FunctionDeclaration(path) {
-            functions.push({
-                name: path.node.id?.name || "(anonymous)",
-                type: "FunctionDeclaration",
-                source: body.slice(path.node.start, path.node.end),
-            });
-        },
-        FunctionExpression(path) {
-            functions.push({
-                name: (path.parent as any).id?.name || "(anonymous)",
-                type: "FunctionExpression",
-                source: body.slice(path.node.start, path.node.end),
-            });
-        },
-        ArrowFunctionExpression(path) {
-            functions.push({
-                name: (path.parent as any).id?.name || "(anonymous)",
-                type: "ArrowFunctionExpression",
-                source: body.slice(path.node.start, path.node.end),
-            });
-        },
-        ObjectMethod(path) {
-            functions.push({
-                name: (path.node.key as any).name,
-                type: "ObjectMethod",
-                source: body.slice(path.node.start, path.node.end),
-            });
-        },
-        ClassMethod(path) {
-            functions.push({
-                name: (path.node.key as any).name,
-                type: "ClassMethod",
-                source: body.slice(path.node.start, path.node.end),
-            });
-        },
-    });
-
-    // iterate through the functions, and find out the one that ends with ".js"
-
     for (const func of functions) {
-        if (func.source.match(/"\.js".{0,15}$/)) {
+        {
             console.log(chalk.green(`[✓] Found JS chunk having the following source:`));
             console.log(chalk.yellow(func.source));
 

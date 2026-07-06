@@ -6,20 +6,75 @@ import next_getJSScript from "./next_GetJSScript.js";
 
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
+/**
+ * Recursively resolves a string-producing AST node to a string value.
+ * Unknown/dynamic nodes return a random placeholder (matching original behaviour).
+ */
+const resolveString = (node: any): string => {
+    if (!node) return "";
+    if (node.type === "StringLiteral") return node.value;
+    if (node.type === "TemplateLiteral") {
+        let str = "";
+        node.quasis.forEach((q: any, i: number) => {
+            str += q.value.raw;
+            if (i < node.expressions.length) str += resolveString(node.expressions[i]);
+        });
+        return str;
+    }
+    if (node.type === "BinaryExpression" && node.operator === "+") {
+        return resolveString(node.left) + resolveString(node.right);
+    }
+    if (node.type === "CallExpression") {
+        if (node.callee.type === "MemberExpression" && node.callee.property.name === "concat") {
+            let base = resolveString(node.callee.object);
+            node.arguments.forEach((arg: any) => {
+                base += resolveString(arg);
+            });
+            return base;
+        }
+    }
+    return Math.random()
+        .toString(36)
+        .substring(2, 2 + 64);
+};
+
+/**
+ * Pure parser: given layout.js content, returns every `href` value found in
+ * object literals (string, template literal, binary concat, or `.concat()` chain).
+ */
+export const extractHrefsFromLayoutJs = (jsContent: string): string[] => {
+    const hrefs: string[] = [];
+    let ast: any;
+    try {
+        ast = parser.parse(jsContent, {
+            sourceType: "unambiguous",
+            plugins: ["jsx", "typescript"],
+            errorRecovery: true,
+        });
+    } catch {
+        return hrefs;
+    }
+    traverse(ast, {
+        ObjectProperty(path: any) {
+            const { key, value } = path.node;
+            if (key.name === "href") {
+                const resolved = resolveString(value);
+                if (resolved) hrefs.push(resolved);
+            }
+        },
+    });
+    return hrefs;
+};
+
 const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
     console.log(chalk.cyan("[i] Parsing layout.js files"));
 
     let toReturn: string[] = [];
-
-    // iterate through all the URLs and find the layout.*.js files
-
     const MAX_LAYOUT_JS_BYTES = 1.5 * 1024 * 1024;
 
     for (const url of urls) {
         if (url.includes("layout-")) {
-            // request the content, and parse it
             const req = await makeRequest(url);
-
             if (!req) continue;
 
             const contentLength = req.headers.get("content-length");
@@ -41,93 +96,22 @@ const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
                 continue;
             }
 
-            let ast;
-
-            try {
-                ast = parser.parse(jsContent, {
-                    sourceType: "unambiguous",
-                    plugins: ["jsx", "typescript"],
-                    errorRecovery: true,
-                });
-            } catch {
-                continue;
-            }
-
-            let hrefFinds: string[] = [];
-
-            const resolveString = (node: any): string => {
-                if (!node) return "";
-
-                if (node.type === "StringLiteral") {
-                    return node.value;
-                }
-
-                if (node.type === "TemplateLiteral") {
-                    let str = "";
-                    node.quasis.forEach((q: any, i: number) => {
-                        str += q.value.raw;
-                        if (i < node.expressions.length) {
-                            str += resolveString(node.expressions[i]);
-                        }
-                    });
-                    return str;
-                }
-
-                if (node.type === "BinaryExpression" && node.operator === "+") {
-                    return resolveString(node.left) + resolveString(node.right);
-                }
-
-                if (node.type === "CallExpression") {
-                    if (node.callee.type === "MemberExpression" && node.callee.property.name === "concat") {
-                        let base = resolveString(node.callee.object);
-                        node.arguments.forEach((arg: any) => {
-                            base += resolveString(arg);
-                        });
-                        return base;
-                    }
-                }
-
-                // If it's an identifier or unknown, we return a placeholder to represent dynamic content
-                return Math.random()
-                    .toString(36)
-                    .substring(2, 2 + 64);
-            };
-
-            // traverse through the AST, and find all the hrefs
-            traverse(ast, {
-                ObjectProperty(path: any) {
-                    const { key, value } = path.node;
-                    // Check if key is 'href' (identifier) or "href" (literal)
-                    if (key.name === "href") {
-                        const resolved = resolveString(value);
-                        if (resolved) {
-                            hrefFinds.push(resolved);
-                        }
-                    }
-                },
-            });
-
-            // iterate through each href, and try to send the server a request
-            // if the response code is 200, run all the methods again on that
+            const hrefFinds = extractHrefsFromLayoutJs(jsContent);
 
             for (const href of hrefFinds) {
                 const newUrl = new URL(href, new URL(url).origin).href;
-
                 if (newUrl.startsWith("mailto:")) continue;
-
-                // also, check if the origin is same or not
                 if (new URL(baseUrl).origin !== new URL(newUrl).origin) continue;
 
-                let req: Response | null;
+                let hreqResult: Response | null;
                 try {
-                    req = await makeRequest(newUrl);
+                    hreqResult = await makeRequest(newUrl);
                 } catch {
                     continue;
                 }
 
-                if (req.status === 200) {
+                if (hreqResult.status === 200) {
                     console.log(chalk.green("[✓] Found new client side URL: ", newUrl));
-                    // parse the HTML for script tags
                     const jsFiles = await next_getJSScript(newUrl);
                     toReturn.push(...jsFiles);
                 }
@@ -135,7 +119,6 @@ const next_parseLayoutJs = async (baseUrl: string, urls: string[]) => {
         }
     }
 
-    // dedupe
     toReturn = [...new Set(toReturn)];
 
     if (toReturn.length !== 0) {
