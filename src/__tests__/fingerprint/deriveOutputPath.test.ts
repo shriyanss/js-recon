@@ -27,8 +27,6 @@ describe("deriveOutputPath", () => {
     });
 
     it("handles a path with directory prefix and existing extension", () => {
-        expect(deriveOutputPath("/tmp/output/results.old", "jsonl")).toBe(
-            "/tmp/output/results.jsonl"
-        );
+        expect(deriveOutputPath("/tmp/output/results.old", "jsonl")).toBe("/tmp/output/results.jsonl");
     });
 });

@@ -3,21 +3,15 @@ import resolvePath from "../../utility/resolvePath.js";
 
 describe("resolvePath", () => {
     it("resolves ./ relative to base without trailing slash (treats last segment as file)", () => {
-        expect(resolvePath("https://site.com/something", "./main.js")).toBe(
-            "https://site.com/main.js"
-        );
+        expect(resolvePath("https://site.com/something", "./main.js")).toBe("https://site.com/main.js");
     });
 
     it("resolves ./ relative to base with trailing slash", () => {
-        expect(resolvePath("https://site.com/something/", "./main.js")).toBe(
-            "https://site.com/something/main.js"
-        );
+        expect(resolvePath("https://site.com/something/", "./main.js")).toBe("https://site.com/something/main.js");
     });
 
     it("resolves ../ navigating up one level", () => {
-        expect(resolvePath("https://site.com/something/other", "../main.js")).toBe(
-            "https://site.com/main.js"
-        );
+        expect(resolvePath("https://site.com/something/other", "../main.js")).toBe("https://site.com/main.js");
     });
 
     it("resolves absolute path against origin", () => {

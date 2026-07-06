@@ -16,16 +16,12 @@ describe("replacePlaceholders", () => {
     });
 
     it("increments count for multiple [unresolved member expression] occurrences", () => {
-        const result = replacePlaceholders(
-            "/[unresolved member expression]/path/[unresolved member expression]"
-        );
+        const result = replacePlaceholders("/[unresolved member expression]/path/[unresolved member expression]");
         expect(result).toBe("/{unres_mem_exp_1}/path/{unres_mem_exp_2}");
     });
 
     it("replaces [unresolved: varName] placeholder", () => {
-        expect(replacePlaceholders("/api/[unresolved: configBase]/endpoint")).toBe(
-            "/api/{configBase}/endpoint"
-        );
+        expect(replacePlaceholders("/api/[unresolved: configBase]/endpoint")).toBe("/api/{configBase}/endpoint");
     });
 
     it("handles URL with no placeholders unchanged", () => {
@@ -33,9 +29,7 @@ describe("replacePlaceholders", () => {
     });
 
     it("handles multiple different placeholder types in one URL", () => {
-        const result = replacePlaceholders(
-            "/[MemberExpression -> a.b]/[var x]/[unresolved: y]"
-        );
+        const result = replacePlaceholders("/[MemberExpression -> a.b]/[var x]/[unresolved: y]");
         expect(result).toBe("/{a.b}/{x}/{y}");
     });
 

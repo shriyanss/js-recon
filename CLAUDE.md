@@ -226,15 +226,15 @@ Test files follow the pattern `src/__tests__/<component>/<name>.test.ts`.
 
 Covered components:
 
-| File | Tests in |
-| ---- | -------- |
-| `utility/urlUtils.ts` — `getURLDirectory` | `src/__tests__/utility/urlUtils.test.ts` |
-| `utility/replaceUrlPlaceholders.ts` — `replacePlaceholders` | `src/__tests__/utility/replaceUrlPlaceholders.test.ts` |
-| `utility/resolvePath.ts` — `resolvePath` | `src/__tests__/utility/resolvePath.test.ts` |
-| `strings/index.ts` — `extractStrings` | `src/__tests__/strings/extractStrings.test.ts` |
-| `analyze/helpers/validate.ts` — `parseVersion`, `compareVersions`, `isVersionCompatible` | `src/__tests__/analyze/versionCompat.test.ts` |
-| `map/next_js/utils.ts` — `memberChainToString` | `src/__tests__/map/memberChainToString.test.ts` |
-| `fingerprint/index.ts` — `deriveOutputPath` | `src/__tests__/fingerprint/deriveOutputPath.test.ts` |
+| File                                                                                     | Tests in                                               |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `utility/urlUtils.ts` — `getURLDirectory`                                                | `src/__tests__/utility/urlUtils.test.ts`               |
+| `utility/replaceUrlPlaceholders.ts` — `replacePlaceholders`                              | `src/__tests__/utility/replaceUrlPlaceholders.test.ts` |
+| `utility/resolvePath.ts` — `resolvePath`                                                 | `src/__tests__/utility/resolvePath.test.ts`            |
+| `strings/index.ts` — `extractStrings`                                                    | `src/__tests__/strings/extractStrings.test.ts`         |
+| `analyze/helpers/validate.ts` — `parseVersion`, `compareVersions`, `isVersionCompatible` | `src/__tests__/analyze/versionCompat.test.ts`          |
+| `map/next_js/utils.ts` — `memberChainToString`                                           | `src/__tests__/map/memberChainToString.test.ts`        |
+| `fingerprint/index.ts` — `deriveOutputPath`                                              | `src/__tests__/fingerprint/deriveOutputPath.test.ts`   |
 
 When adding new pure-logic helpers, add a corresponding test file. Components that require Puppeteer, network I/O, or the full pipeline are still validated through the `run` subcommand.
 

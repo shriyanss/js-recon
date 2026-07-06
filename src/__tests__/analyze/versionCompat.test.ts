@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-    parseVersion,
-    compareVersions,
-    isVersionCompatible,
-} from "../../analyze/helpers/validate.js";
+import { parseVersion, compareVersions, isVersionCompatible } from "../../analyze/helpers/validate.js";
 
 describe("parseVersion", () => {
     it("parses a stable version", () => {
