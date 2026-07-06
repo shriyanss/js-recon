@@ -21,7 +21,7 @@ let mapFilesFound = [];
  * @returns {Promise<FoundJsFiles>} - A promise that resolves to an object containing
  * all the strings that end with ".js".
  */
-const parseJSFileContent = async (content) => {
+export const parseJSFileContent = async (content) => {
     try {
         const ast = parser.parse(content, {
             sourceType: "module",
