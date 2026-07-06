@@ -260,7 +260,7 @@ const myModule = async (url: string): Promise<string[]> => {
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { myPureFunction } from "../../path/to/module.js";  // .js extension required
+import { myPureFunction } from "../../path/to/module.js"; // .js extension required
 
 describe("myPureFunction", () => {
     it("extracts X from valid input", () => {
@@ -295,7 +295,12 @@ function parseExpr(code: string) {
     const src = `const _x = ${code};`;
     const ast = parser.parse(src, { sourceType: "unambiguous", plugins: ["jsx", "typescript"] });
     let node: any;
-    traverse(ast, { VariableDeclarator(p) { node = p.node.init; p.stop(); } });
+    traverse(ast, {
+        VariableDeclarator(p) {
+            node = p.node.init;
+            p.stop();
+        },
+    });
     return { node, src };
 }
 ```
