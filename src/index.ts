@@ -503,6 +503,11 @@ program
         "--list-methods [framework]",
         "Print available lazyload method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react)."
     )
+    .option(
+        "--cs-mast-tech-detect-threshold <n>",
+        "Minimum CS-MAST-S signature matches required to detect bundler for the refactor step (0 = skip refactor)",
+        "50"
+    )
     .action(async (cmd) => {
         // handle --list-methods before any network work
         if (cmd.listMethods !== undefined) {

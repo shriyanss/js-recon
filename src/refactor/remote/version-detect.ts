@@ -245,7 +245,7 @@ async function fetchReliableSignatures(bundler: string, version: string, scatDir
 // plus any extra code snippets (e.g. vendor chunk file contents not included in mapped.json).
 // Uses the same scat categories that drove library stripping so detection uses a consistent
 // signature space.
-function generateBundleSignatures(chunks: Chunks, scat: ScatCategory[], extraCodes?: string[]): Set<string> {
+export function generateBundleSignatures(chunks: Chunks, scat: ScatCategory[], extraCodes?: string[]): Set<string> {
     const allSigs = new Set<string>();
     const codesToHash: string[] = [
         ...Object.values(chunks)

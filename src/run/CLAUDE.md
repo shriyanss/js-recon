@@ -8,6 +8,19 @@ Powers the `run` subcommand — the primary user interface. Sequences `lazyload 
 
 - `index.ts` — single file. Exports `run(cmd)` and `processUrl(url, cmd)`. The flag-to-global wiring lives upstream in `src/index.ts`; this file consumes the resolved `cmd` and threads it into each step.
 - `interruptHandler.ts` — SIGINT (Ctrl-C) handler. Installs a persistent `process.on('SIGINT')` listener while `run` is active. On interrupt, prints a menu and reads one line from stdin. Exposes `getSkipStepPromise()` (each step in `processUrl` is wrapped in `Promise.race([step, getSkipStepPromise()])` so choosing "skip step" causes the pipeline to advance without waiting for the current step to finish) and `shouldSkipTarget()` (checked between steps; returning early from `processUrl` skips the remaining steps for the current target). In batch mode, `resetSkipTarget()` is called before each target.
+- `bundler-detect.ts` — CS-MAST-S bundler detection. Exports `detectBundler(mappedJsonPath, framework, threshold)`. Samples `collisions.json` files from the HuggingFace `shriyanss/cs-mast-s-dataset` bucket for each candidate tech (e.g. `react-webpack`, `react-vite`), counts how many sampled library signatures appear in the bundle's CS-MAST signature set, and returns the best-matching tech identifier if the match count meets the threshold. Uses the same list cache and signature cache as the `refactor` module. Currently only React bundles have bucket entries; other frameworks gracefully return null.
+
+## Refactor integration
+
+After the report step, each supported framework branch (React, Vue, Nuxt, Next.js) runs an optional refactor pass:
+
+1. **Bundler detection** (`detectBundler`) — samples 15 random `collisions.json` files from the HF bucket for each candidate tech, generates CS-MAST-S signatures from the mapped bundle, and counts matches.
+2. **Conditional refactor** — if matches ≥ `--cs-mast-tech-detect-threshold` (default 50), calls `refactor(mappedJson, refactorOutputDir, detectedTech, false)`. The output lands in `refactored/` (single-mode) or `<workingDir>/refactored/` (batch mode); any existing directory is deleted first.
+3. **Skip path** — if no signatures exist for the framework in the bucket (currently: Vue, Nuxt, Next.js), or if the match count is below threshold, a yellow warning is printed and the refactor step is skipped silently. The overall pipeline still reports success.
+
+These steps use `[*]` as their step prefix to signal they are optional addenda; the existing numbered step counters (`[2/4]`, etc.) are unchanged.
+
+**New flag:** `--cs-mast-tech-detect-threshold <n>` (default `50`) — minimum CS-MAST-S signature matches to consider a bundler detected. Pass `0` to always skip refactor.
 
 ## Patterns / gotchas
 

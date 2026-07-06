@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Optional pass that rewrites minified chunks into a more readable form for human review. Not wired into the `run` pipeline — invoked manually after `lazyload` when a contributor wants to inspect specific chunks during resolver development.
+Optional pass that rewrites minified chunks into a more readable form for human review. Now wired into the `run` pipeline via `src/run/bundler-detect.ts` (CS-MAST-S bundler detection); can also be invoked manually after `lazyload` when a contributor wants to inspect specific chunks during resolver development.
 
 ## Files
 
