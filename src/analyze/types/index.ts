@@ -6,7 +6,7 @@ export interface Rule {
     js_recon_version: string;
     tech: ("next" | "vue" | "react" | "svelte" | "angular" | "all")[];
     severity: "info" | "low" | "medium" | "high";
-    type: "request" | "ast";
+    type: "request" | "ast" | "cs-mast-s";
     steps: Step[];
 }
 
@@ -19,6 +19,7 @@ export type Step = {
     postMessageFuncResolve?: PostMessageFuncResolverStep;
     checkAssignmentExist?: CheckAssignmentExistStep;
     regexMatch?: RegexMatchStep;
+    csMastS?: CsMastSStep;
 };
 
 export type RegexMatchStep = {
@@ -63,4 +64,8 @@ export type CheckAssignmentExistStep = {
     name: string;
     type: string;
     memberExpression?: boolean;
+};
+
+export type CsMastSStep = {
+    signature: string;
 };

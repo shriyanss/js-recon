@@ -3,6 +3,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import { OpenAPISpec } from "../../utility/openapiGenerator.js";
 import requestEngine from "./requestEngine.js";
 import astEngine from "./astEngine.js";
+import csMastSEngine from "./csMastSEngine.js";
 import { EngineOutput } from "../helpers/outputHelper.js";
 
 /**
@@ -57,6 +58,21 @@ export const engine = async (
 
         if (techValid || tech === "all" || rule.tech.includes("all")) {
             findings.push(...(await astEngine(rule, mappedJsonData)));
+        }
+    } else if (rule.type === "cs-mast-s") {
+        if (!mappedJsonData) {
+            return;
+        }
+
+        let techValid = true;
+        for (const t of rule.tech) {
+            if (!rule.tech.includes(tech)) {
+                techValid = false;
+            }
+        }
+
+        if (techValid || tech === "all" || rule.tech.includes("all")) {
+            findings.push(...(await csMastSEngine(rule, mappedJsonData)));
         }
     }
 

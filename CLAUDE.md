@@ -200,6 +200,7 @@ Rule categories:
 
 - `ast/` — AST-based pattern matching against chunk code (uses `@babel/parser` + `esquery`)
 - `request/` — OpenAPI/request-level checks against the resolved endpoint list
+- `cs-mast-s/` — CS-MAST-S structural signature matching; each step embeds a PHC string and fires if that node-level hash is found anywhere in the chunk AST. Suitable for regression detection after a vulnerability is confirmed via AST rules. See `src/analyze/engine/csMastSEngine.ts` and `src/analyze/CLAUDE.md` for details.
 
 When `-r` points to a single file, only that rule is loaded. When it points to a directory, all `.yml`/`.yaml` files are loaded recursively.
 
