@@ -213,6 +213,25 @@ When `-r` points to a single file, only that rule is loaded. When it points to a
 3. Run the `run` subcommand against the target the user provides. Do not use `analyze` or other individual subcommands as a substitute — the `run` subcommand must be used to validate end-to-end behavior.
 4. If the user has not provided a target, ask for one before proceeding.
 
+### Rules smoke test (CI)
+
+The `rules-smoke-test` GitHub Actions workflow (`.github/workflows/rules-smoke-test.yaml`) runs on every non-main push. It:
+
+1. Checks out `shriyanss/js-recon-labs` and `shriyanss/js-recon-rules` alongside js-recon.
+2. Builds js-recon and the `next_js/vuln-all-rules` lab app.
+3. Starts the lab app on port 3001.
+4. Runs `node build/index.js run -u http://localhost:3001 -r ./js-recon-rules --no-sandbox -y -k`.
+5. Runs `node scripts/smoke-test.js` which reads `output/localhost:3001/analyze.json` and asserts that all 22 expected rule IDs are present.
+
+**`scripts/smoke-test.js`** maintains the `EXPECTED_RULES` list. When a new rule is added to js-recon-rules:
+- The `next_js/vuln-all-rules` app in js-recon-labs must be updated to seed the new vulnerability.
+- The new rule ID must be appended to `EXPECTED_RULES` in `scripts/smoke-test.js`.
+
+The lab app seeds:
+- 19 AST rules for the `next` tech stack
+- 3 request rules (`api_path`, `admin_api`, `missing_authorization_header`)
+- The Angular-only rule (`detect_angular_bypass_security_trust`) is intentionally excluded.
+
 ### Unit tests
 
 Unit tests live in `src/__tests__/` and cover pure-logic components. Test framework is **Vitest** (ESM-native, TypeScript-native — no compilation step needed).
