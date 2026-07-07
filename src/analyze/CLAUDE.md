@@ -18,24 +18,30 @@ Powers the `analyze` subcommand. Loads YAML rules, runs them against `mapped.jso
 ## Engines
 
 ### AST engine (`engine/astEngine.ts`)
+
 Parses each chunk with `@babel/parser` + `esquery`. Supports multi-step chaining, `inScopeOf`, `taintFrom`, regex scan, postMessage resolver, and assignment checker. Rule type: `ast`.
 
 ### Request engine (`engine/requestEngine.ts`)
+
 Matches resolved OpenAPI endpoint list by URL, header, and method patterns. Rule type: `request`.
 
 ### CS-MAST-S engine (`engine/csMastSEngine.ts`)
+
 Checks whether a CS-MAST-S signature (PHC string) matches any node in a chunk's AST. Rule type: `cs-mast-s`.
 
 **How it works:**
+
 1. `parseSignature(step.csMastS.signature)` extracts `hash`, `lang`, `prsr`, `scat`, `sinc`, and `hashHex` from the PHC string.
 2. `cs_mast_init(chunk.code, config)` builds a CS-MAST tree with the extracted config.
 3. `treeContainsHash(tree.root, hashHex)` walks all tree nodes checking `node.computedHash`.
 4. All steps must match in the same chunk for a finding to fire (AND logic).
 
 **PHC signature format:**
+
 ```
 $v=1$hash=sha256,lang=js,prsr=-babel/parser,scat=name_id$<64-hex-chars>
 ```
+
 Scat categories are `_`-joined in the PHC string (`name_id` = `["name", "id"]`).
 
 **Finding location field** reports the chunk ID and matched signature — exact node extraction is not available (the hash tree doesn't retain source positions). Use `map -c "esquery ..."` to locate the node precisely after a signature match.
@@ -43,6 +49,7 @@ Scat categories are `_`-joined in the PHC string (`name_id` = `["name", "id"]`).
 **Performance note:** The engine caches the CS-MAST tree per `(chunkId, configKey)` across steps in the same rule to avoid redundant parses when multiple steps share the same scat config.
 
 **Recommended scat config per experiment #25/#26:**
+
 - `scat=name,id` — FP=0 per chunk for all tested sinks; portable for framework constants (`dangerouslySetInnerHTML.__html`, `eval`, `bypassSecurityTrustHtml`)
 - `scat=id` only — structurally portable across bundlers for complex patterns but higher FP rate; use when minified variable names differ between bundles
 

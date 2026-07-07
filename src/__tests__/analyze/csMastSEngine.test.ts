@@ -6,17 +6,16 @@ import type { Rule } from "../../analyze/types/index.js";
 import type { Chunks } from "../../utility/interfaces.js";
 
 // Real chunk from react/vuln_app Vite build — contains the dangerouslySetInnerHTML sink.
-const CHUNK_FILE = path.resolve(
-    __dirname,
-    "../../../../js-recon-research/react/vuln_app/dist/assets/Post-Ck0sG56A.js"
-);
+const CHUNK_FILE = path.resolve(__dirname, "../../../../js-recon-research/react/vuln_app/dist/assets/Post-Ck0sG56A.js");
 
 // scat=name,id signature for the dangerouslySetInnerHTML.__html sink in the Post component.
 // Generated during issue #25 experiment (FP=0 within the parent chunk).
-const DSIH_SIG = "$v=1$hash=sha256,lang=js,prsr=-babel/parser,scat=name_id$1a572a605f850b1396d0d0950ba1f5c2c2d9f65eebb2fca04ce8f167e32b0c68";
+const DSIH_SIG =
+    "$v=1$hash=sha256,lang=js,prsr=-babel/parser,scat=name_id$1a572a605f850b1396d0d0950ba1f5c2c2d9f65eebb2fca04ce8f167e32b0c68";
 
 // A syntactically valid PHC string with a random hash that should never match.
-const NONEXISTENT_SIG = "$v=1$hash=sha256,lang=js,prsr=-babel/parser,scat=name_id$0000000000000000000000000000000000000000000000000000000000000000";
+const NONEXISTENT_SIG =
+    "$v=1$hash=sha256,lang=js,prsr=-babel/parser,scat=name_id$0000000000000000000000000000000000000000000000000000000000000000";
 
 function makeChunks(code: string): Chunks {
     return {

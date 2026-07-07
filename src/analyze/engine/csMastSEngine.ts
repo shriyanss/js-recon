@@ -57,7 +57,11 @@ const csMastSEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
             const { signature } = step.csMastS;
             const parsed = parseSignature(signature);
             if (!parsed) {
-                console.log(chalk.yellow(`[!] cs-mast-s step "${step.name}" in rule "${rule.id}" has an invalid signature — skipping`));
+                console.log(
+                    chalk.yellow(
+                        `[!] cs-mast-s step "${step.name}" in rule "${rule.id}" has an invalid signature — skipping`
+                    )
+                );
                 continue;
             }
 
@@ -96,9 +100,7 @@ const csMastSEngine = async (rule: Rule, mappedJsonData: Chunks): Promise<Engine
 
         // Fire only if every step in the rule completed (matched).
         if (completedSteps.size === rule.steps.length) {
-            const matchedSigs = rule.steps
-                .filter((s) => s.csMastS)
-                .map((s) => s.csMastS!.signature);
+            const matchedSigs = rule.steps.filter((s) => s.csMastS).map((s) => s.csMastS!.signature);
 
             const message = `[+] "${rule.name}" found in chunk ${chunk.id}`;
 
