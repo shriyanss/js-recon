@@ -224,10 +224,12 @@ The `rules-smoke-test` GitHub Actions workflow (`.github/workflows/rules-smoke-t
 5. Runs `node scripts/smoke-test.js` which reads `output/localhost:3001/analyze.json` and asserts that all 22 expected rule IDs are present.
 
 **`scripts/smoke-test.js`** maintains the `EXPECTED_RULES` list. When a new rule is added to js-recon-rules:
+
 - The `next_js/vuln-all-rules` app in js-recon-labs must be updated to seed the new vulnerability.
 - The new rule ID must be appended to `EXPECTED_RULES` in `scripts/smoke-test.js`.
 
 The lab app seeds:
+
 - 19 AST rules for the `next` tech stack
 - 3 request rules (`api_path`, `admin_api`, `missing_authorization_header`)
 - The Angular-only rule (`detect_angular_bypass_security_trust`) is intentionally excluded.
