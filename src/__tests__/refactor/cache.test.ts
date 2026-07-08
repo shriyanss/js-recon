@@ -48,19 +48,19 @@ describe("shouldRefreshListCache", () => {
 
 describe("getSignatureCacheFilePath", () => {
     it("returns a path ending with collisions.json", () => {
-        const p = getSignatureCacheFilePath("react/webpack/large", "01-feat/lit-decl-loop-cond/collisions.json");
+        const p = getSignatureCacheFilePath("react/webpack/large-0.1.8", "01-feat/lit-decl-loop-cond/collisions.json");
         expect(p.endsWith("collisions.json")).toBe(true);
     });
 
     it("embeds the branch and stripped subpath in the returned path", () => {
-        const p = getSignatureCacheFilePath("react/webpack/large", "01-feat/lit-decl-loop-cond/collisions.json");
+        const p = getSignatureCacheFilePath("react/webpack/large-0.1.8", "01-feat/lit-decl-loop-cond/collisions.json");
         expect(p).toContain("signature_cache");
         expect(p).toContain("01-feat");
         expect(p).toContain("lit-decl-loop-cond");
     });
 
     it("does not double the collisions.json suffix", () => {
-        const p = getSignatureCacheFilePath("react/webpack/large", "feat/scat/collisions.json");
+        const p = getSignatureCacheFilePath("react/webpack/large-0.1.8", "feat/scat/collisions.json");
         const occurrences = p.split("collisions.json").length - 1;
         expect(occurrences).toBe(1);
     });

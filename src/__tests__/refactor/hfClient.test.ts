@@ -3,14 +3,14 @@ import { getHfRawUrl, getHfApiTreeUrl, HF_BUCKET, TECH_TO_BRANCH } from "../../r
 
 describe("getHfRawUrl", () => {
     it("returns a URL pointing to the HuggingFace bucket resolve endpoint", () => {
-        const url = getHfRawUrl("react/webpack/large", "collisions.json");
+        const url = getHfRawUrl("react/webpack/large-0.1.8", "collisions.json");
         expect(url).toContain("huggingface.co");
         expect(url).toContain("buckets");
         expect(url).toContain(HF_BUCKET);
     });
 
     it("URL-encodes the full path (prefix/subpath) as one component", () => {
-        const prefix = "react/webpack/large";
+        const prefix = "react/webpack/large-0.1.8";
         const subpath = "01-feat/collisions.json";
         const url = getHfRawUrl(prefix, subpath);
         expect(url).toContain(encodeURIComponent(`${prefix}/${subpath}`));
@@ -24,14 +24,14 @@ describe("getHfRawUrl", () => {
 
 describe("getHfApiTreeUrl", () => {
     it("returns a URL pointing to the HuggingFace tree API endpoint", () => {
-        const url = getHfApiTreeUrl("react/webpack/large");
+        const url = getHfApiTreeUrl("react/webpack/large-0.1.8");
         expect(url).toContain("huggingface.co");
         expect(url).toContain("api/buckets");
         expect(url).toContain(HF_BUCKET);
     });
 
     it("URL-encodes the prefix", () => {
-        const prefix = "react/webpack/large";
+        const prefix = "react/webpack/large-0.1.8";
         const url = getHfApiTreeUrl(prefix);
         expect(url).toContain(encodeURIComponent(prefix));
     });
