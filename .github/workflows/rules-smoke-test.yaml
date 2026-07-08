@@ -58,8 +58,9 @@ jobs:
 
       - name: Run js-recon against vulnerable app
         run: |
+          echo "http://localhost:3001" > /tmp/smoke-urls.txt
           node --max-old-space-size=4096 build/index.js run \
-            -u http://localhost:3001 \
+            -u /tmp/smoke-urls.txt \
             -r ./js-recon-rules \
             --no-sandbox \
             -y -k
