@@ -247,8 +247,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
         // When a chunk URL builder is extracted from its surrounding scope, outer
         // variables like `i` or `o` that hold the public path are undefined in
         // the sandbox. We inject a mock declaration so the function executes.
-        const funcParamRe =
-            /^(?:function\s*\w*\s*\(([^)]*)\)|(?:\(([^)]*)\)|([a-zA-Z_$]\w*))\s*=>)/;
+        const funcParamRe = /^(?:function\s*\w*\s*\(([^)]*)\)|(?:\(([^)]*)\)|([a-zA-Z_$]\w*))\s*=>)/;
         const paramMatch = source.match(funcParamRe);
         const funcParams = new Set(
             [paramMatch?.[1] ?? "", paramMatch?.[2] ?? "", paramMatch?.[3] ?? ""]
