@@ -6,13 +6,13 @@
  * Usage:
  *   node scripts/smoke-test.js [path-to-analyze.json]
  *
- * Default path: output/localhost:3001/analyze.json
+ * Default path: output/localhost_3001/analyze.json
  */
 
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-const outputPath = process.argv[2] || "output/localhost:3001/analyze.json";
+const outputPath = process.argv[2] || "output/localhost_3001/analyze.json";
 const absolutePath = resolve(outputPath);
 
 let analyzeData;
