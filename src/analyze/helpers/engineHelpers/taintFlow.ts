@@ -202,7 +202,13 @@ const getSinkValueNodes = (sink: Node): Node[] => {
         }
         case "ObjectProperty": {
             const v = (sink as any).value as Node | null | undefined;
-            return v ? [v] : [];
+            // For computed properties (e.g. { [userInput]: "val" }), the taint may be in
+            // the key rather than the value — include both so taint-from checks fire correctly.
+            const k = (sink as any).computed ? ((sink as any).key as Node | null | undefined) : undefined;
+            const nodes: Node[] = [];
+            if (v) nodes.push(v);
+            if (k) nodes.push(k);
+            return nodes.length > 0 ? nodes : [sink];
         }
         case "JSXAttribute": {
             // Boolean JSX attributes (e.g. `<div hidden />`) have no value node.
