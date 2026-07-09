@@ -1,11 +1,48 @@
 import chalk from "chalk";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
+import _generator from "@babel/generator";
 import { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import { cs_mast_init, ScatCategory } from "@shriyanss/cs-mast";
 import { Chunk } from "../../utility/interfaces.js";
 import { TurboModuleEntry, WebpackModuleEntry, transformModule, transformWebpackModule } from "./transform.js";
 import { validateAndFix } from "./validator.js";
+
+const generate = (_generator as unknown as { default: typeof _generator }).default ?? _generator;
+
+// scat categories used when classifying modules as library vs application code.
+const LIB_SIG_SCAT: ScatCategory[] = ["lit", "decl", "loop", "cond"];
+
+// Minimum fraction of a module's sub-tree signatures that must match the library
+// baseline before the module is classified as library code.
+const LIB_CLASSIFICATION_THRESHOLD = 0.51;
+
+// Hash a module's function body and check whether its sub-tree signatures
+// overlap the cross-app library baseline above the classification threshold.
+const moduleIsLibrary = (
+    fnNode: t.ArrowFunctionExpression | t.FunctionExpression,
+    libSigs: Set<string>,
+    scatOverride?: ScatCategory[]
+): boolean => {
+    if (!t.isBlockStatement(fnNode.body)) return false;
+    try {
+        const code = generate(fnNode.body).code;
+        const tree = cs_mast_init(code, {
+            hash: "sha256",
+            scat: scatOverride ?? LIB_SIG_SCAT,
+            sinc: [],
+            lang: "js",
+            prsr: "@babel/parser",
+        });
+        const sigs = [...tree._signatureMap.keys()];
+        if (sigs.length === 0) return false;
+        const matchCount = sigs.filter((sig) => libSigs.has(sig)).length;
+        return matchCount / sigs.length >= LIB_CLASSIFICATION_THRESHOLD;
+    } catch {
+        return false;
+    }
+};
 
 /**
  * Refactors a single Next.js (webpack) chunk into an ECMAScript module file.
@@ -25,16 +62,16 @@ import { validateAndFix } from "./validator.js";
  *   - r(N) inline — replaced with hoisted identifier
  *   - r(N); standalone — becomes import './N.js' (side-effect)
  */
-export const refactorNextWebpack = async (chunk: Chunk): Promise<Record<string, string>> => {
+export const refactorNextWebpack = async (
+    chunk: Chunk,
+    libSigs?: Set<string>,
+    scatOverride?: ScatCategory[]
+): Promise<Record<string, string>> => {
     console.log(chalk.cyan(`[i] Processing Next.js (webpack) chunk: ${chunk.id}`));
-
-    // The code field from mapped.json starts with `moduleId:` (e.g. `3899:(e,t,r)=>{...}`).
-    // Strip the numeric-ID prefix before parsing — Babel can't handle `3899:expr` at file level.
-    const strippedCode = chunk.code.replace(/^\d+:\s*/, "");
 
     let ast: t.File;
     try {
-        ast = parser.parse(strippedCode, {
+        ast = parser.parse(chunk.code, {
             sourceType: "unambiguous",
             plugins: ["jsx", "typescript"],
             errorRecovery: true,
@@ -48,9 +85,15 @@ export const refactorNextWebpack = async (chunk: Chunk): Promise<Record<string, 
 
     traverse(ast, {
         ArrowFunctionExpression(path: NodePath<t.ArrowFunctionExpression>) {
-            // Skip nested arrow functions — only want the top-level module wrapper.
+            // Accept the module wrapper at any of these positions:
+            //   func_NNN = (e, t, r) => {...}  → parent is AssignmentExpression
+            //   (e, t, r) => {...}              → parent is ExpressionStatement or Program
             const parent = path.parentPath;
-            if (!parent?.isExpressionStatement() && !parent?.isProgram()) return;
+            const isTopLevel =
+                parent?.isAssignmentExpression() ||
+                parent?.isExpressionStatement() ||
+                parent?.isProgram();
+            if (!isTopLevel) return;
 
             const params = path.node.params;
             if (params.length > 3) return;
@@ -76,6 +119,15 @@ export const refactorNextWebpack = async (chunk: Chunk): Promise<Record<string, 
     if (!captured) {
         console.log(chalk.yellow(`[!] No module function found in webpack chunk ${chunk.id} — skipping`));
         return {};
+    }
+
+    // CS-MAST library classification: skip modules that match the cross-app baseline.
+    if (libSigs && libSigs.size > 0) {
+        const fnNode = (captured as WebpackModuleEntry).fnPath.node;
+        if (moduleIsLibrary(fnNode, libSigs, scatOverride)) {
+            console.log(chalk.gray(`[-] Module ${chunk.id} matches library baseline — skipping`));
+            return {};
+        }
     }
 
     const statements = transformWebpackModule(captured);

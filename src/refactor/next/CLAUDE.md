@@ -1,10 +1,27 @@
-# `src/refactor/next` — Next.js Turbopack chunk refactor (`-t next-turbopack`)
+# `src/refactor/next` — Next.js refactor (`-t next-turbopack` / `-t next-webpack`)
 
 ## Purpose
 
-Rewrites Next.js (Turbopack) bundle chunks into readable ECMAScript module files during manual
+Rewrites Next.js bundle chunks into readable ECMAScript module files during manual
 resolver development. Handles both the native turbopack module format and the webpack-style
-modules that coexist in a turbopack bundle.
+modules that coexist in a turbopack bundle, as well as standalone Next.js webpack builds.
+
+## CS-MAST library stripping (`next-webpack`)
+
+`refactorNextWebpack()` accepts optional `libSigs: Set<string>` and `scatOverride: ScatCategory[]` parameters. When `libSigs` is provided (loaded from the remote HuggingFace bucket `next/webpack/large-0.1.8` or a local `--collisions` path), each captured module is classified before transformation:
+
+1. The module's function body is serialised with `@babel/generator`.
+2. `cs_mast_init()` hashes the body with scat = `["lit","decl","loop","cond"]` (or `scatOverride`).
+3. The fraction of sub-tree signatures that match `libSigs` is computed.
+4. If `fraction >= 0.51` (`LIB_CLASSIFICATION_THRESHOLD`), the module is flagged as library/framework code, logged with `[-] Module N matches library baseline`, and skipped.
+
+The `moduleIsLibrary()` helper in `index.ts` implements this logic. It is intentionally shared-by-copy with `src/refactor/react/index.ts` rather than extracted to a shared module, because the Next.js and React paths may diverge in future (e.g., different thresholds or hash configs per framework).
+
+The `BASELINE_SCAT_DIR["next-webpack"]` entry in `src/refactor/index.ts` is `"lit-decl-loop-cond"`, matching the bucket directory name. The remote branch is `"next/webpack/large-0.1.8"` (added to `TECH_TO_BRANCH` in `hf-client.ts`).
+
+## Module format in `mapped.json`
+
+Both webpack and turbopack Next.js builds produce chunks in `func_NNN = (e, t, r) => {...}` format in `mapped.json`. The outer assignment expression is an `AssignmentExpression`. The `refactorNextWebpack` visitor accepts `AssignmentExpression | ExpressionStatement | Program` as valid parent nodes for the captured arrow function.
 
 ## Module formats
 

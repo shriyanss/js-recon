@@ -96,6 +96,7 @@ function findVendorChunkFiles(chunks: Chunks, assetsDir: string): string[] {
 const BASELINE_SCAT_DIR: Record<string, string> = {
     "react-webpack": "lit-decl-loop-cond",
     "react-vite": "lit-decl-loop-cond",
+    "next-webpack": "lit-decl-loop-cond",
 };
 
 // Canonical ordering of scat categories (matches ALL_SCAT_CATEGORIES in csmast.mjs).
@@ -843,8 +844,15 @@ const refactor = async (
             }
         }
     } else if (tech === "next-webpack") {
+        if (remoteOpts?.scat) {
+            console.log(chalk.cyan(`[i] Using custom scat config: ${remoteOpts.scat.join(",")}`));
+        }
         for (const [, value] of Object.entries(chunks)) {
-            const moduleFiles = await refactorNextWebpack(value);
+            const moduleFiles = await refactorNextWebpack(
+                value,
+                libSigs,
+                remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined
+            );
             for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
                 let formatted: string;
                 try {
