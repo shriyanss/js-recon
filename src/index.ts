@@ -53,8 +53,7 @@ program.configureHelp({
             })
             .join(" ");
     },
-    styleOptionDescription: (str) =>
-        str.replace(/(\(default:[^)]*\))/g, chalk.dim.italic("$1")),
+    styleOptionDescription: (str) => str.replace(/(\(default:[^)]*\))/g, chalk.dim.italic("$1")),
 });
 
 /** Valid AI options for analysis modules */
