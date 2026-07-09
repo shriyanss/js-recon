@@ -54,7 +54,20 @@ const FLAGS: Record<string, string[]> = {
         "--exclude-methods",
         "--list-methods",
     ],
-    endpoints: ["-u", "--url", "-d", "--directory", "-o", "--output", "--output-format", "-t", "--tech", "-l", "--list", "--mapped-json"],
+    endpoints: [
+        "-u",
+        "--url",
+        "-d",
+        "--directory",
+        "-o",
+        "--output",
+        "--output-format",
+        "-t",
+        "--tech",
+        "-l",
+        "--list",
+        "--mapped-json",
+    ],
     strings: [
         "-d",
         "--directory",
@@ -140,8 +153,34 @@ const FLAGS: Record<string, string[]> = {
         "--detect-version-dynamic-threshold",
         "--detect-version-dynamic-conf-purge",
     ],
-    analyze: ["-r", "--rules", "-m", "--mapped-json", "-t", "--tech", "--openapi", "-l", "--list", "--validate", "-o", "--output"],
-    report: ["-s", "--sqlite-db", "-m", "--mapped-json", "-a", "--analyze-json", "-e", "--endpoints-json", "--map-openapi", "--mapped-openapi-json", "-o", "--output"],
+    analyze: [
+        "-r",
+        "--rules",
+        "-m",
+        "--mapped-json",
+        "-t",
+        "--tech",
+        "--openapi",
+        "-l",
+        "--list",
+        "--validate",
+        "-o",
+        "--output",
+    ],
+    report: [
+        "-s",
+        "--sqlite-db",
+        "-m",
+        "--mapped-json",
+        "-a",
+        "--analyze-json",
+        "-e",
+        "--endpoints-json",
+        "--map-openapi",
+        "--mapped-openapi-json",
+        "-o",
+        "--output",
+    ],
     run: [
         "-u",
         "--url",
@@ -192,8 +231,32 @@ const FLAGS: Record<string, string[]> = {
         "--cs-mast-tech-detect-threshold",
     ],
     load: ["-c", "--caido", "-u", "--url", "--cache-file"],
-    fingerprint: ["-u", "--url", "-o", "--output", "-f", "--format", "-t", "--threads", "--timeout", "-k", "--insecure", "--no-sandbox"],
-    mcp: ["--cli", "--server", "-c", "--chat", "--config", "--api-key", "--model", "--provider", "--no-refresh-claude-creds", "--claude-client-id"],
+    fingerprint: [
+        "-u",
+        "--url",
+        "-o",
+        "--output",
+        "-f",
+        "--format",
+        "-t",
+        "--threads",
+        "--timeout",
+        "-k",
+        "--insecure",
+        "--no-sandbox",
+    ],
+    mcp: [
+        "--cli",
+        "--server",
+        "-c",
+        "--chat",
+        "--config",
+        "--api-key",
+        "--model",
+        "--provider",
+        "--no-refresh-claude-creds",
+        "--claude-client-id",
+    ],
     "cs-mast": [
         "-o",
         "--output",
@@ -310,10 +373,9 @@ _js_recon "\$@"
 }
 
 function generateFishCompletion(): string {
-    const cmdCompletions = COMMANDS.map(
-        (cmd) =>
-            `complete -c js-recon -f -n '__fish_use_subcommand' -a ${cmd}`
-    ).join("\n");
+    const cmdCompletions = COMMANDS.map((cmd) => `complete -c js-recon -f -n '__fish_use_subcommand' -a ${cmd}`).join(
+        "\n"
+    );
 
     const flagCompletions = Object.entries(FLAGS)
         .flatMap(([cmd, flags]) =>
