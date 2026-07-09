@@ -90,9 +90,7 @@ export const refactorNextWebpack = async (
             //   (e, t, r) => {...}              → parent is ExpressionStatement or Program
             const parent = path.parentPath;
             const isTopLevel =
-                parent?.isAssignmentExpression() ||
-                parent?.isExpressionStatement() ||
-                parent?.isProgram();
+                parent?.isAssignmentExpression() || parent?.isExpressionStatement() || parent?.isProgram();
             if (!isTopLevel) return;
 
             const params = path.node.params;
