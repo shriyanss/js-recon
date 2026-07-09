@@ -21,10 +21,12 @@ import { applyHeapLimit } from "./utility/heap.js";
 import csMast from "./cs_mast/index.js";
 import sourcemaps from "./sourcemaps/index.js";
 import { printBanner } from "./utility/banner.js";
+import completion from "./completion/index.js";
 
 const args = process.argv.slice(2);
 const isVersionFlag = args.length === 1 && (args[0] === "-V" || args[0] === "--version");
-if (!isVersionFlag) {
+const isCompletionCmd = args[0] === "completion";
+if (!isVersionFlag && !isCompletionCmd) {
     await (async () => printBanner())();
 }
 
@@ -709,6 +711,22 @@ program
     .option("-o, --output <directory>", "Output directory for extracted source files", "extracted")
     .action(async (cmd) => {
         await sourcemaps(cmd.input, cmd.output);
+    });
+
+program
+    .command("completion")
+    .description("Generate shell completion scripts for bash, zsh, or fish")
+    .argument("<shell>", "Shell type: bash, zsh, or fish")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  eval "$(js-recon completion bash)"   # Add to ~/.bashrc
+  eval "$(js-recon completion zsh)"    # Add to ~/.zshrc
+  js-recon completion fish > ~/.config/fish/completions/js-recon.fish`
+    )
+    .action(async (shell) => {
+        completion(shell);
     });
 
 program.parse(process.argv);
