@@ -197,15 +197,15 @@ jobs:
 
       - name: Run js-recon via Docker against lab app
         run: |
-          echo "http://localhost:3001" > urls.txt
-          mkdir -p output
-          docker run --rm \
+          docker run --name js-recon-run \
             --network host \
-            -v "$(pwd)/urls.txt:/home/pptruser/urls.txt" \
             -v "$(pwd)/js-recon-rules:/home/pptruser/js-recon-rules" \
-            -v "$(pwd)/output:/home/pptruser/output" \
+            --entrypoint /bin/bash \
             shriyanss/js-recon \
-            run -u /home/pptruser/urls.txt -r ./js-recon-rules --no-sandbox -y -k
+            -c 'mkdir -p ~/.js-recon && ln -sf /home/pptruser/js-recon-rules ~/.js-recon/rules && printf "http://localhost:3001\n" > /tmp/urls.txt && node build/index.js run -u /tmp/urls.txt -r ./js-recon-rules --no-sandbox -y -k'
+          mkdir -p output
+          docker cp js-recon-run:/home/pptruser/output/. ./output/ 2>/dev/null || true
+          docker rm js-recon-run
 
       - name: Verify all rules fired
         run: node scripts/smoke-test.js
@@ -279,6 +279,11 @@ jobs:
             sleep 2
           done
           echo "Lab app is ready."
+
+      - name: Pre-populate js-recon rules cache
+        run: |
+          mkdir -p ~/.js-recon
+          ln -sf "$GITHUB_WORKSPACE/js-recon-rules" ~/.js-recon/rules
 
       - name: Run js-recon natively against lab app
         run: |
