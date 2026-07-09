@@ -172,13 +172,27 @@ jobs:
       - name: Build js-recon Docker image
         run: docker build -t shriyanss/js-recon .
 
-      - name: Start vuln-all-rules lab app
-        run: docker run -d --name lab-app -p 3001:3001 shriyanss/js-recon-labs:vuln-all-rules
+      - name: Install vuln-all-rules app dependencies
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: npm ci
+
+      - name: Build vuln-all-rules app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: npm run build
+
+      - name: Start vuln-all-rules app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: npm start &
 
       - name: Wait for lab app to be ready
         run: |
           echo "Waiting for lab app on port 3001..."
-          timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+          n=0
+          until curl -sf http://localhost:3001 > /dev/null; do
+            n=$((n+1))
+            [ $n -ge 30 ] && echo "Timed out waiting for lab app" && exit 1
+            sleep 2
+          done
           echo "Lab app is ready."
 
       - name: Run js-recon via Docker against lab app
@@ -258,7 +272,12 @@ jobs:
       - name: Wait for lab app to be ready
         run: |
           echo "Waiting for lab app on port 3001..."
-          timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+          n=0
+          until curl -sf http://localhost:3001 > /dev/null; do
+            n=$((n+1))
+            [ $n -ge 30 ] && echo "Timed out waiting for lab app" && exit 1
+            sleep 2
+          done
           echo "Lab app is ready."
 
       - name: Run js-recon natively against lab app
