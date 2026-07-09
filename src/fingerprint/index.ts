@@ -49,7 +49,12 @@ const initOutputFiles = (outputFile: string, formats: OutputFormat[]): void => {
     }
 };
 
-const appendResult = (result: FingerprintResult, completedResults: FingerprintResult[], outputFile: string, formats: OutputFormat[]): void => {
+const appendResult = (
+    result: FingerprintResult,
+    completedResults: FingerprintResult[],
+    outputFile: string,
+    formats: OutputFormat[]
+): void => {
     for (const format of formats) {
         const filePath = deriveOutputPath(outputFile, format);
         if (format === "csv") {
@@ -58,7 +63,10 @@ const appendResult = (result: FingerprintResult, completedResults: FingerprintRe
             const data = completedResults.map((r) => ({ url: r.url, framework: r.framework ?? "unknown" }));
             fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n");
         } else if (format === "jsonl") {
-            fs.appendFileSync(filePath, JSON.stringify({ url: result.url, framework: result.framework ?? "unknown" }) + "\n");
+            fs.appendFileSync(
+                filePath,
+                JSON.stringify({ url: result.url, framework: result.framework ?? "unknown" }) + "\n"
+            );
         } else {
             fs.appendFileSync(filePath, `[${result.framework ?? "unknown"}] ${result.url}\n`);
         }
