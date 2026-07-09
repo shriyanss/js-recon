@@ -42,6 +42,19 @@ program.configureHelp({
     styleOptionText: (str) => chalk.yellow(str),
     styleArgumentText: (str) => chalk.green(str),
     styleSubcommandText: (str) => chalk.cyan(str),
+    styleOptionTerm: (str) => {
+        // Color flags yellow, <required> args magenta, [optional] args cyan
+        return str
+            .split(" ")
+            .map((word) => {
+                if (word.startsWith("<") && word.endsWith(">")) return chalk.magenta(word);
+                if (word.startsWith("[") && word.endsWith("]")) return chalk.cyan(word);
+                return chalk.yellow(word);
+            })
+            .join(" ");
+    },
+    styleOptionDescription: (str) =>
+        str.replace(/(\(default:[^)]*\))/g, chalk.dim.italic("$1")),
 });
 
 /** Valid AI options for analysis modules */
