@@ -67,7 +67,12 @@ const writeResults = (results: FingerprintResult[], outputFile: string, formats:
     }
 };
 
-const fingerprint = async (urlArg: string, outputFile: string | undefined, formatArg: string, threads = 5): Promise<void> => {
+const fingerprint = async (
+    urlArg: string,
+    outputFile: string | undefined,
+    formatArg: string,
+    threads = 5
+): Promise<void> => {
     const urls = parseUrls(urlArg);
     const concurrency = Math.max(1, threads);
 
