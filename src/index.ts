@@ -34,6 +34,16 @@ if (!isVersionFlag) {
  */
 program.version(CONFIG.version).description(CONFIG.toolDesc);
 
+program.configureHelp({
+    styleTitle: (str) => chalk.bold.cyan(str),
+    styleCommandText: (str) => chalk.bold(str),
+    styleCommandDescription: (str) => chalk.dim(str),
+    styleDescriptionText: (str) => chalk.dim(str),
+    styleOptionText: (str) => chalk.yellow(str),
+    styleArgumentText: (str) => chalk.green(str),
+    styleSubcommandText: (str) => chalk.cyan(str),
+});
+
 /** Valid AI options for analysis modules */
 const validAiOptions = ["description"];
 
