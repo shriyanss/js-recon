@@ -42,27 +42,32 @@ export const deriveOutputPath = (outputFile: string, format: OutputFormat): stri
     return `${base}.txt`;
 };
 
-const writeResults = (results: FingerprintResult[], outputFile: string, formats: OutputFormat[]): void => {
+const initOutputFiles = (outputFile: string, formats: OutputFormat[]): void => {
     for (const format of formats) {
         const filePath = deriveOutputPath(outputFile, format);
+        fs.writeFileSync(filePath, format === "csv" ? "framework,url\n" : "");
+    }
+};
 
+const appendResult = (result: FingerprintResult, completedResults: FingerprintResult[], outputFile: string, formats: OutputFormat[]): void => {
+    for (const format of formats) {
+        const filePath = deriveOutputPath(outputFile, format);
         if (format === "csv") {
-            const lines = ["framework,url"];
-            for (const r of results) {
-                lines.push(`${r.framework ?? "unknown"},${r.url}`);
-            }
-            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+            fs.appendFileSync(filePath, `${result.framework ?? "unknown"},${result.url}\n`);
         } else if (format === "json") {
-            const data = results.map((r) => ({ url: r.url, framework: r.framework ?? "unknown" }));
+            const data = completedResults.map((r) => ({ url: r.url, framework: r.framework ?? "unknown" }));
             fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n");
         } else if (format === "jsonl") {
-            const lines = results.map((r) => JSON.stringify({ url: r.url, framework: r.framework ?? "unknown" }));
-            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+            fs.appendFileSync(filePath, JSON.stringify({ url: result.url, framework: result.framework ?? "unknown" }) + "\n");
         } else {
-            const lines = results.map((r) => `[${r.framework ?? "unknown"}] ${r.url}`);
-            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+            fs.appendFileSync(filePath, `[${result.framework ?? "unknown"}] ${result.url}\n`);
         }
+    }
+};
 
+const logOutputFiles = (outputFile: string, formats: OutputFormat[]): void => {
+    for (const format of formats) {
+        const filePath = deriveOutputPath(outputFile, format);
         console.log(chalk.green(`[✓] Results written to ${filePath}`));
     }
 };
@@ -83,6 +88,11 @@ const fingerprint = async (
     const formats: OutputFormat[] = rawFormats.length > 0 ? rawFormats : ["text"];
 
     const results: FingerprintResult[] = new Array(urls.length);
+    const completedResults: FingerprintResult[] = [];
+
+    if (outputFile) {
+        initOutputFiles(outputFile, formats);
+    }
 
     const overhead = 52;
     const multiBar = new cliProgress.MultiBar(
@@ -123,7 +133,13 @@ const fingerprint = async (
                 // detection failure — treat as unknown
             }
 
-            results[idx] = { url, framework };
+            const entry: FingerprintResult = { url, framework };
+            results[idx] = entry;
+            completedResults.push(entry);
+
+            if (outputFile) {
+                appendResult(entry, completedResults, outputFile, formats);
+            }
 
             const label = framework ? (FRAMEWORK_LABELS[framework] ?? framework) : "unknown";
             const line = framework ? chalk.green(`[${label}] ${url}`) : chalk.dim(`[unknown] ${url}`);
@@ -144,7 +160,7 @@ const fingerprint = async (
     console.log(chalk.cyan(`\n[i] ${detected}/${results.length} URLs fingerprinted`));
 
     if (outputFile) {
-        writeResults(results, outputFile, formats);
+        logOutputFiles(outputFile, formats);
     }
 };
 
