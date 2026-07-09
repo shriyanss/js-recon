@@ -67,8 +67,9 @@ const writeResults = (results: FingerprintResult[], outputFile: string, formats:
     }
 };
 
-const fingerprint = async (urlArg: string, outputFile: string | undefined, formatArg: string): Promise<void> => {
+const fingerprint = async (urlArg: string, outputFile: string | undefined, formatArg: string, threads = 5): Promise<void> => {
     const urls = parseUrls(urlArg);
+    const concurrency = Math.max(1, threads);
 
     const rawFormats = formatArg
         .split(",")
@@ -76,7 +77,7 @@ const fingerprint = async (urlArg: string, outputFile: string | undefined, forma
         .filter((f) => f === "text" || f === "csv" || f === "json" || f === "jsonl") as OutputFormat[];
     const formats: OutputFormat[] = rawFormats.length > 0 ? rawFormats : ["text"];
 
-    const results: FingerprintResult[] = [];
+    const results: FingerprintResult[] = new Array(urls.length);
 
     const overhead = 52;
     const multiBar = new cliProgress.MultiBar(
@@ -98,26 +99,36 @@ const fingerprint = async (urlArg: string, outputFile: string | undefined, forma
 
     globalsUtil.setQuiet(true);
 
-    for (const url of urls) {
-        const displayUrl = url.length > 50 ? url.slice(0, 47) + "..." : url;
-        bar.update({ url: displayUrl });
+    let nextIdx = 0;
 
-        let framework: string | null = null;
-        try {
-            const tech = await frameworkDetect(url);
-            framework = tech ? tech.name : null;
-        } catch {
-            // detection failure — treat as unknown
+    const worker = async (): Promise<void> => {
+        while (true) {
+            const idx = nextIdx++;
+            if (idx >= urls.length) return;
+            const url = urls[idx];
+
+            const displayUrl = url.length > 50 ? url.slice(0, 47) + "..." : url;
+            bar.update({ url: displayUrl });
+
+            let framework: string | null = null;
+            try {
+                const tech = await frameworkDetect(url);
+                framework = tech ? tech.name : null;
+            } catch {
+                // detection failure — treat as unknown
+            }
+
+            results[idx] = { url, framework };
+
+            const label = framework ? (FRAMEWORK_LABELS[framework] ?? framework) : "unknown";
+            const line = framework ? chalk.green(`[${label}] ${url}`) : chalk.dim(`[unknown] ${url}`);
+            progressLog(line);
+
+            bar.increment(1);
         }
+    };
 
-        results.push({ url, framework });
-
-        const label = framework ? (FRAMEWORK_LABELS[framework] ?? framework) : "unknown";
-        const line = framework ? chalk.green(`[${label}] ${url}`) : chalk.dim(`[unknown] ${url}`);
-        progressLog(line);
-
-        bar.increment(1);
-    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
 
     globalsUtil.setQuiet(false);
     multiBar.stop();

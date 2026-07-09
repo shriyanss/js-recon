@@ -13,7 +13,7 @@ Powers the `fingerprint` subcommand. Given a list of URLs, classifies each by fr
 - **Pure read-only.** Does not download chunks, does not write to `output/`. Adding chunk capture here would duplicate `lazyLoad` — keep the boundary.
 - **Reuses `lazyLoad/techDetect`.** Any new framework detection logic goes there, NOT here. This dir just adds output formatting + parallelism.
 - **No tech-string global side effect.** Unlike `lazyLoad`, this dir does NOT call `setTech()`; it returns per-URL results. Running `fingerprint` then `analyze` in the same process would leak state — `processUrl` in `../run/` handles isolation, but ad-hoc combinations don't.
-- **Parallelism is per-URL.** Each URL detection runs independently; no shared Puppeteer page. Concurrency limit is hardcoded — adjust there if memory or rate-limit issues appear.
+- **Parallelism is per-URL.** Each URL detection runs independently; no shared Puppeteer page. Concurrency limit is controlled by the `-t/--threads` CLI flag (default: 5).
 
 ## How to test changes here
 

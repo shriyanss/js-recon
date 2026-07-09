@@ -624,6 +624,7 @@ program
     .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <file>", "Output file to write results")
     .option("-f, --format <formats>", "Output format(s): text, csv, json, jsonl (comma-separated)", "text")
+    .option("-t, --threads <threads>", "Number of concurrent detection workers", "5")
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
@@ -632,7 +633,7 @@ program
         globalsUtil.setDisableCache(true);
         globalsUtil.setYes(true);
         configureSandbox(cmd);
-        await fingerprint(cmd.url, cmd.output, cmd.format);
+        await fingerprint(cmd.url, cmd.output, cmd.format, Number(cmd.threads));
     });
 
 program
