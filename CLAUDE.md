@@ -401,7 +401,7 @@ Before writing any files, gather the current state:
 
     Previous tag is left to GitHub's automatic detection (do not set `--target` or `--tag` beyond the tag name itself).
 
-9. **Wait for npm stage publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow "Publish JS Recon"`. `publish-npm` uses OIDC trusted publishing (`npm stage publish`, no token) to *stage* the release — this is NOT the same as it being live.
+9. **Wait for npm stage publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow "Publish JS Recon"`. `publish-npm` uses OIDC trusted publishing (`npm stage publish`, no token) to _stage_ the release — this is NOT the same as it being live.
 
 10. **Approve the staged release** — npm's staged-publish approval always requires interactive 2FA, so this step can never be automated or scripted:
 
