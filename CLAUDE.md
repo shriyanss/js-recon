@@ -423,7 +423,7 @@ The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step
 
 1. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
 2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
-3. Updates `version`, `url`, and `sha256` in `Formula/js-recon.rb` via anchored `sed`
+3. Updates `url` and `sha256` in `Formula/js-recon.rb` via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
 4. Commits `chore: update js-recon formula to <version>` and pushes
 
 Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`

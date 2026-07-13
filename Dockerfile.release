@@ -1,4 +1,4 @@
-FROM ghcr.io/puppeteer/puppeteer:24.43.1
+FROM ghcr.io/puppeteer/puppeteer:25.3.0
 
 WORKDIR /home/pptruser
 
