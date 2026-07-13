@@ -1,0 +1,116 @@
+# Manually-triggered second phase of a release, run after a staged npm publish
+# (see publish-js-recon.yml) has been approved by a human with 2FA on npmjs.com.
+# Installs js-recon from the published npm registry artifact rather than
+# building from git source, so the Homebrew/Docker/GHCR outputs are provably
+# the same bits that were reviewed and approved on npm.
+
+name: Promote JS Recon Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Published npm version to promote (e.g. 1.4.1-alpha.6, no leading v)"
+        required: true
+        type: string
+
+jobs:
+  update-homebrew-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch published tarball and compute SHA256
+        id: sha256
+        run: |
+          npm pack "@shriyanss/js-recon@${VERSION}"
+          SHA=$(sha256sum "shriyanss-js-recon-${VERSION}.tgz" | awk '{print $1}')
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Check out homebrew-tap
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: shriyanss/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula fields
+        working-directory: homebrew-tap
+        run: |
+          F="Formula/js-recon.rb"
+          sed -i "s|^  url \"https://registry\.npmjs\.org/@shriyanss/js-recon/-/js-recon-[^\"]*\"|  url \"https://registry.npmjs.org/@shriyanss/js-recon/-/js-recon-${VERSION}.tgz\"|" "${F}"
+          sed -i "s|^  sha256 \"[a-f0-9]*\"|  sha256 \"${SHA}\"|" "${F}"
+        env:
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ steps.sha256.outputs.sha256 }}
+
+      - name: Commit and push
+        working-directory: homebrew-tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/js-recon.rb
+          git commit -m "chore: update js-recon formula to ${VERSION}"
+          git push
+        env:
+          VERSION: ${{ inputs.version }}
+
+  publish-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Build and push to dockerhub
+        run: |
+          # login to docker
+          echo $DOCKER_SECRET | docker login -u shriyanss --password-stdin
+
+          # build the image from the published npm artifact
+          docker build -f Dockerfile.release --build-arg JS_RECON_VERSION=$VERSION -t shriyanss/js-recon:$VERSION .
+
+          # check if it is alpha or beta. default to latest
+          TAG="latest"
+          [[ "$VERSION" == *"beta"* ]] && TAG="beta"
+          [[ "$VERSION" == *"alpha"* ]] && TAG="alpha"
+
+          # tag again with whatever has been set
+          docker tag shriyanss/js-recon:$VERSION shriyanss/js-recon:$TAG
+
+          # push images with both tags
+          docker push shriyanss/js-recon:$VERSION
+          docker push shriyanss/js-recon:$TAG
+
+        env:
+          DOCKER_SECRET: ${{ secrets.DOCKER_SECRET }}
+          VERSION: ${{ inputs.version }}
+
+  publish-ghcr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push to github container registry
+        run: |
+          # build the image from the published npm artifact
+          docker build -f Dockerfile.release --build-arg JS_RECON_VERSION=$VERSION -t ghcr.io/shriyanss/js-recon:$VERSION .
+
+          # check if it is alpha or beta. default to latest
+          TAG="latest"
+          [[ "$VERSION" == *"beta"* ]] && TAG="beta"
+          [[ "$VERSION" == *"alpha"* ]] && TAG="alpha"
+
+          # tag again with whatever has been set
+          docker tag ghcr.io/shriyanss/js-recon:$VERSION ghcr.io/shriyanss/js-recon:$TAG
+
+          # push images with both tags
+          docker push ghcr.io/shriyanss/js-recon:$VERSION
+          docker push ghcr.io/shriyanss/js-recon:$TAG
+
+        env:
+          VERSION: ${{ inputs.version }}

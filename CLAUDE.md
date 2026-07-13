@@ -401,25 +401,43 @@ Before writing any files, gather the current state:
 
     Previous tag is left to GitHub's automatic detection (do not set `--target` or `--tag` beyond the tag name itself).
 
-9. **Wait for npm publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow release`. Confirm the npm package is live at the new version before proceeding to Phase 2.
+9. **Wait for npm stage publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow "Publish JS Recon"`. `publish-npm` uses OIDC trusted publishing (`npm stage publish`, no token) to *stage* the release — this is NOT the same as it being live.
 
-### Homebrew tap (automatic, runs in parallel with Phase 2)
+10. **Approve the staged release** — npm's staged-publish approval always requires interactive 2FA, so this step can never be automated or scripted:
 
-After `publish-npm` succeeds, the `update-homebrew-tap` job in `publish-js-recon.yml` runs automatically. It:
+    - Find the stage id: `npm stage list @shriyanss/js-recon` (or the "Staged Packages" tab on npmjs.com)
+    - Approve it: `npm stage approve <stage-id>` (prompts for 2FA), or click "Approve" on npmjs.com
+    - Confirm it's live: `npm view @shriyanss/js-recon@<version>`
 
-1. Computes the SHA256 of the published npm tarball from the public npmjs.org URL (no auth)
+11. **Manually trigger the promote workflow** — once the release is live, run `promote-js-recon.yml` to update Homebrew and publish the Docker/GHCR images:
+
+    ```bash
+    gh workflow run promote-js-recon.yml --repo shriyanss/js-recon -f version=<version>
+    ```
+
+    This workflow installs js-recon from the published npm registry artifact (`npm pack`/`npm install <pkg>@<version>`) rather than building from git source — an additional supply-chain check that the shipped images/formula match exactly what was approved on npm. Monitor: `gh run list --repo shriyanss/js-recon --workflow "Promote JS Recon Release"`.
+
+### Homebrew tap (manual, part of `promote-js-recon.yml`)
+
+The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step 11 above):
+
+1. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
 2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
 3. Updates `version`, `url`, and `sha256` in `Formula/js-recon.rb` via anchored `sed`
 4. Commits `chore: update js-recon formula to <version>` and pushes
 
 Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
 
-**If the job fails:** The npm package is already live. Manually update: compute `curl -fsSL <tarball-url> | sha256sum`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
+**If the job fails:** manually update: `npm pack @shriyanss/js-recon@<version> && sha256sum shriyanss-js-recon-<version>.tgz`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
 
 **One-time setup** (must be done before the first release, already completed):
 
 - `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
 - `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
+
+### Docker / GHCR images (manual, part of `promote-js-recon.yml`)
+
+`publish-docker` and `publish-ghcr` (now in `promote-js-recon.yml`) build from `Dockerfile.release` instead of the default `Dockerfile`. `Dockerfile.release` runs `npm install -g @shriyanss/js-recon@<version>` against the live registry rather than copying local source and building — the published images are provably built from the approved npm artifact. The default `Dockerfile` (source build) is unchanged and still used for local/dev builds.
 
 ### Phase 2 — js-recon-docs (after npm is live)
 

@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-alpha.6 - 2026-07-13
+
+### Changed
+
+- CI: npm publishing now uses OIDC trusted publishing with staged releases (`npm stage publish`) instead of a classic auth token, since NPM is restricting tokens that bypass MFA. Promoting a staged release to live still requires a manual, 2FA-gated `npm stage approve` — this cannot be automated. The Homebrew tap update and Docker/GHCR image publishing have moved out of `publish-js-recon.yml` into a new manually-triggered workflow, `promote-js-recon.yml`, run after the staged release is approved. That workflow installs js-recon from the published npm registry artifact (`npm pack`/`npm install <pkg>@<version>`) rather than building from git source, as an additional supply-chain safeguard — what ships in the Docker/GHCR images and what Homebrew hashes is provably the same bits that were reviewed and approved on npm. (`ci`)
+
 ## 1.4.1-alpha.5 - 2026-07-13
 
 ### Fixed
