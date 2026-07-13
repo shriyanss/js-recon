@@ -121,3 +121,4 @@ Please refer to the [Contributing](https://js-recon.io/contributing) page for de
 ## License
 
 JS Recon is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
