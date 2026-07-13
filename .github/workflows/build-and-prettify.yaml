@@ -67,7 +67,7 @@ jobs:
         uses: shriyanss/verified-commit-action@v1
         with:
           ssh-private-key: ${{ secrets.JS_RECON_SIGNING_KEY }}
-          commit-name: "github-actions[bot]"
+          commit-name: "js-recon-bot"
           commit-email: ${{ secrets.JS_RECON_SIGNING_EMAIL }}
 
       - name: Set up Node.js
