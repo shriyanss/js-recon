@@ -1,7 +1,7 @@
 import { Node } from "@babel/types";
 import _traverse from "@babel/traverse";
 import chalk from "chalk";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Finds the variable name of the axios instance used in a chunk.

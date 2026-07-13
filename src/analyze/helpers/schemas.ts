@@ -39,6 +39,10 @@ const regexMatchStepSchema = z.object({
     pattern: z.string(),
 });
 
+const csMastSStepSchema = z.object({
+    signature: z.string(),
+});
+
 const stepSchema = z.object({
     name: z.string(),
     message: z.string(),
@@ -48,6 +52,7 @@ const stepSchema = z.object({
     postMessageFuncResolve: PostMessageFuncResolverStepSchema.optional(),
     checkAssignmentExist: checkAssignmentExistStepSchema.optional(),
     regexMatch: regexMatchStepSchema.optional(),
+    csMastS: csMastSStepSchema.optional(),
 });
 
 export const ruleSchema = z.object({
@@ -58,6 +63,6 @@ export const ruleSchema = z.object({
     js_recon_version: z.string(),
     tech: z.array(z.enum(["next", "vue", "react", "svelte", "angular", "all"])),
     severity: z.enum(["info", "low", "medium", "high"]),
-    type: z.enum(["request", "ast"]),
+    type: z.enum(["request", "ast", "cs-mast-s"]),
     steps: z.array(stepSchema),
 });

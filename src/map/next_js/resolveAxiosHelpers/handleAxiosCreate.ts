@@ -11,7 +11,7 @@ import { resolveNodeValue } from "../utils.js";
 import { traceAxiosInstanceExports } from "./traceAxiosInstanceExports.js";
 import { getThirdArg } from "../resolveAxios.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Finds the line number of a target line content in a given file content.

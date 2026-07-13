@@ -8,7 +8,7 @@ import * as globals from "../../../utility/globals.js";
 import { getThirdArg } from "../resolveAxios.js";
 import { resolveNodeValue } from "../utils.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 interface AxiosInstanceInfo {
     varName: string;

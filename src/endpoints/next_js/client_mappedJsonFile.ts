@@ -2,7 +2,7 @@ import chalk from "chalk";
 import fs from "fs";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import { Chunks } from "../../utility/interfaces.js";
 
 /**

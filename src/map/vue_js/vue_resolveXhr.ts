@@ -13,7 +13,7 @@ import {
     makeGetCallers,
 } from "./taint_utils.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 interface XhrEntry {
     file: string;
@@ -54,7 +54,7 @@ const vue_resolveXhr = async (directory: string, frameworkName = "Vue.JS"): Prom
     }
 
     files = files
-        .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
+        .filter((f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory())
         .sort();
 

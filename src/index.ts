@@ -21,10 +21,12 @@ import { applyHeapLimit } from "./utility/heap.js";
 import csMast from "./cs_mast/index.js";
 import sourcemaps from "./sourcemaps/index.js";
 import { printBanner } from "./utility/banner.js";
+import completion from "./completion/index.js";
 
 const args = process.argv.slice(2);
 const isVersionFlag = args.length === 1 && (args[0] === "-V" || args[0] === "--version");
-if (!isVersionFlag) {
+const isCompletionCmd = args[0] === "completion";
+if (!isVersionFlag && !isCompletionCmd) {
     await (async () => printBanner())();
 }
 
@@ -33,6 +35,28 @@ if (!isVersionFlag) {
  * Sets up command-line interface with various modules for JavaScript reconnaissance.
  */
 program.version(CONFIG.version).description(CONFIG.toolDesc);
+
+program.configureHelp({
+    styleTitle: (str) => chalk.bold.cyan(str),
+    styleCommandText: (str) => chalk.bold(str),
+    styleCommandDescription: (str) => chalk.dim(str),
+    styleDescriptionText: (str) => chalk.dim(str),
+    styleOptionText: (str) => chalk.yellow(str),
+    styleArgumentText: (str) => chalk.green(str),
+    styleSubcommandText: (str) => chalk.cyan(str),
+    styleOptionTerm: (str) => {
+        // Color flags yellow, <required> args magenta, [optional] args cyan
+        return str
+            .split(" ")
+            .map((word) => {
+                if (word.startsWith("<") && word.endsWith(">")) return chalk.magenta(word);
+                if (word.startsWith("[") && word.endsWith("]")) return chalk.cyan(word);
+                return chalk.yellow(word);
+            })
+            .join(" ");
+    },
+    styleOptionDescription: (str) => str.replace(/(\(default:[^)]*\))/g, chalk.dim.italic("$1")),
+});
 
 /** Valid AI options for analysis modules */
 const validAiOptions = ["description"];
@@ -215,6 +239,7 @@ program
     .option("-p, --permutate", "Permutate URLs and paths found", false)
     .option("--openapi", "Generate OpenAPI specification from the paths found", false)
     .option("-s, --scan-secrets", "Scan for secrets", false)
+    .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
     .action(async (cmd) => {
         await strings(
             cmd.directory,
@@ -223,7 +248,8 @@ program
             cmd.extractedUrlPath,
             cmd.scanSecrets,
             cmd.permutate,
-            cmd.openapi
+            cmd.openapi,
+            cmd.trufflehog
         );
     });
 
@@ -358,8 +384,31 @@ program
         "Disable remote HuggingFace signature fetch; run without library stripping unless --collisions is provided"
     )
     .option(
+        "--remote-collisions <path>",
+        "HuggingFace dataset path to load collision signatures from (e.g. react/vite/large-0.1.8). Overrides the automatic tech-to-branch mapping. Exits with code 25 if the path does not exist."
+    )
+    .option(
         "--scat <categories>",
         "Override the CS-MAST scat categories used for library signature matching. Comma-separated list of: lit,id,op,decl,loop,cond,name,val,op_name (e.g. --scat lit,decl,cond). Overrides the default lit-decl-loop-cond config."
+    )
+    .option(
+        "--detect-version",
+        "Detect the React version used in the bundle and use it in the refactored output's package.json (react-webpack and react-vite only).",
+        false
+    )
+    .option(
+        "--detect-version-config <config>",
+        'Scat configuration for version detection. Use "dynamic" (default) to auto-select reliable configs, or pass comma-separated scat categories for a fixed config (e.g. lit,decl,loop,cond). Exits with code 26 if the static config has empty signatures for any known React version.'
+    )
+    .option(
+        "--detect-version-dynamic-threshold <n>",
+        "Number of scat configs to select in dynamic version detection mode (default: 3). Must be a positive integer.",
+        "3"
+    )
+    .option(
+        "--detect-version-dynamic-conf-purge",
+        "Purge the cached dynamic scat config selection (stored in ~/.js-recon/refactor/config.json) and recompute it on this run.",
+        false
     )
     .action(async (cmd) => {
         const scat: string[] | undefined = cmd.scat
@@ -368,12 +417,24 @@ program
                   .map((s: string) => s.trim())
                   .filter(Boolean)
             : undefined;
+        const detectVersionDynamicThreshold = Number(cmd.detectVersionDynamicThreshold ?? 3);
+        if (!Number.isInteger(detectVersionDynamicThreshold) || detectVersionDynamicThreshold < 1) {
+            console.error(
+                `[!] --detect-version-dynamic-threshold must be a positive integer (got "${cmd.detectVersionDynamicThreshold}")`
+            );
+            process.exit(1);
+        }
         await refactor(cmd.mappedJson, cmd.output, cmd.tech, cmd.list, cmd.collisions, {
             signatureQuality: Number(cmd.signatureQuality ?? 100),
             refreshCache: !!cmd.refreshCache,
             skipCacheChecks: !!cmd.skipCacheChecks,
             noRemote: cmd.remote === false,
+            remoteCollisions: cmd.remoteCollisions as string | undefined,
             scat,
+            detectVersion: !!cmd.detectVersion,
+            detectVersionConfig: cmd.detectVersionConfig as string | undefined,
+            detectVersionDynamicThreshold,
+            detectVersionDynamicConfPurge: !!cmd.detectVersionDynamicConfPurge,
         });
     });
 
@@ -433,6 +494,7 @@ program
     .option("--cache-only", "Only use the response cache; never make network requests", false)
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--secrets", "Scan for secrets", false)
+    .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
@@ -464,6 +526,11 @@ program
     .option(
         "--list-methods [framework]",
         "Print available lazyload method names grouped by framework and exit. Optionally filter by framework (next_js, vue, nuxt_js, svelte, angular, react)."
+    )
+    .option(
+        "--cs-mast-tech-detect-threshold <n>",
+        "Minimum CS-MAST-S signature matches required to detect bundler for the refactor step (0 = skip refactor)",
+        "50"
     )
     .action(async (cmd) => {
         // handle --list-methods before any network work
@@ -559,6 +626,7 @@ program
     .requiredOption("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-o, --output <file>", "Output file to write results")
     .option("-f, --format <formats>", "Output format(s): text, csv, json, jsonl (comma-separated)", "text")
+    .option("-t, --threads <threads>", "Number of concurrent detection workers", "5")
     .option("--timeout <timeout>", "Request timeout in ms", "30000")
     .option("-k, --insecure", "Disable SSL certificate verification", false)
     .option("--no-sandbox", "Disable browser sandbox")
@@ -567,7 +635,7 @@ program
         globalsUtil.setDisableCache(true);
         globalsUtil.setYes(true);
         configureSandbox(cmd);
-        await fingerprint(cmd.url, cmd.output, cmd.format);
+        await fingerprint(cmd.url, cmd.output, cmd.format, Number(cmd.threads));
     });
 
 program
@@ -609,13 +677,30 @@ program
     .option("--min-collisions <n>", "Minimum times a hash must appear to be reported", "2")
     .option("--co, --collision-output <file>", "Write collision results to a file")
     .option("--cf, --collision-format <format>", "Output format for collision file: json or csv", "csv")
+    .option("--scat <categories>", "Comma-separated scat categories (e.g. lit,decl,loop,cond)", "lit,decl,loop,cond")
+    .option("--sinc <nodes>", "Comma-separated exact node types to include via sinc (e.g. IfStatement)", "")
+    .option(
+        "--all-scat-permutations",
+        "Run all 511 non-empty scat permutations and save per-permutation collision files",
+        false
+    )
+    .option(
+        "--perm-output <dir>",
+        "Output directory for per-permutation collision files (required with --all-scat-permutations)"
+    )
+    .option("--perm-concurrency <n>", "Number of parallel permutation workers (default: half of CPU count)", "0")
     .action(async (cmd) => {
         await csMast(
             cmd.output,
             cmd.collisionTable,
             parseInt(cmd.minCollisions, 10),
             cmd.collisionOutput,
-            cmd.collisionFormat
+            cmd.collisionFormat,
+            cmd.scat,
+            cmd.sinc || "",
+            cmd.allScatPermutations,
+            cmd.permOutput,
+            parseInt(cmd.permConcurrency, 10)
         );
     });
 
@@ -626,6 +711,22 @@ program
     .option("-o, --output <directory>", "Output directory for extracted source files", "extracted")
     .action(async (cmd) => {
         await sourcemaps(cmd.input, cmd.output);
+    });
+
+program
+    .command("completion")
+    .description("Generate shell completion scripts for bash, zsh, or fish")
+    .argument("<shell>", "Shell type: bash, zsh, or fish")
+    .addHelpText(
+        "after",
+        `
+Examples:
+  eval "$(js-recon completion bash)"   # Add to ~/.bashrc
+  eval "$(js-recon completion zsh)"    # Add to ~/.zshrc
+  js-recon completion fish > ~/.config/fish/completions/js-recon.fish`
+    )
+    .action(async (shell) => {
+        completion(shell);
     });
 
 program.parse(process.argv);

@@ -6,7 +6,7 @@ import parser from "@babel/parser";
 import t from "@babel/types";
 import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const vue_getClientSidePaths = async (url: string, jsFiles: string[], maxJsSizeMb: number = 2): Promise<string[]> => {
     const MAX_JS_SIZE_BYTES = maxJsSizeMb * 1024 * 1024;

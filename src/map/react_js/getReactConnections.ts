@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import chalk from "chalk";
 
 import { Chunks } from "../../utility/interfaces.js";
@@ -28,8 +28,8 @@ interface FileMeta {
 
 const parseFilename = (filename: string): FileMeta | null => {
     const base = path.basename(filename);
-    if (!base.endsWith(".js")) return null;
-    const stem = base.slice(0, -3);
+    if (!base.endsWith(".js") && !base.endsWith(".mjs")) return null;
+    const stem = base.endsWith(".mjs") ? base.slice(0, -4) : base.slice(0, -3);
     const dashIdx = stem.lastIndexOf("-");
     if (dashIdx < 1) return null;
     return { stem: stem.slice(0, dashIdx), hash: stem.slice(dashIdx + 1) };
@@ -68,7 +68,9 @@ const getReactConnections = async (directory: string, output: string, formats: s
     console.log(chalk.cyan("[i] Getting React (Vite/Rolldown) connections"));
 
     let files = fs.readdirSync(directory, { recursive: true, encoding: "utf8" }) as string[];
-    files = files.filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests") && !isVendorFile(f));
+    files = files.filter(
+        (f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests") && !isVendorFile(f)
+    );
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const stemCount = new Map<string, number>();

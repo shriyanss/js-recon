@@ -10,15 +10,15 @@ import chalk from "chalk";
 const extractImports = (content: string, fileUrl: string, baseUrl: string): string[] => {
     const found: string[] = [];
 
-    // Static imports: from "..." and import "..."
-    for (const m of content.matchAll(/\bfrom\s*["']([^"']+\.js)["']/g)) {
+    // Static imports: from "..." / from '...' / from `...`
+    for (const m of content.matchAll(/\bfrom\s*["'`]([^"'`]+\.m?js)["'`]/g)) {
         try {
             found.push(new URL(m[1], fileUrl).href);
         } catch {
             /* skip */
         }
     }
-    for (const m of content.matchAll(/\bimport\s*["']([^"']+\.js)["']/g)) {
+    for (const m of content.matchAll(/\bimport\s*["'`]([^"'`]+\.m?js)["'`]/g)) {
         try {
             found.push(new URL(m[1], fileUrl).href);
         } catch {
@@ -26,8 +26,8 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
         }
     }
 
-    // Dynamic imports: import("...")
-    for (const m of content.matchAll(/\bimport\s*\(\s*["']([^"']+\.js)["']\s*\)/g)) {
+    // Dynamic imports: import("...") / import('...') / import(`...`)
+    for (const m of content.matchAll(/\bimport\s*\(\s*["'`]([^"'`]+\.m?js)["'`]\s*\)/g)) {
         try {
             found.push(new URL(m[1], fileUrl).href);
         } catch {
@@ -44,12 +44,15 @@ const extractImports = (content: string, fileUrl: string, baseUrl: string): stri
             const arr: string[] = JSON.parse(mapDepsMatch[1]);
             for (const p of arr) {
                 try {
-                    // Absolute paths (starting with /) → resolve against origin root.
-                    // Relative paths (./.. prefix, or bare names) → resolve against the
-                    // file that contains the mapDeps table, so "../nodes/0.js" in
+                    // Explicit relative paths (starting with ./ or ../) → resolve against
+                    // the file that contains the mapDeps table, so "../nodes/0.js" in
                     // _app/immutable/entry/app.js correctly becomes
                     // _app/immutable/nodes/0.js rather than /nodes/0.js.
-                    const resolved = p.startsWith("/") ? new URL(p, baseUrl).href : new URL(p, fileUrl).href;
+                    // Everything else (absolute /assets/x.js or bare assets/x.js) →
+                    // resolve against the origin root, because Vite emits mapDeps paths
+                    // relative to the site root, not relative to the chunk's own directory.
+                    const isFileRelative = p.startsWith("./") || p.startsWith("../");
+                    const resolved = isFileRelative ? new URL(p, fileUrl).href : new URL(p, baseUrl).href;
                     found.push(resolved);
                 } catch {
                     /* skip */

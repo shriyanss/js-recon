@@ -77,9 +77,9 @@ npm run start -- <subcommand> [options]
 1. **Lazyload** — downloads initial JS chunks via Puppeteer; detects framework; sets `globalsUtil.getTech()` to `"next"`
 2. **Strings** — scans downloaded JS for strings, extracts URL paths → `extracted_urls.json`
 3. **Lazyload (subsequent requests)** — re-crawls using the extracted paths to fetch dynamically loaded chunks; also fetches `buildId`
-4. **Strings (pass 2)** — re-runs strings on the expanded chunk set; generates `extracted_urls.txt` (permuted) and `extracted_urls-openapi.json`; optionally scans secrets (`--secrets`)
+4. **Strings (pass 2)** — re-runs strings on the expanded chunk set; generates `extracted_urls.txt` (permuted) and `extracted_urls-openapi.json`; optionally scans secrets (`--secrets`); optionally runs TruffleHog (`--trufflehog`)
 5. **Lazyload re-pass (step 4.5)** — a second subsequent-requests crawl to pick up chunks for dynamic routes discovered in pass 2
-6. **Strings re-pass (step 4.6)** — strings pass over the re-pass chunks
+6. **Strings re-pass (step 4.6)** — strings pass over the re-pass chunks; also runs `--secrets` / `--trufflehog` if those flags are set
 7. **Map** — parses webpack/turbopack bundles; resolves `fetch()` calls and axios usage; generates `mapped.json` and `mapped-openapi.json`; CDN-aware: if JS was served from a different host, `getCdnDir` finds the CDN output dir and passes that to map instead of `outputDir/host`
 8. **Endpoints** — extracts client-side route paths; uses `___subsequent_requests` directory presence to decide whether to pass a JS directory
 9. **Analyze** — loads YAML rules (from `-r/--rules` if provided, otherwise default rules cache); runs AST engine and request engine; writes `analyze.json`
@@ -107,7 +107,7 @@ npm run start -- <subcommand> [options]
 
 **SvelteKit `adapter-static` (SSG/SPA) boot pattern**: The static builds produce a shell HTML file (`404.html` for SSG, `index.html` for SPA) that contains both `<link rel="modulepreload">` tags for all initial chunks AND the same inline `import()` boot script as adapter-node. `svelte_getFromPageSource` picks up 17+ JS URLs from the modulepreload links plus 2 from the inline script, giving a much larger seed set than the adapter-node case.
 
-**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React emit `m.f = ["/assets/chunk.js", ...]` (root-relative paths). `react_followImports` differentiates by checking `p.startsWith("/")` — absolute paths resolve against the origin (`baseUrl`), relative paths resolve against the chunk's own URL (`fileUrl`). See `src/lazyload/react/CLAUDE.md` for details.
+**`__vite_mapDeps` path formats**: SvelteKit emits `m.f = ["../nodes/0.js", "../chunks/x.js", ...]` (explicit file-relative paths) inside entry chunks at `_app/immutable/entry/`. Vue and React can emit either `m.f = ["/assets/chunk.js", ...]` (absolute root-relative) or `m.f = ["assets/chunk.js", ...]` (bare root-relative, no leading `/`). `react_followImports` differentiates by checking for a `./` or `../` prefix: only explicitly relative paths resolve against the chunk's own URL (`fileUrl`); all others (absolute `/` or bare names) resolve against the origin (`baseUrl`). Bare names like `assets/x.js` must NOT be resolved against `fileUrl` — when the chunk is inside `assets/`, that would produce a double-directory path. See `src/lazyload/react/CLAUDE.md` for details.
 
 ### Batch mode
 
@@ -200,6 +200,7 @@ Rule categories:
 
 - `ast/` — AST-based pattern matching against chunk code (uses `@babel/parser` + `esquery`)
 - `request/` — OpenAPI/request-level checks against the resolved endpoint list
+- `cs-mast-s/` — CS-MAST-S structural signature matching; each step embeds a PHC string and fires if that node-level hash is found anywhere in the chunk AST. Suitable for regression detection after a vulnerability is confirmed via AST rules. See `src/analyze/engine/csMastSEngine.ts` and `src/analyze/CLAUDE.md` for details.
 
 When `-r` points to a single file, only that rule is loaded. When it points to a directory, all `.yml`/`.yaml` files are loaded recursively.
 
@@ -207,11 +208,137 @@ When `-r` points to a single file, only that rule is loaded. When it points to a
 
 **Testing is mandatory for every change.** Before reporting a task complete:
 
-1. Run `npm run cleanup` to rebuild TypeScript.
-2. Run the `run` subcommand against the target the user provides. Do not use `analyze` or other individual subcommands as a substitute — the `run` subcommand must be used to validate end-to-end behavior.
-3. If the user has not provided a target, ask for one before proceeding.
+1. Run `npm test` to execute the unit test suite (Vitest).
+2. Run `npm run cleanup` to rebuild TypeScript.
+3. Run the `run` subcommand against the target the user provides. Do not use `analyze` or other individual subcommands as a substitute — the `run` subcommand must be used to validate end-to-end behavior.
+4. If the user has not provided a target, ask for one before proceeding.
 
-Typical test invocation:
+### Rules smoke test (CI)
+
+The `rules-smoke-test` GitHub Actions workflow (`.github/workflows/rules-smoke-test.yaml`) runs on every non-main push. It:
+
+1. Checks out `shriyanss/js-recon-labs` and `shriyanss/js-recon-rules` alongside js-recon.
+2. Builds js-recon and the `next_js/vuln-all-rules` lab app.
+3. Starts the lab app on port 3001.
+4. Runs `node build/index.js run -u http://localhost:3001 -r ./js-recon-rules --no-sandbox -y -k`.
+5. Runs `node scripts/smoke-test.js` which reads `output/localhost:3001/analyze.json` and asserts that all 22 expected rule IDs are present.
+
+**`scripts/smoke-test.js`** maintains the `EXPECTED_RULES` list. When a new rule is added to js-recon-rules:
+
+- The `next_js/vuln-all-rules` app in js-recon-labs must be updated to seed the new vulnerability.
+- The new rule ID must be appended to `EXPECTED_RULES` in `scripts/smoke-test.js`.
+
+The lab app seeds:
+
+- 19 AST rules for the `next` tech stack
+- 3 request rules (`api_path`, `admin_api`, `missing_authorization_header`)
+- The Angular-only rule (`detect_angular_bypass_security_trust`) is intentionally excluded.
+
+### Unit tests
+
+Unit tests live in `src/__tests__/` and cover pure-logic components. Test framework is **Vitest** (ESM-native, TypeScript-native — no compilation step needed).
+
+```bash
+npm test          # run all unit tests once
+npm run test:watch  # watch mode
+npm run test:build  # legacy build smoke test (node build/index.js -h)
+```
+
+Test files follow the pattern `src/__tests__/<component>/<name>.test.ts`.
+
+Covered components:
+
+| File                                                                                     | Tests in                                               |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `utility/urlUtils.ts` — `getURLDirectory`                                                | `src/__tests__/utility/urlUtils.test.ts`               |
+| `utility/replaceUrlPlaceholders.ts` — `replacePlaceholders`                              | `src/__tests__/utility/replaceUrlPlaceholders.test.ts` |
+| `utility/resolvePath.ts` — `resolvePath`                                                 | `src/__tests__/utility/resolvePath.test.ts`            |
+| `strings/index.ts` — `extractStrings`                                                    | `src/__tests__/strings/extractStrings.test.ts`         |
+| `analyze/helpers/validate.ts` — `parseVersion`, `compareVersions`, `isVersionCompatible` | `src/__tests__/analyze/versionCompat.test.ts`          |
+| `map/next_js/utils.ts` — `memberChainToString`                                           | `src/__tests__/map/memberChainToString.test.ts`        |
+| `fingerprint/index.ts` — `deriveOutputPath`                                              | `src/__tests__/fingerprint/deriveOutputPath.test.ts`   |
+
+When adding new pure-logic helpers, add a corresponding test file. Components that require Puppeteer, network I/O, or the full pipeline are still validated through the `run` subcommand.
+
+### Writing unit tests
+
+**What to test.** Test pure functions: anything that takes plain inputs and returns a value without I/O. The standard pattern for I/O-bound modules is to extract the parse/transform step into an exported pure function and test that. Leave the orchestrator (Puppeteer, `makeRequest`, file writes) untested at the unit level.
+
+**Extracting testable functions.** When a function mixes I/O with logic, split it:
+
+```typescript
+// Exported pure function — testable
+export const parseThings = (content: string, baseUrl: string): string[] => { ... };
+
+// Orchestrator — not unit-tested
+const myModule = async (url: string): Promise<string[]> => {
+    const resp = await makeRequest(url);
+    const content = await resp.text();
+    return parseThings(content, url);
+};
+```
+
+**Test file structure.** Use `describe` + `it` blocks. Group by function name. Cover: happy path, edge cases (empty input, malformed input), and threshold boundaries (e.g. "fewer than N entries returns []").
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { myPureFunction } from "../../path/to/module.js"; // .js extension required
+
+describe("myPureFunction", () => {
+    it("extracts X from valid input", () => {
+        const result = myPureFunction("...");
+        expect(result).toContain("expected");
+    });
+
+    it("returns [] for empty input", () => {
+        expect(myPureFunction("")).toEqual([]);
+    });
+
+    it("returns [] for invalid JS", () => {
+        expect(myPureFunction("{{{{ not valid")).toEqual([]);
+    });
+});
+```
+
+**Imports always use `.js` extension** for local files (ESM project with `"module": "node16"`):
+
+```typescript
+import { fn } from "../../lazyLoad/next_js/myModule.js";
+```
+
+**Constructing Babel AST nodes for tests.** When a function under test requires real Babel AST nodes (with `scope`, `path`, correct `start`/`end` offsets), parse a code snippet in the test and capture the node via a traverse visitor — do not construct AST nodes by hand. Wrap the expression in a `const _x = <expr>;` declaration so `start`/`end` offsets are preserved for any `code.slice()` calls inside the function:
+
+```typescript
+import parser from "@babel/parser";
+import _traverse from "@babel/traverse";
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
+
+function parseExpr(code: string) {
+    const src = `const _x = ${code};`;
+    const ast = parser.parse(src, { sourceType: "unambiguous", plugins: ["jsx", "typescript"] });
+    let node: any;
+    traverse(ast, {
+        VariableDeclarator(p) {
+            node = p.node.init;
+            p.stop();
+        },
+    });
+    return { node, src };
+}
+```
+
+**Avoiding GitHub secret scanning.** Strings that look like real secrets (Slack webhook URLs, Stripe keys, etc.) will be blocked by GitHub push protection even in test files. Construct them at runtime from parts arrays:
+
+```typescript
+// BAD — blocked by secret scanner
+const url = "https://hooks.slack.com/services/TABCDEF/BABCDEF/xxxxxxxxxxxx";
+
+// GOOD — assembled at runtime
+const parts = ["https://hooks.slack.com/services/T", "ABCDEF/B", "ABCDEF/xxxx"];
+const url = parts.join("");
+```
+
+Typical full test invocation:
 
 ```bash
 npm run cleanup && npm run start -- run -u <target-url> -y -k
@@ -384,6 +511,11 @@ When a user asks to fix or implement a GitHub issue, follow these steps:
 - `--min-collisions <n>` — minimum occurrences to report (default: 2)
 - `--co / --collision-output <file>` — write collision data to a file (independent of `--ct`)
 - `--cf / --collision-format json|csv` — output format (default: csv)
+- `--scat <categories>` — comma-separated scat categories to use (default: `lit,decl,loop,cond`). Overrides the fixed config for this run.
+- `--sinc <nodes>` — comma-separated exact node types to include via sinc (e.g. `IfStatement`).
+- `--all-scat-permutations` — run all 511 non-empty scat subsets and write one collision file per subset to `--perm-output`.
+- `--perm-output <dir>` — output directory for per-permutation files (required with `--all-scat-permutations`).
+- `--perm-concurrency <n>` — parallel permutation workers (default: half of CPU count).
 
 **`--co` path resolution:** if the given path is a directory or has no extension, the file is written as `collisions.<fmt>` in the current working directory.
 
@@ -395,15 +527,28 @@ When a user asks to fix or implement a GitHub issue, follow these steps:
 npm run build
 node build/index.js cs-mast -o output --ct --min-collisions 2
 node build/index.js cs-mast -o output --co output --cf csv   # writes ./collisions.csv
+node build/index.js cs-mast -o output --all-scat-permutations --perm-output ./perm-out --cf json
 ```
 
 ## refactor
 
-The `refactor` command supports three techs:
+The `refactor` command supports the following techs:
 
 - **`react-webpack`** — webpack 5 React bundles. Splits a numeric module map into per-module ES files, rewrites require→import, recovers JSX. See `src/refactor/react/CLAUDE.md`.
 - **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
 - **`next`** — Next.js bundles (legacy).
+- **`next-turbopack`** — Next.js Turbopack chunks. Handles both turbopack 3-param `func_NNN=(runtime,module,exports)=>{}` and 1-param `func_NNN=(runtime)=>{}` formats plus webpack-style coexisting chunks. See `src/refactor/next/CLAUDE.md`.
+- **`next-webpack`** — Next.js webpack chunks. Input format from `mapped.json`: `NNN:(module,exports,require)=>{}`. Recovers named exports (ODP, require.d), default exports (module.exports=V), re-exports (module.exports=require(N)→export*), and require hoisting. 277/280 modules recovered on a real bundle. Param order: params[0]=module, params[1]=exports, params[2]=require. See `src/refactor/next/CLAUDE.md`.
+- **`vue-webpack`** — Vue.js webpack 4/5 chunks. Container format: `(window.webpackJsonp||[]).push([[chunkIds],{moduleId:function(t,e,r){...}}])`. Each chunk file may contain multiple module functions; each is extracted and transformed. Reuses the Next.js webpack transform (same module param semantics: params[0]=module, params[1]=exports, params[2]=require). See `src/refactor/vue/index.ts`.
+- **`vue-vite`** — Vue 3 + Vite page chunks. The main index chunk (contains `__vccOpts`, all of Vue runtime) is analysed to build an export-alias→canonical-name map. Lazy page chunks then have their index imports rewritten to canonical `import {...} from 'vue'` statements. The `_export_sfc` compiler helper is inlined as a local const. See `src/refactor/vue/vite.ts` and `src/refactor/vue/vendor-analyze-vue.ts`.
+
+### Known react-vite bugs (discovered 2026-07-01, test against js-recon-research/react/20-cve-app)
+
+**Multi-chunk file overwrite** — `map` segments each Vite chunk into multiple sub-chunks (one per top-level function). The refactor write path processes sub-chunks sequentially, each overwriting the previous output file. Only the last sub-chunk survives. For chunks with inlined library code followed by the component function (e.g. `ApiProxy`, `Editor`, `Search`), this means the component is the survivor (last in the map order), which is the correct and useful result — but any app-specific helper functions in the same chunk are also lost.
+
+**Rename race** — When JSX is detected in a sub-chunk, the write path renames the output file `.js` → `.jsx`. When the same file is written by multiple sub-chunks, the rename is attempted on each JSX-containing chunk; all attempts after the first throw `ENOENT` because the `.js` file was already renamed. The `.jsx` file is correct; the unhandled rejection is noise. Fix: track which output files have already been renamed.
+
+**Remote signatures** — The `react/vite/large` HuggingFace bucket is currently empty. The tool falls back gracefully with a warning but remote library stripping is disabled. Symptom: `[!] No remote collisions files found for scat "lit-decl-loop-cond" in branch "react/vite/large"`. Fix: populate the bucket by running CS-MAST-S generation against a corpus of large Vite apps.
 
 ### refactor `--collisions <file>` (react-webpack only)
 
@@ -412,6 +557,37 @@ The `refactor` command supports three techs:
 Plumbing: `src/index.ts` (CLI) → `src/refactor/index.ts` (resolves the path via `resolveCollisionsPath()` — accepts either a file or a baseline-tree directory like `../js-recon-cs-mast-s/`; builds `Set<string>` of signatures with `count >= max count`) → `src/refactor/react/index.ts` (`moduleIsLibrary()` hashes each module body with `cs_mast_init({ scat: ["lit","decl","loop","cond"] })` and matches against the set). Detailed rationale + build history in `src/refactor/react/CLAUDE.md`.
 
 The baseline files live in the sibling `js-recon-cs-mast-s/` repo (`baselines/<tech>/<scat>/collisions.json`). See its `README.md` for layout and provenance.
+
+### refactor `--detect-version` (react-webpack, react-vite)
+
+`refactor -t react-webpack` and `refactor -t react-vite` accept a `--detect-version` flag that uses CS-MAST signatures to detect the React version used in the bundle.
+
+**Related flags:**
+
+- `--detect-version-config <config>` — `"dynamic"` (default) or comma-separated scat categories (e.g. `lit,decl,loop,cond`).
+- `--detect-version-dynamic-threshold <n>` — number of scat configs to use in dynamic mode (default: 3).
+- `--detect-version-dynamic-conf-purge` — clears the cached dynamic scat config and recomputes.
+
+**How it works:**
+
+1. **Scat config resolution** (`resolveVersionDetectionScatDirs()` in `src/refactor/index.ts`):
+    - `dynamic` mode: reads cached scat configs from `~/.js-recon/refactor/config.json`. If absent (or purged), calls `selectDynamicScatConfigs()` which lists scat dirs from the HF bucket for a reference version, then validates that each scat dir has non-empty `reliable_signatures.json` for ALL versions. Saves the result to `config.json`.
+    - Static mode: parses the user's comma-separated categories, converts to a bucket dir name via `scatToDir()`, validates against all versions, and exits with code 26 if any version's file is empty.
+2. `generateBundleSignatures()` in `src/refactor/remote/version-detect.ts` runs `cs_mast_init` on every chunk + optional extra code snippets for each selected scat config. This produces a separate signature set per scat.
+3. For each available React version, `fetchReliableSignatures()` downloads (or loads from cache) the `reliable_signatures.json` per scat config. Match counts are **summed across all scat configs** per version.
+4. The version with the highest total match count is returned as the detected version.
+5. The detected version's npm semver is used to pin `react` and `react-dom` in the refactored output's `package.json`.
+
+**Caches:**
+
+- Signature cache: `~/.js-recon/refactor/version_sigs_cache/<bundler>/<version>/<scatDir>/reliable_signatures.json` + `.cached_at` (7-day TTL).
+- Dynamic config cache: `~/.js-recon/refactor/config.json` (`dynamicVersionDetectionScatConfig` field).
+
+**Dataset coverage:** webpack (react-0.12 through react-19), vite (react-16 through react-19).
+
+**Important:** the version detection data in the HF bucket was generated with `@shriyanss/cs-mast` v0.1.8. The tool requires cs-mast 0.1.8 or later to produce matching signatures. Using an older cs-mast version will result in zero matches.
+
+**Important:** the version detection data in the HF bucket was generated with `@shriyanss/cs-mast` v0.1.8. The tool requires cs-mast 0.1.8 or later to produce matching signatures. Using an older cs-mast version will result in zero matches.
 
 ## Security / confidentiality
 

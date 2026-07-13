@@ -4,7 +4,7 @@ import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import makeRequest from "../../utility/makeReq.js";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 let toReturn = [];
 

@@ -9,7 +9,7 @@ import { astNodeToJsonString } from "./resolveAxiosHelpers/astNodeToJsonString.j
 import { getThirdArg } from "./resolveAxios.js";
 import * as globals from "../../utility/globals.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
 

@@ -1,0 +1,79 @@
+name: Rules Smoke Test
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  rules-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout js-recon
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Checkout js-recon-labs
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: shriyanss/js-recon-labs
+          path: js-recon-labs
+
+      - name: Checkout js-recon-rules
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: shriyanss/js-recon-rules
+          path: js-recon-rules
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install js-recon dependencies
+        run: npm ci
+
+      - name: Build js-recon
+        run: npm run build
+
+      - name: Install vulnerable app dependencies
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: npm ci
+
+      - name: Build vulnerable app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: npm run build
+
+      - name: Start vulnerable app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: npm start &
+
+      - name: Wait for app to be ready
+        run: |
+          echo "Waiting for app on port 3001..."
+          timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+          echo "App is ready."
+
+      - name: Run js-recon against vulnerable app
+        run: |
+          echo "http://localhost:3001" > /tmp/smoke-urls.txt
+          node --max-old-space-size=4096 build/index.js run \
+            -u /tmp/smoke-urls.txt \
+            -r ./js-recon-rules \
+            --no-sandbox \
+            -y -k
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
+
+      - name: Verify all rules fired
+        run: node scripts/smoke-test.js
+
+      - name: Upload analyze.json on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-json
+          path: output/localhost_3001/analyze.json
+          if-no-files-found: ignore

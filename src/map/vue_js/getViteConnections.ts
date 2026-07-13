@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import chalk from "chalk";
 
 import { Chunks } from "../../utility/interfaces.js";
@@ -19,8 +19,8 @@ interface FileMeta {
 
 const parseFilename = (filename: string): FileMeta | null => {
     const base = path.basename(filename);
-    if (!base.endsWith(".js")) return null;
-    let stem = base.slice(0, -3);
+    if (!base.endsWith(".js") && !base.endsWith(".mjs")) return null;
+    let stem = base.endsWith(".mjs") ? base.slice(0, -4) : base.slice(0, -3);
     if (stem.endsWith(".chunk")) {
         stem = stem.slice(0, -6);
     }
@@ -78,7 +78,9 @@ const getViteConnections = async (directory: string, output: string, formats: st
         encoding: "utf8",
     }) as string[];
 
-    files = files.filter((f) => (f.endsWith(".js") || f.endsWith(".vue")) && !f.includes("___subsequent_requests"));
+    files = files.filter(
+        (f) => (f.endsWith(".js") || f.endsWith(".mjs") || f.endsWith(".vue")) && !f.includes("___subsequent_requests")
+    );
     files = files.filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory());
 
     const fileMeta = new Map<string, FileMeta>();

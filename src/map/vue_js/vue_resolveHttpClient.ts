@@ -30,7 +30,7 @@ const stripAstNodes = (fn: EnclosingFn | null): EnclosingFn | null => {
     return root;
 };
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const HTTP_VERBS = new Set(["get", "post", "put", "delete", "patch", "head", "options"]);
 
@@ -221,7 +221,7 @@ const vue_resolveHttpClient = async (directory: string, frameworkName = "Vue.JS"
     }
 
     files = files
-        .filter((f) => f.endsWith(".js") && !f.includes("___subsequent_requests"))
+        .filter((f) => (f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes("___subsequent_requests"))
         .filter((f) => !fs.lstatSync(path.join(directory, f)).isDirectory())
         .sort();
 

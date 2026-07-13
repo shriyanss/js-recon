@@ -6,7 +6,7 @@ import _traverse from "@babel/traverse";
 import * as t from "@babel/types";
 import _generator from "@babel/generator";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import {
     REACT_CANONICAL,
     JSX_RUNTIME_CANONICAL,

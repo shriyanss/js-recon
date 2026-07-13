@@ -6,12 +6,15 @@ import { Chunks } from "../utility/interfaces.js";
 import prettier from "prettier";
 
 // Next.js
-import refactorNext from "./next/index.js";
+import refactorNext, { refactorNextWebpack } from "./next/index.js";
 // React
 import refactorReact, { RefactorReactResult } from "./react/index.js";
 import type { LibraryModuleInfo } from "./react/library-classify.js";
 // React (Vite)
 import refactorVite from "./react-vite/index.js";
+// Vue
+import refactorVueWebpack from "./vue/index.js";
+import { refactorVueVite } from "./vue/vite.js";
 
 // Remote HuggingFace client + cache
 import {
@@ -20,11 +23,17 @@ import {
     fetchCollisionsJson,
     listCollisionsFiles,
     validateRemoteBranch,
+    validateRemotePath,
     getSampleSize,
     getTechnology,
     CollisionRecord,
 } from "./remote/hf-client.js";
-import { loadRefactorConfig, validateRefactorConfig } from "./remote/config.js";
+import {
+    loadRefactorConfig,
+    validateRefactorConfig,
+    purgeDynamicVersionDetectionScatConfig,
+    saveDynamicVersionDetectionScatConfig,
+} from "./remote/config.js";
 import {
     loadListCache,
     saveListCache,
@@ -34,6 +43,14 @@ import {
     isSignatureCacheFresh,
     validateCaches,
 } from "./remote/cache.js";
+import {
+    detectReactVersion,
+    VersionDetectionResult,
+    VERSION_TECH_TO_BUNDLER,
+    listAvailableVersions,
+    selectDynamicScatConfigs,
+    validateStaticScatConfig,
+} from "./remote/version-detect.js";
 
 /**
  * Derives the assets directory from the URL embedded in any chunk's code comment.
@@ -79,6 +96,7 @@ function findVendorChunkFiles(chunks: Chunks, assetsDir: string): string[] {
 const BASELINE_SCAT_DIR: Record<string, string> = {
     "react-webpack": "lit-decl-loop-cond",
     "react-vite": "lit-decl-loop-cond",
+    "next-webpack": "lit-decl-loop-cond",
 };
 
 // Canonical ordering of scat categories (matches ALL_SCAT_CATEGORIES in csmast.mjs).
@@ -86,7 +104,7 @@ const BASELINE_SCAT_DIR: Record<string, string> = {
 const ALL_SCAT_CATEGORIES = ["lit", "id", "op", "decl", "loop", "cond", "name", "val", "op_name"] as const;
 
 // Converts a scat list to the bucket directory name, preserving canonical category order.
-const scatToDir = (scat: string[]): string => {
+export const scatToDir = (scat: string[]): string => {
     const scatSet = new Set(scat);
     return ALL_SCAT_CATEGORIES.filter((c) => scatSet.has(c)).join("-") || scat.join("-");
 };
@@ -98,10 +116,18 @@ export type RemoteLibSigsOptions = {
     refreshCache: boolean;
     skipCacheChecks: boolean;
     scat?: string[]; // override CS-MAST scat categories; if omitted, uses BASELINE_SCAT_DIR[tech]
+    remoteCollisions?: string; // explicit HF bucket path; overrides TECH_TO_BRANCH lookup
+    detectVersion?: boolean; // detect the React version used in the bundle
+    // "dynamic" (default) = auto-select reliable scat configs; otherwise comma-separated scat categories.
+    detectVersionConfig?: string;
+    // Number of scat configs to use in dynamic mode (default: 3).
+    detectVersionDynamicThreshold?: number;
+    // When true, clear the cached dynamic scat config and recompute.
+    detectVersionDynamicConfPurge?: boolean;
 };
 
 // Parses a collisions.json file and returns signatures whose count equals the maximum.
-const loadCollisionsFile = (filePath: string): Set<string> => {
+export const loadCollisionsFile = (filePath: string): Set<string> => {
     const records = JSON.parse(fs.readFileSync(filePath, "utf8")) as Array<{
         signature: string;
         count: number;
@@ -182,8 +208,11 @@ const buildLibSigs = (input: string, tech: string, scatOverride?: string[]): Lib
 
 // Loads library signatures from the remote HuggingFace dataset.
 // Returns null if the branch is not configured for `tech` or if validation fails.
+// When opts.remoteCollisions is provided it is used directly as the bucket path,
+// bypassing the TECH_TO_BRANCH lookup and metadata-file validation.
+// Exits with code 25 if opts.remoteCollisions is set but the path does not exist.
 const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Promise<LibSigsResult | null> => {
-    const branch = TECH_TO_BRANCH[tech];
+    const branch = opts.remoteCollisions ?? TECH_TO_BRANCH[tech];
     if (!branch) return null;
 
     const scatDir = opts.scat ? scatToDir(opts.scat) : BASELINE_SCAT_DIR[tech];
@@ -202,34 +231,60 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
         console.log(chalk.yellow(`[!] Cache validation warning: ${w} (will refresh)`));
     }
 
-    // Validate remote bucket prefix has required metadata files.
-    console.log(chalk.cyan(`[i] Validating remote bucket prefix "${branch}"...`));
-    const branchOk = await validateRemoteBranch(branch);
-    if (!branchOk) {
-        console.log(
-            chalk.red(
-                `[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`
-            )
-        );
-        return null;
+    if (opts.remoteCollisions) {
+        // User-supplied path: validate it exists in the HF bucket.
+        console.log(chalk.cyan(`[i] Validating remote dataset path "${branch}"...`));
+        const pathExists = await validateRemotePath(branch);
+        if (!pathExists) {
+            console.error(
+                chalk.red(`[!] Remote dataset path "${branch}" not found in the shriyanss/cs-mast-s-dataset bucket.`)
+            );
+            process.exit(25);
+        }
+    } else {
+        // Auto-detected branch: validate metadata files exist.
+        console.log(chalk.cyan(`[i] Validating remote bucket prefix "${branch}"...`));
+        const branchOk = await validateRemoteBranch(branch);
+        if (!branchOk) {
+            console.log(
+                chalk.red(
+                    `[!] Remote bucket prefix "${branch}" is missing required metadata (sample_size / technology). Skipping remote signatures.`
+                )
+            );
+            return null;
+        }
+
+        // Verify the bucket prefix technology matches.
+        const remoteTech = await getTechnology(branch);
+        if (remoteTech !== tech) {
+            console.log(
+                chalk.red(
+                    `[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`
+                )
+            );
+            return null;
+        }
     }
 
-    // Verify the bucket prefix technology matches.
-    const remoteTech = await getTechnology(branch);
-    if (remoteTech !== tech) {
-        console.log(
-            chalk.red(
-                `[!] Remote bucket prefix "${branch}" is for technology "${remoteTech}", not "${tech}". Skipping remote signatures.`
-            )
-        );
-        return null;
+    // Try to load the sample size for quality filtering.
+    // Custom paths may not have a sample_size file; fall back to 0 (skip quality filter).
+    let sampleSize = 0;
+    if (opts.remoteCollisions) {
+        try {
+            sampleSize = await getSampleSize(branch);
+        } catch {
+            // Custom path may not have sample_size; quality filter will be skipped (sampleSize=0)
+        }
+    } else {
+        sampleSize = await getSampleSize(branch);
     }
-
-    const sampleSize = await getSampleSize(branch);
 
     // Build / refresh file list cache.
+    // Also refresh if the specific branch is not yet in the cache (e.g. first run
+    // with a new --remote-collisions path, or a new tech added after initial cache).
     let listCache = cacheWarnings.length > 0 ? null : loadListCache();
-    if (shouldRefreshListCache(listCache, opts)) {
+    const branchMissingFromCache = !listCache?.branches[branch];
+    if (shouldRefreshListCache(listCache, opts) || branchMissingFromCache) {
         console.log(chalk.cyan(`[i] Refreshing remote file list cache for bucket prefix "${branch}"...`));
         const paths = await listCollisionsFiles(branch, scatDir);
         const now = Date.now();
@@ -272,14 +327,20 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
             records = await fetchCollisionsJson(url);
 
             if (records === null) {
-                // 404 or error — invalidate list cache unless skip-cache-checks.
-                if (!opts.skipCacheChecks) {
+                // 404 or network error.
+                // For user-specified --remote-collisions paths the list is stable;
+                // just skip this file and continue without poisoning the list cache.
+                // For auto-detected branches, invalidate the list cache so a stale
+                // entry (e.g. a deleted file) is not tried again on the next run.
+                if (!opts.remoteCollisions && !opts.skipCacheChecks) {
                     console.log(chalk.yellow(`[!] Could not fetch ${relPath} (404 or error) — refreshing list cache`));
                     const freshPaths = await listCollisionsFiles(branch, scatDir);
                     const updatedBranches = listCache?.branches ?? {};
                     updatedBranches[branch] = freshPaths;
                     saveListCache({ generatedAt: Date.now(), branches: updatedBranches });
                     listCache = { generatedAt: Date.now(), branches: updatedBranches };
+                } else {
+                    console.log(chalk.yellow(`[!] Could not fetch ${relPath} — skipping`));
                 }
                 continue;
             }
@@ -287,8 +348,15 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
             saveSignatureToCache(branch, relPath, records, config.maxCacheSizeMb);
         }
 
-        // Apply signature quality filter: (count / sampleSize) * 100 >= threshold
-        const filtered = records.filter((r) => sampleSize > 0 && (r.count / sampleSize) * 100 >= opts.signatureQuality);
+        // Apply signature quality filter: (count / sampleSize) * 100 >= threshold.
+        // When sampleSize is 0 (no sample_size file on the remote path), skip quality
+        // filtering and include all records.
+        const filtered =
+            sampleSize === 0 ? records : records.filter((r) => (r.count / sampleSize) * 100 >= opts.signatureQuality);
+
+        // Skip feature dirs with no records — they indicate missing/empty dataset
+        // entries and would collapse the intersection to zero if included.
+        if (filtered.length === 0) continue;
 
         // Intersect with previous sets.
         const sigSet = new Set(filtered.map((r) => r.signature));
@@ -299,7 +367,6 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
                 if (!sigSet.has(sig)) intersection.delete(sig);
             }
         }
-
         loadedCount++;
     }
 
@@ -319,9 +386,12 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
 };
 
 const availableTechs = {
-    next: "Next.js",
+    "next-turbopack": "Next.js (Turbopack)",
+    "next-webpack": "Next.js (webpack)",
     "react-webpack": "React (webpack)",
     "react-vite": "React (Vite)",
+    "vue-webpack": "Vue.js (webpack)",
+    "vue-vite": "Vue.js (Vite)",
 };
 
 /**
@@ -333,7 +403,7 @@ const availableTechs = {
  * The entry file is the first written file that contains `createRoot(` — i.e.
  * the app entry point.  If no such file is found, the first written file is used.
  */
-function runBuildCheck(outputDir: string, writtenFiles: string[]): void {
+function runBuildCheck(outputDir: string, writtenFiles: string[], detectedVersion?: VersionDetectionResult): void {
     if (writtenFiles.length === 0) return;
 
     // Find the entry file: the module that calls createRoot().
@@ -349,16 +419,34 @@ function runBuildCheck(outputDir: string, writtenFiles: string[]): void {
 
     console.log(chalk.cyan(`[i] Setting up webpack build check in ${outputDir}/ (entry: ${entryRelative})`));
 
+    // Use detected React version when available, fall back to React 18.
+    const reactVersion = detectedVersion ? `^${detectedVersion.reactNpm}` : "^18.3.1";
+    const reactDomVersion = detectedVersion?.reactDomNpm
+        ? `^${detectedVersion.reactDomNpm}`
+        : detectedVersion
+          ? undefined // pre-0.14: no react-dom
+          : "^18.3.1";
+
+    if (detectedVersion) {
+        console.log(
+            chalk.cyan(
+                `[i] Using detected React version ${detectedVersion.versionKey} in package.json (react@${reactVersion})`
+            )
+        );
+    }
+
+    const dependencies: Record<string, string> = {
+        react: reactVersion,
+        ...(reactDomVersion ? { "react-dom": reactDomVersion } : {}),
+        "react-router-dom": "^6.27.0",
+    };
+
     // package.json — no "type": "module" so webpack.config.js can use CommonJS require
     const pkg = {
         name: "refactored-app",
         version: "1.0.0",
         scripts: { build: "webpack" },
-        dependencies: {
-            react: "^18.3.1",
-            "react-dom": "^18.3.1",
-            "react-router-dom": "^6.27.0",
-        },
+        dependencies,
         devDependencies: {
             "@babel/core": "^7.25.0",
             "@babel/preset-env": "^7.25.0",
@@ -431,12 +519,17 @@ module.exports = {
  *
  * The entry file is the first written file that contains `createRoot(`.
  */
-function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
+function runViteBuildCheck(outputDir: string, writtenFiles: string[], detectedVersion?: VersionDetectionResult): void {
     if (writtenFiles.length === 0) return;
+
+    // Deduplicate — callers should not pass duplicates, but guard here too so a
+    // duplicate does not cause the renameSync below to throw ENOENT on the
+    // second occurrence of the same path.
+    const uniqueFiles = [...new Set(writtenFiles)];
 
     // Rename .js files to .jsx — Vite's import analysis can't parse JSX in .js files,
     // and refactored Vite chunks always contain JSX. The original source files were .jsx.
-    const jsxFiles = writtenFiles.map((f) => {
+    const jsxFiles = uniqueFiles.map((f) => {
         if (!f.endsWith(".js")) return f;
         const jsxPath = f.replace(/\.js$/, ".jsx");
         fs.renameSync(f, jsxPath);
@@ -468,16 +561,34 @@ function runViteBuildCheck(outputDir: string, writtenFiles: string[]): void {
 
     console.log(chalk.cyan(`[i] Setting up Vite build check in ${outputDir}/ (entry: ${entryRelative})`));
 
+    // Use detected React version when available, fall back to React 18.
+    const reactVersion = detectedVersion ? `^${detectedVersion.reactNpm}` : "^18.3.1";
+    const reactDomVersion = detectedVersion?.reactDomNpm
+        ? `^${detectedVersion.reactDomNpm}`
+        : detectedVersion
+          ? undefined
+          : "^18.3.1";
+
+    if (detectedVersion) {
+        console.log(
+            chalk.cyan(
+                `[i] Using detected React version ${detectedVersion.versionKey} in package.json (react@${reactVersion})`
+            )
+        );
+    }
+
+    const dependencies: Record<string, string> = {
+        react: reactVersion,
+        ...(reactDomVersion ? { "react-dom": reactDomVersion } : {}),
+        "react-router-dom": "^6.27.0",
+    };
+
     const pkg = {
         name: "refactored-app",
         version: "1.0.0",
         type: "module",
         scripts: { build: "vite build" },
-        dependencies: {
-            react: "^18.3.1",
-            "react-dom": "^18.3.1",
-            "react-router-dom": "^6.27.0",
-        },
+        dependencies,
         devDependencies: {
             "@vitejs/plugin-react": "^4.3.1",
             vite: "^5.4.0",
@@ -520,6 +631,98 @@ export default defineConfig({
     } catch {
         console.log(chalk.red("[!] Vite build check failed — review output above"));
     }
+}
+
+/**
+ * Resolves the scat dir list to use for version detection based on the user's options.
+ * Returns an empty array when version detection should be skipped (e.g., invalid static config).
+ *
+ * Dynamic mode (default):
+ *   - Reads cached dynamic scat configs from ~/.js-recon/refactor/config.json.
+ *   - If --detect-version-dynamic-conf-purge is set, clears the cache first.
+ *   - If no cached configs exist, runs selectDynamicScatConfigs() and saves the result.
+ *
+ * Static mode (user passes comma-separated categories):
+ *   - Validates that reliable_signatures.json is non-empty for all known versions.
+ *   - Exits with code 26 if the config is invalid or empty for any version.
+ */
+async function resolveVersionDetectionScatDirs(bundler: string, opts: RemoteLibSigsOptions): Promise<string[]> {
+    const detectConfig = opts.detectVersionConfig ?? "dynamic";
+
+    if (detectConfig === "dynamic") {
+        if (opts.detectVersionDynamicConfPurge) {
+            console.log(chalk.cyan("[i] Version detection: purging cached dynamic scat config..."));
+            purgeDynamicVersionDetectionScatConfig();
+        }
+
+        const cfg = loadRefactorConfig();
+        if (cfg.dynamicVersionDetectionScatConfig && cfg.dynamicVersionDetectionScatConfig.length > 0) {
+            console.log(
+                chalk.cyan(
+                    `[i] Version detection: using cached dynamic scat config (${cfg.dynamicVersionDetectionScatConfig.join(", ")})`
+                )
+            );
+            return cfg.dynamicVersionDetectionScatConfig;
+        }
+
+        // No cached config — discover versions and run dynamic selection.
+        let versions: string[];
+        try {
+            versions = await listAvailableVersions(bundler);
+        } catch (e) {
+            console.log(chalk.yellow(`[!] Version detection: could not list versions (${String(e)})`));
+            return [];
+        }
+        if (versions.length === 0) {
+            console.log(chalk.yellow(`[!] Version detection: no version data found for ${bundler}`));
+            return [];
+        }
+
+        const threshold = Math.max(1, opts.detectVersionDynamicThreshold ?? 3);
+        const selected = await selectDynamicScatConfigs(bundler, versions, threshold);
+        if (selected.length > 0) {
+            saveDynamicVersionDetectionScatConfig(selected);
+        } else {
+            console.log(chalk.yellow(`[!] Version detection: dynamic selection found no valid scat configs`));
+        }
+        return selected;
+    }
+
+    // Static config: parse comma-separated scat categories and convert to bucket dir name.
+    const categories = detectConfig
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const scatDir = scatToDir(categories);
+    if (!scatDir) {
+        console.log(
+            chalk.red(`[!] --detect-version-config "${detectConfig}" produced an empty scat dir; check category names`)
+        );
+        process.exit(26);
+    }
+
+    // Validate by checking that reliable_signatures.json is non-empty for all versions.
+    let versions: string[];
+    try {
+        versions = await listAvailableVersions(bundler);
+    } catch (e) {
+        console.log(
+            chalk.yellow(`[!] Version detection: could not list versions to validate static config (${String(e)})`)
+        );
+        return [];
+    }
+
+    const valid = await validateStaticScatConfig(bundler, versions, scatDir);
+    if (!valid) {
+        console.log(
+            chalk.red(
+                `[!] --detect-version-config "${detectConfig}" (scat dir: "${scatDir}") has empty reliable_signatures.json for one or more versions. Cannot use for version detection.`
+            )
+        );
+        process.exit(26);
+    }
+
+    return [scatDir];
 }
 
 /**
@@ -602,12 +805,15 @@ const refactor = async (
         }
         libSigs = result.sigs;
         console.log(chalk.cyan(`[i] Loaded ${libSigs.size} library signatures from ${result.desc}`));
-    } else if (!remoteOpts?.noRemote && TECH_TO_BRANCH[tech]) {
-        // Default: load from remote HuggingFace dataset.
+    } else if (remoteOpts?.remoteCollisions || (!remoteOpts?.noRemote && TECH_TO_BRANCH[tech])) {
+        // Load from remote HuggingFace dataset.
+        // --remote-collisions uses the explicit path; otherwise falls back to TECH_TO_BRANCH.
         const opts: RemoteLibSigsOptions = {
             signatureQuality: remoteOpts?.signatureQuality ?? 100,
             refreshCache: remoteOpts?.refreshCache ?? false,
             skipCacheChecks: remoteOpts?.skipCacheChecks ?? false,
+            remoteCollisions: remoteOpts?.remoteCollisions,
+            scat: remoteOpts?.scat,
         };
         const result = await loadRemoteLibSigs(tech, opts);
         if (result) {
@@ -618,7 +824,7 @@ const refactor = async (
     }
 
     // iterate through the chunks
-    if (tech === "next") {
+    if (tech === "next-turbopack") {
         for (const [, value] of Object.entries(chunks)) {
             const moduleFiles = await refactorNext(value);
             for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
@@ -627,8 +833,44 @@ const refactor = async (
                     singleQuote: true,
                     trailingComma: "none",
                 });
-                fs.writeFileSync(`${outputDir}/${moduleId}.js`, formatted);
-                console.log(chalk.green(`[✓] Module ${moduleId} written to ${outputDir}/${moduleId}.js`));
+                // Skip writing empty files
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${filePath}`));
+            }
+        }
+    } else if (tech === "next-webpack") {
+        if (remoteOpts?.scat) {
+            console.log(chalk.cyan(`[i] Using custom scat config: ${remoteOpts.scat.join(",")}`));
+        }
+        for (const [, value] of Object.entries(chunks)) {
+            const moduleFiles = await refactorNextWebpack(
+                value,
+                libSigs,
+                remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined
+            );
+            for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
+                let formatted: string;
+                try {
+                    formatted = await prettier.format(rawCode, {
+                        parser: "babel",
+                        singleQuote: true,
+                        trailingComma: "none",
+                    });
+                } catch {
+                    formatted = rawCode;
+                }
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${filePath}`));
             }
         }
     } else if (tech === "react-webpack") {
@@ -712,13 +954,198 @@ const refactor = async (
             }
         }
 
+        // Version detection — run before build check so the detected version can be
+        // written into package.json by runBuildCheck.
+        let detectedVersion: VersionDetectionResult | undefined;
+        if (remoteOpts?.detectVersion && VERSION_TECH_TO_BUNDLER[tech]) {
+            const bundler = VERSION_TECH_TO_BUNDLER[tech];
+            const vScatDirs = await resolveVersionDetectionScatDirs(bundler, remoteOpts);
+            if (vScatDirs.length > 0) {
+                // Include vendor chunk file contents (e.g. vendor-react-dom.*.js) that hold
+                // React library code but are not present in mapped.json.  Without these, the
+                // signature set contains only app-level code and misses version-specific React
+                // library signatures.
+                const vendorCodes: string[] = [];
+                const vDetectAssetsDir = findAssetsDir(chunks, mappedJson);
+                if (vDetectAssetsDir) {
+                    for (const vendorFile of findVendorChunkFiles(chunks, vDetectAssetsDir)) {
+                        try {
+                            vendorCodes.push(fs.readFileSync(vendorFile, "utf8"));
+                        } catch {
+                            // non-fatal
+                        }
+                    }
+                }
+
+                const vResult = await detectReactVersion(
+                    chunks,
+                    tech,
+                    vScatDirs,
+                    vendorCodes.length > 0 ? vendorCodes : undefined
+                );
+                if (vResult) {
+                    console.log(
+                        chalk.green(
+                            `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
+                        )
+                    );
+                    detectedVersion = vResult;
+                } else {
+                    console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+                }
+            }
+        }
+
         // Build check — scaffold a minimal webpack project and verify the refactored
         // code compiles.
-        runBuildCheck(outputDir, writtenFiles);
+        runBuildCheck(outputDir, writtenFiles, detectedVersion);
     } else if (tech === "react-vite") {
-        const viteFiles = await refactorVite(chunks, libSigs);
-        const writtenFiles: string[] = [];
+        // Pre-scan vendor chunks from the assets directory that are not in mapped.json.
+        // Vendor chunks (vendor-react-*.js) are referenced by app chunks but are typically
+        // absent from mapped.json. Without them, vendorExportMaps is empty and vendor
+        // import statements are never rewritten — leaving unresolvable references in output.
+        const vitAssetsDir = findAssetsDir(chunks, mappedJson);
+        if (vitAssetsDir) {
+            const missingFiles = findVendorChunkFiles(chunks, vitAssetsDir);
+            for (const vendorFile of missingFiles) {
+                const basename = path.basename(vendorFile);
+                if (!/vendor[-_]react/i.test(basename) && !/rolldown[-_]runtime/i.test(basename)) continue;
+                console.log(chalk.cyan(`[i] Including missing vendor chunk: ${basename}`));
+                const key = basename.replace(/\.js$/, "");
+                chunks[key] = {
+                    id: basename,
+                    description: "",
+                    loadedOn: [],
+                    containsFetch: false,
+                    isAxiosLibrary: false,
+                    exports: [],
+                    callStack: [],
+                    code: fs.readFileSync(vendorFile, "utf8"),
+                    imports: [],
+                    file: `assets/${basename}`,
+                };
+            }
+        }
+
+        const viteFiles = await refactorVite(
+            chunks,
+            libSigs,
+            remoteOpts?.scat as import("@shriyanss/cs-mast").ScatCategory[] | undefined
+        );
+
+        // Group chunk outputs by their output file path before writing.
+        // Multiple mapped.json sub-chunks can originate from the same Vite source
+        // file (one per top-level function detected by `map`). Writing each
+        // sub-chunk independently would overwrite previous writes so only the last
+        // sub-chunk would survive. Grouping and concatenating avoids the overwrite:
+        // all sub-chunks for the same file are merged into one formatted output.
+        const fileGroups = new Map<string, { codes: string[]; keys: string[] }>();
         for (const [chunkKey, rawCode] of Object.entries(viteFiles)) {
+            // Use the original chunk basename so dynamic imports (which reference
+            // the original Vite filenames) resolve correctly in the build check.
+            const chunkInfo = chunks[chunkKey];
+            const originalFile = chunkInfo ? (chunkInfo.file ?? chunkInfo.id) : null;
+            const outputBasename = originalFile
+                ? path.basename(originalFile)
+                : chunkKey.replace(/[/\\]/g, "_").replace(/\.js$/, "") + ".js";
+            const filePath = `${outputDir}/${outputBasename}`;
+            if (!fileGroups.has(filePath)) {
+                fileGroups.set(filePath, { codes: [], keys: [] });
+            }
+            fileGroups.get(filePath)!.codes.push(rawCode);
+            fileGroups.get(filePath)!.keys.push(chunkKey);
+        }
+
+        const writtenFiles: string[] = [];
+        for (const [filePath, { codes, keys }] of fileGroups) {
+            // Put import-bearing code parts first so ESM import statements end up
+            // at the top of the concatenated file. Helper sub-chunks typically have
+            // no imports; the component sub-chunk that has peer imports (e.g.
+            // from ./shared-*.js) must come first or the combined file is invalid.
+            const importBearing = codes.filter((c) => /^import\s/m.test(c));
+            const rest = codes.filter((c) => !/^import\s/m.test(c));
+            const combined = [...importBearing, ...rest].join("\n\n");
+
+            let formatted: string;
+            try {
+                formatted = await prettier.format(combined, {
+                    parser: "babel",
+                    singleQuote: true,
+                    trailingComma: "none",
+                });
+            } catch {
+                formatted = combined;
+            }
+            if (formatted.trim().length === 0) {
+                console.log(chalk.gray(`[~] Chunk ${keys.join("+")} is empty after refactoring — skipping`));
+                continue;
+            }
+            fs.writeFileSync(filePath, formatted);
+            // Push exactly once per output file — prevents duplicate entries in
+            // writtenFiles that would cause the rename loop in runViteBuildCheck
+            // to attempt renaming the same path twice (ENOENT on the second try).
+            writtenFiles.push(filePath);
+            for (const key of keys) {
+                console.log(chalk.green(`[✓] Chunk ${key} written to ${filePath}`));
+            }
+        }
+
+        // Version detection — run before build check so the detected version can be
+        // written into package.json by runViteBuildCheck.
+        let viteDetectedVersion: VersionDetectionResult | undefined;
+        if (remoteOpts?.detectVersion && VERSION_TECH_TO_BUNDLER[tech]) {
+            const bundler = VERSION_TECH_TO_BUNDLER[tech];
+            const vScatDirs = await resolveVersionDetectionScatDirs(bundler, remoteOpts);
+            if (vScatDirs.length > 0) {
+                const vResult = await detectReactVersion(chunks, tech, vScatDirs);
+                if (vResult) {
+                    console.log(
+                        chalk.green(
+                            `[✓] Detected React version: ${vResult.versionKey} (${vResult.matchCount} signature matches)`
+                        )
+                    );
+                    viteDetectedVersion = vResult;
+                } else {
+                    console.log(chalk.yellow(`[!] Version detection: no matching version found`));
+                }
+            }
+        }
+
+        // Build check with Vite scaffold
+        runViteBuildCheck(outputDir, writtenFiles, viteDetectedVersion);
+    } else if (tech === "vue-webpack") {
+        for (const [, value] of Object.entries(chunks)) {
+            const moduleFiles = await refactorVueWebpack(value);
+            for (const [moduleId, rawCode] of Object.entries(moduleFiles)) {
+                let formatted: string;
+                try {
+                    formatted = await prettier.format(rawCode, {
+                        parser: "babel",
+                        singleQuote: true,
+                        trailingComma: "none",
+                    });
+                } catch {
+                    formatted = rawCode;
+                }
+                if (formatted.trim().length === 0) {
+                    console.log(chalk.gray(`[~] Module ${moduleId} is empty after stripping — skipping`));
+                    continue;
+                }
+                const filePath = `${outputDir}/${moduleId}.js`;
+                fs.writeFileSync(filePath, formatted);
+                console.log(chalk.green(`[✓] Module ${moduleId} written to ${filePath}`));
+            }
+        }
+    } else if (tech === "vue-vite") {
+        const viteFiles = await refactorVueVite(chunks);
+        for (const [chunkKey, rawCode] of Object.entries(viteFiles)) {
+            const chunkInfo = chunks[chunkKey];
+            const originalFile = chunkInfo ? (chunkInfo.file ?? chunkInfo.id) : null;
+            const outputBasename = originalFile
+                ? path.basename(originalFile)
+                : chunkKey.replace(/[/\\]/g, "_").replace(/\.js$/, "") + ".js";
+            const filePath = `${outputDir}/${outputBasename}`;
+
             let formatted: string;
             try {
                 formatted = await prettier.format(rawCode, {
@@ -733,21 +1160,9 @@ const refactor = async (
                 console.log(chalk.gray(`[~] Chunk ${chunkKey} is empty after refactoring — skipping`));
                 continue;
             }
-            // Use the original chunk basename so dynamic imports (which reference
-            // the original Vite filenames) resolve correctly in the build check.
-            const chunkInfo = chunks[chunkKey];
-            const originalFile = chunkInfo ? (chunkInfo.file ?? chunkInfo.id) : null;
-            const outputBasename = originalFile
-                ? path.basename(originalFile)
-                : chunkKey.replace(/[/\\]/g, "_").replace(/\.js$/, "") + ".js";
-            const filePath = `${outputDir}/${outputBasename}`;
             fs.writeFileSync(filePath, formatted);
-            writtenFiles.push(filePath);
             console.log(chalk.green(`[✓] Chunk ${chunkKey} written to ${filePath}`));
         }
-
-        // Build check with Vite scaffold
-        runViteBuildCheck(outputDir, writtenFiles);
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));

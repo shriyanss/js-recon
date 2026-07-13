@@ -33,7 +33,7 @@ const parseUrls = (urlArg: string): string[] => {
     return [urlArg];
 };
 
-const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
+export const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
     const ext = path.extname(outputFile);
     const base = ext ? outputFile.slice(0, -ext.length) : outputFile;
     if (format === "csv") return `${base}.csv`;
@@ -42,33 +42,52 @@ const deriveOutputPath = (outputFile: string, format: OutputFormat): string => {
     return `${base}.txt`;
 };
 
-const writeResults = (results: FingerprintResult[], outputFile: string, formats: OutputFormat[]): void => {
+const initOutputFiles = (outputFile: string, formats: OutputFormat[]): void => {
     for (const format of formats) {
         const filePath = deriveOutputPath(outputFile, format);
+        fs.writeFileSync(filePath, format === "csv" ? "framework,url\n" : "");
+    }
+};
 
+const appendResult = (
+    result: FingerprintResult,
+    completedResults: FingerprintResult[],
+    outputFile: string,
+    formats: OutputFormat[]
+): void => {
+    for (const format of formats) {
+        const filePath = deriveOutputPath(outputFile, format);
         if (format === "csv") {
-            const lines = ["framework,url"];
-            for (const r of results) {
-                lines.push(`${r.framework ?? "unknown"},${r.url}`);
-            }
-            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+            fs.appendFileSync(filePath, `${result.framework ?? "unknown"},${result.url}\n`);
         } else if (format === "json") {
-            const data = results.map((r) => ({ url: r.url, framework: r.framework ?? "unknown" }));
+            const data = completedResults.map((r) => ({ url: r.url, framework: r.framework ?? "unknown" }));
             fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n");
         } else if (format === "jsonl") {
-            const lines = results.map((r) => JSON.stringify({ url: r.url, framework: r.framework ?? "unknown" }));
-            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+            fs.appendFileSync(
+                filePath,
+                JSON.stringify({ url: result.url, framework: result.framework ?? "unknown" }) + "\n"
+            );
         } else {
-            const lines = results.map((r) => `[${r.framework ?? "unknown"}] ${r.url}`);
-            fs.writeFileSync(filePath, lines.join("\n") + "\n");
+            fs.appendFileSync(filePath, `[${result.framework ?? "unknown"}] ${result.url}\n`);
         }
+    }
+};
 
+const logOutputFiles = (outputFile: string, formats: OutputFormat[]): void => {
+    for (const format of formats) {
+        const filePath = deriveOutputPath(outputFile, format);
         console.log(chalk.green(`[✓] Results written to ${filePath}`));
     }
 };
 
-const fingerprint = async (urlArg: string, outputFile: string | undefined, formatArg: string): Promise<void> => {
+const fingerprint = async (
+    urlArg: string,
+    outputFile: string | undefined,
+    formatArg: string,
+    threads = 5
+): Promise<void> => {
     const urls = parseUrls(urlArg);
+    const concurrency = Math.max(1, threads);
 
     const rawFormats = formatArg
         .split(",")
@@ -76,7 +95,12 @@ const fingerprint = async (urlArg: string, outputFile: string | undefined, forma
         .filter((f) => f === "text" || f === "csv" || f === "json" || f === "jsonl") as OutputFormat[];
     const formats: OutputFormat[] = rawFormats.length > 0 ? rawFormats : ["text"];
 
-    const results: FingerprintResult[] = [];
+    const results: FingerprintResult[] = new Array(urls.length);
+    const completedResults: FingerprintResult[] = [];
+
+    if (outputFile) {
+        initOutputFiles(outputFile, formats);
+    }
 
     const overhead = 52;
     const multiBar = new cliProgress.MultiBar(
@@ -98,26 +122,42 @@ const fingerprint = async (urlArg: string, outputFile: string | undefined, forma
 
     globalsUtil.setQuiet(true);
 
-    for (const url of urls) {
-        const displayUrl = url.length > 50 ? url.slice(0, 47) + "..." : url;
-        bar.update({ url: displayUrl });
+    let nextIdx = 0;
 
-        let framework: string | null = null;
-        try {
-            const tech = await frameworkDetect(url);
-            framework = tech ? tech.name : null;
-        } catch {
-            // detection failure — treat as unknown
+    const worker = async (): Promise<void> => {
+        while (true) {
+            const idx = nextIdx++;
+            if (idx >= urls.length) return;
+            const url = urls[idx];
+
+            const displayUrl = url.length > 50 ? url.slice(0, 47) + "..." : url;
+            bar.update({ url: displayUrl });
+
+            let framework: string | null = null;
+            try {
+                const tech = await frameworkDetect(url);
+                framework = tech ? tech.name : null;
+            } catch {
+                // detection failure — treat as unknown
+            }
+
+            const entry: FingerprintResult = { url, framework };
+            results[idx] = entry;
+            completedResults.push(entry);
+
+            if (outputFile) {
+                appendResult(entry, completedResults, outputFile, formats);
+            }
+
+            const label = framework ? (FRAMEWORK_LABELS[framework] ?? framework) : "unknown";
+            const line = framework ? chalk.green(`[${label}] ${url}`) : chalk.dim(`[unknown] ${url}`);
+            progressLog(line);
+
+            bar.increment(1);
         }
+    };
 
-        results.push({ url, framework });
-
-        const label = framework ? (FRAMEWORK_LABELS[framework] ?? framework) : "unknown";
-        const line = framework ? chalk.green(`[${label}] ${url}`) : chalk.dim(`[unknown] ${url}`);
-        progressLog(line);
-
-        bar.increment(1);
-    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
 
     globalsUtil.setQuiet(false);
     multiBar.stop();
@@ -128,7 +168,7 @@ const fingerprint = async (urlArg: string, outputFile: string | undefined, forma
     console.log(chalk.cyan(`\n[i] ${detected}/${results.length} URLs fingerprinted`));
 
     if (outputFile) {
-        writeResults(results, outputFile, formats);
+        logOutputFiles(outputFile, formats);
     }
 };
 

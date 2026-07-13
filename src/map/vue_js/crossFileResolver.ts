@@ -19,7 +19,7 @@ import path from "path";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 interface WebpackModule {
     moduleId: string;
@@ -213,7 +213,7 @@ const ensureGlobalIndex = (directory: string): void => {
         globalIndexBuiltFor = directory;
         return;
     }
-    files = files.filter((f) => f.endsWith(".js"));
+    files = files.filter((f) => f.endsWith(".js") || f.endsWith(".mjs"));
     for (const rel of files) {
         const abs = path.join(directory, rel);
         try {

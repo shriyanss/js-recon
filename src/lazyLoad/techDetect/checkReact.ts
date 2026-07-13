@@ -7,6 +7,10 @@ const REACT_MARKERS = [
     "react-jsx-runtime.production",
     "react-dom.production",
     "__reactRouterVersion",
+    // Vite React plugin dev-mode HMR runtime — present in the inline <script> block
+    // that @vitejs/plugin-react / plugin-react-swc injects into every dev-served page.
+    "@react-refresh",
+    "injectIntoGlobalHook",
 ] as const;
 
 const matchesReact = (body: string): string | null => {
@@ -28,6 +32,11 @@ const fetchAndCheck = async (src: string, url: string): Promise<string | null> =
     const filename = resolvedUrl.split("/").pop() ?? "";
     if (/react/i.test(filename)) {
         return `React-named file referenced: ${src}`;
+    }
+
+    // Fast path: Vite React plugin dev-mode HMR endpoint (/@react-refresh)
+    if (resolvedUrl.includes("/@react-refresh")) {
+        return `Vite React dev HMR endpoint referenced: ${src}`;
     }
 
     const res = await makeRequest(resolvedUrl, {});

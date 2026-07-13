@@ -2,16 +2,49 @@ import * as t from "@babel/types";
 
 export const VALID_IDENT_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
-// Returns the numeric module ID if expr is `runtimeParam.r(<NumericLiteral>)`.
+// Returns the numeric module ID if expr is `requireParam(N)` — webpack direct-call require.
+// In the webpack module format (NNN:(module,exports,require)=>{...}),
+// cross-module requires are direct function calls: require(N).
+export const tryExtractWebpackRequire = (expr: t.Node, requireParam: string): number | null => {
+    if (!requireParam) return null;
+    if (!t.isCallExpression(expr)) return null;
+    if (!t.isIdentifier(expr.callee, { name: requireParam })) return null;
+    if (expr.arguments.length !== 1) return null;
+    const arg = expr.arguments[0];
+    if (!t.isNumericLiteral(arg)) return null;
+    return (arg as t.NumericLiteral).value;
+};
+
+// Extracts the RHS of `moduleParam.exports = X`.
+// Returns the RHS expression or null if the statement doesn't match.
+export const tryExtractModuleExportsRhs = (stmt: t.Statement, moduleParam: string): t.Expression | null => {
+    if (!t.isExpressionStatement(stmt)) return null;
+    const expr = stmt.expression;
+    if (!t.isAssignmentExpression(expr) || expr.operator !== "=") return null;
+    const lhs = expr.left;
+    if (!t.isMemberExpression(lhs) || (lhs as t.MemberExpression).computed) return null;
+    if (!t.isIdentifier((lhs as t.MemberExpression).object, { name: moduleParam })) return null;
+    if (!t.isIdentifier((lhs as t.MemberExpression).property, { name: "exports" })) return null;
+    return expr.right as t.Expression;
+};
+
+// Returns the numeric module ID if expr is `runtimeParam.r(N)` or `runtimeParam.i(N)`.
+// In the turbopack module format (func_NNN = (runtime, module, exports) => {...}),
+// cross-module requires are member-expression calls: runtime.r(N) or runtime.i(N).
 export const tryExtractTurbopackRequire = (expr: t.Node, runtimeParam: string): number | null => {
+    if (!runtimeParam) return null;
     if (!t.isCallExpression(expr)) return null;
     const callee = expr.callee;
-    if (!t.isMemberExpression(callee) || callee.computed) return null;
-    if (!t.isIdentifier(callee.object, { name: runtimeParam })) return null;
-    if (!t.isIdentifier(callee.property, { name: "r" })) return null;
+    if (!t.isMemberExpression(callee) || (callee as t.MemberExpression).computed) return null;
+    if (!t.isIdentifier((callee as t.MemberExpression).object, { name: runtimeParam })) return null;
+    const method = (callee as t.MemberExpression).property;
+    if (!t.isIdentifier(method)) return null;
+    const methodName = (method as t.Identifier).name;
+    if (methodName !== "r" && methodName !== "i") return null;
     if (expr.arguments.length !== 1) return null;
-    if (!t.isNumericLiteral(expr.arguments[0])) return null;
-    return (expr.arguments[0] as t.NumericLiteral).value;
+    const arg = expr.arguments[0];
+    if (!t.isNumericLiteral(arg)) return null;
+    return (arg as t.NumericLiteral).value;
 };
 
 // Returns true if expr is `Object.defineProperty(target, "__esModule", ...)`.
@@ -82,14 +115,17 @@ export const tryExtractDefinePropertyExport = (
     return null;
 };
 
-// Checks whether `stmt` is the Turbopack interop boilerplate that ends in `moduleParam.exports = exportsParam.default`.
-// Heuristic: ExpressionStatement whose expression (recursively) contains an assignment to `moduleParam.exports`.
-export const isInteropBoilerplate = (stmt: t.Statement, moduleParam: string): boolean => {
+// Checks whether `stmt` contains `moduleParam.exports = ...` (CJS interop boilerplate).
+// Detects the CJS interop boilerplate form: `moduleParam.exports = exportsParam.default`
+// (possibly nested deep inside a conditional expression tree).
+// Only matches when the RHS is specifically `exportsParam.default` — this avoids false-positives
+// on real CJS modules where `e.exports = someLocalVar` is a legitimate export.
+export const isInteropBoilerplate = (stmt: t.Statement, moduleParam: string, exportsParam?: string): boolean => {
     if (!t.isExpressionStatement(stmt)) return false;
-    return containsModuleExportsAssignment(stmt.expression, moduleParam);
+    return containsModuleExportsDefaultAssignment(stmt.expression, moduleParam, exportsParam ?? "");
 };
 
-const containsModuleExportsAssignment = (node: t.Node, moduleParam: string): boolean => {
+const containsModuleExportsDefaultAssignment = (node: t.Node, moduleParam: string, exportsParam: string): boolean => {
     if (
         t.isAssignmentExpression(node) &&
         node.operator === "=" &&
@@ -98,7 +134,15 @@ const containsModuleExportsAssignment = (node: t.Node, moduleParam: string): boo
         t.isIdentifier((node.left as t.MemberExpression).object, { name: moduleParam }) &&
         t.isIdentifier((node.left as t.MemberExpression).property, { name: "exports" })
     ) {
-        return true;
+        // Only strip if the RHS is specifically `exportsParam.default` (interop copy-back).
+        // This avoids false-positives on real CJS modules where `e.exports = localVar`.
+        const rhs = node.right;
+        return (
+            t.isMemberExpression(rhs) &&
+            !(rhs as t.MemberExpression).computed &&
+            t.isIdentifier((rhs as t.MemberExpression).object, { name: exportsParam }) &&
+            t.isIdentifier((rhs as t.MemberExpression).property, { name: "default" })
+        );
     }
     for (const key of Object.keys(node)) {
         if (key === "type" || key === "loc" || key === "start" || key === "end") continue;
@@ -106,12 +150,16 @@ const containsModuleExportsAssignment = (node: t.Node, moduleParam: string): boo
         if (!child || typeof child !== "object") continue;
         if (Array.isArray(child)) {
             for (const item of child) {
-                if (item && typeof item.type === "string" && containsModuleExportsAssignment(item, moduleParam)) {
+                if (
+                    item &&
+                    typeof item.type === "string" &&
+                    containsModuleExportsDefaultAssignment(item, moduleParam, exportsParam)
+                ) {
                     return true;
                 }
             }
         } else if (typeof child.type === "string") {
-            if (containsModuleExportsAssignment(child, moduleParam)) return true;
+            if (containsModuleExportsDefaultAssignment(child, moduleParam, exportsParam)) return true;
         }
     }
     return false;
@@ -171,11 +219,125 @@ export const extractExportsFromMap = (objExpr: t.ObjectExpression): Map<string, 
     return result;
 };
 
+/**
+ * Tries to extract the exports object from a turbopack IIFE batch export:
+ *   !(function(target, map) { for(var k in map) ODP(target, k, {enumerable:!0, get:map[k]}) })(exportsParam, {name:fn,...})
+ *
+ * Also handles the `!` unary prefix that turbopack emits to force the IIFE as an expression.
+ * Returns Map<exportName, returnExpr> or null.
+ */
+export const tryExtractBatchIIFEExports = (expr: t.Node, exportsParam: string): Map<string, t.Expression> | null => {
+    // Unwrap unary `!` if present: !(fn)(args) → (fn)(args)
+    let callNode: t.Node = expr;
+    if (t.isUnaryExpression(callNode) && (callNode as t.UnaryExpression).operator === "!") {
+        callNode = (callNode as t.UnaryExpression).argument;
+    }
+    if (!t.isCallExpression(callNode)) return null;
+    const call = callNode as t.CallExpression;
+
+    // callee must be a FunctionExpression with 2 params
+    const callee = call.callee;
+    if (!t.isFunctionExpression(callee)) return null;
+    if ((callee as t.FunctionExpression).params.length !== 2) return null;
+
+    // args[0] must be the exportsParam identifier
+    if (call.arguments.length < 2) return null;
+    if (!t.isIdentifier(call.arguments[0], { name: exportsParam })) return null;
+
+    // args[1] must be an ObjectExpression (the export map)
+    const mapArg = call.arguments[1];
+    if (!t.isObjectExpression(mapArg)) return null;
+
+    // Validate the function body: should have a for-in loop that calls ODP
+    const fnBody = (callee as t.FunctionExpression).body.body;
+    const hasForIn = fnBody.some((s) => {
+        if (!t.isForInStatement(s)) return false;
+        // body calls Object.defineProperty
+        let bodyStmt = s.body;
+        if (t.isBlockStatement(bodyStmt)) {
+            const nonEmpty = bodyStmt.body.filter((x) => !t.isEmptyStatement(x));
+            if (nonEmpty.length !== 1) return false;
+            bodyStmt = nonEmpty[0];
+        }
+        if (!t.isExpressionStatement(bodyStmt)) return false;
+        const bodyExpr = bodyStmt.expression;
+        if (!t.isCallExpression(bodyExpr)) return false;
+        return isObjectDefinePropertyCallee(bodyExpr.callee);
+    });
+
+    if (!hasForIn) return null;
+
+    return extractExportsFromMap(mapArg as t.ObjectExpression);
+};
+
+// Matches `requireParam.d(exportsParam, { name: () => binding, ... })` — webpack-style export registration.
+// Returns Map<exportName, returnExpr> or null.
+export const tryExtractRequireDotD = (
+    expr: t.Node,
+    requireParam: string,
+    exportsParam: string
+): Map<string, t.Expression> | null => {
+    if (!t.isCallExpression(expr)) return null;
+    const callee = expr.callee;
+    if (!t.isMemberExpression(callee) || (callee as t.MemberExpression).computed) return null;
+    if (!t.isIdentifier((callee as t.MemberExpression).object, { name: requireParam })) return null;
+    if (!t.isIdentifier((callee as t.MemberExpression).property, { name: "d" })) return null;
+    if (expr.arguments.length < 2) return null;
+    if (!t.isIdentifier(expr.arguments[0], { name: exportsParam })) return null;
+    if (!t.isObjectExpression(expr.arguments[1])) return null;
+    return extractExportsFromMap(expr.arguments[1] as t.ObjectExpression);
+};
+
+// Returns true if expr is `requireParam.r(exportsParam)` — webpack ESM module marker.
+export const isRequireDotR = (expr: t.Node, requireParam: string, exportsParam: string): boolean => {
+    if (!t.isCallExpression(expr)) return false;
+    const callee = expr.callee;
+    if (!t.isMemberExpression(callee) || (callee as t.MemberExpression).computed) return false;
+    if (!t.isIdentifier((callee as t.MemberExpression).object, { name: requireParam })) return false;
+    if (!t.isIdentifier((callee as t.MemberExpression).property, { name: "r" })) return false;
+    if (expr.arguments.length !== 1) return false;
+    return t.isIdentifier(expr.arguments[0], { name: exportsParam });
+};
+
+/**
+ * Matches `runtimeParam.s([exportName, ?, fn])` — turbopack 1-param export registration.
+ * Called as: `e.s(["default", 0, function() { return component; }])`
+ * Returns { exportName, exportFn } or null.
+ */
+export const tryExtractRuntimeSExport = (
+    expr: t.Node,
+    runtimeParam: string
+): { exportName: string; exportFn: t.Expression } | null => {
+    if (!runtimeParam) return null;
+    if (!t.isCallExpression(expr)) return null;
+    const callee = expr.callee;
+    if (!t.isMemberExpression(callee) || (callee as t.MemberExpression).computed) return null;
+    if (!t.isIdentifier((callee as t.MemberExpression).object, { name: runtimeParam })) return null;
+    if (!t.isIdentifier((callee as t.MemberExpression).property, { name: "s" })) return null;
+    if (expr.arguments.length !== 1 || !t.isArrayExpression(expr.arguments[0])) return null;
+    const arr = (expr.arguments[0] as t.ArrayExpression).elements;
+    if (arr.length < 3) return null;
+    const nameEl = arr[0];
+    if (!nameEl || !t.isStringLiteral(nameEl)) return null;
+    const exportName = (nameEl as t.StringLiteral).value;
+    const fnEl = arr[arr.length - 1];
+    if (!fnEl || (!t.isFunctionExpression(fnEl) && !t.isArrowFunctionExpression(fnEl))) return null;
+    return { exportName, exportFn: fnEl as t.Expression };
+};
+
 // Builds an ECMAScript export statement given an export name and a return expression.
 //   Identifier return  → export { ident as exportName }
 //   Other expression   → export const exportName = <expr>
 // Falls back to string export name when exportName is not a valid identifier.
 export const makeExportStatement = (exportName: string, returnExpr: t.Expression): t.Statement => {
+    // "default" → export default <expr>
+    if (exportName === "default") {
+        if (t.isFunctionExpression(returnExpr) || t.isArrowFunctionExpression(returnExpr)) {
+            return t.exportDefaultDeclaration(returnExpr);
+        }
+        return t.exportDefaultDeclaration(returnExpr);
+    }
+
     const isValidIdent = VALID_IDENT_RE.test(exportName);
     if (t.isIdentifier(returnExpr)) {
         const exported: t.Identifier | t.StringLiteral = isValidIdent
@@ -188,7 +350,6 @@ export const makeExportStatement = (exportName: string, returnExpr: t.Expression
             t.variableDeclaration("const", [t.variableDeclarator(t.identifier(exportName), returnExpr)])
         );
     }
-    // Non-identifier name with a non-identifier value: introduce a temp binding.
     const tempName = `_jsr_exp_${exportName.replace(/[^a-zA-Z0-9_$]/g, "_")}`;
     return t.exportNamedDeclaration(null, [t.exportSpecifier(t.identifier(tempName), t.stringLiteral(exportName))]);
 };

@@ -11,6 +11,23 @@ Splits a Vite-bundled (rolldown) React application into human-readable ES module
 | `index.ts`          | Entry point: classifies chunks, orchestrates the multi-pass transform, returns `Record<chunkKey, code>`                                |
 | `vendor-analyze.ts` | `analyzeVendorChunk(code)` — parses the vendor chunk and returns a `Map<exportedName, VendorExportInfo>` used to classify interop vars |
 
+## CS-MAST library detection (`fileIsLibrary()`)
+
+`refactorVite()` now accepts `libSigs?: Set<string>` and `scatOverride?: ScatCategory[]`.
+When `libSigs` is provided, each non-vendor, non-runtime chunk is run through `fileIsLibrary()`
+before the transform pass. Chunks whose CS-MAST signature fraction against `libSigs` exceeds
+`LIB_FILE_CLASSIFICATION_THRESHOLD` (0.51) are skipped with a `[-] Chunk X matches library baseline — skipping` log line.
+
+**Default scat for classification:** `["lit", "decl", "loop", "cond"]` (same as webpack's `LIB_SIG_SCAT`)
+
+**`scatOverride`:** When supplied (via `--scat` CLI flag), overrides `LIB_SIG_SCAT` for both
+the HF signature download path and the per-chunk classification. Threaded from `index.ts`
+as `remoteOpts?.scat`.
+
+**Difference from webpack:** webpack classifies at the module level (per `function(module, exports, require) {...}` block). Vite already produces split chunks, so classification is at the file (chunk) level.
+
+**Vendor chunk detection is still filename-based:** `isVendorChunk()` matches `/vendor[-_]react/i`. The CS-MAST detection is an additional layer that catches Vite chunks containing library code that doesn't match the vendor filename pattern.
+
 ## Vite/rolldown bundle format
 
 A Vite production build (rolldown bundler) produces:
@@ -77,6 +94,19 @@ Rewrites library API calls from the indirect call pattern to bare identifiers: `
 Wrapper chains are resolved: `var r = t((e, t) => { t.exports = n() })` (where `n` is the React CJS getter) is detected by scanning for `t.exports = Y()` patterns inside the factory body, including sequence expression form `(n(), t.exports = Y())`.
 
 **react-router-dom detection** uses `.displayName` assignments: `` Link.displayName = `Link` `` (template literal RHS is handled explicitly). Falls back to `extractRouterDomCanonical()` heuristic scanning for backtick strings, call patterns, and JSX element names.
+
+## Vendor chunk pre-scan (`refactor/index.ts`)
+
+`refactorVite()` can only analyze vendor chunks that are present in the `chunks` object it receives. In practice, `mapped.json` is created by the `map` step with only app chunks — vendor chunks (`vendor-react-*.js`, `rolldown-runtime-*.js`) are third-party code and are excluded during mapping. Without them `vendorExportMaps` is empty and `rewriteVendorImports` has nothing to match against, leaving raw vendor import statements in the output that break the build check.
+
+The orchestrator in `refactor/index.ts` resolves this before calling `refactorVite()`:
+
+1. Calls `findAssetsDir(chunks, mappedJsonPath)` — parses the `// File Source: http://HOST:PORT/assets/...` comment in any chunk's first line to locate `<mapped.json-dir>/output/HOST_PORT/assets/`.
+2. Calls `findVendorChunkFiles(chunks, assetsDir)` — returns JS files in the assets dir not covered by any chunk in `mapped.json`.
+3. Filters to `vendor[-_]react` and `rolldown[-_]runtime` filenames only.
+4. Reads each file and injects it into `chunks` before `refactorVite()` is called.
+
+This is the same pattern used by the `react-webpack` branch for pre-scanning vendor bundles. If `findAssetsDir` returns null (e.g. chunks have no `// File Source:` header, or the output dir is missing), the pre-scan is silently skipped and `refactorVite` proceeds with whatever is in `chunks`.
 
 ## Build check (`index.ts` → `runViteBuildCheck()`)
 

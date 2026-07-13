@@ -20,7 +20,7 @@ import {
 } from "./transform.js";
 import { LibraryModuleInfo, classifyLibraryModule, resolveReexportChains } from "./library-classify.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 const generate = (_generator as unknown as { default: typeof _generator }).default ?? _generator;
 
 // scat config used when computing experiment-baseline signatures (matches

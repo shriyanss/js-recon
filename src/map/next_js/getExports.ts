@@ -3,7 +3,7 @@ import { Chunks } from "../../utility/interfaces.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
 import { ArrowFunctionExpression, FunctionDeclaration } from "@babel/types";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Gets the exports of each chunk.

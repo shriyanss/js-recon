@@ -7,7 +7,7 @@ import path from "path";
 import { Chunks } from "../../utility/interfaces.js";
 import { getThirdArg } from "./resolveAxios.js";
 import { Node } from "@babel/types";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import * as globals from "../../utility/globals.js";
 
 /**

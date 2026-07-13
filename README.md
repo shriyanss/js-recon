@@ -69,28 +69,29 @@ js-recon run -u https://app.example.com
 
 `js-recon` provides a suite of commands for comprehensive JavaScript analysis. For detailed usage and examples, please refer to its full documentation.
 
-| Command       | Description                                                                   | Documentation                                                  |
-| ------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                  | [Read Docs](https://js-recon.io/docs/docs/modules/lazyload)    |
-| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                   | [Read Docs](https://js-recon.io/docs/docs/modules/endpoints)   |
-| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                  | [Read Docs](https://js-recon.io/docs/docs/modules/strings)     |
-| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions. | [Read Docs](https://js-recon.io/docs/docs/modules/map)         |
-| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                | [Read Docs](https://js-recon.io/docs/docs/modules/api-gateway) |
-| `run`         | Runs all analysis modules automatically on a target.                          | [Read Docs](https://js-recon.io/docs/docs/modules/run)         |
-| `analyze`     | Analyzes the code.                                                            | [Read Docs](https://js-recon.io/docs/docs/modules/analyze)     |
-| `report`      | Generates a report from the analysis modules.                                 | [Read Docs](https://js-recon.io/docs/docs/modules/report)      |
-| `mcp`         | AI-powered interactive CLI, one-shot chat, and MCP stdio server.              | [Read Docs](https://js-recon.io/docs/docs/modules/mcp)         |
-| `fingerprint` | Detects the JavaScript framework used by a target URL (JSON/JSONL output).    | [Read Docs](https://js-recon.io/docs/docs/modules/fingerprint) |
-| `refactor`    | Refactors and deobfuscates webpack modules from a mapped JSON file.           | [Read Docs](https://js-recon.io/docs/docs/modules/refactor)    |
-| `load`        | Populates the response cache from a Caido or Burp Suite export.               | [Read Docs](https://js-recon.io/docs/docs/modules/load)        |
-| `cs-mast`     | Computes CS-MAST structural hashes for JS files and finds hash collisions.    | [Read Docs](https://js-recon.io/docs/docs/modules/cs-mast)     |
-| `sourcemaps`  | Extracts original source files from `.map` sourcemap files.                   | [Read Docs](https://js-recon.io/docs/docs/modules/sourcemaps)  |
+| Command       | Description                                                                      | Documentation                                                  |
+| ------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `lazyload`    | Downloads dynamically loaded JavaScript files from a target.                     | [Read Docs](https://js-recon.io/docs/docs/modules/lazyload)    |
+| `endpoints`   | Extracts API endpoints and client-side paths from JS files.                      | [Read Docs](https://js-recon.io/docs/docs/modules/endpoints)   |
+| `strings`     | Extracts strings, URLs, and potential secrets from JS files.                     | [Read Docs](https://js-recon.io/docs/docs/modules/strings)     |
+| `map`         | Maps function calls and analyzes code, with optional AI-powered descriptions.    | [Read Docs](https://js-recon.io/docs/docs/modules/map)         |
+| `api-gateway` | Manages AWS API Gateway for IP rotation to bypass rate limits.                   | [Read Docs](https://js-recon.io/docs/docs/modules/api-gateway) |
+| `run`         | Runs all analysis modules automatically on a target.                             | [Read Docs](https://js-recon.io/docs/docs/modules/run)         |
+| `analyze`     | Analyzes the code.                                                               | [Read Docs](https://js-recon.io/docs/docs/modules/analyze)     |
+| `report`      | Generates a report from the analysis modules.                                    | [Read Docs](https://js-recon.io/docs/docs/modules/report)      |
+| `mcp`         | AI-powered interactive CLI, one-shot chat, and MCP stdio server.                 | [Read Docs](https://js-recon.io/docs/docs/modules/mcp)         |
+| `fingerprint` | Detects the JavaScript framework used by a target URL (JSON/JSONL output).       | [Read Docs](https://js-recon.io/docs/docs/modules/fingerprint) |
+| `refactor`    | Recovers readable JSX and strips library code from React (webpack/Vite) bundles. | [Read Docs](https://js-recon.io/docs/docs/modules/refactor)    |
+| `load`        | Populates the response cache from a Caido or Burp Suite export.                  | [Read Docs](https://js-recon.io/docs/docs/modules/load)        |
+| `cs-mast`     | Computes CS-MAST structural hashes for JS files and finds hash collisions.       | [Read Docs](https://js-recon.io/docs/docs/modules/cs-mast)     |
+| `sourcemaps`  | Extracts original source files from `.map` sourcemap files.                      | [Read Docs](https://js-recon.io/docs/docs/modules/sourcemaps)  |
+| `completion`  | Generates shell completion scripts for bash, zsh, or fish.                       | [Read Docs](https://js-recon.io/docs/docs/modules/completion)  |
 
 ## Key Features
 
 - Downloads all dynamically loaded JS files (refered as `lazyload`) from website with supported frameworks
 - Use API gateway to rotate IP addresses to bypass firewall
-- Extract strings from the discovered JS files, and extract potential secrets, endpoints, etc. from them
+- Extract strings from the discovered JS files, and extract potential secrets, endpoints, etc. from them (built-in scanner via `--secrets`; TruffleHog integration via `--trufflehog`)
 - Endpoints modules extracts client-side paths from the app
 - Map feature analyzes the JS files and outputs it to a JSON file. An interactive mode can be then used to analyze it
 - Reconstruct HTTP requests that the app makes to the server, and output them to the OpenAPI spec

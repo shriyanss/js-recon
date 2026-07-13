@@ -3,7 +3,7 @@ import * as t from "@babel/types";
 import { Chunks } from "../../../utility/interfaces.js";
 import { processDirectAxiosCall } from "./processDirectAxiosCall.js";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 /**
  * Finds and processes direct Axios calls that are not assigned to a variable.

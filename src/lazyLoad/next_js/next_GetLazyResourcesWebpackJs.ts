@@ -3,7 +3,7 @@ import puppeteer from "../../utility/puppeteerInstance.js";
 import { getChromiumPath } from "../../utility/getChromiumPath.js";
 import parser from "@babel/parser";
 import _traverse from "@babel/traverse";
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import inquirer from "inquirer";
 import cliProgress from "cli-progress";
 import makeRequest from "../../utility/makeReq.js";
@@ -15,6 +15,7 @@ import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utilit
 type MatchedFunction = {
     source: string;
     jsUrl: string;
+    jsContent: string;
 };
 
 /**
@@ -36,15 +37,38 @@ type MatchedFunction = {
  */
 const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> => {
     const chromiumPath = getChromiumPath();
+    const sandboxArgs = globals.getDisableSandbox()
+        ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+        : [];
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: globals.getDisableSandbox()
-            ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-            : [],
+        args: ["--disable-external-protocol-dialog", ...sandboxArgs],
     });
 
     const page = await browser.newPage();
+
+    const cdp = await page.createCDPSession();
+    await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
+
+    await page.evaluateOnNewDocument(() => {
+        const origOpen = window.open.bind(window);
+        window.open = (url?: string | URL, ...rest: string[]) => {
+            if (url != null && !/^https?:/i.test(String(url))) return null;
+            return origOpen(url, ...rest);
+        };
+        document.addEventListener(
+            "click",
+            (e) => {
+                const anchor = (e.target as Element).closest("a[href]") as HTMLAnchorElement | null;
+                if (anchor && !/^https?:/i.test(anchor.href)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            },
+            true
+        );
+    });
 
     await page.setRequestInterception(true);
 
@@ -62,7 +86,12 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
                 pushToJsonUrls(req_url);
             }
         }
-        await request.continue();
+
+        if (/^https?:\/\//i.test(req_url)) {
+            await request.continue();
+        } else {
+            await request.abort();
+        }
     });
 
     try {
@@ -139,31 +168,31 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
                     const start = p.node.start ?? 0;
                     const end = p.node.end ?? jsContent.length;
                     const source = jsContent.slice(start, end);
-                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl });
+                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl, jsContent });
                 },
                 FunctionExpression(p) {
                     const start = p.node.start ?? 0;
                     const end = p.node.end ?? jsContent.length;
                     const source = jsContent.slice(start, end);
-                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl });
+                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl, jsContent });
                 },
                 ArrowFunctionExpression(p) {
                     const start = p.node.start ?? 0;
                     const end = p.node.end ?? jsContent.length;
                     const source = jsContent.slice(start, end);
-                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl });
+                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl, jsContent });
                 },
                 ObjectMethod(p) {
                     const start = p.node.start ?? 0;
                     const end = p.node.end ?? jsContent.length;
                     const source = jsContent.slice(start, end);
-                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl });
+                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl, jsContent });
                 },
                 ClassMethod(p) {
                     const start = p.node.start ?? 0;
                     const end = p.node.end ?? jsContent.length;
                     const source = jsContent.slice(start, end);
-                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl });
+                    if (source.match(/"\.js".{0,15}$/)) matched.push({ source, jsUrl, jsContent });
                 },
             });
         } catch {
@@ -188,7 +217,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     // ── user approval and execution ───────────────────────────────────────
     const chunkUrls: string[] = [];
 
-    for (const { source, jsUrl } of matched) {
+    for (const { source, jsUrl, jsContent } of matched) {
         console.log(chalk.green(`[✓] Found chunk URL builder in ${jsUrl}`));
         console.log(chalk.yellow(source));
 
@@ -214,7 +243,33 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
 
         console.log(chalk.cyan("[i] Executing function to enumerate chunk URLs"));
 
-        const urlBuilderFunc = `(() => (${source}))()`;
+        // Detect free variable .p accesses (webpack __webpack_public_path__).
+        // When a chunk URL builder is extracted from its surrounding scope, outer
+        // variables like `i` or `o` that hold the public path are undefined in
+        // the sandbox. We inject a mock declaration so the function executes.
+        const funcParamRe = /^(?:function\s*\w*\s*\(([^)]*)\)|(?:\(([^)]*)\)|([a-zA-Z_$]\w*))\s*=>)/;
+        const paramMatch = source.match(funcParamRe);
+        const funcParams = new Set(
+            [paramMatch?.[1] ?? "", paramMatch?.[2] ?? "", paramMatch?.[3] ?? ""]
+                .join(",")
+                .split(",")
+                .map((p) => p.trim())
+                .filter(Boolean)
+        );
+        const pVarMatch = source.match(/\b([a-zA-Z_$]\w*)\.p\b/);
+        const pVarName = pVarMatch && !funcParams.has(pVarMatch[1]) ? pVarMatch[1] : null;
+
+        let publicPath = "";
+        if (pVarName) {
+            const assignRe = new RegExp(`\\b${pVarName}\\.p\\s*=\\s*["']([^"']*)["']`);
+            const assignMatch = jsContent.match(assignRe);
+            if (assignMatch) publicPath = assignMatch[1];
+            // If not found, publicPath stays "". The existing new URL(output, baseDir)
+            // resolution will handle relative paths produced by the function correctly.
+        }
+
+        const preamble = pVarName ? `var ${pVarName}={p:${JSON.stringify(publicPath)}};` : "";
+        const urlBuilderFunc = `(()=>{${preamble}return(${source})})()`;
         const integers = source.match(/\d+/g);
         if (!integers) continue;
 

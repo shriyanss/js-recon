@@ -42,11 +42,20 @@ const getLocalDataTablesAssets = () => {
 const getLocalJqueryAsset = () => {
     try {
         const require = createRequire(import.meta.url);
-        const jqPath = require.resolve("jquery/dist/jquery.min.js");
+        // Try the direct subpath first (jQuery <4); if that fails (jQuery 4+ restricts
+        // subpath exports), derive the path from the main entry.
+        let jqPath: string;
+        try {
+            jqPath = require.resolve("jquery/dist/jquery.min.js");
+        } catch {
+            const mainPath = require.resolve("jquery");
+            jqPath = mainPath.replace(/jquery\.js$/, "jquery.min.js");
+        }
+        if (!fs.existsSync(jqPath)) throw new Error("jquery.min.js not found at " + jqPath);
         const js = fs.readFileSync(jqPath, "utf8");
         return js as string | null;
-    } catch (e: any) {
-        console.warn("[DataTables] Local jQuery not found; falling back to CDN", e?.message || e);
+    } catch {
+        console.warn("[DataTables] Local jQuery not found; falling back to CDN");
         return null as string | null;
     }
 };

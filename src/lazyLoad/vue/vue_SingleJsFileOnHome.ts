@@ -4,7 +4,7 @@ import _traverse from "@babel/traverse";
 import * as cheerio from "cheerio";
 import chalk from "chalk";
 
-const traverse = _traverse.default;
+const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 
 const vue_singleJsFileOnHome = async (url: string) => {
     let jsFilesFound: string[] = [];
