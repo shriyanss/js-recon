@@ -85,6 +85,7 @@ js-recon run -u https://app.example.com
 | `load`        | Populates the response cache from a Caido or Burp Suite export.                  | [Read Docs](https://js-recon.io/docs/docs/modules/load)        |
 | `cs-mast`     | Computes CS-MAST structural hashes for JS files and finds hash collisions.       | [Read Docs](https://js-recon.io/docs/docs/modules/cs-mast)     |
 | `sourcemaps`  | Extracts original source files from `.map` sourcemap files.                      | [Read Docs](https://js-recon.io/docs/docs/modules/sourcemaps)  |
+| `completion`  | Generates shell completion scripts for bash, zsh, or fish.                       | [Read Docs](https://js-recon.io/docs/docs/modules/completion)  |
 
 ## Key Features
 
