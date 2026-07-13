@@ -89,15 +89,19 @@ jobs:
     needs:
       - publish-npm
     runs-on: ubuntu-latest
+    environment: commit-signing
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
           fetch-depth: 0
+      - name: Configure SSH commit signing
+        uses: shriyanss/verified-commit-action@v1
+        with:
+          ssh-private-key: ${{ secrets.JS_RECON_SIGNING_KEY }}
+          commit-name: "github-actions[bot]"
+          commit-email: ${{ secrets.JS_RECON_SIGNING_EMAIL }}
       - name: Merge main and dev
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git fetch origin main:main
           git fetch origin dev:dev
           git checkout dev
