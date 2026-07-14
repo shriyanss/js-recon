@@ -21,7 +21,7 @@ const LIB_CLASSIFICATION_THRESHOLD = 0.51;
 // Hash a module's function body and check whether its sub-tree signatures
 // overlap the cross-app library baseline above the classification threshold.
 const moduleIsLibrary = (
-    fnNode: t.ArrowFunctionExpression | t.FunctionExpression,
+    fnNode: t.ArrowFunctionExpression | t.FunctionExpression | t.FunctionDeclaration,
     libSigs: Set<string>,
     scatOverride?: ScatCategory[]
 ): boolean => {
@@ -83,15 +83,23 @@ export const refactorNextWebpack = async (
 
     let captured: WebpackModuleEntry | null = null;
 
+    // A node is the genuine top-level module wrapper only if its nearest enclosing
+    // statement is a direct child of Program — this rejects arrow/function nodes
+    // nested anywhere inside another function body, even when their immediate
+    // parent happens to be an AssignmentExpression (e.g. an inner `n = () => {...}`).
+    const isGenuineTopLevel = (path: NodePath): boolean => {
+        const statementParent = path.getStatementParent();
+        return !!statementParent?.parentPath?.isProgram();
+    };
+
     traverse(ast, {
-        ArrowFunctionExpression(path: NodePath<t.ArrowFunctionExpression>) {
-            // Accept the module wrapper at any of these positions:
-            //   func_NNN = (e, t, r) => {...}  → parent is AssignmentExpression
-            //   (e, t, r) => {...}              → parent is ExpressionStatement or Program
-            const parent = path.parentPath;
-            const isTopLevel =
-                parent?.isAssignmentExpression() || parent?.isExpressionStatement() || parent?.isProgram();
-            if (!isTopLevel) return;
+        // getWebpackConnections.ts synthesizes `function webpack_<chunk.id>(...)` whenever
+        // the original bundle module was itself a `function` expression (webpack 4/SWC
+        // output) — the dominant form on real-world bundles, not the arrow form below.
+        FunctionDeclaration(path: NodePath<t.FunctionDeclaration>) {
+            if (captured) return;
+            if (path.node.id?.name !== `webpack_${chunk.id}`) return;
+            if (!isGenuineTopLevel(path)) return;
 
             const params = path.node.params;
             if (params.length > 3) return;
@@ -100,16 +108,41 @@ export const refactorNextWebpack = async (
             const exportsParam = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
             const requireParam = params[2] && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : "";
 
-            if (!captured) {
-                captured = {
-                    id: chunk.id,
-                    fnPath: path,
-                    runtimeParam: "",
-                    moduleParam,
-                    exportsParam,
-                    requireParam,
-                };
-            }
+            captured = {
+                id: chunk.id,
+                fnPath: path,
+                runtimeParam: "",
+                moduleParam,
+                exportsParam,
+                requireParam,
+            };
+            path.stop();
+        },
+        ArrowFunctionExpression(path: NodePath<t.ArrowFunctionExpression>) {
+            if (captured) return;
+            // Accept the module wrapper at any of these positions:
+            //   func_NNN = (e, t, r) => {...}  → parent is AssignmentExpression
+            //   (e, t, r) => {...}              → parent is ExpressionStatement or Program
+            const parent = path.parentPath;
+            const isTopLevelShape =
+                parent?.isAssignmentExpression() || parent?.isExpressionStatement() || parent?.isProgram();
+            if (!isTopLevelShape || !isGenuineTopLevel(path)) return;
+
+            const params = path.node.params;
+            if (params.length > 3) return;
+
+            const moduleParam = params[0] && t.isIdentifier(params[0]) ? (params[0] as t.Identifier).name : "";
+            const exportsParam = params[1] && t.isIdentifier(params[1]) ? (params[1] as t.Identifier).name : "";
+            const requireParam = params[2] && t.isIdentifier(params[2]) ? (params[2] as t.Identifier).name : "";
+
+            captured = {
+                id: chunk.id,
+                fnPath: path,
+                runtimeParam: "",
+                moduleParam,
+                exportsParam,
+                requireParam,
+            };
             path.stop();
         },
     });

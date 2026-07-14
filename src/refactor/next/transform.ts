@@ -36,10 +36,12 @@ export type TurboModuleEntry = {
 
 // Webpack-style module format: NNN: (module, exports, require) => { r.d(t, {...}), r.r(t), ... }
 // Uses require.d / require.r for export registration.
-// Accepts both ArrowFunctionExpression (webpack 5) and FunctionExpression (webpack 4/Vue CLI).
+// Accepts ArrowFunctionExpression (webpack 5), FunctionExpression (webpack 4/Vue CLI), and
+// FunctionDeclaration (`function webpack_<id>(...)`, synthesized by getWebpackConnections.ts
+// for chunks whose original module was itself a `function` expression).
 export type WebpackModuleEntry = {
     id: string;
-    fnPath: NodePath<t.ArrowFunctionExpression | t.FunctionExpression>;
+    fnPath: NodePath<t.ArrowFunctionExpression | t.FunctionExpression | t.FunctionDeclaration>;
     runtimeParam: string; // empty for webpack-style
     moduleParam: string;
     exportsParam: string;
