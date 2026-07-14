@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-alpha.9 - (unreleased)
+
+### Fixed
+
+- `refactor -t next-webpack`: chunks whose module wrapper is a named `function` declaration (`function webpack_<id>(...)`, synthesized whenever the original bundle module was itself a `function` expression — the dominant form on real-world bundles) are now correctly recovered. Previously the traversal only visited `ArrowFunctionExpression` nodes, so these chunks were reported as `No module function found`, and in the rare cases where a nested arrow function's immediate parent happened to be an assignment, that unrelated inner fragment was captured as a false-positive "recovered" module. Both wrapper forms are now supported and the top-level check requires the wrapper to be a direct child of `Program`. (`refactor`)
+
 ## 1.4.1-alpha.8 - (unreleased)
 
 ### Changed
