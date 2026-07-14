@@ -21,6 +21,7 @@ type HfTreeEntry = {
     type: "file" | "directory";
     path: string;
     size?: number;
+    xetHash?: string;
 };
 
 // --- URL builders ---
@@ -153,6 +154,45 @@ const listTopLevelDirs = async (prefix: string): Promise<string[]> => {
 export const listCollisionsFiles = async (branch: string, scatDir: string): Promise<string[]> => {
     const featureDirs = await listTopLevelDirs(branch);
     return featureDirs.map((dir) => `${dir}/${scatDir}/collisions.json`);
+};
+
+// Returns a map of relative `<feature>/<scatDir>/collisions.json` path -> remote content hash
+// (`xetHash`) for every matching file under a branch. This is the upstream-change detection
+// signal: two calls with different results for the same subpath mean the dataset content
+// changed, regardless of how recently the local cache entry was written. Paginates the same
+// way as `listTopLevelDirs`.
+export const listCollisionsFileHashes = async (branch: string, scatDir: string): Promise<Map<string, string>> => {
+    const hashes = new Map<string, string>();
+    const prefixSlash = branch.endsWith("/") ? branch : `${branch}/`;
+    let url: string | null = getHfApiTreeUrl(branch);
+
+    while (url) {
+        let resp: Response;
+        try {
+            resp = await fetch(url);
+        } catch {
+            break;
+        }
+        if (resp.status === 429) throw new Error(`Rate limited by HuggingFace (url: ${url})`);
+        if (!resp.ok) break;
+
+        const text = await resp.text();
+        try {
+            const entries = JSON.parse(text) as HfTreeEntry[];
+            for (const e of entries) {
+                if (e.type !== "file" || !e.xetHash) continue;
+                if (!e.path.endsWith(`/${scatDir}/collisions.json`)) continue;
+                const rel = e.path.startsWith(prefixSlash) ? e.path.slice(prefixSlash.length) : e.path;
+                hashes.set(rel, e.xetHash);
+            }
+        } catch {
+            break;
+        }
+
+        url = parseNextLink(resp.headers.get("link"));
+    }
+
+    return hashes;
 };
 
 // Fetches and parses a collisions.json from a raw HF URL.

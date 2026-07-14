@@ -10,6 +10,7 @@ import {
     TECH_TO_BRANCH,
     validateRemoteBranch,
     listCollisionsFiles,
+    listCollisionsFileHashes,
     fetchCollisionsJson,
     getHfRawUrl,
 } from "../refactor/remote/hf-client.js";
@@ -133,15 +134,22 @@ export async function detectBundler(
         // Sample a random subset to keep detection fast.
         const sampled = randomSample(allPaths, DETECTION_SAMPLE_SIZE);
 
+        // Content-based cache validation: same mechanism as the refactor module — one
+        // per-branch tree fetch to detect upstream dataset changes within the age-based TTL.
+        const remoteHashes = skipCacheChecks
+            ? new Map<string, string>()
+            : await listCollisionsFileHashes(branch, DETECTION_SCAT_DIR);
+
         let matchCount = 0;
         for (const subpath of sampled) {
             let records;
-            if (isSignatureCacheFresh(branch, subpath, skipCacheChecks)) {
+            const remoteHash = remoteHashes.get(subpath) ?? null;
+            if (isSignatureCacheFresh(branch, subpath, skipCacheChecks, remoteHash)) {
                 records = loadCachedSignature(branch, subpath);
             } else {
                 records = await fetchCollisionsJson(getHfRawUrl(branch, subpath));
                 if (records) {
-                    saveSignatureToCache(branch, subpath, records, config.maxCacheSizeMb);
+                    saveSignatureToCache(branch, subpath, records, config.maxCacheSizeMb, remoteHash);
                 }
             }
             if (!records) continue;

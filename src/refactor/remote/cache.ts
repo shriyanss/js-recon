@@ -65,11 +65,48 @@ export const getSignatureCacheFilePath = (branch: string, subpath: string): stri
 const getCachedAtPath = (branch: string, subpath: string): string =>
     path.join(getSignatureCacheDir(branch, subpath), "cached_at.txt");
 
-export const isSignatureCacheFresh = (branch: string, subpath: string, skipCacheChecks: boolean): boolean => {
+const getRemoteHashPath = (branch: string, subpath: string): string =>
+    path.join(getSignatureCacheDir(branch, subpath), "remote_hash.txt");
+
+export const getCachedRemoteHash = (branch: string, subpath: string): string | null => {
+    const p = getRemoteHashPath(branch, subpath);
+    if (!fs.existsSync(p)) return null;
+    try {
+        const hash = fs.readFileSync(p, "utf8").trim();
+        return hash.length > 0 ? hash : null;
+    } catch {
+        return null;
+    }
+};
+
+// Pure decision: is a cache entry stale because the upstream dataset content changed?
+// `remoteHash` is null when the current run couldn't determine the remote content hash
+// (network error, or the subpath wasn't found in this run's tree listing) — in that case
+// content can't be verified either way, so this returns false (not proven stale) and the
+// caller falls back to age-based TTL.
+export const isCacheContentStale = (cachedHash: string | null, remoteHash: string | null): boolean => {
+    if (remoteHash === null) return false;
+    return cachedHash !== remoteHash;
+};
+
+// `remoteHash` is the current upstream content hash for this subpath (from
+// `listCollisionsFileHashes`), or null when it couldn't be determined this run (network
+// error, or this subpath wasn't present in the tree listing). When available, a hash
+// mismatch invalidates the cache immediately regardless of age — this is what lets the tool
+// detect an upstream dataset regeneration/fix within the 7-day age-based TTL window instead
+// of silently trusting a stale, possibly-empty cached file. When unavailable, behavior falls
+// back to the pre-existing age-based check.
+export const isSignatureCacheFresh = (
+    branch: string,
+    subpath: string,
+    skipCacheChecks: boolean,
+    remoteHash: string | null = null
+): boolean => {
     const atPath = getCachedAtPath(branch, subpath);
     const filePath = getSignatureCacheFilePath(branch, subpath);
     if (!fs.existsSync(atPath) || !fs.existsSync(filePath)) return false;
     if (skipCacheChecks) return true;
+    if (isCacheContentStale(getCachedRemoteHash(branch, subpath), remoteHash)) return false;
     try {
         const ts = parseInt(fs.readFileSync(atPath, "utf8").trim(), 10);
         if (isNaN(ts)) return false;
@@ -93,12 +130,14 @@ export const saveSignatureToCache = (
     branch: string,
     subpath: string,
     records: CollisionRecord[],
-    maxCacheSizeMb: number
+    maxCacheSizeMb: number,
+    remoteHash?: string | null
 ): void => {
     const dir = getSignatureCacheDir(branch, subpath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "collisions.json"), JSON.stringify(records));
     fs.writeFileSync(path.join(dir, "cached_at.txt"), String(Date.now()));
+    if (remoteHash) fs.writeFileSync(path.join(dir, "remote_hash.txt"), remoteHash);
     runEvictionIfNeeded(maxCacheSizeMb);
 };
 

@@ -22,6 +22,7 @@ import {
     getHfRawUrl,
     fetchCollisionsJson,
     listCollisionsFiles,
+    listCollisionsFileHashes,
     validateRemoteBranch,
     validateRemotePath,
     getSampleSize,
@@ -310,14 +311,22 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
         )
     );
 
+    // Content-based cache validation: fetch the upstream tree's per-file hashes once per
+    // branch so each cache entry below can be checked against current dataset content
+    // instead of trusting its local age alone. Skipped entirely under --skip-cache-checks.
+    const remoteHashes = opts.skipCacheChecks
+        ? new Map<string, string>()
+        : await listCollisionsFileHashes(branch, scatDir);
+
     let intersection: Set<string> | null = null;
     let loadedCount = 0;
 
     for (const relPath of matchingPaths) {
         let records: CollisionRecord[] | null = null;
+        const remoteHash = remoteHashes.get(relPath) ?? null;
 
         // Check local signature cache first.
-        if (isSignatureCacheFresh(branch, relPath, opts.skipCacheChecks)) {
+        if (isSignatureCacheFresh(branch, relPath, opts.skipCacheChecks, remoteHash)) {
             records = loadCachedSignature(branch, relPath);
         }
 
@@ -345,7 +354,7 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
                 continue;
             }
 
-            saveSignatureToCache(branch, relPath, records, config.maxCacheSizeMb);
+            saveSignatureToCache(branch, relPath, records, config.maxCacheSizeMb, remoteHash);
         }
 
         // Apply signature quality filter: (count / sampleSize) * 100 >= threshold.
@@ -372,7 +381,11 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
 
     if (!intersection || intersection.size === 0) {
         console.log(
-            chalk.yellow(`[!] Remote signatures loaded but intersection is empty (quality threshold may be too high)`)
+            chalk.red(
+                `[!] Remote signatures loaded but intersection is empty — library stripping will find nothing to skip ` +
+                    `(quality threshold may be too high, or every dataset entry fetched 0 records). ` +
+                    `If this is unexpected, purge ~/.js-recon/refactor/{signature_cache,cs-mast-s-list-cache.json} and retry.`
+            )
         );
         return null;
     }
