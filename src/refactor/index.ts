@@ -314,9 +314,21 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
     // Content-based cache validation: fetch the upstream tree's per-file hashes once per
     // branch so each cache entry below can be checked against current dataset content
     // instead of trusting its local age alone. Skipped entirely under --skip-cache-checks.
-    const remoteHashes = opts.skipCacheChecks
-        ? new Map<string, string>()
-        : await listCollisionsFileHashes(branch, scatDir);
+    // A failure here (e.g. HF rate-limiting under concurrent load) must never abort the
+    // whole refactor run — fall back to an empty map, which degrades each cache-freshness
+    // check below to the pre-existing age-based TTL.
+    let remoteHashes = new Map<string, string>();
+    if (!opts.skipCacheChecks) {
+        try {
+            remoteHashes = await listCollisionsFileHashes(branch, scatDir);
+        } catch (e) {
+            console.log(
+                chalk.yellow(
+                    `[!] Could not fetch upstream content hashes for cache validation (${(e as Error).message}) — falling back to age-based cache checks.`
+                )
+            );
+        }
+    }
 
     let intersection: Set<string> | null = null;
     let loadedCount = 0;

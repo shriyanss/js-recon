@@ -136,9 +136,20 @@ export async function detectBundler(
 
         // Content-based cache validation: same mechanism as the refactor module — one
         // per-branch tree fetch to detect upstream dataset changes within the age-based TTL.
-        const remoteHashes = skipCacheChecks
-            ? new Map<string, string>()
-            : await listCollisionsFileHashes(branch, DETECTION_SCAT_DIR);
+        // A failure here (e.g. HF rate-limiting) must never abort bundler detection — fall
+        // back to an empty map, which degrades cache-freshness checks to the age-based TTL.
+        let remoteHashes = new Map<string, string>();
+        if (!skipCacheChecks) {
+            try {
+                remoteHashes = await listCollisionsFileHashes(branch, DETECTION_SCAT_DIR);
+            } catch (e) {
+                console.log(
+                    chalk.yellow(
+                        `[!] Could not fetch upstream content hashes for cache validation (${(e as Error).message}) — falling back to age-based cache checks.`
+                    )
+                );
+            }
+        }
 
         let matchCount = 0;
         for (const subpath of sampled) {
