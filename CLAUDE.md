@@ -350,6 +350,16 @@ Releasing a new version touches three repos. Work on `dev` (js-recon, js-recon-r
 
 **Ordering is critical**: release js-recon first (including the GitHub release so CI publishes it to npm), then snapshot and PR js-recon-docs. This ensures the docs `version_check` CI step passes instead of failing due to a missing npm package.
 
+### Overview: automated stage → human approve → human-triggered promote
+
+npm's OIDC trusted publishing for this package is scoped to **`npm stage publish`**, not direct `npm publish`. That means every js-recon release has three distinct phases, only the first of which Claude can execute unattended:
+
+1. **Automated (Claude does this end-to-end):** bump version, update CHANGELOG, open and merge the `dev`→`main` PR (after CI is green and the user gives merge approval — never merge without it), create the GitHub release. That release triggers `publish-js-recon.yml`, which runs `version_check` → `audit` → `build` → `publish-npm` (stages to npm via OIDC, no token) → `merge_main_and_dev` — all fully automatic, no human input needed.
+2. **Human-only (cannot be scripted or delegated):** npm requires interactive 2FA to promote a staged package to actually live on the registry. Claude reports the stage id and waits; the user runs `npm stage approve <stage-id>` (or clicks "Approve" on npmjs.com) themselves, on their own machine or browser.
+3. **Human-triggered, then Claude drives it:** once the user confirms the package is live (e.g. "I've published on npm" / "go ahead"), Claude runs `gh workflow run promote-js-recon.yml -f version=<version>` and watches it to completion. This workflow (Homebrew tap, Docker, GHCR) installs from the published npm artifact rather than git source, so it can only run correctly after step 2 — that's why it's a separate manually-triggered workflow instead of chained onto `publish-js-recon.yml`.
+
+The detailed step-by-step is below; the numbering restarts at 10 for the docs phase since it's a separate concern from the npm/GitHub release phase.
+
 ### When a user asks to prepare a release
 
 Before writing any files, gather the current state:

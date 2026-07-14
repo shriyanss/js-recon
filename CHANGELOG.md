@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-alpha.7 - (unreleased)
+
+### Changed
+
+- CI: bot commits (`chore: prettify code`, `chore: merge changes after release vX.Y.Z`) are now cryptographically signed via SSH (using [`shriyanss/verified-commit-action`](https://github.com/shriyanss/verified-commit-action)) and show as "Verified" on GitHub, under a dedicated `js-recon-bot` identity. The signing key is scoped to a `commit-signing` GitHub Environment so it's only readable by the jobs that need it, not the whole repo. `promote-js-recon.yml`'s Docker/GHCR publish job now reads `DOCKER_SECRET` from a similarly scoped `docker-publish` environment, and the Homebrew tap job no longer references a token secret. (`ci`)
+
 ## 1.4.1-alpha.6 - 2026-07-13
 
 ### Changed
