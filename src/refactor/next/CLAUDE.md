@@ -23,7 +23,7 @@ The `BASELINE_SCAT_DIR["next-webpack"]` entry in `src/refactor/index.ts` is `"li
 
 Both webpack and turbopack Next.js builds produce chunks in `func_NNN = (e, t, r) => {...}` format in `mapped.json`. The outer assignment expression is an `AssignmentExpression`. The `refactorNextWebpack` visitor accepts `AssignmentExpression | ExpressionStatement | Program` as valid parent nodes for the captured arrow function.
 
-**Wrapper form varies by webpack/SWC version.** `getWebpackConnections.ts` synthesizes the chunk wrapper differently depending on whether the *original* bundle module was an arrow function or a `function` expression:
+**Wrapper form varies by webpack/SWC version.** `getWebpackConnections.ts` synthesizes the chunk wrapper differently depending on whether the _original_ bundle module was an arrow function or a `function` expression:
 
 - Arrow-form original → `func_<chunk.id> = (e, t, r) => {...}` (an `AssignmentExpression`).
 - `function`-form original → `function webpack_<chunk.id> (e, t, r) {...}` (a named `FunctionDeclaration`).
