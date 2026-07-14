@@ -1,6 +1,12 @@
 # Change Log
 
-## 1.4.1-alpha.7 - (unreleased)
+## 1.4.1-alpha.8 - (unreleased)
+
+### Changed
+
+- CI: `promote-js-recon.yml`'s Homebrew tap job now reads its push token (`HOMEBREW_TAP_GH_PAT`) from a scoped `homebrew-publish` GitHub Environment, restoring push access after the previous repo-wide `HOMEBREW_TAP_TOKEN` was retired. (`ci`)
+
+## 1.4.1-alpha.7 - 2026-07-14
 
 ### Changed
 

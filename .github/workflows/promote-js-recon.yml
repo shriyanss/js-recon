@@ -17,6 +17,7 @@ on:
 jobs:
   update-homebrew-tap:
     runs-on: ubuntu-latest
+    environment: homebrew-publish
     steps:
       - name: Fetch published tarball and compute SHA256
         id: sha256
@@ -31,6 +32,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: shriyanss/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_GH_PAT }}
           path: homebrew-tap
 
       - name: Update formula fields
