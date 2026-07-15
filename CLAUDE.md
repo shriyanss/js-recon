@@ -217,7 +217,7 @@ When `-r` points to a single file, only that rule is loaded. When it points to a
 
 The `rules-smoke-test` GitHub Actions workflow (`.github/workflows/rules-smoke-test.yaml`) runs on every non-main push. It:
 
-1. Checks out `shriyanss/js-recon-labs` and `shriyanss/js-recon-rules` alongside js-recon.
+1. Checks out `js-recon/js-recon-labs` and `js-recon/js-recon-rules` alongside js-recon.
 2. Builds js-recon and the `next_js/vuln-all-rules` lab app.
 3. Starts the lab app on port 3001.
 4. Runs `node build/index.js run -u http://localhost:3001 -r ./js-recon-rules --no-sandbox -y -k`.
@@ -383,7 +383,7 @@ Before writing any files, gather the current state:
 
 3. **Update README** — ensure the Commands table in `README.md` lists every subcommand declared in `src/index.ts`. The `refactor` and `load` subcommands are easy to miss — explicitly verify they are present.
 
-4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are substantive unreleased commits (not just merge/cleanup commits), update `CHANGELOG.md` and `version.txt`, push to `dev`, and open a PR (`shriyanss/js-recon-rules` dev→main, title=rules version, body=rules changelog section).
+4. **Update rules** (`js-recon-rules` repo, `dev` branch) — if there are substantive unreleased commits (not just merge/cleanup commits), update `CHANGELOG.md` and `version.txt`, push to `dev`, and open a PR (`js-recon/js-recon-rules` dev→main, title=rules version, body=rules changelog section).
 
 5. **Push** `js-recon` dev branch: `git push origin dev`
 
@@ -391,15 +391,15 @@ Before writing any files, gather the current state:
 
     | Repo                 | Source | Target | Title                                       | Body                                 |
     | -------------------- | ------ | ------ | ------------------------------------------- | ------------------------------------ |
-    | `shriyanss/js-recon` | `dev`  | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
+    | `js-recon/js-recon` | `dev`  | `main` | bare version string (e.g. `v1.3.1-alpha.4`) | raw `## <version>` changelog section |
 
-7. **Monitor js-recon CI** — use `gh pr checks <pr-number> --repo shriyanss/js-recon` and poll until all checks complete. Handle CodeRabbit suggestions (see below). Do NOT merge — wait for user approval.
+7. **Monitor js-recon CI** — use `gh pr checks <pr-number> --repo js-recon/js-recon` and poll until all checks complete. Handle CodeRabbit suggestions (see below). Do NOT merge — wait for user approval.
 
 8. **Create GitHub release** — after the PR is merged to main:
 
     ```bash
     gh release create v<version> \
-      --repo shriyanss/js-recon \
+      --repo js-recon/js-recon \
       --title "v<version>" \
       --notes "<changelog section>" \
       --prerelease    # set for any version containing "alpha" or "beta"
@@ -411,46 +411,46 @@ Before writing any files, gather the current state:
 
     Previous tag is left to GitHub's automatic detection (do not set `--target` or `--tag` beyond the tag name itself).
 
-9. **Wait for npm stage publish** — monitor the release pipeline: `gh run list --repo shriyanss/js-recon --workflow "Publish JS Recon"`. `publish-npm` uses OIDC trusted publishing (`npm stage publish`, no token) to _stage_ the release — this is NOT the same as it being live.
+9. **Wait for npm stage publish** — monitor the release pipeline: `gh run list --repo js-recon/js-recon --workflow "Publish JS Recon"`. `publish-npm` uses OIDC trusted publishing (`npm stage publish`, no token) to _stage_ the release — this is NOT the same as it being live.
 
 10. **Approve the staged release** — npm's staged-publish approval always requires interactive 2FA, so this step can never be automated or scripted:
 
-    - Find the stage id: `npm stage list @shriyanss/js-recon` (or the "Staged Packages" tab on npmjs.com)
+    - Find the stage id: `npm stage list @js-recon/js-recon` (or the "Staged Packages" tab on npmjs.com)
     - Approve it: `npm stage approve <stage-id>` (prompts for 2FA), or click "Approve" on npmjs.com
-    - Confirm it's live: `npm view @shriyanss/js-recon@<version>`
+    - Confirm it's live: `npm view @js-recon/js-recon@<version>`
 
 11. **Manually trigger the promote workflow** — once the release is live, run `promote-js-recon.yml` to update Homebrew and publish the Docker/GHCR images:
 
     ```bash
-    gh workflow run promote-js-recon.yml --repo shriyanss/js-recon -f version=<version>
+    gh workflow run promote-js-recon.yml --repo js-recon/js-recon -f version=<version>
     ```
 
-    This workflow installs js-recon from the published npm registry artifact (`npm pack`/`npm install <pkg>@<version>`) rather than building from git source — an additional supply-chain check that the shipped images/formula match exactly what was approved on npm. Monitor: `gh run list --repo shriyanss/js-recon --workflow "Promote JS Recon Release"`.
+    This workflow installs js-recon from the published npm registry artifact (`npm pack`/`npm install <pkg>@<version>`) rather than building from git source — an additional supply-chain check that the shipped images/formula match exactly what was approved on npm. Monitor: `gh run list --repo js-recon/js-recon --workflow "Promote JS Recon Release"`.
 
 ### Homebrew tap (manual, part of `promote-js-recon.yml`)
 
 The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step 11 above) is **channel-aware** — it updates a different formula depending on the promoted version string, so `brew install js-recon` always tracks the real npm `latest` (stable) release instead of whatever was most recently promoted:
 
 1. Picks the target formula from `inputs.version`: `Formula/js-recon-alpha.rb` if the version contains `alpha`, `Formula/js-recon-beta.rb` if it contains `beta`, otherwise `Formula/js-recon.rb` (stable).
-2. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
-3. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_GH_PAT` (a fine-grained PAT stored in the `homebrew-publish` environment secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+2. `npm pack @js-recon/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
+3. Checks out `js-recon/homebrew-tap` using `HOMEBREW_TAP_GH_PAT` (a fine-grained PAT stored in the `homebrew-publish` environment secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
 4. Updates `url` and `sha256` in the target formula via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
 5. Commits `chore: update <formula> to <version>` and pushes
 
 The `js-recon-alpha` / `js-recon-beta` formulas are `keg_only` with a custom reason string (they install the same `js-recon` binary name as the stable formula, so they can't auto-link into the shared `bin/` without conflicting). Homebrew's built-in `:versioned_formula` reason only applies to numeric `@X.Y`-style names, which is why these use plain `-alpha`/`-beta` filenames rather than the `@`-suffix convention.
 
-Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
+Monitor: `gh run list --repo js-recon/homebrew-tap --workflow ci.yml`
 
-**If the job fails:** manually update: `npm pack @shriyanss/js-recon@<version> && sha256sum shriyanss-js-recon-<version>.tgz`, edit the correct formula (stable vs `-alpha`/`-beta`, per the version string), commit, and push to `shriyanss/homebrew-tap`.
+**If the job fails:** manually update: `npm pack @js-recon/js-recon@<version> && sha256sum js-recon-js-recon-<version>.tgz`, edit the correct formula (stable vs `-alpha`/`-beta`, per the version string), commit, and push to `js-recon/homebrew-tap`.
 
 **One-time setup** (must be done before the first release, already completed):
 
-- `shriyanss/homebrew-tap` is a public GitHub repo with formulas at `Formula/js-recon.rb` (stable), `Formula/js-recon-alpha.rb`, and `Formula/js-recon-beta.rb`
-- `HOMEBREW_TAP_GH_PAT` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Environments → `homebrew-publish` → Environment secrets, scoped exclusively to the `homebrew-tap` repo
+- `js-recon/homebrew-tap` is a public GitHub repo with formulas at `Formula/js-recon.rb` (stable), `Formula/js-recon-alpha.rb`, and `Formula/js-recon-beta.rb`
+- `HOMEBREW_TAP_GH_PAT` is a fine-grained PAT stored in `js-recon/js-recon` → Settings → Environments → `homebrew-publish` → Environment secrets, scoped exclusively to the `homebrew-tap` repo
 
 ### Docker / GHCR images (manual, part of `promote-js-recon.yml`)
 
-`publish-docker` and `publish-ghcr` (now in `promote-js-recon.yml`) build from `Dockerfile.release` instead of the default `Dockerfile`. `Dockerfile.release` runs `npm install -g @shriyanss/js-recon@<version>` against the live registry rather than copying local source and building — the published images are provably built from the approved npm artifact. The default `Dockerfile` (source build) is unchanged and still used for local/dev builds.
+`publish-docker` and `publish-ghcr` (now in `promote-js-recon.yml`) build from `Dockerfile.release` instead of the default `Dockerfile`. `Dockerfile.release` runs `npm install -g @js-recon/js-recon@<version>` against the live registry rather than copying local source and building — the published images are provably built from the approved npm artifact. The default `Dockerfile` (source build) is unchanged and still used for local/dev builds.
 
 ### Phase 2 — js-recon-docs (after npm is live)
 
@@ -472,7 +472,7 @@ Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
     git -C ../js-recon-docs add .
     git -C ../js-recon-docs commit -m "docs: snapshot v<version>"
     git -C ../js-recon-docs push origin stage
-    gh pr create --repo shriyanss/js-recon-docs \
+    gh pr create --repo js-recon/js-recon-docs \
       --head stage --base main \
       --title "v<version>" \
       --body "<brief summary of doc changes>"
@@ -485,7 +485,7 @@ Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
 After any PR is created, poll for review comments:
 
 ```bash
-gh api repos/shriyanss/js-recon/pulls/<pr>/comments
+gh api repos/js-recon/js-recon/pulls/<pr>/comments
 ```
 
 For each suggestion: apply a fix commit to `dev` for correctness bugs or convention violations. Skip trivial style preferences. The PR updates automatically.
@@ -498,7 +498,7 @@ Do NOT merge any PR. Once all CI checks pass and CodeRabbit suggestions are addr
 
 When a user asks to fix or implement a GitHub issue, follow these steps:
 
-1. **Read the issue** — `gh issue view <number> --repo shriyanss/js-recon`
+1. **Read the issue** — `gh issue view <number> --repo js-recon/js-recon`
 
 2. **Implement** — make the code, docs, and exit-code changes required. Follow all existing conventions (subcommand structure, CHANGELOG format, README Commands table, js-recon-docs modules page, exit_codes.md). Document new exit codes in both `CLAUDE.md` and `js-recon-docs/docs/docs/exit_codes.md`.
 
@@ -506,14 +506,14 @@ When a user asks to fix or implement a GitHub issue, follow these steps:
 
 4. **Commit and push to `dev`** — use a `feat(...)` or `fix(...)` commit message. Push to `origin dev`.
 
-5. **Monitor CI** — `gh run list --repo shriyanss/js-recon --branch dev --limit 3`. Watch the `Build & Prettify Code` run. If the `version_check` job fails because `CHANGELOG.md` top version doesn't match `package.json`, bump `package.json` and `src/globalConfig.ts` to match (with a `chore: bump version to <X>` commit) and repush.
+5. **Monitor CI** — `gh run list --repo js-recon/js-recon --branch dev --limit 3`. Watch the `Build & Prettify Code` run. If the `version_check` job fails because `CHANGELOG.md` top version doesn't match `package.json`, bump `package.json` and `src/globalConfig.ts` to match (with a `chore: bump version to <X>` commit) and repush.
 
 6. **Pull prettifier commit** — after CI passes, `git pull origin dev` to pick up the `chore: prettify code` auto-commit.
 
 7. **Close the issue** — once all CI checks pass:
 
     ```bash
-    gh issue close <number> --repo shriyanss/js-recon --comment \
+    gh issue close <number> --repo js-recon/js-recon --comment \
       "Implemented in commit <short-sha> on the \`dev\` branch. Will be released in **v<version>**."
     ```
 

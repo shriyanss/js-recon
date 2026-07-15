@@ -17,13 +17,13 @@ jobs:
       - name: Checkout js-recon-labs
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: shriyanss/js-recon-labs
+          repository: js-recon/js-recon-labs
           path: js-recon-labs
 
       - name: Checkout js-recon-rules
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: shriyanss/js-recon-rules
+          repository: js-recon/js-recon-rules
           path: js-recon-rules
 
       - name: Set up Node.js

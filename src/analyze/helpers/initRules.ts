@@ -14,7 +14,7 @@ import extract from "extract-zip";
  */
 const downloadRules = async (homeDir: string): Promise<void> => {
     console.log(chalk.cyan("[i] Rules not found. Downloading from GitHub..."));
-    const response = await fetch("https://api.github.com/repos/shriyanss/js-recon-rules/releases/latest");
+    const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest");
     const release = await response.json();
     const zipballUrl = release.zipball_url;
 
@@ -102,7 +102,7 @@ const initRules = async (): Promise<void> => {
     // also, if the version.txt exist, check if the version.txt is latest as per the latest release on github
     const version = fs.readFileSync(versionPath, "utf8").trim();
     try {
-        const response = await fetch("https://api.github.com/repos/shriyanss/js-recon-rules/releases/latest");
+        const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest");
         const release = await response.json();
         const release_tag_name = release.tag_name;
         if (`v${version}` !== release_tag_name) {

@@ -1,5 +1,5 @@
 {
-    "name": "@shriyanss/js-recon",
+    "name": "@js-recon/js-recon",
     "version": "1.4.1-alpha.9",
     "description": "JS Recon Tool",
     "main": "build/index.js",
@@ -14,7 +14,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:build": "node build/index.js -h",
-        "cleanup": "rm -rf build output output_refactored .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json,-openapi.postman_collection.json} analyze.json test{.yaml,.js} shriyanss-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js extracted/ research.json results* out.* && tsc"
+        "cleanup": "rm -rf build output output_refactored .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json,-openapi.postman_collection.json} analyze.json test{.yaml,.js} js-recon-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js extracted/ research.json results* out.* && tsc"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
@@ -61,12 +61,12 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/shriyanss/js-recon.git"
+        "url": "git+https://github.com/js-recon/js-recon.git"
     },
     "bugs": {
-        "url": "https://github.com/shriyanss/js-recon/issues"
+        "url": "https://github.com/js-recon/js-recon/issues"
     },
-    "homepage": "https://github.com/shriyanss/js-recon#readme",
+    "homepage": "https://github.com/js-recon/js-recon#readme",
     "devDependencies": {
         "@types/babel__traverse": "^7.28.0",
         "@types/better-sqlite3": "^7.6.13",

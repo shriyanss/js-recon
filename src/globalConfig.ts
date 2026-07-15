@@ -1,4 +1,4 @@
-const githubURL = "https://github.com/shriyanss/js-recon";
+const githubURL = "https://github.com/js-recon/js-recon";
 const modulesDocs = "https://js-recon.io/docs/category/modules";
 const version = "1.4.1-alpha.9";
 const toolDesc = "JavaScript Enumeration and SAST";

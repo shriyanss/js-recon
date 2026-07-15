@@ -144,7 +144,7 @@ jobs:
           # Make sure the action checks out the repository to the pull request branch
           ref: ${{ github.ref_name }}
       - name: Build docker container
-        run: docker build -t shriyanss/js-recon .
+        run: docker build -t js-recon/js-recon .
 
   integration-test-docker:
     needs: build-docker
@@ -159,13 +159,13 @@ jobs:
       - name: Checkout js-recon-labs
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: shriyanss/js-recon-labs
+          repository: js-recon/js-recon-labs
           path: js-recon-labs
 
       - name: Checkout js-recon-rules
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: shriyanss/js-recon-rules
+          repository: js-recon/js-recon-rules
           path: js-recon-rules
 
       - name: Set up Node.js
@@ -175,7 +175,7 @@ jobs:
           cache: "npm"
 
       - name: Build js-recon Docker image
-        run: docker build -t shriyanss/js-recon .
+        run: docker build -t js-recon/js-recon .
 
       - name: Install vuln-all-rules app dependencies
         working-directory: js-recon-labs/next_js/vuln-all-rules
@@ -206,7 +206,7 @@ jobs:
             --network host \
             -v "$(pwd)/js-recon-rules:/home/pptruser/js-recon-rules" \
             --entrypoint /bin/bash \
-            shriyanss/js-recon \
+            js-recon/js-recon \
             -c 'mkdir -p ~/.js-recon && ln -sf /home/pptruser/js-recon-rules ~/.js-recon/rules && printf "http://localhost:3001\n" > /tmp/urls.txt && node build/index.js run -u /tmp/urls.txt -r ./js-recon-rules --no-sandbox -y -k'
           mkdir -p output
           docker cp js-recon-run:/home/pptruser/output/. ./output/ 2>/dev/null || true
@@ -236,13 +236,13 @@ jobs:
       - name: Checkout js-recon-labs
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: shriyanss/js-recon-labs
+          repository: js-recon/js-recon-labs
           path: js-recon-labs
 
       - name: Checkout js-recon-rules
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: shriyanss/js-recon-rules
+          repository: js-recon/js-recon-rules
           path: js-recon-rules
 
       - name: Set up Node.js
