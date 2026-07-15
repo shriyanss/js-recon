@@ -136,6 +136,8 @@ jobs:
         run: npm run build
   build-docker:
     needs: build
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

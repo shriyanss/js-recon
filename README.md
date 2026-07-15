@@ -119,7 +119,7 @@ For detailed guides, command options, and advanced usage examples, please check 
   <img src="https://github.com/js-recon/js-recon-labs/blob/main/static/labs-banner.png?raw=true" alt="JS Recon Labs" width="300"/>
 </p>
 
-Labs to test JS Recon tool are available [here](https://github.com/js-recon/js-recon-labs). Walkthroughs are available [here](https://js-recon.io/labs).
+Labs to test JS Recon tool are available in the [JS Recon Labs repository](https://github.com/js-recon/js-recon-labs). [Labs walkthroughs](https://js-recon.io/labs) are also available.
 
 ## Contributing
 

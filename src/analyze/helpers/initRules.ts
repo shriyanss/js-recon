@@ -37,7 +37,7 @@ const downloadRules = async (homeDir: string): Promise<void> => {
     const files = fs.readdirSync(extractPath);
     const extractedDir = files.find(
         (file) =>
-            fs.statSync(path.join(extractPath, file)).isDirectory() && file.startsWith("shriyanss-js-recon-rules-")
+            fs.statSync(path.join(extractPath, file)).isDirectory() && file.startsWith("js-recon-js-recon-rules-")
     );
 
     if (extractedDir) {
