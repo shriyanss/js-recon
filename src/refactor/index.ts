@@ -807,6 +807,7 @@ const refactor = async (
     // Load CS-MAST cross-app baseline signatures.
     // Priority: --collisions (local path) > remote HF (default) > none.
     let libSigs: Set<string> | undefined;
+    let libStrippingSkipped: { tech: string; scat: string; branch: string } | null = null;
     if (collisionsFile) {
         // Explicit local path — use existing resolver unchanged.
         const result = buildLibSigs(collisionsFile, tech, remoteOpts?.scat);
@@ -845,6 +846,9 @@ const refactor = async (
             libSigs = result.sigs;
         } else {
             console.log(chalk.yellow(`[~] Remote signatures unavailable — proceeding without library stripping`));
+            const branch = opts.remoteCollisions ?? TECH_TO_BRANCH[tech] ?? "unknown";
+            const scatDir = opts.scat ? scatToDir(opts.scat) : (BASELINE_SCAT_DIR[tech] ?? "unknown");
+            libStrippingSkipped = { tech, scat: scatDir, branch };
         }
     }
 
@@ -1188,6 +1192,15 @@ const refactor = async (
             fs.writeFileSync(filePath, formatted);
             console.log(chalk.green(`[✓] Chunk ${chunkKey} written to ${filePath}`));
         }
+    }
+
+    if (libStrippingSkipped) {
+        const { tech: skippedTech, scat, branch } = libStrippingSkipped;
+        console.log(chalk.yellow.bold("=".repeat(60)));
+        console.log(chalk.yellow.bold("[!] LIBRARY STRIPPING WAS SKIPPED FOR THIS RUN"));
+        console.log(chalk.yellow(`    tech: ${skippedTech}  scat: ${scat}  branch: ${branch}`));
+        console.log(chalk.yellow("    No remote collisions data available — output includes library code."));
+        console.log(chalk.yellow.bold("=".repeat(60)));
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));
