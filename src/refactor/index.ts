@@ -22,6 +22,7 @@ import {
     getHfRawUrl,
     fetchCollisionsJson,
     listCollisionsFiles,
+    listCollisionsFileHashes,
     validateRemoteBranch,
     validateRemotePath,
     getSampleSize,
@@ -310,14 +311,34 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
         )
     );
 
+    // Content-based cache validation: fetch the upstream tree's per-file hashes once per
+    // branch so each cache entry below can be checked against current dataset content
+    // instead of trusting its local age alone. Skipped entirely under --skip-cache-checks.
+    // A failure here (e.g. HF rate-limiting under concurrent load) must never abort the
+    // whole refactor run — fall back to an empty map, which degrades each cache-freshness
+    // check below to the pre-existing age-based TTL.
+    let remoteHashes = new Map<string, string>();
+    if (!opts.skipCacheChecks) {
+        try {
+            remoteHashes = await listCollisionsFileHashes(branch, scatDir);
+        } catch (e) {
+            console.log(
+                chalk.yellow(
+                    `[!] Could not fetch upstream content hashes for cache validation (${(e as Error).message}) — falling back to age-based cache checks.`
+                )
+            );
+        }
+    }
+
     let intersection: Set<string> | null = null;
     let loadedCount = 0;
 
     for (const relPath of matchingPaths) {
         let records: CollisionRecord[] | null = null;
+        const remoteHash = remoteHashes.get(relPath) ?? null;
 
         // Check local signature cache first.
-        if (isSignatureCacheFresh(branch, relPath, opts.skipCacheChecks)) {
+        if (isSignatureCacheFresh(branch, relPath, opts.skipCacheChecks, remoteHash)) {
             records = loadCachedSignature(branch, relPath);
         }
 
@@ -345,7 +366,7 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
                 continue;
             }
 
-            saveSignatureToCache(branch, relPath, records, config.maxCacheSizeMb);
+            saveSignatureToCache(branch, relPath, records, config.maxCacheSizeMb, remoteHash);
         }
 
         // Apply signature quality filter: (count / sampleSize) * 100 >= threshold.
@@ -372,7 +393,11 @@ const loadRemoteLibSigs = async (tech: string, opts: RemoteLibSigsOptions): Prom
 
     if (!intersection || intersection.size === 0) {
         console.log(
-            chalk.yellow(`[!] Remote signatures loaded but intersection is empty (quality threshold may be too high)`)
+            chalk.red(
+                `[!] Remote signatures loaded but intersection is empty — library stripping will find nothing to skip ` +
+                    `(quality threshold may be too high, or every dataset entry fetched 0 records). ` +
+                    `If this is unexpected, purge ~/.js-recon/refactor/{signature_cache,cs-mast-s-list-cache.json} and retry.`
+            )
         );
         return null;
     }
@@ -782,6 +807,7 @@ const refactor = async (
     // Load CS-MAST cross-app baseline signatures.
     // Priority: --collisions (local path) > remote HF (default) > none.
     let libSigs: Set<string> | undefined;
+    let libStrippingSkipped: { tech: string; scat: string; branch: string } | null = null;
     if (collisionsFile) {
         // Explicit local path — use existing resolver unchanged.
         const result = buildLibSigs(collisionsFile, tech, remoteOpts?.scat);
@@ -820,6 +846,9 @@ const refactor = async (
             libSigs = result.sigs;
         } else {
             console.log(chalk.yellow(`[~] Remote signatures unavailable — proceeding without library stripping`));
+            const branch = opts.remoteCollisions ?? TECH_TO_BRANCH[tech] ?? "unknown";
+            const scatDir = opts.scat ? scatToDir(opts.scat) : (BASELINE_SCAT_DIR[tech] ?? "unknown");
+            libStrippingSkipped = { tech, scat: scatDir, branch };
         }
     }
 
@@ -1163,6 +1192,15 @@ const refactor = async (
             fs.writeFileSync(filePath, formatted);
             console.log(chalk.green(`[✓] Chunk ${chunkKey} written to ${filePath}`));
         }
+    }
+
+    if (libStrippingSkipped) {
+        const { tech: skippedTech, scat, branch } = libStrippingSkipped;
+        console.log(chalk.yellow.bold("=".repeat(60)));
+        console.log(chalk.yellow.bold("[!] LIBRARY STRIPPING WAS SKIPPED FOR THIS RUN"));
+        console.log(chalk.yellow(`    tech: ${skippedTech}  scat: ${scat}  branch: ${branch}`));
+        console.log(chalk.yellow("    No remote collisions data available — output includes library code."));
+        console.log(chalk.yellow.bold("=".repeat(60)));
     }
 
     console.log(chalk.green("[✓] Refactoring complete."));

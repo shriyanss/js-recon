@@ -429,21 +429,24 @@ Before writing any files, gather the current state:
 
 ### Homebrew tap (manual, part of `promote-js-recon.yml`)
 
-The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step 11 above):
+The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step 11 above) is **channel-aware** — it updates a different formula depending on the promoted version string, so `brew install js-recon` always tracks the real npm `latest` (stable) release instead of whatever was most recently promoted:
 
-1. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
-2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
-3. Updates `url` and `sha256` in `Formula/js-recon.rb` via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
-4. Commits `chore: update js-recon formula to <version>` and pushes
+1. Picks the target formula from `inputs.version`: `Formula/js-recon-alpha.rb` if the version contains `alpha`, `Formula/js-recon-beta.rb` if it contains `beta`, otherwise `Formula/js-recon.rb` (stable).
+2. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
+3. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_GH_PAT` (a fine-grained PAT stored in the `homebrew-publish` environment secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+4. Updates `url` and `sha256` in the target formula via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
+5. Commits `chore: update <formula> to <version>` and pushes
+
+The `js-recon-alpha` / `js-recon-beta` formulas are `keg_only` with a custom reason string (they install the same `js-recon` binary name as the stable formula, so they can't auto-link into the shared `bin/` without conflicting). Homebrew's built-in `:versioned_formula` reason only applies to numeric `@X.Y`-style names, which is why these use plain `-alpha`/`-beta` filenames rather than the `@`-suffix convention.
 
 Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
 
-**If the job fails:** manually update: `npm pack @shriyanss/js-recon@<version> && sha256sum shriyanss-js-recon-<version>.tgz`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
+**If the job fails:** manually update: `npm pack @shriyanss/js-recon@<version> && sha256sum shriyanss-js-recon-<version>.tgz`, edit the correct formula (stable vs `-alpha`/`-beta`, per the version string), commit, and push to `shriyanss/homebrew-tap`.
 
 **One-time setup** (must be done before the first release, already completed):
 
-- `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
-- `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
+- `shriyanss/homebrew-tap` is a public GitHub repo with formulas at `Formula/js-recon.rb` (stable), `Formula/js-recon-alpha.rb`, and `Formula/js-recon-beta.rb`
+- `HOMEBREW_TAP_GH_PAT` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Environments → `homebrew-publish` → Environment secrets, scoped exclusively to the `homebrew-tap` repo
 
 ### Docker / GHCR images (manual, part of `promote-js-recon.yml`)
 
@@ -566,7 +569,7 @@ The `refactor` command supports the following techs:
 - **`react-vite`** — Vite (rolldown) React bundles. Removes CJS interop wrappers, rewrites vendor imports to canonical library imports (`react`, `react/jsx-runtime`, etc.), recovers JSX. Runs a Vite build check after writing output. See `src/refactor/react-vite/CLAUDE.md`.
 - **`next`** — Next.js bundles (legacy).
 - **`next-turbopack`** — Next.js Turbopack chunks. Handles both turbopack 3-param `func_NNN=(runtime,module,exports)=>{}` and 1-param `func_NNN=(runtime)=>{}` formats plus webpack-style coexisting chunks. See `src/refactor/next/CLAUDE.md`.
-- **`next-webpack`** — Next.js webpack chunks. Input format from `mapped.json`: `NNN:(module,exports,require)=>{}`. Recovers named exports (ODP, require.d), default exports (module.exports=V), re-exports (module.exports=require(N)→export*), and require hoisting. 277/280 modules recovered on a real bundle. Param order: params[0]=module, params[1]=exports, params[2]=require. See `src/refactor/next/CLAUDE.md`.
+- **`next-webpack`** — Next.js webpack chunks. Input format from `mapped.json`: `NNN:(module,exports,require)=>{}` (arrow form) or `function webpack_NNN(module,exports,require){}` (named-function form — the dominant form on real-world bundles; see `src/refactor/next/CLAUDE.md`). Recovers named exports (ODP, require.d), default exports (module.exports=V), re-exports (module.exports=require(N)→export*), and require hoisting. Param order: params[0]=module, params[1]=exports, params[2]=require. Recovery-rate benchmark: see `docs/js-recon-core/bug-reports/nextjs-webpack-refactor-function-wrapper-miss.md` in js-recon-internal-docs for the corrected baseline (the previous "277/280 modules recovered" figure only exercised the arrow-form wrapper and was not representative of real-world bundles).
 - **`vue-webpack`** — Vue.js webpack 4/5 chunks. Container format: `(window.webpackJsonp||[]).push([[chunkIds],{moduleId:function(t,e,r){...}}])`. Each chunk file may contain multiple module functions; each is extracted and transformed. Reuses the Next.js webpack transform (same module param semantics: params[0]=module, params[1]=exports, params[2]=require). See `src/refactor/vue/index.ts`.
 - **`vue-vite`** — Vue 3 + Vite page chunks. The main index chunk (contains `__vccOpts`, all of Vue runtime) is analysed to build an export-alias→canonical-name map. Lazy page chunks then have their index imports rewritten to canonical `import {...} from 'vue'` statements. The `_export_sfc` compiler helper is inlined as a local const. See `src/refactor/vue/vite.ts` and `src/refactor/vue/vendor-analyze-vue.ts`.
 

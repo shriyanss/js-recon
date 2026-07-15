@@ -23,6 +23,13 @@ The `BASELINE_SCAT_DIR["next-webpack"]` entry in `src/refactor/index.ts` is `"li
 
 Both webpack and turbopack Next.js builds produce chunks in `func_NNN = (e, t, r) => {...}` format in `mapped.json`. The outer assignment expression is an `AssignmentExpression`. The `refactorNextWebpack` visitor accepts `AssignmentExpression | ExpressionStatement | Program` as valid parent nodes for the captured arrow function.
 
+**Wrapper form varies by webpack/SWC version.** `getWebpackConnections.ts` synthesizes the chunk wrapper differently depending on whether the _original_ bundle module was an arrow function or a `function` expression:
+
+- Arrow-form original → `func_<chunk.id> = (e, t, r) => {...}` (an `AssignmentExpression`).
+- `function`-form original → `function webpack_<chunk.id> (e, t, r) {...}` (a named `FunctionDeclaration`).
+
+Real-world Next.js webpack builds observed in practice are consistently the `function`-form — `docs/research/refactor/vue-refactor-study.md` documents the same pattern for Vue (webpack 4 → `FunctionExpression`, webpack 5 → `ArrowFunctionExpression`). `refactorNextWebpack()`'s traversal in `index.ts` therefore registers **two** visitor branches: a `FunctionDeclaration` branch that matches the synthesized `webpack_<chunk.id>` name directly (robust because `chunk.id` is already known — no generic "any top-level function" heuristic needed), and the original `ArrowFunctionExpression` branch. Both branches call a shared `isGenuineTopLevel()` check (`path.getStatementParent()?.parentPath?.isProgram()`) rather than only inspecting the node's immediate parent — this is required because a naive immediate-parent check (`parent?.isAssignmentExpression()`) also matches deeply nested arrows (e.g. an effect cleanup `n = () => { e(); }` buried inside the real module body), which previously caused a false-positive "recovered" 1–3 line garbage fragment whenever the real wrapper was invisible to the visitor (the `FunctionDeclaration` case, before this branch existed).
+
 ## Module formats
 
 ### 1. Turbopack 3-param format (`func_NNN = (runtime, module, exports) => { ... }`)

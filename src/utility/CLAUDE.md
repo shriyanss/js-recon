@@ -6,7 +6,7 @@ Cross-cutting utilities used by every other dir. Owns the mutable global state, 
 
 ## Files
 
-- `globals.ts` — mutable singletons: tech string (set by lazyload, read everywhere), AI config, OpenAPI-enabled flag, request-engine state. Use the exported setters/getters — never mutate the module object directly.
+- `globals.ts` — mutable singletons: tech string (set by lazyload, read everywhere), AI config, OpenAPI-enabled flag, request-engine state. Use the exported setters/getters — never mutate the module object directly. `openapiOutput` is the one accumulator (`addOpenapiOutput` pushes, never overwrites) — `clearOpenapiOutput()` must be called between targets in batch mode (see `run/index.ts`'s `isBatch` reset block, alongside `clearJsUrls()`/`clearJsonUrls()`), or later targets' Postman/OpenAPI output inherits earlier targets' endpoints.
 - `interfaces.ts` — `Chunks` and other types shared across `map` / `analyze` / `report`.
 - `puppeteerInstance.ts` — Puppeteer browser singleton. Lazy-launched on first call; `close()` is responsibility of the caller that owns the lifecycle (typically `run`).
 - `makeReq.ts` — HTTP client. Two modes: direct (fetch-like) and sandboxed (delegates to `runSandboxed.ts`). Sandbox mode is used for any URL that might be a target's own JS executing untrusted code.

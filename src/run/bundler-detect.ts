@@ -10,6 +10,7 @@ import {
     TECH_TO_BRANCH,
     validateRemoteBranch,
     listCollisionsFiles,
+    listCollisionsFileHashes,
     fetchCollisionsJson,
     getHfRawUrl,
 } from "../refactor/remote/hf-client.js";
@@ -133,15 +134,33 @@ export async function detectBundler(
         // Sample a random subset to keep detection fast.
         const sampled = randomSample(allPaths, DETECTION_SAMPLE_SIZE);
 
+        // Content-based cache validation: same mechanism as the refactor module — one
+        // per-branch tree fetch to detect upstream dataset changes within the age-based TTL.
+        // A failure here (e.g. HF rate-limiting) must never abort bundler detection — fall
+        // back to an empty map, which degrades cache-freshness checks to the age-based TTL.
+        let remoteHashes = new Map<string, string>();
+        if (!skipCacheChecks) {
+            try {
+                remoteHashes = await listCollisionsFileHashes(branch, DETECTION_SCAT_DIR);
+            } catch (e) {
+                console.log(
+                    chalk.yellow(
+                        `[!] Could not fetch upstream content hashes for cache validation (${(e as Error).message}) — falling back to age-based cache checks.`
+                    )
+                );
+            }
+        }
+
         let matchCount = 0;
         for (const subpath of sampled) {
             let records;
-            if (isSignatureCacheFresh(branch, subpath, skipCacheChecks)) {
+            const remoteHash = remoteHashes.get(subpath) ?? null;
+            if (isSignatureCacheFresh(branch, subpath, skipCacheChecks, remoteHash)) {
                 records = loadCachedSignature(branch, subpath);
             } else {
                 records = await fetchCollisionsJson(getHfRawUrl(branch, subpath));
                 if (records) {
-                    saveSignatureToCache(branch, subpath, records, config.maxCacheSizeMb);
+                    saveSignatureToCache(branch, subpath, records, config.maxCacheSizeMb, remoteHash);
                 }
             }
             if (!records) continue;

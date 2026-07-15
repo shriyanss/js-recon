@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isListCacheStale, shouldRefreshListCache, getSignatureCacheFilePath } from "../../refactor/remote/cache.js";
+import {
+    isListCacheStale,
+    shouldRefreshListCache,
+    getSignatureCacheFilePath,
+    isCacheContentStale,
+} from "../../refactor/remote/cache.js";
 import type { ListCache } from "../../refactor/remote/cache.js";
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -63,5 +68,24 @@ describe("getSignatureCacheFilePath", () => {
         const p = getSignatureCacheFilePath("react/webpack/large-0.1.8", "feat/scat/collisions.json");
         const occurrences = p.split("collisions.json").length - 1;
         expect(occurrences).toBe(1);
+    });
+});
+
+describe("isCacheContentStale", () => {
+    it("returns false when the remote hash is unknown (can't prove staleness)", () => {
+        expect(isCacheContentStale("abc123", null)).toBe(false);
+        expect(isCacheContentStale(null, null)).toBe(false);
+    });
+
+    it("returns true when the cached hash differs from the current remote hash", () => {
+        expect(isCacheContentStale("abc123", "def456")).toBe(true);
+    });
+
+    it("returns true when there is no cached hash yet but a remote hash is known", () => {
+        expect(isCacheContentStale(null, "def456")).toBe(true);
+    });
+
+    it("returns false when the cached hash matches the current remote hash", () => {
+        expect(isCacheContentStale("abc123", "abc123")).toBe(false);
     });
 });

@@ -353,6 +353,14 @@ export const getOpenapiOutput = (): OpenapiOutputItem[] => {
     return openapiOutput;
 };
 
+/**
+ * Clears the OpenAPI output collection. Must be called between targets in
+ * batch mode, otherwise later targets accumulate earlier targets' entries.
+ */
+export const clearOpenapiOutput = (): void => {
+    openapiOutput = [];
+};
+
 // OpenAPI Chunk Tag Configuration
 /** Whether to add chunk ID tags to OpenAPI specifications */
 export let openapiChunkTag = false;
