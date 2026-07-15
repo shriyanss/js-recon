@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-alpha.10 - (unreleased)
+
+### Fixed
+
+- `run` (batch mode, `-u <file>`): the generated OpenAPI spec and Postman collection (`mapped-openapi.json`, `mapped-openapi.postman_collection.json`) are no longer contaminated with endpoints from previously-processed targets in the same batch run. `openapiOutput` in `utility/globals.ts` is an accumulator that every map resolver pushes into, and it was never cleared between targets — so target N's output silently inherited every endpoint discovered for targets `1..N-1`. A new `clearOpenapiOutput()` is now called alongside the existing `clearJsUrls()`/`clearJsonUrls()` reset at the start of each target's pipeline. (`run`, `utility`)
+
 ## 1.4.1-alpha.9 - (unreleased)
 
 ### Fixed
