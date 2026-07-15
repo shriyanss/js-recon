@@ -83,6 +83,7 @@ const processUrl = async (
     if (isBatch) {
         clearJsUrls();
         clearJsonUrls();
+        globalsUtil.clearOpenapiOutput();
     }
 
     console.log(chalk.bgCyan("[1/8] Running lazyload to download JavaScript files..."));
