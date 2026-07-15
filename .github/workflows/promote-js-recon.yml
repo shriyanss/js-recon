@@ -32,9 +32,9 @@ jobs:
         id: formula
         run: |
           if [[ "$VERSION" == *"alpha"* ]]; then
-            FORMULA="Formula/js-recon@alpha.rb"
+            FORMULA="Formula/js-recon-alpha.rb"
           elif [[ "$VERSION" == *"beta"* ]]; then
-            FORMULA="Formula/js-recon@beta.rb"
+            FORMULA="Formula/js-recon-beta.rb"
           else
             FORMULA="Formula/js-recon.rb"
           fi
@@ -70,8 +70,6 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           FORMULA: ${{ steps.formula.outputs.formula }}
-        env:
-          VERSION: ${{ inputs.version }}
 
   publish-docker:
     runs-on: ubuntu-latest

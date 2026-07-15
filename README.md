@@ -24,8 +24,8 @@ brew install js-recon
 This always installs the latest **stable** release. For the latest alpha or beta prerelease instead:
 
 ```bash
-brew install shriyanss/tap/js-recon@alpha
-brew install shriyanss/tap/js-recon@beta
+brew install shriyanss/tap/js-recon-alpha
+brew install shriyanss/tap/js-recon-beta
 ```
 
 To update:
