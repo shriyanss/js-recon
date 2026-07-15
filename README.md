@@ -1,6 +1,6 @@
 # JS Recon
 
-![NPM Licence](https://img.shields.io/npm/l/%40shriyanss%2Fjs-recon) ![GitHub repo size](https://img.shields.io/github/repo-size/shriyanss/js-recon) ![NPM Downloads](https://img.shields.io/npm/dm/%40shriyanss%2Fjs-recon) ![GitHub commit activity (dev)](https://img.shields.io/github/commit-activity/w/shriyanss/js-recon/dev) ![NPM Last Update](https://img.shields.io/npm/last-update/%40shriyanss%2Fjs-recon) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/shriyanss/js-recon)
+![NPM Licence](https://img.shields.io/npm/l/%40js-recon%2Fjs-recon) ![GitHub repo size](https://img.shields.io/github/repo-size/js-recon/js-recon) ![NPM Downloads](https://img.shields.io/npm/dm/%40js-recon%2Fjs-recon) ![GitHub commit activity (dev)](https://img.shields.io/github/commit-activity/w/js-recon/js-recon/dev) ![NPM Last Update](https://img.shields.io/npm/last-update/%40js-recon%2Fjs-recon) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/js-recon/js-recon)
 
 <p align="center">
   <a href="https://js-recon.io">
@@ -17,15 +17,15 @@ It can also reconstruct HTTP requests that the app makes to the server, and outp
 ### Homebrew (macOS and Linux)
 
 ```bash
-brew tap shriyanss/tap
+brew tap js-recon/tap
 brew install js-recon
 ```
 
 This always installs the latest **stable** release. For the latest alpha or beta prerelease instead:
 
 ```bash
-brew install shriyanss/tap/js-recon-alpha
-brew install shriyanss/tap/js-recon-beta
+brew install js-recon/tap/js-recon-alpha
+brew install js-recon/tap/js-recon-beta
 ```
 
 To update:
@@ -43,7 +43,7 @@ This tool requires Node.JS and `npm` to be installed. The [official download pag
 To install the tool globally, run:
 
 ```bash
-npm i -g @shriyanss/js-recon
+npm i -g @js-recon/js-recon
 ```
 
 For detailed installation and setup process, please refer to the [Installation page](https://js-recon.io/docs/docs/installation)
@@ -116,10 +116,10 @@ For detailed guides, command options, and advanced usage examples, please check 
 ## Labs
 
 <p align="center">
-  <img src="https://github.com/shriyanss/js-recon-labs/blob/main/static/labs-banner.png?raw=true" alt="JS Recon Labs" width="300"/>
+  <img src="https://github.com/js-recon/js-recon-labs/blob/main/static/labs-banner.png?raw=true" alt="JS Recon Labs" width="300"/>
 </p>
 
-Labs to test JS Recon tool are available [here](https://github.com/shriyanss/js-recon-labs). Walkthroughs are available [here](https://js-recon.io/labs).
+Labs to test JS Recon tool are available in the [JS Recon Labs repository](https://github.com/js-recon/js-recon-labs). [Labs walkthroughs](https://js-recon.io/labs) are also available.
 
 ## Contributing
 

@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 ARG JS_RECON_VERSION
-RUN npm install -g @shriyanss/js-recon@${JS_RECON_VERSION}
+RUN npm install -g @js-recon/js-recon@${JS_RECON_VERSION}
 
 USER pptruser
-RUN "$(npm root -g)/@shriyanss/js-recon/node_modules/.bin/puppeteer" browsers install chrome && \
+RUN "$(npm root -g)/@js-recon/js-recon/node_modules/.bin/puppeteer" browsers install chrome && \
     for zip in /home/pptruser/.cache/puppeteer/chrome/*-chrome-linux64.zip; do \
         [ -f "$zip" ] || break; \
         version="${zip%-chrome-linux64.zip}"; version="${version##*/}"; \
