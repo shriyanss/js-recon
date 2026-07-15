@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-alpha.10 - 2026-07-15
+
+### Changed
+
+- The project has moved to the `js-recon` GitHub organization. The npm package is now published as **`@js-recon/js-recon`** (previously `@shriyanss/js-recon`) — update your install commands accordingly. Container images are now published only to `ghcr.io/js-recon/js-recon` (Docker Hub publishing has been discontinued). The Homebrew tap is now `js-recon/tap` (`brew tap js-recon/tap`), and the Terraform modules are published under the `js-recon/js-recon/<cloud>` registry namespace. (`all`, `ci`, `docker`, `homebrew`)
+
 ## 1.4.1-alpha.9 - 2026-07-15
 
 ### Fixed
