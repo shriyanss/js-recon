@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.3.2 - 2026-07-15
+
+### Fixed
+
+- Rules auto-download now works under the `js-recon` GitHub organization. This is a hotfix of the stable line (functionally identical to 1.3.1), published so `@js-recon/js-recon` has a working stable `latest` after the move to the `js-recon` org: `initRules` now fetches releases from `js-recon/js-recon-rules` and matches the `js-recon-js-recon-rules-` release-archive prefix. In 1.3.1 these still referenced the old `shriyanss` namespace, so `js-recon run` failed to download rules (threw `Could not find extracted rules directory`) once the rules repository was migrated. (`analyze`)
+
 ## 1.3.1 - 2026-06-16
 
 ### Added
