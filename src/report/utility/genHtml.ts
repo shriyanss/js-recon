@@ -176,7 +176,7 @@ const html = async (
         home: await marked.parse(analyzeMarkdown),
         mappedJson: await marked.parse(mappedJsonMarkdown),
         dataTables: dataTablesHtml,
-        about: `# About\n\n The documentation for this tool is available at [JS Recon Docs](https://js-recon.io/).\n\n## Version\n\nThis report is generated with JS Recon [v${CONFIG.version}](https://github.com/shriyanss/js-recon/releases/tag/v${CONFIG.version}).`,
+        about: `# About\n\n The documentation for this tool is available at [JS Recon Docs](https://js-recon.io/).\n\n## Version\n\nThis report is generated with JS Recon [v${CONFIG.version}](https://github.com/js-recon/js-recon/releases/tag/v${CONFIG.version}).`,
     }).replace(/</g, "\\u003c")}
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

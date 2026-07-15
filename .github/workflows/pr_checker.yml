@@ -13,10 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Redirect PR to dev
-        if: github.head_ref != 'dev' || github.event.pull_request.head.repo.full_name != 'shriyanss/js-recon'
+        if: github.head_ref != 'dev' || github.event.pull_request.head.repo.full_name != 'js-recon/js-recon'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           gh pr edit $PR_NUMBER --base dev
-          gh pr comment $PR_NUMBER --body "This PR was targeting \`main\`, but only the \`dev\` branch of \`shriyanss/js-recon\` can merge directly into \`main\`. The target branch has been changed to \`dev\`."
+          gh pr comment $PR_NUMBER --body "This PR was targeting \`main\`, but only the \`dev\` branch of \`js-recon/js-recon\` can merge directly into \`main\`. The target branch has been changed to \`dev\`."
