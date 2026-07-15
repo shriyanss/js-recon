@@ -28,6 +28,20 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
 
+      - name: Determine target formula
+        id: formula
+        run: |
+          if [[ "$VERSION" == *"alpha"* ]]; then
+            FORMULA="Formula/js-recon@alpha.rb"
+          elif [[ "$VERSION" == *"beta"* ]]; then
+            FORMULA="Formula/js-recon@beta.rb"
+          else
+            FORMULA="Formula/js-recon.rb"
+          fi
+          echo "formula=${FORMULA}" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ inputs.version }}
+
       - name: Check out homebrew-tap
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -38,21 +52,24 @@ jobs:
       - name: Update formula fields
         working-directory: homebrew-tap
         run: |
-          F="Formula/js-recon.rb"
-          sed -i "s|^  url \"https://registry\.npmjs\.org/@shriyanss/js-recon/-/js-recon-[^\"]*\"|  url \"https://registry.npmjs.org/@shriyanss/js-recon/-/js-recon-${VERSION}.tgz\"|" "${F}"
-          sed -i "s|^  sha256 \"[a-f0-9]*\"|  sha256 \"${SHA}\"|" "${F}"
+          sed -i "s|^  url \"https://registry\.npmjs\.org/@shriyanss/js-recon/-/js-recon-[^\"]*\"|  url \"https://registry.npmjs.org/@shriyanss/js-recon/-/js-recon-${VERSION}.tgz\"|" "${FORMULA}"
+          sed -i "s|^  sha256 \"[a-f0-9]*\"|  sha256 \"${SHA}\"|" "${FORMULA}"
         env:
           VERSION: ${{ inputs.version }}
           SHA: ${{ steps.sha256.outputs.sha256 }}
+          FORMULA: ${{ steps.formula.outputs.formula }}
 
       - name: Commit and push
         working-directory: homebrew-tap
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/js-recon.rb
-          git commit -m "chore: update js-recon formula to ${VERSION}"
+          git add "${FORMULA}"
+          git commit -m "chore: update ${FORMULA} to ${VERSION}"
           git push
+        env:
+          VERSION: ${{ inputs.version }}
+          FORMULA: ${{ steps.formula.outputs.formula }}
         env:
           VERSION: ${{ inputs.version }}
 

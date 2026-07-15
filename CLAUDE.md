@@ -429,20 +429,23 @@ Before writing any files, gather the current state:
 
 ### Homebrew tap (manual, part of `promote-js-recon.yml`)
 
-The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step 11 above):
+The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step 11 above) is **channel-aware** — it updates a different formula depending on the promoted version string, so `brew install js-recon` always tracks the real npm `latest` (stable) release instead of whatever was most recently promoted:
 
-1. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
-2. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
-3. Updates `url` and `sha256` in `Formula/js-recon.rb` via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
-4. Commits `chore: update js-recon formula to <version>` and pushes
+1. Picks the target formula from `inputs.version`: `Formula/js-recon@alpha.rb` if the version contains `alpha`, `Formula/js-recon@beta.rb` if it contains `beta`, otherwise `Formula/js-recon.rb` (stable).
+2. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
+3. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+4. Updates `url` and `sha256` in the target formula via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
+5. Commits `chore: update <formula> to <version>` and pushes
+
+The `js-recon@alpha` / `js-recon@beta` formulas are `keg_only :versioned_formula` (they install the same `js-recon` binary name as the stable formula, so they can't auto-link into the shared `bin/` without conflicting).
 
 Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
 
-**If the job fails:** manually update: `npm pack @shriyanss/js-recon@<version> && sha256sum shriyanss-js-recon-<version>.tgz`, edit `Formula/js-recon.rb`, commit, and push to `shriyanss/homebrew-tap`.
+**If the job fails:** manually update: `npm pack @shriyanss/js-recon@<version> && sha256sum shriyanss-js-recon-<version>.tgz`, edit the correct formula (stable vs `@alpha`/`@beta`, per the version string), commit, and push to `shriyanss/homebrew-tap`.
 
 **One-time setup** (must be done before the first release, already completed):
 
-- `shriyanss/homebrew-tap` is a public GitHub repo with the formula at `Formula/js-recon.rb`
+- `shriyanss/homebrew-tap` is a public GitHub repo with formulas at `Formula/js-recon.rb` (stable), `Formula/js-recon@alpha.rb`, and `Formula/js-recon@beta.rb`
 - `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
 
 ### Docker / GHCR images (manual, part of `promote-js-recon.yml`)
