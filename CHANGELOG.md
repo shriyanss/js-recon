@@ -168,6 +168,12 @@
 - `refactor -t react` renamed to `refactor -t react-webpack` to make the bundler explicit
 - Improved tool description in `globalConfig.ts`
 
+## 1.3.2 - 2026-07-15
+
+### Fixed
+
+- Rules auto-download now works under the `js-recon` GitHub organization. Backported stable hotfix (functionally identical to 1.3.1), released so `@js-recon/js-recon` has a working stable `latest` after the org migration: `initRules` fetches from `js-recon/js-recon-rules` and matches the `js-recon-js-recon-rules-` release-archive prefix (previously `shriyanss`), which otherwise broke `js-recon run`'s rule download. Shipped from the `hotfix/1.3.2` branch and is intentionally not part of the `1.4.1-alpha` line on `dev`/`main`. (`analyze`)
+
 ## 1.3.1-beta.1 - 2026-06-08
 
 ### Added
