@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { addOpenapiOutput, getOpenapiOutput, clearOpenapiOutput } from "../../utility/globals.js";
 import type { OpenapiOutputItem } from "../../utility/globals.js";
 
@@ -13,6 +13,10 @@ const makeItem = (overrides: Partial<OpenapiOutputItem>): OpenapiOutputItem => (
 });
 
 describe("openapiOutput accumulator", () => {
+    afterEach(() => {
+        clearOpenapiOutput();
+    });
+
     it("accumulates items across multiple addOpenapiOutput calls", () => {
         clearOpenapiOutput();
         addOpenapiOutput(makeItem({ path: "/a" }));

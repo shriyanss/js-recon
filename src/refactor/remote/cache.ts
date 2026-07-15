@@ -137,7 +137,12 @@ export const saveSignatureToCache = (
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "collisions.json"), JSON.stringify(records));
     fs.writeFileSync(path.join(dir, "cached_at.txt"), String(Date.now()));
-    if (remoteHash) fs.writeFileSync(path.join(dir, "remote_hash.txt"), remoteHash);
+    const hashPath = path.join(dir, "remote_hash.txt");
+    if (remoteHash) {
+        fs.writeFileSync(hashPath, remoteHash);
+    } else if (fs.existsSync(hashPath)) {
+        fs.unlinkSync(hashPath);
+    }
     runEvictionIfNeeded(maxCacheSizeMb);
 };
 

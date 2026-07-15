@@ -433,7 +433,7 @@ The `update-homebrew-tap` job (now in `promote-js-recon.yml`, triggered per step
 
 1. Picks the target formula from `inputs.version`: `Formula/js-recon-alpha.rb` if the version contains `alpha`, `Formula/js-recon-beta.rb` if it contains `beta`, otherwise `Formula/js-recon.rb` (stable).
 2. `npm pack @shriyanss/js-recon@<version>` — downloads the exact published tarball from the registry and computes its SHA256 locally (no dependency on a public tarball URL being reachable yet)
-3. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_TOKEN` (a fine-grained PAT stored in `shriyanss/js-recon` secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
+3. Checks out `shriyanss/homebrew-tap` using `HOMEBREW_TAP_GH_PAT` (a fine-grained PAT stored in the `homebrew-publish` environment secrets, scoped to `homebrew-tap` repo `Contents: Read and write` only — automatically masked in all log output, never echoed)
 4. Updates `url` and `sha256` in the target formula via anchored `sed` — the formula has no explicit `version` field; Homebrew derives it from the `url`
 5. Commits `chore: update <formula> to <version>` and pushes
 
@@ -446,7 +446,7 @@ Monitor: `gh run list --repo shriyanss/homebrew-tap --workflow ci.yml`
 **One-time setup** (must be done before the first release, already completed):
 
 - `shriyanss/homebrew-tap` is a public GitHub repo with formulas at `Formula/js-recon.rb` (stable), `Formula/js-recon-alpha.rb`, and `Formula/js-recon-beta.rb`
-- `HOMEBREW_TAP_TOKEN` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Secrets → Actions, scoped exclusively to the `homebrew-tap` repo
+- `HOMEBREW_TAP_GH_PAT` is a fine-grained PAT stored in `shriyanss/js-recon` → Settings → Environments → `homebrew-publish` → Environment secrets, scoped exclusively to the `homebrew-tap` repo
 
 ### Docker / GHCR images (manual, part of `promote-js-recon.yml`)
 
