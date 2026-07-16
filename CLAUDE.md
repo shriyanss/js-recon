@@ -482,6 +482,17 @@ Monitor: `gh run list --repo js-recon/homebrew-tap --workflow ci.yml`
 
 14. **Monitor docs CI** — `version_check` should pass now that the npm package is live. CodeRabbit rate-limit comments are non-blocking.
 
+### Post-release branching model
+
+Once a release's GitHub release is created, `main` and `dev` are identical (the `merge_main_and_dev` job in `publish-js-recon.yml` merges `main` back into `dev` automatically).
+
+- While a version is running through its alpha/beta channels at scale (i.e. before the matching stable release ships), `dev` is reserved for **fixes to that version only** — bugs found while the beta is being validated. Do not land new features on `dev` during this window.
+- New feature development for the *next* version happens on a `post-<stable_version>` branch (e.g. `post-1.4.1`), cut from `dev`/`main` right after the current version's first release. This branch is where unrelated feature work accumulates while `dev` stays focused on stabilizing the in-flight release.
+- When the current version is promoted to stable (green flag from the user to go from `<version>-beta.*` to `<version>`), release it the normal way, then merge `post-<stable_version>` into `dev`. The `post-<stable_version>` branch itself is **retained** (not deleted) until the user manually removes it — it is a historical record of what shipped in the next release.
+- Bump the tool's version on the new `post-<stable_version>` branch immediately after cutting it, so `dev` commits during the stabilization window keep targeting the version actually being stabilized.
+
+This policy is also documented in `js-recon-internal-docs` under the Maintenance section — see that for the full rationale.
+
 ### Handling CodeRabbit
 
 After any PR is created, poll for review comments:
