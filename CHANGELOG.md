@@ -1,6 +1,6 @@
 # Change Log
 
-## 1.4.1-beta.1 - (unreleased)
+## 1.4.1-beta.1 - 2026-07-16
 
 ### Fixed
 
