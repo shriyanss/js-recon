@@ -140,7 +140,7 @@ jobs:
           npm start &
 
       - name: Wait for app to be ready
-        run: timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+        run: timeout 60 bash -c 'until curl -sf --max-time 2 http://localhost:3001 > /dev/null; do sleep 2; done'
 
       - name: Run installed js-recon against the lab app
         run: |
@@ -194,17 +194,17 @@ jobs:
           npm start &
 
       - name: Wait for app to be ready
-        run: timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+        run: timeout 60 bash -c 'until curl -sf --max-time 2 http://localhost:3001 > /dev/null; do sleep 2; done'
 
       - name: Run containerized js-recon against the lab app
         run: |
           mkdir -p /tmp/docker-output
           echo "http://localhost:3001" > /tmp/docker-smoke-urls.txt
           docker run --rm --network host \
-            -v /tmp/docker-output:/app/output \
-            -v /tmp/docker-smoke-urls.txt:/app/urls.txt \
+            -v /tmp/docker-output:/home/pptruser/output \
+            -v /tmp/docker-smoke-urls.txt:/home/pptruser/urls.txt \
             ghcr.io/js-recon/js-recon:${VERSION} \
-            run -u /app/urls.txt --no-sandbox -y -k
+            run -u /home/pptruser/urls.txt --no-sandbox -y -k
         env:
           VERSION: ${{ inputs.version }}
 
@@ -249,9 +249,22 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
 
+      - name: Resolve js-recon binary path
+        id: bin
+        run: |
+          # js-recon-alpha/js-recon-beta are keg-only (they share the `js-recon`
+          # binary name with the stable formula), so brew never symlinks them
+          # into PATH. Resolve the keg path directly instead of relying on PATH.
+          KEG_BIN="$(brew --prefix)/opt/${{ matrix.formula }}/bin/js-recon"
+          if [[ -x "$KEG_BIN" ]]; then
+            echo "bin=$KEG_BIN" >> "$GITHUB_OUTPUT"
+          else
+            echo "bin=js-recon" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify installed version
         run: |
-          INSTALLED=$(js-recon -V)
+          INSTALLED=$("$BIN" -V)
           echo "Installed: ${INSTALLED}"
           if [[ "${{ matrix.formula }}" == "${{ steps.expected.outputs.formula }}" ]]; then
             [[ "$INSTALLED" == *"$VERSION"* ]] || { echo "Version mismatch: expected ${VERSION} in ${{ matrix.formula }}"; exit 1; }
@@ -260,6 +273,7 @@ jobs:
           fi
         env:
           VERSION: ${{ inputs.version }}
+          BIN: ${{ steps.bin.outputs.bin }}
 
       - name: Install and start vulnerable app
         working-directory: js-recon-labs/next_js/vuln-all-rules
@@ -269,12 +283,22 @@ jobs:
           npm start &
 
       - name: Wait for app to be ready
-        run: timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+        run: |
+          SECONDS=0
+          until curl -sf --max-time 2 http://localhost:3001 > /dev/null; do
+            if (( SECONDS > 60 )); then
+              echo "Timed out waiting for app to be ready"
+              exit 1
+            fi
+            sleep 2
+          done
 
       - name: Run installed js-recon against the lab app
         run: |
           echo "http://localhost:3001" > /tmp/brew-smoke-urls.txt
-          js-recon run -u /tmp/brew-smoke-urls.txt -y -k
+          "$BIN" run -u /tmp/brew-smoke-urls.txt -y -k
+        env:
+          BIN: ${{ steps.bin.outputs.bin }}
 
       - name: Verify expected output files exist
         run: |
