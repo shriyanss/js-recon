@@ -1,5 +1,11 @@
 # Change Log
 
+## Unreleased
+
+### Fixed
+
+- Homebrew: documented the fix for `Formulae found in multiple taps` / `Refusing to load formula ... from untrusted tap ...` errors hit by users who still have the old `shriyanss/tap` tapped from before the `js-recon` org migration. `js-recon/homebrew-tap` was created by renaming `shriyanss/homebrew-tap`, so GitHub still transparently resolves the old tap name to the same repo content — leaving two tap names serving an identically-named `js-recon` formula. Run `brew untap shriyanss/tap` before installing from `js-recon/tap` (see README.md and the Homebrew installation docs). (`docs`, `homebrew`)
+
 ## 1.4.1-alpha.10 - 2026-07-15
 
 ### Changed
