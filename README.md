@@ -34,6 +34,8 @@ To update:
 brew update && brew upgrade js-recon
 ```
 
+> **Note:** If you installed JS Recon before the move to the `js-recon` GitHub organization, you may still have the old `shriyanss/tap` tapped locally. Since that repo was renamed (not deleted), Homebrew still resolves it, leaving two taps that both serve a formula named `js-recon` — causing errors like `Formulae found in multiple taps` or `Refusing to load formula ... from untrusted tap ...`. Fix with `brew untap shriyanss/tap` before installing from `js-recon/tap`.
+>
 > **Note:** After installing via Homebrew, the `lazyload` subcommand requires a Chromium browser. Run `brew info js-recon` for setup instructions.
 
 ### npm (all platforms)

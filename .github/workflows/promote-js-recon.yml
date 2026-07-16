@@ -102,3 +102,181 @@ jobs:
 
         env:
           VERSION: ${{ inputs.version }}
+
+  verify-npm-install:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout js-recon-labs
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: js-recon/js-recon-labs
+          path: js-recon-labs
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+
+      - name: Install js-recon globally from npm
+        run: npm install -g "@js-recon/js-recon@${VERSION}"
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Verify installed version
+        run: |
+          INSTALLED=$(js-recon -V)
+          echo "Installed: ${INSTALLED}"
+          [[ "$INSTALLED" == *"$VERSION"* ]] || { echo "Version mismatch"; exit 1; }
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Install and start vulnerable app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: |
+          npm ci
+          npm run build
+          npm start &
+
+      - name: Wait for app to be ready
+        run: timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+
+      - name: Run installed js-recon against the lab app
+        run: |
+          echo "http://localhost:3001" > /tmp/npm-smoke-urls.txt
+          js-recon run -u /tmp/npm-smoke-urls.txt --no-sandbox -y -k
+        env:
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
+
+      - name: Verify expected output files exist
+        run: |
+          test -n "$(find output -name analyze.json)" || { echo "analyze.json missing"; exit 1; }
+          test -n "$(find output -name js-recon.db)" || { echo "js-recon.db missing"; exit 1; }
+
+  verify-docker-install:
+    runs-on: ubuntu-latest
+    needs: publish-ghcr
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout js-recon-labs
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: js-recon/js-recon-labs
+          path: js-recon-labs
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify installed version
+        run: |
+          INSTALLED=$(docker run --rm ghcr.io/js-recon/js-recon:${VERSION} -V)
+          echo "Installed: ${INSTALLED}"
+          [[ "$INSTALLED" == *"$VERSION"* ]] || { echo "Version mismatch"; exit 1; }
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Install and start vulnerable app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: |
+          npm ci
+          npm run build
+          npm start &
+
+      - name: Wait for app to be ready
+        run: timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+
+      - name: Run containerized js-recon against the lab app
+        run: |
+          mkdir -p /tmp/docker-output
+          echo "http://localhost:3001" > /tmp/docker-smoke-urls.txt
+          docker run --rm --network host \
+            -v /tmp/docker-output:/app/output \
+            -v /tmp/docker-smoke-urls.txt:/app/urls.txt \
+            ghcr.io/js-recon/js-recon:${VERSION} \
+            run -u /app/urls.txt --no-sandbox -y -k
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Verify expected output files exist
+        run: |
+          test -n "$(find /tmp/docker-output -name analyze.json)" || { echo "analyze.json missing"; exit 1; }
+          test -n "$(find /tmp/docker-output -name js-recon.db)" || { echo "js-recon.db missing"; exit 1; }
+
+  verify-brew-install:
+    runs-on: macos-latest
+    needs: update-homebrew-tap
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        formula: [js-recon, js-recon-alpha, js-recon-beta]
+    steps:
+      - name: Checkout js-recon-labs
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: js-recon/js-recon-labs
+          path: js-recon-labs
+          persist-credentials: false
+
+      - name: Tap and install
+        run: |
+          brew tap js-recon/tap
+          brew update
+          brew install "js-recon/tap/${{ matrix.formula }}"
+
+      - name: Determine expected formula for this version
+        id: expected
+        run: |
+          if [[ "$VERSION" == *"alpha"* ]]; then
+            echo "formula=js-recon-alpha" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"beta"* ]]; then
+            echo "formula=js-recon-beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "formula=js-recon" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Verify installed version
+        run: |
+          INSTALLED=$(js-recon -V)
+          echo "Installed: ${INSTALLED}"
+          if [[ "${{ matrix.formula }}" == "${{ steps.expected.outputs.formula }}" ]]; then
+            [[ "$INSTALLED" == *"$VERSION"* ]] || { echo "Version mismatch: expected ${VERSION} in ${{ matrix.formula }}"; exit 1; }
+          else
+            echo "Skipping version assertion — ${{ matrix.formula }} is not the channel updated by this promotion"
+          fi
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Install and start vulnerable app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: |
+          npm ci
+          npm run build
+          npm start &
+
+      - name: Wait for app to be ready
+        run: timeout 60 bash -c 'until curl -sf http://localhost:3001 > /dev/null; do sleep 2; done'
+
+      - name: Run installed js-recon against the lab app
+        run: |
+          echo "http://localhost:3001" > /tmp/brew-smoke-urls.txt
+          js-recon run -u /tmp/brew-smoke-urls.txt -y -k
+
+      - name: Verify expected output files exist
+        run: |
+          test -n "$(find output -name analyze.json)" || { echo "analyze.json missing"; exit 1; }
+          test -n "$(find output -name js-recon.db)" || { echo "js-recon.db missing"; exit 1; }
