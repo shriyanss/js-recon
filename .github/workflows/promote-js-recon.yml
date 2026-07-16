@@ -198,13 +198,19 @@ jobs:
 
       - name: Run containerized js-recon against the lab app
         run: |
+          # The release image runs as the non-root `pptruser` (see Dockerfile.release),
+          # so a bind-mounted host directory landing inside its home dir inherits the
+          # host-side owner/perms and can be unwritable to that user. Mount outside
+          # $HOME with permissive perms and point js-recon at it explicitly via `-o`
+          # rather than relying on its default CWD-relative output path.
           mkdir -p /tmp/docker-output
+          chmod 777 /tmp/docker-output
           echo "http://localhost:3001" > /tmp/docker-smoke-urls.txt
           docker run --rm --network host \
-            -v /tmp/docker-output:/home/pptruser/output \
-            -v /tmp/docker-smoke-urls.txt:/home/pptruser/urls.txt \
+            -v /tmp/docker-output:/tmp/js-recon-output \
+            -v /tmp/docker-smoke-urls.txt:/tmp/urls.txt \
             ghcr.io/js-recon/js-recon:${VERSION} \
-            run -u /home/pptruser/urls.txt --no-sandbox -y -k
+            run -u /tmp/urls.txt -o /tmp/js-recon-output --no-sandbox -y -k
         env:
           VERSION: ${{ inputs.version }}
 
