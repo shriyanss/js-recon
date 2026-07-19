@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-beta.2 - 2026-07-19
+
+### Added
+
+- `run` (batch mode, `-u <file>`): each domain still gets its own `<output>/<host>/js-recon.db`, but a combined `<output>/js-recon.db` is now also maintained across the whole batch, so findings/endpoints/mapped chunks can be queried across every target without opening each per-domain database individually. Every table in the combined database gains a `domain` column (the sanitized host, doubling as a foreign key back to the corresponding output directory), and primary keys that were only unique within a single domain (`mapped`'s chunk `id`, `mapped_openapi`'s `(path, method)`, `endpoints`' `url`) are widened or replaced with an autoincrement `globalId` so rows from different domains never collide. (`run`, `report`)
+
 ## 1.4.1-beta.1 - 2026-07-16
 
 ### Fixed
