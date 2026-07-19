@@ -9,6 +9,8 @@ import CONFIG from "../globalConfig.js";
 import analyze from "../analyze/index.js";
 import report from "../report/index.js";
 import refactor from "../refactor/index.js";
+import initGlobalReportDb from "../report/utility/initGlobalReportDb.js";
+import mergeDomainIntoGlobalDb from "../report/utility/mergeDomainIntoGlobalDb.js";
 import { clearJsUrls, clearJsonUrls, getJsUrls } from "../lazyLoad/globals.js";
 import path from "path";
 import {
@@ -722,6 +724,9 @@ export default async (cmd: any): Promise<void> => {
                 fs.mkdirSync(cmd.output, { recursive: true });
             }
 
+            const globalDbPath = `${cmd.output}/js-recon.db`;
+            await initGlobalReportDb(globalDbPath);
+
             for (const url of urls) {
                 resetSkipTarget();
 
@@ -757,6 +762,23 @@ export default async (cmd: any): Promise<void> => {
                     cmd._includeMethods ?? [],
                     cmd._excludeMethods ?? []
                 );
+
+                const domainDbPath = `${thisTargetDir}/js-recon.db`;
+                if (fs.existsSync(domainDbPath)) {
+                    try {
+                        mergeDomainIntoGlobalDb(globalDbPath, domainDbPath, hostDir);
+                    } catch (error) {
+                        console.error(
+                            chalk.yellow(`[!] Failed to merge ${hostDir} into the global js-recon.db: ${error}`)
+                        );
+                    }
+                } else {
+                    console.log(
+                        chalk.yellow(
+                            `[i] No js-recon.db found for ${hostDir}, skipping merge into the global database.`
+                        )
+                    );
+                }
             }
         }
     } finally {
