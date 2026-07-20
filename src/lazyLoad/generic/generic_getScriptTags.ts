@@ -104,10 +104,7 @@ const generic_getScriptTags = async (
                 fs.mkdirSync(hostDir, { recursive: true });
                 const filename = `inline-${inlineIndex++}.js`;
                 const filePath = path.join(hostDir, filename);
-                fs.writeFileSync(
-                    filePath,
-                    `// File Source: ${url} (data URI script #${inlineIndex - 1})\n${content}`
-                );
+                fs.writeFileSync(filePath, `// File Source: ${url} (data URI script #${inlineIndex - 1})\n${content}`);
                 console.log(chalk.green(`[✓] Saved data URI script to ${filePath}`));
                 return;
             }

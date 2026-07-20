@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { findJsPathSegmentCandidates, resolveJsPathCandidate } from "../../lazyLoad/generic/generic_scanAttributesForJs.js";
+import {
+    findJsPathSegmentCandidates,
+    resolveJsPathCandidate,
+} from "../../lazyLoad/generic/generic_scanAttributesForJs.js";
 
 describe("findJsPathSegmentCandidates", () => {
     it("finds a normal trailing .js URL", () => {
