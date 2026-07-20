@@ -6,11 +6,7 @@ export type TechniqueRecorder = (technique: string, urls: string[]) => void;
  * the same URL may legitimately appear under multiple techniques since this
  * measures each technique's individual yield.
  */
-export const accumulateTechnique = (
-    map: Record<string, string[]>,
-    technique: string,
-    urls: string[]
-): void => {
+export const accumulateTechnique = (map: Record<string, string[]>, technique: string, urls: string[]): void => {
     if (!urls || urls.length === 0) return;
     map[technique] = [...(map[technique] || []), ...urls];
 };

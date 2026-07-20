@@ -229,9 +229,7 @@ const lazyLoad = async (
                     if (research) {
                         fs.writeFileSync(researchOutput, JSON.stringify(vueResearchMap, null, 4));
                         console.log(
-                            chalk.green(
-                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
-                            )
+                            chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
                         );
                     }
 
@@ -297,9 +295,7 @@ const lazyLoad = async (
                     if (research) {
                         fs.writeFileSync(researchOutput, JSON.stringify(nuxtResearchMap, null, 4));
                         console.log(
-                            chalk.green(
-                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
-                            )
+                            chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
                         );
                     }
                 } else if (tech.name === "svelte") {
@@ -440,9 +436,7 @@ const lazyLoad = async (
                     if (research) {
                         fs.writeFileSync(researchOutput, JSON.stringify(svelteResearchMap, null, 4));
                         console.log(
-                            chalk.green(
-                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
-                            )
+                            chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
                         );
                     }
 
@@ -492,9 +486,7 @@ const lazyLoad = async (
                     if (research) {
                         fs.writeFileSync(researchOutput, JSON.stringify(angularResearchMap, null, 4));
                         console.log(
-                            chalk.green(
-                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
-                            )
+                            chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
                         );
                     }
                 } else if (tech.name === "react") {
@@ -548,9 +540,7 @@ const lazyLoad = async (
                     if (research) {
                         fs.writeFileSync(researchOutput, JSON.stringify(reactResearchMap, null, 4));
                         console.log(
-                            chalk.green(
-                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
-                            )
+                            chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
                         );
                     }
 
