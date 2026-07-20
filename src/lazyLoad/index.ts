@@ -1,7 +1,6 @@
 import chalk from "chalk";
 import fs from "fs";
 import frameworkDetect from "./techDetect/index.js";
-import CONFIG from "../globalConfig.js";
 import _traverse from "@babel/traverse";
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import { URL } from "url";
@@ -40,8 +39,10 @@ import react_followImports from "./react/react_followImports.js";
 
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
-import downloadLoadedJs from "./downloadLoadedJsUtil.js";
 import { DownloadQueue } from "./downloadQueue.js";
+import generic_getScriptTags from "./generic/generic_getScriptTags.js";
+import generic_scanAttributesForJs from "./generic/generic_scanAttributesForJs.js";
+import generic_downloadFiles from "./generic/generic_downloadFiles.js";
 
 import path from "path";
 import { join } from "path";
@@ -547,48 +548,18 @@ const lazyLoad = async (
                     extractSourceMaps(output, join(output, sourcemapDir));
                 }
             } else {
-                console.error(chalk.red("[!] Framework not detected :("));
-                console.log(chalk.magenta(CONFIG.notFoundMessage));
-                console.log(chalk.yellow("[i] Trying to download loaded JS files"));
-                const js_urls = await downloadLoadedJs(url);
-                if (js_urls && js_urls.length > 0) {
-                    console.log(chalk.green(`[✓] Found ${js_urls.length} JS chunks`));
+                console.log(chalk.yellow("[i] Framework not detected — falling back to generic JS extraction"));
+                globals.setTech("generic");
 
-                    // Second-chance tech detection: scan downloaded URL paths for
-                    // framework signatures that Puppeteer may have missed on timeout
-                    // (e.g. Next.js served at a non-root basePath).
-                    let secondChanceTech: string | null = null;
-                    let secondChanceEvidence = "";
-                    for (const u of js_urls) {
-                        if (u.includes("/_next/")) {
-                            secondChanceTech = "next";
-                            secondChanceEvidence = u;
-                            break;
-                        }
-                        if (u.includes("/_nuxt/")) {
-                            secondChanceTech = "nuxt";
-                            secondChanceEvidence = u;
-                            break;
-                        }
-                        if (u.includes("/_app/immutable/")) {
-                            secondChanceTech = "svelte";
-                            secondChanceEvidence = u;
-                            break;
-                        }
-                    }
-                    if (secondChanceTech) {
-                        console.log(
-                            chalk.green(
-                                `[✓] Detected ${secondChanceTech} from downloaded file paths (evidence: ${secondChanceEvidence})`
-                            )
-                        );
-                        globals.setTech(secondChanceTech);
-                    }
+                const { urls: seedUrls, pageSource } = await generic_getScriptTags(url, maxJsSizeMb, output);
+                const attrCandidates = await generic_scanAttributesForJs(pageSource, url);
+                const allUrls = [...new Set([...seedUrls, ...attrCandidates])];
 
-                    const queue = new DownloadQueue(output, threads);
-                    queue.push(js_urls);
-                    await queue.drain();
-                    queue.printSummary();
+                if (allUrls.length > 0) {
+                    console.log(chalk.green(`[✓] Found ${allUrls.length} JS file(s)`));
+                    await generic_downloadFiles(allUrls, output, threads);
+                } else {
+                    console.log(chalk.yellow("[i] No JS files discovered"));
                 }
             }
         }

@@ -5,6 +5,7 @@
 ### Added
 
 - `--research`/`--research-output <file>` (`lazyload`, `run`) is now supported for every framework the tool detects, not just Next.js. Vue, Nuxt, Svelte, Angular, and React crawls now record a technique-name → discovered-URL-list mapping and write it to the research output file, mirroring the existing Next.js `NextJsCrawler.techniqueEfficiencyMapping` behavior. (`lazyload`)
+- New `generic` fallback tech in `lazyload` for sites running no supported framework: previously an undetected framework triggered a separate Puppeteer pass just to watch loaded requests and retry framework detection, and if that still found nothing the target was otherwise left with only whatever the browser happened to load. `generic` now always extracts `<script src>`/inline scripts/`<link rel="modulepreload">` the same way the framework crawlers do, and additionally walks every HTML attribute value, resolving each with the `URL` constructor and — for any URL with a path segment ending in `.js` (catching cachebuster-suffixed paths like `.../beacon.min.js/v124/token` that don't end in `.js` themselves) — confirms it's actually JavaScript via its response `Content-Type` (accepting `text/javascript` per RFC 9239, plus RFC 4329's now-obsoleted `application/javascript`/`application/ecmascript` and other legacy variants) rather than trusting the extension alone. `run` continues to only download JS for this tech, same as any other tech outside its supported list. (`lazyload`)
 
 ## 1.4.1-beta.1 - 2026-07-16
 
