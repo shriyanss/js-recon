@@ -25,7 +25,7 @@ Powers the `lazyload` subcommand and pipeline step 1 (every framework). Visits t
 
 ## Patterns / gotchas
 
-- **Tech detection no longer aborts.** When `techDetect/` returns no match (`null`), `index.ts` no longer sets the tech string to `""` — it runs the `generic/` crawler and sets tech to `"generic"`. `run`'s exit code 10 ("Technology not detected") now only fires if the crawl throws before reaching that fallback, not on ordinary detection failure. Adding a new *real* framework still requires both a `checkX.ts` in `techDetect/` AND a crawler dir here — neither alone is enough.
+- **Tech detection no longer aborts.** When `techDetect/` returns no match (`null`), `index.ts` no longer sets the tech string to `""` — it runs the `generic/` crawler and sets tech to `"generic"`. `run`'s exit code 10 ("Technology not detected") now only fires if the crawl throws before reaching that fallback, not on ordinary detection failure. Adding a new _real_ framework still requires both a `checkX.ts` in `techDetect/` AND a crawler dir here — neither alone is enough.
 - **Sourcemap fetch is best-effort.** Failure is silent (logged but not raised); the pipeline keeps running on minified code. Don't add hard failures on sourcemap errors.
 - **Global URL sets are mutable singletons.** Inserting a URL from a framework crawler is fire-and-forget — anything reading the set must accept it grows. `clearJsUrls()` is the only safe way to reset.
 - **Subsequent-request re-passes** (Next.js step 3 and step 4.5 in `run`) reuse this dir but enter through specific crawler functions, not `index.ts`. Adding a new crawler function intended for re-passes means wiring it explicitly in `run/index.ts`.
