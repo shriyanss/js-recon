@@ -107,7 +107,10 @@ const processUrl = async (
             Number(cmd.lazyloadTimeout) * 60 * 1000,
             Number(cmd.maxPages),
             includeMethods,
-            excludeMethods
+            excludeMethods,
+            Number(cmd.maxRedirects),
+            cmd.strings,
+            Number(cmd.stringsMaxIterations)
         ),
         getSkipStepPromise(),
     ]);
@@ -519,7 +522,10 @@ const processUrl = async (
             Number(cmd.lazyloadTimeout) * 60 * 1000,
             Number(cmd.maxPages),
             includeMethods,
-            excludeMethods
+            excludeMethods,
+            Number(cmd.maxRedirects),
+            cmd.strings,
+            Number(cmd.stringsMaxIterations)
         ),
         getSkipStepPromise(),
     ]);
@@ -560,7 +566,10 @@ const processUrl = async (
             Number(cmd.lazyloadTimeout) * 60 * 1000,
             Number(cmd.maxPages),
             includeMethods,
-            excludeMethods
+            excludeMethods,
+            Number(cmd.maxRedirects),
+            cmd.strings,
+            Number(cmd.stringsMaxIterations)
         ),
         getSkipStepPromise(),
     ]);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findJsPathSegmentCandidates } from "../../lazyLoad/generic/generic_scanAttributesForJs.js";
+import { findJsPathSegmentCandidates, resolveJsPathCandidate } from "../../lazyLoad/generic/generic_scanAttributesForJs.js";
 
 describe("findJsPathSegmentCandidates", () => {
     it("finds a normal trailing .js URL", () => {
@@ -36,5 +36,42 @@ describe("findJsPathSegmentCandidates", () => {
         const html = `<a href="/a/B.JS">link</a>`;
         const result = findJsPathSegmentCandidates(html, "https://example.com");
         expect(result).toEqual(["https://example.com/a/B.JS"]);
+    });
+
+    it("ignores non-http(s) schemes even when the pathname ends in .js (e.g. blob:)", () => {
+        const html = `<script data-src="blob:https://example.com/some-uuid.js"></script>`;
+        const result = findJsPathSegmentCandidates(html, "https://example.com");
+        expect(result).toEqual([]);
+    });
+});
+
+describe("resolveJsPathCandidate", () => {
+    it("ignores a fragment-only value that would inherit a .js base's pathname unchanged", () => {
+        // Regression: a CSS selector string embedded in a Vue bundle's scoped styles
+        // (e.g. found inside main.js by generic_stringsDiscovery.ts) resolved against
+        // main.js's own URL would otherwise falsely look like a distinct JS candidate,
+        // purely because it inherited the base's own ".js"-ending pathname.
+        const result = resolveJsPathCandidate("#aw--c .banner{color:red}", "https://example.com/v5/aw-bundle.js");
+        expect(result).toBeNull();
+    });
+
+    it("ignores a query-only value for the same reason", () => {
+        const result = resolveJsPathCandidate("?foo=bar", "https://example.com/v5/aw-bundle.js");
+        expect(result).toBeNull();
+    });
+
+    it("still resolves a real relative path against a .js base", () => {
+        const result = resolveJsPathCandidate("../other.js", "https://example.com/v5/aw-bundle.js");
+        expect(result).toBe("https://example.com/other.js");
+    });
+
+    it("still resolves an absolute path against a .js base", () => {
+        const result = resolveJsPathCandidate("/assets/pdf.worker.js", "https://example.com/v5/aw-bundle.js");
+        expect(result).toBe("https://example.com/assets/pdf.worker.js");
+    });
+
+    it("returns null for an empty or whitespace-only value", () => {
+        expect(resolveJsPathCandidate("", "https://example.com")).toBeNull();
+        expect(resolveJsPathCandidate("   ", "https://example.com")).toBeNull();
     });
 });

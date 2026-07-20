@@ -4,11 +4,41 @@ import makeRequest from "../../utility/makeReq.js";
 import { isJsContentType } from "./generic_jsMimeTypes.js";
 
 /**
- * Pure candidate extraction: walks every element attribute in the given HTML,
- * resolves each value against baseUrl with the URL constructor, and keeps only
- * URLs where some path segment ends with ".js" — this is what catches assets
- * served like ".../beacon.min.js/v124/token" (a ".js"-suffixed segment that
- * isn't the final one, so a plain endsWith(".js") check would miss it).
+ * Resolves value against baseUrl and returns the href if it's a network-fetchable
+ * (http/https) URL with a path segment ending in ".js" — this is what catches assets
+ * served like ".../beacon.min.js/v124/token" (a ".js"-suffixed segment that isn't the
+ * last one, so a plain endsWith(".js") check on the whole path would miss it). Returns
+ * null for anything unparseable or non-http(s) (data:/blob:/javascript: etc — these
+ * aren't requests confirmJsContentType could ever meaningfully make).
+ */
+export const resolveJsPathCandidate = (value: string, baseUrl: string): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    // A fragment-only ("#selector") or query-only ("?x=1") value resolves against
+    // baseUrl by inheriting its pathname completely unchanged. When baseUrl is itself
+    // a .js file (e.g. generic_stringsDiscovery.ts resolving strings found INSIDE an
+    // already-downloaded JS file), a value that isn't a path reference at all — a CSS
+    // selector string embedded in a Vue bundle's scoped styles, say — would otherwise
+    // falsely look like a legitimate JS-path candidate purely because it inherited the
+    // base's own ".js"-ending pathname.
+    if (trimmed.startsWith("#") || trimmed.startsWith("?")) return null;
+
+    let parsed: URL;
+    try {
+        parsed = new URL(trimmed, baseUrl);
+    } catch {
+        return null;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    const segments = parsed.pathname.split("/");
+    if (!segments.some((seg) => seg.toLowerCase().endsWith(".js"))) return null;
+    return parsed.href;
+};
+
+/**
+ * Pure candidate extraction: walks every element attribute in the given HTML and
+ * keeps the ones that resolve to a JS-looking path (see resolveJsPathCandidate).
  */
 export const findJsPathSegmentCandidates = (html: string, baseUrl: string): string[] => {
     const $ = cheerio.load(html);
@@ -18,17 +48,8 @@ export const findJsPathSegmentCandidates = (html: string, baseUrl: string): stri
         const attribs = (elem as any).attribs as Record<string, string> | undefined;
         if (!attribs) return;
         for (const value of Object.values(attribs)) {
-            if (!value) continue;
-            let parsed: URL;
-            try {
-                parsed = new URL(value, baseUrl);
-            } catch {
-                continue;
-            }
-            const segments = parsed.pathname.split("/");
-            if (segments.some((seg) => seg.toLowerCase().endsWith(".js"))) {
-                candidates.add(parsed.href);
-            }
+            const resolved = resolveJsPathCandidate(value, baseUrl);
+            if (resolved) candidates.add(resolved);
         }
     });
 
@@ -42,7 +63,7 @@ export const findJsPathSegmentCandidates = (html: string, baseUrl: string): stri
  * method), so a cached HEAD response would poison the later GET that downloads the
  * body — every other crawler in this codebase uses GET for the same reason.
  */
-const confirmJsContentType = async (candidates: string[]): Promise<string[]> => {
+export const confirmJsContentType = async (candidates: string[]): Promise<string[]> => {
     const confirmed: string[] = [];
 
     for (const url of candidates) {

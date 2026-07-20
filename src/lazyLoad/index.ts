@@ -40,9 +40,8 @@ import react_followImports from "./react/react_followImports.js";
 // generic
 import downloadFiles from "./downloadFilesUtil.js";
 import { DownloadQueue } from "./downloadQueue.js";
-import generic_getScriptTags from "./generic/generic_getScriptTags.js";
-import generic_scanAttributesForJs from "./generic/generic_scanAttributesForJs.js";
-import generic_downloadFiles from "./generic/generic_downloadFiles.js";
+import generic_crawlPages from "./generic/generic_crawlPages.js";
+import resolveGenericScope from "./generic/generic_resolveScope.js";
 
 import path from "path";
 import { join } from "path";
@@ -70,7 +69,7 @@ const lazyLoad = async (
     url: string,
     output: string,
     strictScope: boolean,
-    inputScope: [],
+    inputScope: string[],
     threads: number,
     subsequentRequestsFlag: boolean,
     urlsFile: string,
@@ -84,7 +83,10 @@ const lazyLoad = async (
     hardTimeoutMs: number = 30 * 60 * 1000,
     maxPageVisits: number = 200,
     includeMethods: string[] = [],
-    excludeMethods: string[] = []
+    excludeMethods: string[] = [],
+    maxRedirects: number = 20,
+    stringsEnabled: boolean = false,
+    stringsMaxIterations: number = 5
 ) => {
     // Hoisted so the timeout handler can stop discovery and drain downloads.
     let activeCrawler: NextJsCrawler | null = null;
@@ -551,15 +553,39 @@ const lazyLoad = async (
                 console.log(chalk.yellow("[i] Framework not detected — falling back to generic JS extraction"));
                 globals.setTech("generic");
 
-                const { urls: seedUrls, pageSource } = await generic_getScriptTags(url, maxJsSizeMb, output);
-                const attrCandidates = await generic_scanAttributesForJs(pageSource, url);
-                const allUrls = [...new Set([...seedUrls, ...attrCandidates])];
+                // If the caller didn't customize scope (still the "*" default) and isn't
+                // using --strict-scope, default the generic crawl's scope to the origin
+                // reached after following redirects, rather than crawling the whole web.
+                if (!strictScope && inputScope.length === 1 && inputScope[0] === "*") {
+                    const resolvedScope = await resolveGenericScope(url, maxRedirects);
+                    lazyLoadGlobals.setScope(resolvedScope);
+                }
+
+                // Downloads JS incrementally as pages are crawled (see generic_crawlPages.ts) —
+                // the returned list is only used for the final summary count.
+                const genericResearchMap: Record<string, string[]> = {};
+                const allUrls = await generic_crawlPages(
+                    url,
+                    maxJsSizeMb,
+                    output,
+                    maxPageVisits,
+                    threads,
+                    research ? genericResearchMap : undefined,
+                    stringsEnabled,
+                    stringsMaxIterations
+                );
 
                 if (allUrls.length > 0) {
                     console.log(chalk.green(`[✓] Found ${allUrls.length} JS file(s)`));
-                    await generic_downloadFiles(allUrls, output, threads);
                 } else {
                     console.log(chalk.yellow("[i] No JS files discovered"));
+                }
+
+                if (research) {
+                    fs.writeFileSync(researchOutput, JSON.stringify(genericResearchMap, null, 4));
+                    console.log(
+                        chalk.green("[✓] Research mode enabled. Technique efficiency written to " + researchOutput)
+                    );
                 }
             }
         }

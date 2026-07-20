@@ -94,8 +94,14 @@ const checkVueJS = async ($, url: string) => {
         }
     });
 
+    // Only scan same-origin assets here. Third-party widgets (analytics, chat, ad
+    // bundles) commonly bundle Vue internally for their own UI — scanning their
+    // content for "__vue" produces false positives on sites that don't use Vue
+    // themselves (e.g. a WordPress site embedding a Vue-based marketing widget).
+    const pageOrigin = new URL(url).origin;
     for (const assetURL of assetURLs) {
         try {
+            if (new URL(assetURL).origin !== pageOrigin) continue;
             const res = await makeRequest(assetURL);
             if (!res) continue;
             const content: string = await res.text();

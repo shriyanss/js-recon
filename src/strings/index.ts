@@ -149,12 +149,21 @@ const strings = async (
         } else {
             const fileContent = fs.readFileSync(file, "utf-8");
 
-            // parse the file contents with babel
-            const ast = parser.parse(fileContent, {
-                sourceType: "unambiguous",
-                plugins: ["jsx", "typescript"],
-                errorRecovery: true,
-            });
+            // parse the file contents with babel. errorRecovery only recovers from
+            // certain error classes — a file that isn't valid JS at all (e.g. JSON-LD
+            // or speculation-rules content saved with a .js extension) still throws.
+            // One bad file must not abort extraction for every other file.
+            let ast;
+            try {
+                ast = parser.parse(fileContent, {
+                    sourceType: "unambiguous",
+                    plugins: ["jsx", "typescript"],
+                    errorRecovery: true,
+                });
+            } catch (err) {
+                console.error(chalk.yellow(`[!] Skipping ${file}: failed to parse (${err?.message || err})`));
+                continue;
+            }
 
             all_strings[file] = extractStrings(ast);
         }

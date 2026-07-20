@@ -112,6 +112,21 @@ program
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
     .option(
+        "--max-redirects <n>",
+        "Maximum redirects to follow when resolving the default crawl scope for generic tech",
+        "20"
+    )
+    .option(
+        "--strings",
+        "Enable strings-based recursive JS discovery for generic tech (scans downloaded files for string-literal JS paths)",
+        false
+    )
+    .option(
+        "--strings-max-iterations <n>",
+        "Maximum recursive strings-discovery passes for generic tech (0 = unlimited, loops until no new files)",
+        "5"
+    )
+    .option(
         "--include-methods <methods>",
         "Comma-separated method names to run (whitelist). Use --list-methods to see valid names."
     )
@@ -199,7 +214,10 @@ program
             Number(cmd.lazyloadTimeout) * 60 * 1000,
             Number(cmd.maxPages),
             includeMethods,
-            excludeMethods
+            excludeMethods,
+            Number(cmd.maxRedirects),
+            cmd.strings,
+            Number(cmd.stringsMaxIterations)
         );
     });
 
@@ -515,6 +533,21 @@ program
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
     .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option(
+        "--max-redirects <n>",
+        "Maximum redirects to follow when resolving the default crawl scope for generic tech",
+        "20"
+    )
+    .option(
+        "--strings",
+        "Enable strings-based recursive JS discovery for generic tech (scans downloaded files for string-literal JS paths)",
+        false
+    )
+    .option(
+        "--strings-max-iterations <n>",
+        "Maximum recursive strings-discovery passes for generic tech (0 = unlimited, loops until no new files)",
+        "5"
+    )
     .option(
         "--include-methods <methods>",
         "Comma-separated lazyload method names to run (whitelist). Use --list-methods to see valid names."

@@ -124,7 +124,10 @@ const writeCacheUnsafe = async (url: string, headers: {}, response: Response): P
     const bodyBuffer = Buffer.from(await clonedResponse.arrayBuffer());
     const body = bodyBuffer.toString("base64");
     const status = clonedResponse.status;
-    const resp_headers = clonedResponse.headers;
+    // Headers instances have no own enumerable properties — JSON.stringify(headers)
+    // silently serializes to "{}", discarding every response header (including
+    // Content-Type) on the next cache read. Convert to a plain object first.
+    const resp_headers = Object.fromEntries(clonedResponse.headers.entries());
     if (headers["RSC"]) {
         cache[url].rsc = {
             req_headers: headers,

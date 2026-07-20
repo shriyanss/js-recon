@@ -1,0 +1,119 @@
+import chalk from "chalk";
+import generic_getScriptTags from "./generic_getScriptTags.js";
+import generic_scanAttributesForJs from "./generic_scanAttributesForJs.js";
+import generic_downloadFiles from "./generic_downloadFiles.js";
+import generic_stringsDiscovery from "./generic_stringsDiscovery.js";
+import { extractPageLinks } from "./generic_extractLinks.js";
+import { accumulateTechnique } from "../researchUtils.js";
+import * as lazyLoadGlobals from "../globals.js";
+
+/**
+ * Whether a link's host is within the active scope list. "*" allows any host —
+ * matches the sentinel convention already used by downloadFilesUtil.ts / downloadQueue.ts.
+ */
+export const isInScope = (url: string, scope: string[]): boolean => {
+    if (scope.includes("*")) return true;
+    try {
+        return scope.includes(new URL(url).host);
+    } catch {
+        return false;
+    }
+};
+
+/**
+ * Recursively crawls in-scope HTML pages reachable via <a href> from seedUrl,
+ * downloading JS discovered on each page (via generic_getScriptTags /
+ * generic_scanAttributesForJs) and following newly discovered links until the
+ * page pool is exhausted or maxPageVisits is reached. Implements internal#66:
+ * following non-JS <a href> links recursively is what lets the generic tech
+ * reach JS referenced only from pages the seed page doesn't link to directly.
+ *
+ * JS files are downloaded incrementally, page by page, rather than batched
+ * until the whole crawl finishes — a multi-hundred-page crawl can take
+ * minutes, and deferring every download to the end makes the tool look stuck.
+ *
+ * When stringsEnabled is set, once the page crawl is exhausted a second
+ * discovery mode runs: generic_stringsDiscovery.ts scans every downloaded file
+ * (inline scripts, decoded data: URIs, and external JS) for string-literal JS
+ * paths using the existing `strings` module's AST-based extraction, resolves
+ * each one against the URL the file it came from was downloaded from, and
+ * downloads any new confirmed JS files. This repeats — new downloads feed the
+ * next strings pass — until a pass finds nothing new or stringsMaxIterations
+ * is reached, the same "loop until nothing new" shape as react_followImports.
+ */
+const generic_crawlPages = async (
+    seedUrl: string,
+    maxJsSizeMb: number,
+    outputDir: string,
+    maxPageVisits: number,
+    threads: number,
+    researchMap?: Record<string, string[]>,
+    stringsEnabled: boolean = false,
+    stringsMaxIterations: number = 5
+): Promise<string[]> => {
+    const visitedPages = new Set<string>();
+    const queued = new Set<string>([seedUrl]);
+    const queue: string[] = [seedUrl];
+    const downloadedJsUrls = new Set<string>();
+
+    while (queue.length > 0) {
+        if (maxPageVisits > 0 && visitedPages.size >= maxPageVisits) {
+            console.log(chalk.yellow(`[i] Reached max page visits (${maxPageVisits}); stopping generic crawl`));
+            break;
+        }
+
+        const pageUrl = queue.shift() as string;
+        if (visitedPages.has(pageUrl)) continue;
+        visitedPages.add(pageUrl);
+
+        console.log(chalk.cyan(`[i] Crawling page (${visitedPages.size}): ${pageUrl}`));
+
+        const { urls: scriptUrls, pageSource } = await generic_getScriptTags(pageUrl, maxJsSizeMb, outputDir);
+        if (researchMap) accumulateTechnique(researchMap, "generic_getScriptTags", scriptUrls);
+
+        let newJsUrls = scriptUrls.filter((u) => !downloadedJsUrls.has(u));
+
+        if (pageSource) {
+            const attrCandidates = await generic_scanAttributesForJs(pageSource, pageUrl);
+            if (researchMap) accumulateTechnique(researchMap, "generic_scanAttributesForJs", attrCandidates);
+            newJsUrls = [...new Set([...newJsUrls, ...attrCandidates.filter((u) => !downloadedJsUrls.has(u))])];
+        }
+
+        if (newJsUrls.length > 0) {
+            newJsUrls.forEach((u) => downloadedJsUrls.add(u));
+            await generic_downloadFiles(newJsUrls, outputDir, threads);
+        }
+
+        if (!pageSource) continue;
+
+        const scope = lazyLoadGlobals.getScope();
+        const links = extractPageLinks(pageSource, pageUrl);
+        const newLinks = links.filter((l) => isInScope(l, scope) && !queued.has(l));
+        newLinks.forEach((l) => queued.add(l));
+        if (researchMap) accumulateTechnique(researchMap, "generic_crawlPages", newLinks);
+        queue.push(...newLinks);
+    }
+
+    if (stringsEnabled) {
+        for (let iteration = 0; stringsMaxIterations <= 0 || iteration < stringsMaxIterations; iteration++) {
+            console.log(chalk.cyan(`[i] Running strings-based discovery pass ${iteration + 1}`));
+            const candidates = await generic_stringsDiscovery(outputDir);
+            const freshUrls = candidates.filter((u) => !downloadedJsUrls.has(u));
+
+            if (researchMap) accumulateTechnique(researchMap, "generic_stringsDiscovery", freshUrls);
+
+            if (freshUrls.length === 0) {
+                console.log(chalk.yellow("[i] No new JS files found via strings; stopping strings discovery"));
+                break;
+            }
+
+            console.log(chalk.green(`[✓] Found ${freshUrls.length} new JS file(s) via strings`));
+            freshUrls.forEach((u) => downloadedJsUrls.add(u));
+            await generic_downloadFiles(freshUrls, outputDir, threads);
+        }
+    }
+
+    return [...downloadedJsUrls];
+};
+
+export default generic_crawlPages;
