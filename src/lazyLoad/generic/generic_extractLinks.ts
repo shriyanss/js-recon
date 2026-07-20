@@ -31,9 +31,8 @@ const EMBEDDED_URL_RE = /https?:\/\/[^\s'"<>)]+/g;
  * an onclick handler or other inline JS attribute). See EMBEDDED_URL_RE for why this
  * isn't tied to a specific JS call pattern like window.open(...).
  */
-export const extractEmbeddedUrls = (attrValue: string): string[] => [...attrValue.matchAll(EMBEDDED_URL_RE)].map(
-    (m) => m[0]
-);
+export const extractEmbeddedUrls = (attrValue: string): string[] =>
+    [...attrValue.matchAll(EMBEDDED_URL_RE)].map((m) => m[0]);
 
 /**
  * Extracts navigable page URLs from <a href>/<iframe src> tags and absolute URLs

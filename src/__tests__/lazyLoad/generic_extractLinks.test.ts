@@ -75,10 +75,7 @@ describe("extractPageLinks", () => {
         // Mirrors WordPress's PowerPress plugin pop-out player link pattern.
         const html = `<a href="https://example.com/audio.mp3" onclick="return powerpress_pinw('https://example.com/?powerpress_pinw=123-podcast');">Play</a>`;
         const result = extractPageLinks(html, "https://example.com").sort();
-        expect(result).toEqual([
-            "https://example.com/?powerpress_pinw=123-podcast",
-            "https://example.com/audio.mp3",
-        ]);
+        expect(result).toEqual(["https://example.com/?powerpress_pinw=123-podcast", "https://example.com/audio.mp3"]);
     });
 
     it("extracts a URL passed directly to window.open in an onclick handler", () => {
