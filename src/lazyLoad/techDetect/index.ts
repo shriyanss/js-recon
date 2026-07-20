@@ -12,6 +12,18 @@ import { checkVueJS } from "./checkVueJS.js";
 import { checkAngularJS } from "./checkAngularJS.js";
 import { checkReact } from "./checkReact.js";
 
+// Every request Puppeteer intercepted during the most recent frameworkDetect() call,
+// including anything a runtime-injected script requested (e.g. Cloudflare's own
+// bot-challenge script self-injecting via `element.innerHTML = "...;a.src='...';..."`) —
+// a network capture generic tech's plain-fetch crawl has no way to see on its own,
+// since the reference is only ever constructed by executing the page's JS live.
+// Exposed as a getter rather than widening frameworkDetect's return type so the
+// existing `{name, evidence} | null` contract (consumed by fingerprint/index.ts too)
+// doesn't need to change everywhere.
+let lastInterceptedUrls: string[] = [];
+
+export const getLastInterceptedUrls = (): string[] => lastInterceptedUrls;
+
 /**
  * Detects the front-end framework used in a webpage.
  * It does this by iterating through all HTML tags and checking if any attribute name starts with "data-v-".
@@ -100,6 +112,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
             await browser.close().catch(() => {});
         }
     }
+    lastInterceptedUrls = interceptedUrls;
 
     // if (res === null || res === undefined) {
     //   return;

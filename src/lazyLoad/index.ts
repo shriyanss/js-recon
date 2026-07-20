@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import fs from "fs";
-import frameworkDetect from "./techDetect/index.js";
+import frameworkDetect, { getLastInterceptedUrls } from "./techDetect/index.js";
 import _traverse from "@babel/traverse";
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import { URL } from "url";
@@ -572,7 +572,8 @@ const lazyLoad = async (
                     threads,
                     research ? genericResearchMap : undefined,
                     stringsEnabled,
-                    stringsMaxIterations
+                    stringsMaxIterations,
+                    getLastInterceptedUrls()
                 );
 
                 if (allUrls.length > 0) {

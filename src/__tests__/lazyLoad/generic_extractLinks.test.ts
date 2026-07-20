@@ -53,4 +53,21 @@ describe("extractPageLinks", () => {
         const html = `<a name="anchor">no href</a>`;
         expect(extractPageLinks(html, "https://example.com")).toEqual([]);
     });
+
+    it("resolves an iframe src as a page link", () => {
+        const html = `<iframe src="/widgets/player?id=123"></iframe>`;
+        const result = extractPageLinks(html, "https://example.com");
+        expect(result).toEqual(["https://example.com/widgets/player?id=123"]);
+    });
+
+    it("combines a href and iframe src results, deduped", () => {
+        const html = `<a href="/page">link</a><iframe src="/page"></iframe><iframe src="/other"></iframe>`;
+        const result = extractPageLinks(html, "https://example.com").sort();
+        expect(result).toEqual(["https://example.com/other", "https://example.com/page"]);
+    });
+
+    it("ignores an iframe with no src attribute", () => {
+        const html = `<iframe></iframe>`;
+        expect(extractPageLinks(html, "https://example.com")).toEqual([]);
+    });
 });

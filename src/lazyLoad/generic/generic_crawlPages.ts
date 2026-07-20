@@ -4,6 +4,7 @@ import generic_scanAttributesForJs from "./generic_scanAttributesForJs.js";
 import generic_downloadFiles from "./generic_downloadFiles.js";
 import generic_stringsDiscovery from "./generic_stringsDiscovery.js";
 import { extractPageLinks } from "./generic_extractLinks.js";
+import { resolveJsPathCandidate, confirmJsContentType } from "./generic_scanAttributesForJs.js";
 import { accumulateTechnique } from "../researchUtils.js";
 import * as lazyLoadGlobals from "../globals.js";
 
@@ -40,6 +41,13 @@ export const isInScope = (url: string, scope: string[]): boolean => {
  * downloads any new confirmed JS files. This repeats — new downloads feed the
  * next strings pass — until a pass finds nothing new or stringsMaxIterations
  * is reached, the same "loop until nothing new" shape as react_followImports.
+ *
+ * techDetectInterceptedUrls carries every request Puppeteer's tech-detection pass
+ * already intercepted for this target (see techDetect/index.ts's getLastInterceptedUrls)
+ * — this includes anything requested only because a runtime-injected script asked for
+ * it (e.g. Cloudflare's own bot-challenge script self-injecting via
+ * `element.innerHTML = "...;a.src='...';..."`), which a plain-fetch crawl has no way
+ * to see on its own since the reference only exists once the page's JS actually runs.
  */
 const generic_crawlPages = async (
     seedUrl: string,
@@ -49,12 +57,31 @@ const generic_crawlPages = async (
     threads: number,
     researchMap?: Record<string, string[]>,
     stringsEnabled: boolean = false,
-    stringsMaxIterations: number = 5
+    stringsMaxIterations: number = 5,
+    techDetectInterceptedUrls: string[] = []
 ): Promise<string[]> => {
     const visitedPages = new Set<string>();
     const queued = new Set<string>([seedUrl]);
     const queue: string[] = [seedUrl];
     const downloadedJsUrls = new Set<string>();
+
+    if (techDetectInterceptedUrls.length > 0) {
+        const candidates = [
+            ...new Set(
+                techDetectInterceptedUrls
+                    .map((u) => resolveJsPathCandidate(u, u))
+                    .filter((u): u is string => u !== null)
+            ),
+        ];
+        if (candidates.length > 0) {
+            const confirmed = await confirmJsContentType(candidates);
+            if (researchMap) accumulateTechnique(researchMap, "techDetect_interceptedUrls", confirmed);
+            if (confirmed.length > 0) {
+                confirmed.forEach((u) => downloadedJsUrls.add(u));
+                await generic_downloadFiles(confirmed, outputDir, threads);
+            }
+        }
+    }
 
     while (queue.length > 0) {
         if (maxPageVisits > 0 && visitedPages.size >= maxPageVisits) {
@@ -97,7 +124,7 @@ const generic_crawlPages = async (
     if (stringsEnabled) {
         for (let iteration = 0; stringsMaxIterations <= 0 || iteration < stringsMaxIterations; iteration++) {
             console.log(chalk.cyan(`[i] Running strings-based discovery pass ${iteration + 1}`));
-            const candidates = await generic_stringsDiscovery(outputDir);
+            const candidates = await generic_stringsDiscovery(outputDir, downloadedJsUrls);
             const freshUrls = candidates.filter((u) => !downloadedJsUrls.has(u));
 
             if (researchMap) accumulateTechnique(researchMap, "generic_stringsDiscovery", freshUrls);

@@ -59,8 +59,17 @@ let stringsPassCounter = 0;
  * plugin configs routinely reference further JS assets only as a string inside
  * an already-downloaded file (inline script or external JS), invisible to
  * attribute scanning or <script src> discovery.
+ *
+ * alreadyKnownUrls (typically the caller's running downloadedJsUrls set) is
+ * filtered out BEFORE confirmJsContentType, not after — each subsequent pass
+ * rescans the same growing directory (strings() has no incremental-scan mode),
+ * so without this every already-confirmed URL from a prior pass would otherwise
+ * trigger a redundant live GET request every single pass.
  */
-const generic_stringsDiscovery = async (outputDir: string): Promise<string[]> => {
+const generic_stringsDiscovery = async (
+    outputDir: string,
+    alreadyKnownUrls: Set<string> = new Set()
+): Promise<string[]> => {
     if (!fs.existsSync(outputDir)) return [];
 
     const tmpStringsFile = path.join(outputDir, `.generic-strings-pass-${stringsPassCounter++}.json`);
@@ -85,7 +94,9 @@ const generic_stringsDiscovery = async (outputDir: string): Promise<string[]> =>
         }
     }
 
-    const candidates = findJsPathCandidatesFromStrings(allStrings, (p) => fs.readFileSync(p, "utf-8"));
+    const candidates = findJsPathCandidatesFromStrings(allStrings, (p) => fs.readFileSync(p, "utf-8")).filter(
+        (u) => !alreadyKnownUrls.has(u)
+    );
     if (candidates.length === 0) return [];
     return confirmJsContentType(candidates);
 };
