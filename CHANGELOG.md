@@ -1,7 +1,5 @@
 # Change Log
 
-## 2.0.1 - (unreleased)
-
 ## 1.4.1-beta.2 - 2026-07-19
 
 ### Added
