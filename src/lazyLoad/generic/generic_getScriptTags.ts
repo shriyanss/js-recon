@@ -3,6 +3,8 @@ import * as cheerio from "cheerio";
 import fs from "fs";
 import path from "path";
 import chalk from "chalk";
+import crypto from "crypto";
+import * as lazyLoadGlobals from "../globals.js";
 
 // <script type="..."> values known to hold non-JS content. Browsers never execute
 // these as script — WordPress/plugins routinely stash JSON-LD structured data or
@@ -105,6 +107,7 @@ const generic_getScriptTags = async (
                 const filename = `inline-${inlineIndex++}.js`;
                 const filePath = path.join(hostDir, filename);
                 fs.writeFileSync(filePath, `// File Source: ${url} (data URI script #${inlineIndex - 1})\n${content}`);
+                lazyLoadGlobals.recordJsFileHash(crypto.createHash("sha256").update(content).digest("hex"));
                 console.log(chalk.green(`[✓] Saved data URI script to ${filePath}`));
                 return;
             }
@@ -124,6 +127,7 @@ const generic_getScriptTags = async (
             const filename = `inline-${inlineIndex++}.js`;
             const filePath = path.join(hostDir, filename);
             fs.writeFileSync(filePath, `// File Source: ${url} (inline script #${inlineIndex - 1})\n${content}`);
+            lazyLoadGlobals.recordJsFileHash(crypto.createHash("sha256").update(content).digest("hex"));
             console.log(chalk.green(`[✓] Saved inline script to ${filePath}`));
         }
     });

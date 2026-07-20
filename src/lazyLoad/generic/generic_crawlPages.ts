@@ -7,6 +7,7 @@ import { extractPageLinks } from "./generic_extractLinks.js";
 import { resolveJsPathCandidate, confirmJsContentType } from "./generic_scanAttributesForJs.js";
 import { accumulateTechnique } from "../researchUtils.js";
 import * as lazyLoadGlobals from "../globals.js";
+import { StagnationMonitor } from "../stagnation/stagnationMonitor.js";
 
 /**
  * Whether a link's host is within the active scope list. "*" allows any host —
@@ -42,6 +43,12 @@ export const isInScope = (url: string, scope: string[]): boolean => {
  * next strings pass — until a pass finds nothing new or stringsMaxIterations
  * is reached, the same "loop until nothing new" shape as react_followImports.
  *
+ * When stagnationTimeinMs > 0, a StagnationMonitor tracks JS content hashes (recorded
+ * globally by generic_downloadFiles.ts / generic_getScriptTags.ts as files are discovered)
+ * and, once armed, stops the crawl early if one content hash comes to dominate the
+ * discovered set with no genuinely new content appearing — catches infinite/near-infinite
+ * sites (blogs, news feeds) whose pages keep referencing cache-busted-but-identical JS.
+ *
  * techDetectInterceptedUrls carries every request Puppeteer's tech-detection pass
  * already intercepted for this target (see techDetect/index.ts's getLastInterceptedUrls)
  * — this includes anything requested only because a runtime-injected script asked for
@@ -58,12 +65,19 @@ const generic_crawlPages = async (
     researchMap?: Record<string, string[]>,
     stringsEnabled: boolean = false,
     stringsMaxIterations: number = 5,
-    techDetectInterceptedUrls: string[] = []
+    techDetectInterceptedUrls: string[] = [],
+    stagnationTimeinMs: number = 0,
+    stagnationPercentage: number = 80,
+    stagnationMonitorMs: number = 60000
 ): Promise<string[]> => {
     const visitedPages = new Set<string>();
     const queued = new Set<string>([seedUrl]);
     const queue: string[] = [seedUrl];
     const downloadedJsUrls = new Set<string>();
+    const stagnationMonitor =
+        stagnationTimeinMs > 0
+            ? new StagnationMonitor(stagnationTimeinMs, stagnationPercentage, stagnationMonitorMs)
+            : null;
 
     if (techDetectInterceptedUrls.length > 0) {
         const candidates = [
@@ -86,6 +100,15 @@ const generic_crawlPages = async (
     while (queue.length > 0) {
         if (maxPageVisits > 0 && visitedPages.size >= maxPageVisits) {
             console.log(chalk.yellow(`[i] Reached max page visits (${maxPageVisits}); stopping generic crawl`));
+            break;
+        }
+
+        if (stagnationMonitor?.shouldEvaluate() && stagnationMonitor.evaluate()) {
+            console.log(
+                chalk.yellow(
+                    `[i] Detected content stagnation (dominant JS content ≥ ${stagnationPercentage}% with no new content); stopping generic crawl`
+                )
+            );
             break;
         }
 

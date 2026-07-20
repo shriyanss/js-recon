@@ -9,7 +9,7 @@ import CONFIG from "../globalConfig.js";
 import analyze from "../analyze/index.js";
 import report from "../report/index.js";
 import refactor from "../refactor/index.js";
-import { clearJsUrls, clearJsonUrls, getJsUrls } from "../lazyLoad/globals.js";
+import { clearJsUrls, clearJsonUrls, clearJsFileHashCounts, getJsUrls } from "../lazyLoad/globals.js";
 import path from "path";
 import {
     installSigintHandler,
@@ -83,6 +83,7 @@ const processUrl = async (
     if (isBatch) {
         clearJsUrls();
         clearJsonUrls();
+        clearJsFileHashCounts();
         globalsUtil.clearOpenapiOutput();
     }
 
@@ -110,7 +111,10 @@ const processUrl = async (
             excludeMethods,
             Number(cmd.maxRedirects),
             cmd.strings,
-            Number(cmd.stringsMaxIterations)
+            Number(cmd.stringsMaxIterations),
+            Number(cmd.stagnationTimein) * 60 * 1000,
+            Number(cmd.stagnationPercentage),
+            Number(cmd.stagnationMonitor) * 60 * 1000
         ),
         getSkipStepPromise(),
     ]);
@@ -525,7 +529,10 @@ const processUrl = async (
             excludeMethods,
             Number(cmd.maxRedirects),
             cmd.strings,
-            Number(cmd.stringsMaxIterations)
+            Number(cmd.stringsMaxIterations),
+            Number(cmd.stagnationTimein) * 60 * 1000,
+            Number(cmd.stagnationPercentage),
+            Number(cmd.stagnationMonitor) * 60 * 1000
         ),
         getSkipStepPromise(),
     ]);
@@ -569,7 +576,10 @@ const processUrl = async (
             excludeMethods,
             Number(cmd.maxRedirects),
             cmd.strings,
-            Number(cmd.stringsMaxIterations)
+            Number(cmd.stringsMaxIterations),
+            Number(cmd.stagnationTimein) * 60 * 1000,
+            Number(cmd.stagnationPercentage),
+            Number(cmd.stagnationMonitor) * 60 * 1000
         ),
         getSkipStepPromise(),
     ]);

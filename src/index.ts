@@ -127,6 +127,21 @@ program
         "5"
     )
     .option(
+        "--stagnation-timein <mins>",
+        "Minutes to wait before generic-tech content stagnation detection begins monitoring (0 = disabled)",
+        "30"
+    )
+    .option(
+        "--stagnation-percentage <percent>",
+        "Percentage of discovered generic-tech JS files sharing identical content required to flag stagnation",
+        "80"
+    )
+    .option(
+        "--stagnation-monitor <mins>",
+        "Interval in minutes between generic-tech stagnation re-checks once armed",
+        "1"
+    )
+    .option(
         "--include-methods <methods>",
         "Comma-separated method names to run (whitelist). Use --list-methods to see valid names."
     )
@@ -186,6 +201,17 @@ program
             process.exit(1);
         }
 
+        const lazyloadTimeoutMin = Number(cmd.lazyloadTimeout);
+        const stagnationTimeinMin = Number(cmd.stagnationTimein);
+        if (lazyloadTimeoutMin > 0 && stagnationTimeinMin > lazyloadTimeoutMin) {
+            console.error(
+                chalk.red(
+                    `[!] --stagnation-timein (${stagnationTimeinMin}m) cannot exceed --lazyload-timeout (${lazyloadTimeoutMin}m)`
+                )
+            );
+            process.exit(27);
+        }
+
         globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
         globalsUtil.setUseApiGateway(cmd.apiGateway);
         globalsUtil.setDisableCache(cmd.disableCache);
@@ -217,7 +243,10 @@ program
             excludeMethods,
             Number(cmd.maxRedirects),
             cmd.strings,
-            Number(cmd.stringsMaxIterations)
+            Number(cmd.stringsMaxIterations),
+            Number(cmd.stagnationTimein) * 60 * 1000,
+            Number(cmd.stagnationPercentage),
+            Number(cmd.stagnationMonitor) * 60 * 1000
         );
     });
 
@@ -549,6 +578,21 @@ program
         "5"
     )
     .option(
+        "--stagnation-timein <mins>",
+        "Minutes to wait before generic-tech content stagnation detection begins monitoring (0 = disabled)",
+        "30"
+    )
+    .option(
+        "--stagnation-percentage <percent>",
+        "Percentage of discovered generic-tech JS files sharing identical content required to flag stagnation",
+        "80"
+    )
+    .option(
+        "--stagnation-monitor <mins>",
+        "Interval in minutes between generic-tech stagnation re-checks once armed",
+        "1"
+    )
+    .option(
         "--include-methods <methods>",
         "Comma-separated lazyload method names to run (whitelist). Use --list-methods to see valid names."
     )
@@ -612,6 +656,17 @@ program
         if (!cmd.url) {
             console.error(chalk.red("[!] Missing required option: -u, --url <url/file>"));
             process.exit(1);
+        }
+
+        const runLazyloadTimeoutMin = Number(cmd.lazyloadTimeout);
+        const runStagnationTimeinMin = Number(cmd.stagnationTimein);
+        if (runLazyloadTimeoutMin > 0 && runStagnationTimeinMin > runLazyloadTimeoutMin) {
+            console.error(
+                chalk.red(
+                    `[!] --stagnation-timein (${runStagnationTimeinMin}m) cannot exceed --lazyload-timeout (${runLazyloadTimeoutMin}m)`
+                )
+            );
+            process.exit(27);
         }
 
         if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));

@@ -4,6 +4,7 @@ import fs from "fs";
 import crypto from "crypto";
 import makeRequest from "../../utility/makeReq.js";
 import { getURLDirectory } from "../../utility/urlUtils.js";
+import * as lazyLoadGlobals from "../globals.js";
 
 /**
  * Synthesizes an on-disk filename for a generic-tech JS URL. downloadFilesUtil.ts's
@@ -55,6 +56,7 @@ const generic_downloadFiles = async (urls: string[], output: string, threads: nu
             const filename = synthesizeFilename(url);
             const filePath = path.join(childDir, filename);
             fs.writeFileSync(filePath, `// File Source: ${url}\n${rawText}`);
+            lazyLoadGlobals.recordJsFileHash(crypto.createHash("sha256").update(rawText).digest("hex"));
             downloadCount++;
         } catch (err) {
             console.error(chalk.red(`[!] Failed to download: ${url} : ${err}`));

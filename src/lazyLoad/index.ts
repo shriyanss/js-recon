@@ -86,7 +86,10 @@ const lazyLoad = async (
     excludeMethods: string[] = [],
     maxRedirects: number = 20,
     stringsEnabled: boolean = false,
-    stringsMaxIterations: number = 5
+    stringsMaxIterations: number = 5,
+    stagnationTimeinMs: number = 0,
+    stagnationPercentage: number = 80,
+    stagnationMonitorMs: number = 60 * 1000
 ) => {
     // Hoisted so the timeout handler can stop discovery and drain downloads.
     let activeCrawler: NextJsCrawler | null = null;
@@ -573,7 +576,10 @@ const lazyLoad = async (
                     research ? genericResearchMap : undefined,
                     stringsEnabled,
                     stringsMaxIterations,
-                    getLastInterceptedUrls()
+                    getLastInterceptedUrls(),
+                    stagnationTimeinMs,
+                    stagnationPercentage,
+                    stagnationMonitorMs
                 );
 
                 if (allUrls.length > 0) {
