@@ -13,6 +13,7 @@ Discovers and downloads Angular JS chunks. Angular CLI builds emit a predictable
 
 - **Full pipeline supported.** After lazyload, Angular targets continue through map → analyze → report (4-step pipeline). The map module (`src/map/angular_js/`) parses the downloaded chunks; the analyze module applies security rules; the report module generates the HTML/SQLite report.
 - **Two-file split is the whole crawler.** No recursion, no re-pass. Angular's lazy-load table is comprehensive; if a target's routes aren't surfacing, the parser in `angular_getFromMainJs.ts` is the only thing to look at.
+- **Research mode** (`--research`) is recorded directly in `../index.ts`'s Angular branch using `angular_getFromPageSource`/`angular_getFromMainJs` as the technique keys — see `../CLAUDE.md`.
 
 ## How to test changes here
 

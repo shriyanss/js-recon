@@ -2,6 +2,10 @@
 
 ## 2.0.1 - (unreleased)
 
+### Added
+
+- `--research`/`--research-output <file>` (`lazyload`, `run`) is now supported for every framework the tool detects, not just Next.js. Vue, Nuxt, Svelte, Angular, and React crawls now record a technique-name → discovered-URL-list mapping and write it to the research output file, mirroring the existing Next.js `NextJsCrawler.techniqueEfficiencyMapping` behavior. (`lazyload`)
+
 ## 1.4.1-beta.1 - 2026-07-16
 
 ### Fixed

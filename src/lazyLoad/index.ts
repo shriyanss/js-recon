@@ -51,6 +51,7 @@ import { extractSourceMaps } from "../sourcemaps/index.js";
 import * as lazyLoadGlobals from "./globals.js";
 import * as globals from "../utility/globals.js";
 import { shouldRunMethod } from "./methodFilter.js";
+import { accumulateTechnique, createTechniqueRecorder } from "./researchUtils.js";
 
 /**
  * Downloads the required JavaScript files for a given URL
@@ -198,13 +199,17 @@ const lazyLoad = async (
                     const queue = activeQueue;
                     const onFilesDiscovered = (files: string[]) => queue.push(files);
 
+                    const vueResearchMap: Record<string, string[]> = {};
+                    const vueOnTechnique = research ? createTechniqueRecorder(vueResearchMap) : undefined;
+
                     // run the full discovery pipeline against the entry URL
                     const { clientSidePaths } = await vue_discoverJsFiles(
                         url,
                         maxJsSizeMb,
                         onFilesDiscovered,
                         includeMethods,
-                        excludeMethods
+                        excludeMethods,
+                        vueOnTechnique
                     );
 
                     // recurse the same pipeline through every client-side path we found
@@ -214,11 +219,21 @@ const lazyLoad = async (
                         maxJsSizeMb,
                         onFilesDiscovered,
                         includeMethods,
-                        excludeMethods
+                        excludeMethods,
+                        vueOnTechnique
                     );
 
                     await queue.drain();
                     queue.printSummary();
+
+                    if (research) {
+                        fs.writeFileSync(researchOutput, JSON.stringify(vueResearchMap, null, 4));
+                        console.log(
+                            chalk.green(
+                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
+                            )
+                        );
+                    }
 
                     // extract the source maps
                     await extractSourceMaps(output, join(output, sourcemapDir));
@@ -229,6 +244,8 @@ const lazyLoad = async (
                     const queue = new DownloadQueue(output, threads);
                     activeQueue = queue;
 
+                    const nuxtResearchMap: Record<string, string[]> = {};
+
                     // find the files from the page source
                     const jsFilesFromPageSource = shouldRunMethod(
                         "nuxt_getFromPageSource",
@@ -238,6 +255,7 @@ const lazyLoad = async (
                         ? await nuxt_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
+                    if (research) accumulateTechnique(nuxtResearchMap, "nuxt_getFromPageSource", jsFilesFromPageSource);
 
                     const jsFilesFromStringAnalysis = shouldRunMethod(
                         "nuxt_stringAnalysisJSFiles",
@@ -247,6 +265,8 @@ const lazyLoad = async (
                         ? await nuxt_stringAnalysisJSFiles(url)
                         : [];
                     queue.push(jsFilesFromStringAnalysis);
+                    if (research)
+                        accumulateTechnique(nuxtResearchMap, "nuxt_stringAnalysisJSFiles", jsFilesFromStringAnalysis);
 
                     const firstBatch = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
 
@@ -258,6 +278,7 @@ const lazyLoad = async (
                         }
                     }
                     queue.push(jsFilesFromAST);
+                    if (research) accumulateTechnique(nuxtResearchMap, "nuxt_astParse", jsFilesFromAST);
                     queue.push(lazyLoadGlobals.getJsUrls());
 
                     const buildsManifestFiles = shouldRunMethod(
@@ -268,15 +289,27 @@ const lazyLoad = async (
                         ? await nuxt_getBuildsManifest(url)
                         : [];
                     queue.push(buildsManifestFiles);
+                    if (research) accumulateTechnique(nuxtResearchMap, "nuxt_getBuildsManifest", buildsManifestFiles);
 
                     await queue.drain();
                     queue.printSummary();
+
+                    if (research) {
+                        fs.writeFileSync(researchOutput, JSON.stringify(nuxtResearchMap, null, 4));
+                        console.log(
+                            chalk.green(
+                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
+                            )
+                        );
+                    }
                 } else if (tech.name === "svelte") {
                     console.log(chalk.green("[✓] Svelte detected"));
                     console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
 
                     const queue = new DownloadQueue(output, threads);
                     activeQueue = queue;
+
+                    const svelteResearchMap: Record<string, string[]> = {};
 
                     // find the files from the page source
                     const jsFilesFromPageSource = shouldRunMethod(
@@ -287,6 +320,8 @@ const lazyLoad = async (
                         ? await svelte_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
+                    if (research)
+                        accumulateTechnique(svelteResearchMap, "svelte_getFromPageSource", jsFilesFromPageSource);
 
                     // probe /<appDir>/version.json — SvelteKit serves this for the `updated` store
                     // but never references it from HTML or JS, so it is invisible to all other steps
@@ -305,6 +340,7 @@ const lazyLoad = async (
                     if (versionJsonFiles.length > 0) {
                         queue.push(versionJsonFiles);
                     }
+                    if (research) accumulateTechnique(svelteResearchMap, "svelte_getVersionJson", versionJsonFiles);
 
                     // analyze the strings now
                     let jsFilesFromStringAnalysis: string[] = [];
@@ -317,6 +353,18 @@ const lazyLoad = async (
                         if (mapFilesFromStringAnalysis.length > 0) {
                             queue.push(mapFilesFromStringAnalysis);
                         }
+                        if (research) {
+                            accumulateTechnique(
+                                svelteResearchMap,
+                                "svelte_stringAnalysisJSFiles",
+                                jsFilesFromStringAnalysis
+                            );
+                            accumulateTechnique(
+                                svelteResearchMap,
+                                "svelte_stringAnalysisJSFiles",
+                                mapFilesFromStringAnalysis
+                            );
+                        }
                     }
 
                     // recursively follow ESM static imports (import ... from "./chunk.js")
@@ -327,6 +375,7 @@ const lazyLoad = async (
                         if (newFiles.length === 0) break;
                         console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
                         queue.push(newFiles);
+                        if (research) accumulateTechnique(svelteResearchMap, "react_followImports", newFiles);
                         toFollow = newFiles;
                     }
 
@@ -339,6 +388,8 @@ const lazyLoad = async (
                     )
                         ? await svelte_recursivePageCrawl(url, maxJsSizeMb, (files) => queue.push(files))
                         : [];
+                    if (research)
+                        accumulateTechnique(svelteResearchMap, "svelte_recursivePageCrawl", jsFilesFromPageCrawl);
 
                     // Svelte/Astro apps use client-side routing — the home page rarely has
                     // <a href> links in its server-rendered HTML. Scan downloaded JS for
@@ -355,6 +406,8 @@ const lazyLoad = async (
                     if (jsFilesFromPathScan.length > 0) {
                         queue.push(jsFilesFromPathScan);
                     }
+                    if (research)
+                        accumulateTechnique(svelteResearchMap, "svelte_discoverPagesFromJs", jsFilesFromPathScan);
 
                     // run string analysis once more to catch JS files discovered during page crawl
                     if (
@@ -367,10 +420,31 @@ const lazyLoad = async (
                         if (mapFilesFromStringAnalysis2.length > 0) {
                             queue.push(mapFilesFromStringAnalysis2);
                         }
+                        if (research) {
+                            accumulateTechnique(
+                                svelteResearchMap,
+                                "svelte_stringAnalysisJSFiles",
+                                jsFilesFromStringAnalysis2
+                            );
+                            accumulateTechnique(
+                                svelteResearchMap,
+                                "svelte_stringAnalysisJSFiles",
+                                mapFilesFromStringAnalysis2
+                            );
+                        }
                     }
 
                     await queue.drain();
                     queue.printSummary();
+
+                    if (research) {
+                        fs.writeFileSync(researchOutput, JSON.stringify(svelteResearchMap, null, 4));
+                        console.log(
+                            chalk.green(
+                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
+                            )
+                        );
+                    }
 
                     await extractSourceMaps(output, join(output, sourcemapDir));
                 } else if (tech.name === "angular") {
@@ -379,6 +453,8 @@ const lazyLoad = async (
 
                     const queue = new DownloadQueue(output, threads);
                     activeQueue = queue;
+
+                    const angularResearchMap: Record<string, string[]> = {};
 
                     // find the files from the page source
                     const jsFilesFromPageSource = shouldRunMethod(
@@ -389,6 +465,8 @@ const lazyLoad = async (
                         ? await angular_getFromPageSource(url)
                         : [];
                     queue.push(jsFilesFromPageSource);
+                    if (research)
+                        accumulateTechnique(angularResearchMap, "angular_getFromPageSource", jsFilesFromPageSource);
 
                     // files using the main.js
                     if (shouldRunMethod("angular_getFromMainJs", includeMethods, excludeMethods)) {
@@ -403,11 +481,22 @@ const lazyLoad = async (
                         if (mainJsUrl) {
                             const jsFilesFromMainJs = await angular_getFromMainJs(mainJsUrl);
                             queue.push(jsFilesFromMainJs);
+                            if (research)
+                                accumulateTechnique(angularResearchMap, "angular_getFromMainJs", jsFilesFromMainJs);
                         }
                     }
 
                     await queue.drain();
                     queue.printSummary();
+
+                    if (research) {
+                        fs.writeFileSync(researchOutput, JSON.stringify(angularResearchMap, null, 4));
+                        console.log(
+                            chalk.green(
+                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
+                            )
+                        );
+                    }
                 } else if (tech.name === "react") {
                     console.log(chalk.green("[✓] React detected"));
                     console.log(chalk.yellow(`Evidence: ${tech.evidence}`));
@@ -415,17 +504,21 @@ const lazyLoad = async (
                     const queue = new DownloadQueue(output, threads);
                     activeQueue = queue;
 
+                    const reactResearchMap: Record<string, string[]> = {};
+
                     // Seed: <script src> tags + <link rel="modulepreload"> (Vite vendor chunks)
                     const jsFilesFromPageSource = shouldRunMethod("react_getScriptTags", includeMethods, excludeMethods)
                         ? await react_getScriptTags(url, maxJsSizeMb, output)
                         : [];
                     queue.push(jsFilesFromPageSource);
+                    if (research) accumulateTechnique(reactResearchMap, "react_getScriptTags", jsFilesFromPageSource);
 
                     // webpack-style chunk path builders (CRA / custom webpack configs)
                     const webpackChunkPaths = shouldRunMethod("react_webpackChunkPaths", includeMethods, excludeMethods)
                         ? await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource)
                         : [];
                     queue.push(webpackChunkPaths);
+                    if (research) accumulateTechnique(reactResearchMap, "react_webpackChunkPaths", webpackChunkPaths);
 
                     // Recursively follow ESM imports and Vite __vite_mapDeps references.
                     // visited starts empty so the seed files are fetched and parsed in the first round.
@@ -437,6 +530,7 @@ const lazyLoad = async (
                             if (newFiles.length === 0) break;
                             console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
                             queue.push(newFiles);
+                            if (research) accumulateTechnique(reactResearchMap, "react_followImports", newFiles);
                             toFollow = newFiles;
                         }
                     }
@@ -445,10 +539,20 @@ const lazyLoad = async (
                     if (shouldRunMethod("react_sourcemapUrls", includeMethods, excludeMethods)) {
                         const sourcemapUrls = await react_sourcemapUrls([...visited]);
                         queue.push(sourcemapUrls);
+                        if (research) accumulateTechnique(reactResearchMap, "react_sourcemapUrls", sourcemapUrls);
                     }
 
                     await queue.drain();
                     queue.printSummary();
+
+                    if (research) {
+                        fs.writeFileSync(researchOutput, JSON.stringify(reactResearchMap, null, 4));
+                        console.log(
+                            chalk.green(
+                                "[✓] Research mode enabled. Technique efficiency written to " + researchOutput
+                            )
+                        );
+                    }
 
                     extractSourceMaps(output, join(output, sourcemapDir));
                 }

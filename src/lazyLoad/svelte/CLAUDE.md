@@ -19,6 +19,7 @@ Discovers and downloads SvelteKit JS chunks. SvelteKit's client routing emits pe
 - **No source maps in prod by default.** SvelteKit strips them; don't bother retry-fetching.
 - **`adapter-node` inline boot script.** SvelteKit's Node adapter emits an inline `<script>` block (no `src` attribute) that uses `Promise.all([import("./_app/immutable/entry/start.js"), ...])` to bootstrap the client. `svelte_getFromPageSource` handles this by scanning inline script bodies for `import("...")` arguments — the extracted entry-point paths seed the `react_followImports` loop that discovers the rest of the chunk graph. Do not remove this branch or the entire downstream pipeline collapses (0 JS files).
 - **`version.json` is never referenced.** SvelteKit builds emit `/<appDir>/version.json` (default `/_app/version.json`) for the `updated` store. The file has no HTML `<link>`/`<script>` tag and no `import()` call anywhere — all other discovery steps miss it. `svelte_getVersionJson` probes it directly after the page-source step, once the `appDir` is known from the discovered entry-point URLs.
+- **Research mode** (`--research`) is recorded directly in `../index.ts`'s Svelte branch, keyed by each method name above plus `react_followImports` for the shared ESM-import-following step — see `../CLAUDE.md`.
 
 ## How to test changes here
 

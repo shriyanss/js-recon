@@ -2,6 +2,7 @@ import chalk from "chalk";
 import cliProgress from "cli-progress";
 import vue_discoverJsFiles from "./vue_discoverJsFiles.js";
 import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
+import type { TechniqueRecorder } from "../researchUtils.js";
 
 /**
  * Recursively walks newly discovered Vue.js client-side paths.
@@ -23,7 +24,8 @@ const vue_recursiveClientSidePathDownload = async (
     maxJsSizeMb: number = 2,
     onFilesDiscovered?: (files: string[]) => void,
     includeMethods: string[] = [],
-    excludeMethods: string[] = []
+    excludeMethods: string[] = [],
+    onTechnique?: TechniqueRecorder
 ): Promise<string[]> => {
     const allJsFiles = new Set<string>();
     const visitedPaths = new Set<string>();
@@ -100,7 +102,8 @@ const vue_recursiveClientSidePathDownload = async (
                             maxJsSizeMb,
                             onFilesDiscovered,
                             includeMethods,
-                            excludeMethods
+                            excludeMethods,
+                            onTechnique
                         );
 
                         for (const file of jsFiles) {

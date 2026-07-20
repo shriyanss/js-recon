@@ -22,6 +22,7 @@ Discovers and downloads Vue (Vite-built) chunks. Vue bundles spread across asset
 - **Cross-host chunks are normal.** `map` step uses CDN-dir detection because Vue chunks frequently come from a different host than the page. Crawler MUST preserve original host in output paths.
 - **Recursive client-side path crawl** can explode on sites with parameterized routes. The recursion is bounded — adjust the limit in `vue_recursiveClientSidePathDownload.ts` rather than removing the bound.
 - **Sourcemap reconstruction is optional.** If `.map` is absent or invalid, fall through silently. Some Vue apps ship maps in production.
+- **Research mode.** `vue_discoverJsFiles` / `vue_recursiveClientSidePathDownload` accept an optional trailing `onTechnique` callback used to attribute discovered URLs to the specific internal technique (page src, RuntimeJs, viteMapDeps, etc.) when `--research` is enabled — see `../CLAUDE.md`.
 
 ## How to test changes here
 

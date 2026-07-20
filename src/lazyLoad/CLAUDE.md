@@ -15,6 +15,14 @@ Powers the `lazyload` subcommand and pipeline step 1 (every framework). Visits t
 - `techDetect/` — framework fingerprinting. See `techDetect/CLAUDE.md`.
 - `next_js/`, `vue/`, `react/`, `svelte/`, `angular/`, `nuxt_js/` — per-framework crawlers. Each implements its own chunk-discovery pattern; see the subdir CLAUDE.md.
 
+## Research mode (`--research`)
+
+`--research`/`--research-output <file>` instruments the discovery techniques used during a crawl. Enabled, it writes a `Record<string, string[]>` (technique name → discovered URLs, not deduplicated across techniques — the same URL can legitimately appear under more than one technique since this measures each technique's individual yield) to the research output file. Technique-name keys are meant to match the corresponding framework's entry in `FRAMEWORK_METHODS` (`methodFilter.ts`), so `--include-methods`/`--exclude-methods` and `--research` stay cross-referenceable.
+
+- **Next.js** is implemented inside `next_js/NextJsCrawler.ts` via the `public techniqueEfficiencyMapping` field, written out by `index.ts` only in the `tech.name === "next"` branch. Its key names have some legacy casing drift against `FRAMEWORK_METHODS.next_js` (e.g. `next_getJSScript` vs `next_GetJSScript`) — this is a known pre-existing inconsistency, left as-is.
+- **Vue, Nuxt, Svelte, Angular, React** build a local `Record<string, string[]>` directly in `index.ts`'s per-framework branch using `accumulateTechnique()` from `researchUtils.ts`, then write it out the same way as Next.js once the branch's queue drains. Because each of these frameworks calls `lazyLoad()` exactly once per target (no Next.js-style re-passes), there's no overwrite risk across multiple lazyload invocations.
+- **Vue is the one exception needing extra plumbing**: its top-level `index.ts` branch only calls `vue_discoverJsFiles`/`vue_recursiveClientSidePathDownload`, but the actual per-technique granularity (page-source scan, runtime.js, single/several-JS-on-home, viteMapDeps, jsImports, stringJsFiles, reconstructSourceMaps, getClientSidePaths) lives *inside* `vue_discoverJsFiles`. Both functions accept an optional trailing `onTechnique?: TechniqueRecorder` callback (from `researchUtils.ts`) that fires at each internal `emit()` site, including during path recursion, so research recording still attributes each URL to the specific technique that found it rather than lumping everything under `vue_discoverJsFiles`.
+
 ## Patterns / gotchas
 
 - **Tech detection is gated:** if `techDetect` returns an empty string, `run` aborts. Adding a new framework requires both a `checkX.ts` in `techDetect/` AND a crawler dir here — neither alone is enough.

@@ -9,6 +9,7 @@ import vue_getClientSidePaths from "./vue_getClientSidePaths.js";
 import vue_viteMapDeps from "./vue_viteMapDeps.js";
 import vue_stringJsFiles from "./vue_stringJsFiles.js";
 import { shouldRunMethod } from "../methodFilter.js";
+import type { TechniqueRecorder } from "../researchUtils.js";
 
 export interface VueDiscoveryResult {
     jsFiles: string[];
@@ -32,7 +33,8 @@ const vue_discoverJsFiles = async (
     maxJsSizeMb: number = 2,
     onFilesDiscovered?: (files: string[]) => void,
     includeMethods: string[] = [],
-    excludeMethods: string[] = []
+    excludeMethods: string[] = [],
+    onTechnique?: TechniqueRecorder
 ): Promise<VueDiscoveryResult> => {
     let jsFiles: string[] = [];
 
@@ -43,28 +45,29 @@ const vue_discoverJsFiles = async (
     const countNew = (files: string[], before: Set<string>): number =>
         files.filter((f) => !before.has(normalize(f))).length;
 
-    const emit = (files: string[]) => {
+    const emit = (technique: string, files: string[]) => {
         jsFiles.push(...files);
         if (files.length > 0 && onFilesDiscovered) {
             onFilesDiscovered(files.map((f) => (f.startsWith("//") ? "https:" + f : f)));
         }
+        onTechnique?.(technique, files);
     };
 
     // first, get all the JS files from the page source
     if (shouldRunMethod("vue_pageSrc", inc, exc)) {
-        emit(await vue_pageSrc(url));
+        emit("vue_pageSrc", await vue_pageSrc(url));
     }
 
     // method 1: through runtime.<hash>.js
     if (shouldRunMethod("vue_RuntimeJs", inc, exc)) {
-        emit(await vue_runtimeJs(url));
+        emit("vue_RuntimeJs", await vue_runtimeJs(url));
     }
 
     // single JS file on the page (typically dev-mode)
     if (shouldRunMethod("vue_SingleJsFileOnHome", inc, exc)) {
         const beforeSingleJs = new Set(jsFiles.map(normalize));
         const fromSingleJs = await vue_singleJsFileOnHome(url);
-        emit(fromSingleJs);
+        emit("vue_SingleJsFileOnHome", fromSingleJs);
         const newSingleJs = countNew(fromSingleJs, beforeSingleJs);
         if (newSingleJs > 0) {
             console.log(chalk.green(`[✓] Found ${newSingleJs} new files from the single JS file on home`));
@@ -73,14 +76,14 @@ const vue_discoverJsFiles = async (
 
     // several JS files referenced directly on the page
     if (shouldRunMethod("vue_severalJsFilesHome", inc, exc)) {
-        emit(await vue_severalJsFilesHome(url));
+        emit("vue_severalJsFilesHome", await vue_severalJsFilesHome(url));
     }
 
     // scan page-loaded JS files for Vite's __vite__mapDeps chunk manifest
     if (shouldRunMethod("vue_viteMapDeps", inc, exc)) {
         const beforeViteMapDeps = new Set(jsFiles.map(normalize));
         const fromViteMapDeps = await vue_viteMapDeps(jsFiles, maxJsSizeMb);
-        emit(fromViteMapDeps);
+        emit("vue_viteMapDeps", fromViteMapDeps);
         const newViteMapDeps = countNew(fromViteMapDeps, beforeViteMapDeps);
         if (newViteMapDeps > 0) {
             console.log(chalk.green(`[✓] Found ${newViteMapDeps} new files from __vite__mapDeps`));
@@ -91,7 +94,7 @@ const vue_discoverJsFiles = async (
     if (shouldRunMethod("vue_jsImports", inc, exc)) {
         const beforeJsImports = new Set(jsFiles.map(normalize));
         const fromImports = await vue_jsImports(url, jsFiles, maxJsSizeMb);
-        emit(fromImports);
+        emit("vue_jsImports", fromImports);
         const newJsImports = countNew(fromImports, beforeJsImports);
         if (newJsImports > 0) {
             console.log(chalk.green(`[✓] Found ${newJsImports} new files from import statements`));
@@ -102,7 +105,7 @@ const vue_discoverJsFiles = async (
     if (shouldRunMethod("vue_stringJsFiles", inc, exc)) {
         const beforeStringRefs = new Set(jsFiles.map(normalize));
         const fromStringRefs = await vue_stringJsFiles(jsFiles, maxJsSizeMb);
-        emit(fromStringRefs);
+        emit("vue_stringJsFiles", fromStringRefs);
         const newStringRefs = countNew(fromStringRefs, beforeStringRefs);
         if (newStringRefs > 0) {
             console.log(chalk.green(`[✓] Found ${newStringRefs} new files from string literal JS references`));
@@ -113,7 +116,7 @@ const vue_discoverJsFiles = async (
     if (shouldRunMethod("vue_reconstructSourceMaps", inc, exc)) {
         const beforeSourceMaps = new Set(jsFiles.map(normalize));
         const fromSourceMaps = await vue_reconstructSourceMaps(url, jsFiles);
-        emit(fromSourceMaps);
+        emit("vue_reconstructSourceMaps", fromSourceMaps);
         const newSourceMaps = countNew(fromSourceMaps, beforeSourceMaps);
         if (newSourceMaps > 0) {
             console.log(chalk.green(`[✓] Found ${newSourceMaps} new files from reconstructing source maps`));
@@ -126,6 +129,7 @@ const vue_discoverJsFiles = async (
     let clientSidePaths: string[] = [];
     if (shouldRunMethod("vue_getClientSidePaths", inc, exc)) {
         clientSidePaths = await vue_getClientSidePaths(url, jsFiles, maxJsSizeMb);
+        onTechnique?.("vue_getClientSidePaths", clientSidePaths);
     }
 
     return { jsFiles, clientSidePaths: [...new Set(clientSidePaths)] };

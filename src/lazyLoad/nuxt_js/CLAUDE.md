@@ -15,6 +15,7 @@ Discovers and downloads Nuxt JS chunks. Nuxt 3 emits chunks under `/_nuxt/` with
 - **Pipeline stops after lazyload.** Same as Angular — Nuxt is detected but downstream `map`/`analyze` are not wired. Don't add downstream assumptions here.
 - **Nuxt 2 vs 3 differ.** The manifest shape and globals are different. Detection in `../techDetect/checkNuxtJS.ts` lumps them; the parser here tolerates both — preserve that.
 - **`__NUXT__` payload can include sensitive server state** (request/response data inlined for hydration). The crawler captures it; downstream tools must NOT log its contents per the security policy in root `CLAUDE.md`.
+- **Research mode** (`--research`) is recorded directly in `../index.ts`'s Nuxt branch, keyed by `nuxt_getFromPageSource`, `nuxt_stringAnalysisJSFiles`, `nuxt_astParse`, and `nuxt_getBuildsManifest` — see `../CLAUDE.md`.
 
 ## How to test changes here
 

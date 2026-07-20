@@ -17,6 +17,7 @@ Discovers and downloads React JS chunks. Covers both CRA-style apps (single `mai
 - **No buildId concept.** Unlike Next, every chunk URL is fully derivable from the entry chunk's chunk-path template + hash map.
 - **CRA vs custom webpack.** CRA outputs are well-behaved; custom webpack configs sometimes use `[name].[contenthash].js` formats. The path-template parser handles both; if a target breaks, log the raw template before patching.
 - **`__vite_mapDeps` path resolution differs between frameworks.** Vite bundles include a lazy-load dependency table (`m.f = [...]`) that `react_followImports` parses. Three path formats exist in the wild: (1) absolute `/assets/chunk.js` (leading `/`), (2) bare `assets/chunk.js` (no leading `/` or `./`), and (3) explicit relative `../nodes/0.js`. Cases (1) and (2) are both root-relative — Vite emits them relative to the site root, not the chunk's directory — and are resolved against `baseUrl` (the origin). Only case (3) (`./` or `../` prefix) is file-relative and is resolved against `fileUrl`. Do not treat bare names like `assets/x.js` as file-relative; they would incorrectly double-up the directory segment when the chunk itself sits under `assets/`.
+- **Research mode** (`--research`) is recorded directly in `../index.ts`'s React branch, keyed by `react_getScriptTags`, `react_webpackChunkPaths`, `react_followImports`, and `react_sourcemapUrls` — see `../CLAUDE.md`.
 
 ## How to test changes here
 
