@@ -6,6 +6,7 @@ import makeRequest from "../utility/makeReq.js";
 import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope } from "./globals.js";
 import { progressLog, progressError, progressWarn } from "../utility/progressLog.js";
+import * as globalsUtil from "../utility/globals.js";
 
 export interface DownloadQueueOptions {
     /** Called after each URL is processed (downloaded, ignored, or failed). */
@@ -200,8 +201,10 @@ export class DownloadQueue {
                     fs.writeFileSync(filePath, formatted);
                 }
             } catch (writeErr) {
-                const shortErr = String(writeErr).split("\n")[0];
-                progressError(chalk.red(`[!] Failed to write file: ${filePath} : ${shortErr}`));
+                if (globalsUtil.getVerbose()) {
+                    const shortErr = String(writeErr).split("\n")[0];
+                    progressError(chalk.red(`[!] Failed to write file: ${filePath} : ${shortErr}`));
+                }
                 return;
             }
             this.downloadCount++;

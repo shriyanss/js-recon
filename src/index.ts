@@ -111,6 +111,7 @@ program
     .option("--max-js-size <mb>", "Maximum JS file size in MB to parse (Vue only)", "2")
     .option("--lazyload-timeout <minutes>", "Hard timeout for the lazyload module in minutes (0 = no timeout)", "30")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option("--verbose", "Show detailed file write error messages", false)
     .option(
         "--max-redirects <n>",
         "Maximum redirects to follow when resolving the default crawl scope for generic tech",
@@ -218,6 +219,7 @@ program
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setCacheOnly(cmd.cacheOnly);
         globalsUtil.setYes(cmd.yes);
+        globalsUtil.setVerbose(cmd.verbose);
         validateAndSetTimeout(cmd.timeout);
 
         configureSandbox(cmd);
@@ -571,6 +573,7 @@ program
     .option("--lazyload-timeout <minutes>", "Hard timeout for each lazyload step in minutes (0 = no timeout)", "30")
     .option("--max-heap <mb>", "V8 heap size cap in MB (0 = all available RAM)")
     .option("--max-pages <pages>", "Maximum HTML pages to visit during Next.js crawl (0 = unlimited)", "200")
+    .option("--verbose", "Show detailed file write error messages", false)
     .option(
         "--max-redirects <n>",
         "Maximum redirects to follow when resolving the default crawl scope for generic tech",
@@ -691,6 +694,7 @@ program
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setCacheOnly(cmd.cacheOnly);
+        globalsUtil.setVerbose(cmd.verbose);
 
         configureSandbox(cmd);
 

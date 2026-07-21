@@ -5,6 +5,7 @@ import prettier from "prettier";
 import makeRequest from "../utility/makeReq.js";
 import { getURLDirectory } from "../utility/urlUtils.js";
 import { getScope, getMaxReqQueue } from "./globals.js"; // Import scope and max_req_queue functions
+import * as globalsUtil from "../utility/globals.js";
 
 /**
  * Downloads the provided JavaScript or JSON URLs and stores them in the given output directory.
@@ -103,7 +104,9 @@ const downloadFiles = async (urls: string[], output: string) => {
                     fs.writeFileSync(filePath, formatted);
                 }
             } catch {
-                console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
+                if (globalsUtil.getVerbose()) {
+                    console.error(chalk.red(`[!] Failed to write file: ${filePath}`));
+                }
             }
             download_count++;
         } catch (err) {

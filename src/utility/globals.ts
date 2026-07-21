@@ -251,6 +251,17 @@ export const getQuiet = (): boolean => {
     return quiet;
 };
 
+// Verbose mode — shows detailed file write error messages
+export let verbose = false;
+
+export const setVerbose = (value: boolean): void => {
+    verbose = value;
+};
+
+export const getVerbose = (): boolean => {
+    return verbose;
+};
+
 // Technology Detection
 /** Detected technology stack */
 export let tech = "";
