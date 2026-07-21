@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# git pre-commit hook: redirects newly-staged real CLAUDE.md files to js-recon-agentic-files.
+exec "$(git rev-parse --show-toplevel)/.claude-sync/capture-new.sh"
