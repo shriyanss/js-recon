@@ -11,6 +11,7 @@ import { checkSvelte } from "./checkSvelte.js";
 import { checkVueJS } from "./checkVueJS.js";
 import { checkAngularJS } from "./checkAngularJS.js";
 import { checkReact } from "./checkReact.js";
+import { isSigintHandlerActive } from "../../run/interruptHandler.js";
 
 /**
  * Detects the front-end framework used in a webpage.
@@ -56,6 +57,7 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
             args: globalsUtil.getDisableSandbox()
                 ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
                 : [],
+            handleSIGINT: !isSigintHandlerActive(),
         });
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(30000);

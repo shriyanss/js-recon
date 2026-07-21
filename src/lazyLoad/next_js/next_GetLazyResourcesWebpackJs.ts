@@ -11,6 +11,7 @@ import execFunc from "../../utility/runSandboxed.js";
 import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js";
 import * as globals from "../../utility/globals.js";
 import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
+import { isSigintHandlerActive } from "../../run/interruptHandler.js";
 
 type MatchedFunction = {
     source: string;
@@ -44,6 +45,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
         headless: true,
         executablePath: chromiumPath,
         args: ["--disable-external-protocol-dialog", ...sandboxArgs],
+        handleSIGINT: !isSigintHandlerActive(),
     });
 
     const page = await browser.newPage();

@@ -20,6 +20,7 @@ import {
     resetSkipStep,
     shouldSkipTarget,
     resetSkipTarget,
+    waitForPendingInterrupt,
 } from "./interruptHandler.js";
 import { detectBundler } from "./bundler-detect.js";
 
@@ -782,6 +783,7 @@ export default async (cmd: any): Promise<void> => {
             }
         }
     } finally {
+        await waitForPendingInterrupt();
         removeSigintHandler();
         process.exit(process.exitCode ?? 0);
     }

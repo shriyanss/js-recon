@@ -6,6 +6,7 @@ import { get } from "../api_gateway/genReq.js";
 import fs from "fs";
 import { EventEmitter } from "events";
 import { progressError, progressLog } from "./progressLog.js";
+import { isSigintHandlerActive } from "../run/interruptHandler.js";
 
 const reportedFailures = new Set<string>();
 
@@ -249,6 +250,7 @@ const handleFirewall = async (url: string, resp_text: string): Promise<string | 
             args: globals.getDisableSandbox()
                 ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
                 : [],
+            handleSIGINT: !isSigintHandlerActive(),
         });
         const page = await browser.newPage();
         await page.goto(url);
@@ -265,6 +267,7 @@ const handleFirewall = async (url: string, resp_text: string): Promise<string | 
             args: globals.getDisableSandbox()
                 ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
                 : [],
+            handleSIGINT: !isSigintHandlerActive(),
         });
         const page = await browser.newPage();
         await page.goto(url);
