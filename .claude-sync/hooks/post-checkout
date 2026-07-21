@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# git post-checkout hook: re-syncs CLAUDE.md symlinks whenever a branch switch happens.
+prev_head="$1"
+new_head="$2"
+branch_checkout="$3"
+
+if [ "$branch_checkout" = "1" ]; then
+    ROOT="$(git rev-parse --show-toplevel)"
+    # Resolve which branch prev_head belongs to (the branch we're leaving) so any
+    # leftover real CLAUDE.md file gets attributed correctly — HEAD has already
+    # moved to the new branch by the time this hook runs, and git has no
+    # pre-checkout hook to capture beforehand.
+    prev_branch="$(git for-each-ref --points-at="$prev_head" --format='%(refname:short)' refs/heads/ 2>/dev/null | head -1)"
+    "$ROOT/.claude-sync/capture-scan.sh" "$prev_branch"
+    "$ROOT/.claude-sync/sync.sh"
+fi

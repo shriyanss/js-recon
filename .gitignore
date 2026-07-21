@@ -139,8 +139,8 @@ strings.json
 extracted_urls*
 .api_gateway_config.json
 .resp_cache.json
-.vscode
 .vscode/*
+!.vscode/tasks.json
 output*/
 mapped.json
 mapped-openapi.postman_collection.json
@@ -163,3 +163,9 @@ results.*
 out.*
 
 collisions.*
+# Claude documentation files: tracked in the private js-recon-agentic-files repo
+# and symlinked in via .claude-sync/sync.sh (see CLAUDE.md "Claude documentation storage & sync" section).
+CLAUDE.md
+**/CLAUDE.md
+.claude/skills/
+**/.claude/skills/
