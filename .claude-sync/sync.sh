@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Syncs CLAUDE.md / .claude/skills symlinks from the sibling js-recon-agentic-files
-# checkout to match the currently checked-out branch of this repo.
+# Syncs CLAUDE.md / .claude/skills / .claude/agents symlinks from the sibling
+# js-recon-agentic-files checkout to match the currently checked-out branch of this repo.
 set -euo pipefail
 
 JS_RECON_ROOT="$(git rev-parse --show-toplevel)"
@@ -43,10 +43,10 @@ while IFS= read -r link; do
             fi
             ;;
     esac
-done < <(find "$JS_RECON_ROOT" -type l \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*")
+done < <(find "$JS_RECON_ROOT" -type l \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" -o -path "*/.claude/agents/*" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*")
 
-# 2. Create/update symlinks for every CLAUDE.md (and .claude/skills entry) present
-#    on this branch in the agentic checkout.
+# 2. Create/update symlinks for every CLAUDE.md (and .claude/skills, .claude/agents
+#    entry) present on this branch in the agentic checkout.
 while IFS= read -r src; do
     rel="${src#$AGENTIC_REPO_PATH/}"
     dest="$JS_RECON_ROOT/$rel"
@@ -58,6 +58,6 @@ while IFS= read -r src; do
 
     mkdir -p "$(dirname "$dest")"
     ln -sf "$src" "$dest"
-done < <(find "$AGENTIC_REPO_PATH" \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*")
+done < <(find "$AGENTIC_REPO_PATH" -type f \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" -o -path "*/.claude/agents/*" \) -not -path "*/.git/*")
 
-echo "[claude-sync] synced CLAUDE.md files for branch '$CURRENT_BRANCH'"
+echo "[claude-sync] synced CLAUDE.md / skills / agents files for branch '$CURRENT_BRANCH'"
