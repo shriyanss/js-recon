@@ -142,7 +142,7 @@ const generic_crawlPages = async (
         let newJsUrls = scriptUrls.filter((u) => !downloadedJsUrls.has(u));
 
         if (pageSource) {
-            const attrCandidates = await generic_scanAttributesForJs(pageSource, pageUrl);
+            const attrCandidates = await generic_scanAttributesForJs(pageSource, pageUrl, downloadedJsUrls);
             if (researchMap) accumulateTechnique(researchMap, "generic_scanAttributesForJs", attrCandidates);
             newJsUrls = [...new Set([...newJsUrls, ...attrCandidates.filter((u) => !downloadedJsUrls.has(u))])];
         }

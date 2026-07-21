@@ -104,8 +104,12 @@ export const confirmJsContentType = async (candidates: string[], concurrency: nu
     return confirmed;
 };
 
-const generic_scanAttributesForJs = async (html: string, baseUrl: string): Promise<string[]> => {
-    const candidates = findJsPathSegmentCandidates(html, baseUrl);
+const generic_scanAttributesForJs = async (
+    html: string,
+    baseUrl: string,
+    alreadyKnownUrls: Set<string> = new Set()
+): Promise<string[]> => {
+    const candidates = findJsPathSegmentCandidates(html, baseUrl).filter((u) => !alreadyKnownUrls.has(u));
     if (candidates.length === 0) return [];
     return confirmJsContentType(candidates);
 };
