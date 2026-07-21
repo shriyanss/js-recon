@@ -200,7 +200,8 @@ export class DownloadQueue {
                     fs.writeFileSync(filePath, formatted);
                 }
             } catch (writeErr) {
-                progressError(chalk.red(`[!] Failed to write file: ${filePath} : ${writeErr}`));
+                const shortErr = String(writeErr).split("\n")[0];
+                progressError(chalk.red(`[!] Failed to write file: ${filePath} : ${shortErr}`));
                 return;
             }
             this.downloadCount++;
