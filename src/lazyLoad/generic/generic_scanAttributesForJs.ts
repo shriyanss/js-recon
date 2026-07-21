@@ -62,24 +62,44 @@ export const findJsPathSegmentCandidates = (html: string, baseUrl: string): stri
  * Uses GET rather than HEAD: makeRequest's response cache is keyed on URL only (not
  * method), so a cached HEAD response would poison the later GET that downloads the
  * body — every other crawler in this codebase uses GET for the same reason.
+ *
+ * `concurrency` (default 1, matching every other generic-tech call site's default
+ * single-threaded behavior) controls how many candidates are in flight at once — a
+ * worker-pool over the candidate list, same shape as generic_downloadFiles.ts's
+ * `processOne`/`worker` pattern. Internal#75: a webpack chunk-hash-map can list far
+ * more candidates than a string-literal scan ever would (every chunk ID an entry
+ * chunk knows about, not just ones referenced by a literal path), and each failing
+ * candidate costs up to `10 retries * requestTimeout` in makeRequest — sequential
+ * confirmation of a large candidate batch, with even a handful of dead chunk IDs in
+ * it, becomes prohibitively slow. Passing a caller-supplied `threads` value here
+ * (already threaded through generic tech for downloads) keeps that path proportional.
  */
-export const confirmJsContentType = async (candidates: string[]): Promise<string[]> => {
+export const confirmJsContentType = async (candidates: string[], concurrency: number = 1): Promise<string[]> => {
     const confirmed: string[] = [];
+    let cursor = 0;
 
-    for (const url of candidates) {
-        let contentType: string | null = null;
-        try {
-            const res = await makeRequest(url, { method: "GET" });
-            contentType = res?.headers.get("content-type") ?? null;
-        } catch {
-            continue;
-        }
+    const worker = async () => {
+        while (true) {
+            const idx = cursor++;
+            if (idx >= candidates.length) break;
+            const url = candidates[idx];
 
-        if (isJsContentType(contentType)) {
-            console.log(chalk.green(`[✓] Confirmed JS via Content-Type: ${url}`));
-            confirmed.push(url);
+            let contentType: string | null = null;
+            try {
+                const res = await makeRequest(url, { method: "GET" });
+                contentType = res?.headers.get("content-type") ?? null;
+            } catch {
+                continue;
+            }
+
+            if (isJsContentType(contentType)) {
+                console.log(chalk.green(`[✓] Confirmed JS via Content-Type: ${url}`));
+                confirmed.push(url);
+            }
         }
-    }
+    };
+
+    await Promise.all(Array.from({ length: Math.max(1, concurrency) }, () => worker()));
 
     return confirmed;
 };

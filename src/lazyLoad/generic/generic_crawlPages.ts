@@ -3,11 +3,19 @@ import generic_getScriptTags from "./generic_getScriptTags.js";
 import generic_scanAttributesForJs from "./generic_scanAttributesForJs.js";
 import generic_downloadFiles from "./generic_downloadFiles.js";
 import generic_stringsDiscovery from "./generic_stringsDiscovery.js";
+import generic_importMapDiscovery from "./generic_importMapDiscovery.js";
+import generic_webpackChunkPaths from "./generic_webpackChunkPaths.js";
 import { extractPageLinks } from "./generic_extractLinks.js";
 import { resolveJsPathCandidate, confirmJsContentType } from "./generic_scanAttributesForJs.js";
 import { accumulateTechnique } from "../researchUtils.js";
 import * as lazyLoadGlobals from "../globals.js";
 import { StagnationMonitor } from "../stagnation/stagnationMonitor.js";
+
+// internal#74 / internal#75: import-map manifests and webpack chunk hash-maps are
+// finite, already-known structures (unlike open-ended strings discovery) — a handful of
+// rounds is enough to reach a fixed point in practice, but the loop stays bounded rather
+// than unconditional in case a pathological manifest chain never converges.
+const STRUCTURAL_DISCOVERY_MAX_ITERATIONS = 5;
 
 /**
  * Whether a link's host is within the active scope list. "*" allows any host —
@@ -42,6 +50,16 @@ export const isInScope = (url: string, scope: string[]): boolean => {
  * downloads any new confirmed JS files. This repeats — new downloads feed the
  * next strings pass — until a pass finds nothing new or stringsMaxIterations
  * is reached, the same "loop until nothing new" shape as react_followImports.
+ *
+ * Regardless of stringsEnabled, once the page crawl is exhausted a structural
+ * discovery pass runs unconditionally (internal#74, internal#75): generic_importMapDiscovery.ts
+ * parses already-downloaded files for Module Federation "import map" manifests and seeds
+ * every listed remote-entry.js URL, and generic_webpackChunkPaths.ts applies the same
+ * webpack chunk-hash-map patterns the React crawler resolves (shared via
+ * ../shared/webpackChunkParsers.ts) to statically enumerate a downloaded entry chunk's
+ * own async-chunk set. Both repeat — newly downloaded files feed the next pass — until a
+ * round finds nothing new, since a newly-discovered remote-entry.js can itself carry
+ * either pattern.
  *
  * When stagnationTimeinMs > 0, a StagnationMonitor tracks JS content hashes (recorded
  * globally by generic_downloadFiles.ts / generic_getScriptTags.ts as files are discovered)
@@ -142,6 +160,30 @@ const generic_crawlPages = async (
         newLinks.forEach((l) => queued.add(l));
         if (researchMap) accumulateTechnique(researchMap, "generic_crawlPages", newLinks);
         queue.push(...newLinks);
+    }
+
+    for (let iteration = 0; iteration < STRUCTURAL_DISCOVERY_MAX_ITERATIONS; iteration++) {
+        const [importMapUrls, chunkPathUrls] = await Promise.all([
+            generic_importMapDiscovery(outputDir, downloadedJsUrls, threads),
+            generic_webpackChunkPaths(outputDir, downloadedJsUrls, threads),
+        ]);
+        const freshUrls = [...new Set([...importMapUrls, ...chunkPathUrls])].filter(
+            (u) => !downloadedJsUrls.has(u)
+        );
+
+        if (researchMap) accumulateTechnique(researchMap, "generic_importMapDiscovery", importMapUrls);
+        if (researchMap) accumulateTechnique(researchMap, "generic_webpackChunkPaths", chunkPathUrls);
+
+        if (freshUrls.length === 0) {
+            if (iteration === 0) {
+                console.log(chalk.yellow("[i] No import-map manifests or webpack chunk hash-maps found"));
+            }
+            break;
+        }
+
+        console.log(chalk.green(`[✓] Found ${freshUrls.length} new JS file(s) via structural discovery`));
+        freshUrls.forEach((u) => downloadedJsUrls.add(u));
+        await generic_downloadFiles(freshUrls, outputDir, threads);
     }
 
     if (stringsEnabled) {
