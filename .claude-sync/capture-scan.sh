@@ -47,7 +47,7 @@ while IFS= read -r f; do
     ln -s "$dest" "$f"
     echo "[claude-sync] captured $rel into js-recon-agentic-files (branch $CURRENT_BRANCH), replaced with symlink"
     captured=1
-done < <(find "$JS_RECON_ROOT" \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*" -not -path "$AGENTIC_REPO_PATH/*" -type f)
+done < <(find "$JS_RECON_ROOT" \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" -not -path "$AGENTIC_REPO_PATH/*" -type f)
 
 if [ "$captured" -eq 0 ]; then
     exit 0
