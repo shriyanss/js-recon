@@ -167,9 +167,7 @@ const generic_crawlPages = async (
             generic_importMapDiscovery(outputDir, downloadedJsUrls, threads),
             generic_webpackChunkPaths(outputDir, downloadedJsUrls, threads),
         ]);
-        const freshUrls = [...new Set([...importMapUrls, ...chunkPathUrls])].filter(
-            (u) => !downloadedJsUrls.has(u)
-        );
+        const freshUrls = [...new Set([...importMapUrls, ...chunkPathUrls])].filter((u) => !downloadedJsUrls.has(u));
 
         if (researchMap) accumulateTechnique(researchMap, "generic_importMapDiscovery", importMapUrls);
         if (researchMap) accumulateTechnique(researchMap, "generic_webpackChunkPaths", chunkPathUrls);

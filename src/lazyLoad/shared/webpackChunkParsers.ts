@@ -176,10 +176,7 @@ export const extractExpressionBodyChunkFilenames = (jsContent: string): string[]
 const resolveChunkUrl = (output: string, fileUrl: string): string | null => {
     try {
         const normalized =
-            output.startsWith("/") ||
-            output.startsWith("http") ||
-            output.startsWith("./") ||
-            output.startsWith("../")
+            output.startsWith("/") || output.startsWith("http") || output.startsWith("./") || output.startsWith("../")
                 ? output
                 : "../" + output;
         return new URL(normalized, fileUrl).href;
