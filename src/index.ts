@@ -222,32 +222,41 @@ program
 
         configureSandbox(cmd);
 
-        await lazyLoad(
-            cmd.url,
-            cmd.output,
-            cmd.strictScope,
-            cmd.scope.split(","),
-            Number(cmd.threads),
-            cmd.subsequentRequests,
-            cmd.urlsFile,
-            cmd.insecure,
-            cmd.buildId,
-            cmd.sourcemapDir,
-            cmd.research,
-            cmd.researchOutput,
-            Number(cmd.maxIterations),
-            Number(cmd.maxJsSize),
-            Number(cmd.lazyloadTimeout) * 60 * 1000,
-            Number(cmd.maxPages),
-            includeMethods,
-            excludeMethods,
-            Number(cmd.maxRedirects),
-            cmd.strings,
-            Number(cmd.stringsMaxIterations),
-            Number(cmd.stagnationTimein) * 60 * 1000,
-            Number(cmd.stagnationPercentage),
-            Number(cmd.stagnationMonitor) * 60 * 1000
-        );
+        try {
+            await lazyLoad(
+                cmd.url,
+                cmd.output,
+                cmd.strictScope,
+                cmd.scope.split(","),
+                Number(cmd.threads),
+                cmd.subsequentRequests,
+                cmd.urlsFile,
+                cmd.insecure,
+                cmd.buildId,
+                cmd.sourcemapDir,
+                cmd.research,
+                cmd.researchOutput,
+                Number(cmd.maxIterations),
+                Number(cmd.maxJsSize),
+                Number(cmd.lazyloadTimeout) * 60 * 1000,
+                Number(cmd.maxPages),
+                includeMethods,
+                excludeMethods,
+                Number(cmd.maxRedirects),
+                cmd.strings,
+                Number(cmd.stringsMaxIterations),
+                Number(cmd.stagnationTimein) * 60 * 1000,
+                Number(cmd.stagnationPercentage),
+                Number(cmd.stagnationMonitor) * 60 * 1000
+            );
+        } finally {
+            // internal#78: the hard-timeout race in lazyLoad() only abandons in-flight
+            // network requests, it doesn't cancel them — without this, the process can
+            // stay alive indefinitely after the timeout fires waiting on work nothing
+            // is still consuming. `run` already does this in its own finally block
+            // (src/run/index.ts) for the same reason; bare `lazyload` needs it too.
+            process.exit(process.exitCode ?? 0);
+        }
     });
 
 program
