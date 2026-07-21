@@ -43,7 +43,7 @@ while IFS= read -r link; do
             fi
             ;;
     esac
-done < <(find "$JS_RECON_ROOT" -type l \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*")
+done < <(find "$JS_RECON_ROOT" -type l \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*")
 
 # 2. Create/update symlinks for every CLAUDE.md (and .claude/skills entry) present
 #    on this branch in the agentic checkout.
