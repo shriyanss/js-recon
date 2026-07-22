@@ -285,18 +285,23 @@ program
         globalsUtil.setProxyConfigFile(cmd.config);
         globalsUtil.setUseProxy(true);
         globalsUtil.setProxyMethod("aws");
-        await proxy(
-            cmd.init,
-            cmd.destroy,
-            cmd.destroyAll,
-            cmd.list,
-            cmd.region,
-            cmd.awsAccessKey,
-            cmd.awsSecretKey,
-            cmd.config,
-            cmd.feasibility,
-            cmd.feasibilityUrl
-        );
+        try {
+            await proxy(
+                cmd.init,
+                cmd.destroy,
+                cmd.destroyAll,
+                cmd.list,
+                cmd.region,
+                cmd.awsAccessKey,
+                cmd.awsSecretKey,
+                cmd.config,
+                cmd.feasibility,
+                cmd.feasibilityUrl
+            );
+        } catch (err) {
+            console.error(chalk.red(`[!] ${err.message}`));
+            process.exit(1);
+        }
     });
 
 program

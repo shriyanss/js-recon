@@ -29,10 +29,12 @@ export const withProxyDispatcher = (opts: RequestInit = {}): FetchOptsWithDispat
 export const buildUndiciDispatcher = (resolved: ResolvedProxyConfig): Dispatcher | null => {
     if (resolved.method === "socks") {
         if (!resolved.url) return null;
+        parseProxyUrl(resolved.url); // validates before constructing the agent
         return new Socks5ProxyAgent(resolved.url);
     }
     if (resolved.method === "http") {
         if (!resolved.url) return null;
+        parseProxyUrl(resolved.url); // validates before constructing the agent
         return new ProxyAgent(resolved.url);
     }
     if (resolved.method === "oxylabs") {

@@ -1,6 +1,8 @@
 import fs from "fs";
+import chalk from "chalk";
 import * as globalsUtil from "./globals.js";
 import { resolveProxyConfig } from "../proxy/resolveProxyConfig.js";
+import { parseProxyUrl } from "../proxy/genericProxy.js";
 
 /**
  * Reads the proxy config file (if present), resolves CLI > env > file precedence via
@@ -33,6 +35,15 @@ const configureProxy = (cmd): void => {
         ignoreEnv: cmd.ignoreProxyEnv === true,
         configFileParsed,
     });
+
+    if ((resolved.method === "socks" || resolved.method === "http") && resolved.url) {
+        try {
+            parseProxyUrl(resolved.url);
+        } catch (err) {
+            console.error(chalk.red(`[!] Invalid proxy URL: ${err.message}`));
+            process.exit(1);
+        }
+    }
 
     globalsUtil.setProxyConfigFile(configFile);
     globalsUtil.setIgnoreProxyEnv(cmd.ignoreProxyEnv === true);

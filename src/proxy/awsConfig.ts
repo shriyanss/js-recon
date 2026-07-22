@@ -37,7 +37,11 @@ const readFullConfig = (configFile: string): Record<string, unknown> => {
     if (!fs.existsSync(configFile)) {
         return {};
     }
-    return JSON.parse(fs.readFileSync(configFile, "utf8"));
+    try {
+        return JSON.parse(fs.readFileSync(configFile, "utf8"));
+    } catch (error) {
+        throw new Error(`Failed to parse proxy config file ${configFile}: ${error.message}`);
+    }
 };
 
 /**
