@@ -448,11 +448,7 @@ program
     .option("-l, --list", "List available technologies", false)
     .option("--validate", "Validate the rules", false)
     .option("-o, --output <file>", "Output JSON file name", "analyze.json")
-    .option(
-        "--disable-rules-version-check",
-        "Skip the GitHub rules version check and use cached rules as-is",
-        false
-    )
+    .option("--disable-rules-version-check", "Skip the GitHub rules version check and use cached rules as-is", false)
     .action(async (cmd) => {
         await analyze(
             cmd.rules,
