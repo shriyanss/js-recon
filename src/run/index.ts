@@ -170,7 +170,7 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileReact, "react", false, openapiFile, false, analyzeFile),
+            analyze(cmd.rules || "", mappedJsonFileReact, "react", false, openapiFile, false, analyzeFile, !!cmd.disableRulesVersionCheck),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -251,7 +251,7 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileVue, "vue", false, openapiFile, false, analyzeFile),
+            analyze(cmd.rules || "", mappedJsonFileVue, "vue", false, openapiFile, false, analyzeFile, !!cmd.disableRulesVersionCheck),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -331,7 +331,7 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileNuxt, "vue", false, openapiFile, false, analyzeFile),
+            analyze(cmd.rules || "", mappedJsonFileNuxt, "vue", false, openapiFile, false, analyzeFile, !!cmd.disableRulesVersionCheck),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -409,7 +409,7 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileSvelte, "svelte", false, openapiFile, false, analyzeFile),
+            analyze(cmd.rules || "", mappedJsonFileSvelte, "svelte", false, openapiFile, false, analyzeFile, !!cmd.disableRulesVersionCheck),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -466,7 +466,7 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileAngular, "angular", false, openapiFile, false, analyzeFile),
+            analyze(cmd.rules || "", mappedJsonFileAngular, "angular", false, openapiFile, false, analyzeFile, !!cmd.disableRulesVersionCheck),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -631,7 +631,7 @@ const processUrl = async (
     resetSkipStep();
     await Promise.race([
         // @ts-ignore
-        analyze(cmd.rules || "", mappedJsonFile, detectedTech, false, openapiFile, false, analyzeFile),
+        analyze(cmd.rules || "", mappedJsonFile, detectedTech, false, openapiFile, false, analyzeFile, !!cmd.disableRulesVersionCheck),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Analyze complete."));

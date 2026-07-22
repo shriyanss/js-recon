@@ -1,0 +1,13 @@
+ARG BASE_IMAGE=js-recon/js-recon
+FROM ${BASE_IMAGE}
+
+USER root
+COPY js-recon-rules/ /home/pptruser/.js-recon/rules/
+RUN rm -rf /home/pptruser/.js-recon/rules/.github && \
+    if [ -d /home/pptruser/.js-recon/rules/skills ]; then \
+        mv /home/pptruser/.js-recon/rules/skills /home/pptruser/.js-recon/skills; \
+    fi && \
+    chown -R pptruser:pptruser /home/pptruser/.js-recon
+USER pptruser
+
+ENV JS_RECON_DISABLE_RULES_VERSION_CHECK=true

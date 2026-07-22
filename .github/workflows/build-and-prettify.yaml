@@ -225,6 +225,39 @@ jobs:
           path: output/localhost_3001/analyze.json
           if-no-files-found: ignore
 
+      - name: Build the rules-bundled (-w-rules) image
+        run: docker build -f Dockerfile.w-rules --build-arg BASE_IMAGE=js-recon/js-recon -t js-recon/js-recon-w-rules .
+
+      - name: Run js-recon-w-rules via Docker against lab app (no rules mount, no -r)
+        run: |
+          mkdir -p output-w-rules
+          docker run --name js-recon-w-rules-run \
+            --network host \
+            --entrypoint /bin/bash \
+            js-recon/js-recon-w-rules \
+            -c 'printf "http://localhost:3001\n" > /tmp/urls.txt && node build/index.js run -u /tmp/urls.txt --no-sandbox -y -k' \
+            | tee docker-w-rules-run.log
+          docker cp js-recon-w-rules-run:/home/pptruser/output/. ./output-w-rules/ 2>/dev/null || true
+          docker rm js-recon-w-rules-run
+
+      - name: Verify the version check was actually skipped
+        run: |
+          grep -q "Rules version check disabled" docker-w-rules-run.log || {
+            echo "Expected log line confirming JS_RECON_DISABLE_RULES_VERSION_CHECK was honored not found"
+            exit 1
+          }
+
+      - name: Verify all rules fired (w-rules image)
+        run: node scripts/smoke-test.js output-w-rules/localhost_3001/analyze.json
+
+      - name: Upload w-rules analyze.json on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyze-json-docker-w-rules
+          path: output-w-rules/localhost_3001/analyze.json
+          if-no-files-found: ignore
+
   integration-test-macos:
     needs: build
     runs-on: macos-latest

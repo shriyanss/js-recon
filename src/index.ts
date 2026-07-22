@@ -448,8 +448,22 @@ program
     .option("-l, --list", "List available technologies", false)
     .option("--validate", "Validate the rules", false)
     .option("-o, --output <file>", "Output JSON file name", "analyze.json")
+    .option(
+        "--disable-rules-version-check",
+        "Skip the GitHub rules version check and use cached rules as-is",
+        false
+    )
     .action(async (cmd) => {
-        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate, cmd.output);
+        await analyze(
+            cmd.rules,
+            cmd.mappedJson,
+            cmd.tech,
+            cmd.list,
+            cmd.openapi,
+            cmd.validate,
+            cmd.output,
+            !!cmd.disableRulesVersionCheck
+        );
     });
 
 program
@@ -477,6 +491,11 @@ program
     .description("Run all modules")
     .option("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")
+    .option(
+        "--disable-rules-version-check",
+        "Skip the GitHub rules version check and use cached rules as-is (passed to analyze module)",
+        false
+    )
     .option(
         "-c, --command <command>",
         "Run an interactive-mode command on the mapped chunks non-interactively (forwarded to the map step). Can be passed multiple times, or chain several with `&&` inside a single value (e.g. -c 'list fetch && go to 1234').",
