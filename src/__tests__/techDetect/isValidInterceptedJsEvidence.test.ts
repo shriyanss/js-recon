@@ -11,9 +11,9 @@ describe("isValidInterceptedJsEvidence", () => {
     });
 
     it("rejects a non-2xx status even with a JS content-type", () => {
-        expect(
-            isValidInterceptedJsEvidence(500, "text/javascript", "Your request could not be processed.")
-        ).toBe(false);
+        expect(isValidInterceptedJsEvidence(500, "text/javascript", "Your request could not be processed.")).toBe(
+            false
+        );
     });
 
     it("rejects a non-JS content-type", () => {
@@ -23,9 +23,7 @@ describe("isValidInterceptedJsEvidence", () => {
 
     it("rejects an HTML-shaped body even when the content-type claims JS", () => {
         expect(isValidInterceptedJsEvidence(200, "text/javascript", "<!DOCTYPE html><html></html>")).toBe(false);
-        expect(isValidInterceptedJsEvidence(200, "text/javascript", "<html><body>error</body></html>")).toBe(
-            false
-        );
+        expect(isValidInterceptedJsEvidence(200, "text/javascript", "<html><body>error</body></html>")).toBe(false);
     });
 
     it("rejects a missing content-type", () => {
