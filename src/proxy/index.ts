@@ -1,22 +1,10 @@
 import chalk from "chalk";
 import { APIGatewayClient, CreateRestApiCommand, DeleteRestApiCommand } from "@aws-sdk/client-api-gateway";
-import fs from "fs";
 import checkFeasibility from "./checkFeasibility.js";
+import { readAwsGatewayMap, writeAwsGatewayMap } from "./awsConfig.js";
 
 // read the docs for all the methods for api gateway at https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/api-gateway/
 // for the rate limits, refer to https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html
-
-interface ApiGatewayConfig {
-    (key: string): {
-        id: string;
-        name: string;
-        description: string;
-        created_at: number;
-        region: string;
-        access_key: string;
-        secret_key: string;
-    };
-}
 
 /**
  * Selects a random AWS region from the available API Gateway regions.
@@ -116,13 +104,8 @@ const createGateway = async () => {
     console.log(chalk.bgGreen("Name:"), chalk.green(apigw_name));
     console.log(chalk.bgGreen("Region:"), chalk.green(region));
 
-    // load the config file if any. Else, create a new one
-    let config = {};
-    try {
-        config = JSON.parse(fs.readFileSync(configFile, "utf8"));
-    } catch (e) {
-        config = {};
-    }
+    // load the existing aws gateway map, if any
+    const config = readAwsGatewayMap(configFile);
 
     config[apigw_name] = {
         id: response.id,
@@ -134,7 +117,7 @@ const createGateway = async () => {
         secret_key: aws_secret_key,
     };
 
-    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    writeAwsGatewayMap(configFile, config);
     console.log(chalk.green(`[✓] Config saved to ${configFile}`));
 };
 
@@ -151,8 +134,8 @@ const destroyGateway = async (id: string): Promise<void> => {
         console.error(chalk.red("[!] Please provide an API Gateway ID"));
         return;
     }
-    //   read the config file
-    let config = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    //   read the aws gateway map
+    let config = readAwsGatewayMap(configFile);
     //   get the name of the api gateway
     let name = Object.keys(config).find((key) => config[key].id === id);
 
@@ -176,7 +159,7 @@ const destroyGateway = async (id: string): Promise<void> => {
 
     // remove from the config file
     delete config[name];
-    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    writeAwsGatewayMap(configFile, config);
 
     await sleep(30000);
 
@@ -191,8 +174,8 @@ const destroyGateway = async (id: string): Promise<void> => {
  */
 const destroyAllGateways = async () => {
     console.log(chalk.cyan("[i] Destroying all API Gateways"));
-    //   read the config file
-    let config: ApiGatewayConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    //   read the aws gateway map
+    let config = readAwsGatewayMap(configFile);
 
     //   destroy all the gateways
     for (const [key, value] of Object.entries(config)) {
@@ -213,8 +196,8 @@ const destroyAllGateways = async () => {
         console.log(chalk.green(`[✓] Destroyed API Gateway: ${key} : ${value.id} : ${value.region}`));
     }
 
-    // nullify the config file
-    fs.writeFileSync(configFile, JSON.stringify({}, null, 2));
+    // nullify the aws gateway map
+    writeAwsGatewayMap(configFile, {});
     console.log(chalk.green("[✓] Destroyed all API Gateways"));
 };
 
@@ -227,15 +210,8 @@ const destroyAllGateways = async () => {
 const listGateways = async () => {
     console.log(chalk.cyan("[i] Listing all API Gateways"));
 
-    // read the config file, and list these
-
-    // check if the config file exists
-    if (!fs.existsSync(configFile)) {
-        console.error(chalk.red("[!] Config file does not exist"));
-        return;
-    }
-
-    const config: ApiGatewayConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    // read the aws gateway map
+    const config = readAwsGatewayMap(configFile);
 
     //   if list is empty
     if (Object.keys(config).length === 0) {
@@ -269,7 +245,7 @@ const listGateways = async () => {
  * @param {string} feasibilityUrlInput - The URL to check feasibility for.
  * @returns {Promise<void>}
  */
-const apiGateway = async (
+const proxy = async (
     initInput: boolean,
     destroyInput: string,
     destroyAllInput: boolean,
@@ -281,7 +257,7 @@ const apiGateway = async (
     feasibilityInput: boolean,
     feasibilityUrlInput: string
 ): Promise<void> => {
-    console.log(chalk.cyan("[i] Loading 'API Gateway' module"));
+    console.log(chalk.cyan("[i] Loading 'Proxy' module (aws method)"));
 
     // if feasibility is true, check feasibility
     if (feasibilityInput) {
@@ -297,7 +273,7 @@ const apiGateway = async (
     aws_access_key = accessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
     aws_secret_key = secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
     region = regionInput || randomRegion();
-    configFile = configInput || "config.json";
+    configFile = configInput || ".proxy_config.json";
 
     if (!aws_access_key || !aws_secret_key) {
         console.error(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
@@ -332,4 +308,4 @@ const apiGateway = async (
     }
 };
 
-export default apiGateway;
+export default proxy;

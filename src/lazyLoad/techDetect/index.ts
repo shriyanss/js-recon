@@ -13,6 +13,7 @@ import { checkAngularJS } from "./checkAngularJS.js";
 import { checkReact } from "./checkReact.js";
 import { isValidInterceptedJsEvidence } from "./checkInterceptedEvidence.js";
 import { isSigintHandlerActive } from "../../run/interruptHandler.js";
+import { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../proxy/proxyAgent.js";
 
 /**
  * Detects the front-end framework used in a webpage.
@@ -57,14 +58,21 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     const responseEvidence = new Map<string, { status: number; contentType: string | null; body: string }>();
     if (!globalsUtil.getCacheOnly()) {
         const chromiumPath = getChromiumPath();
+        const proxyArgs = buildPuppeteerProxyArgs(getResolvedProxyConfigFromGlobals());
         const browser = await puppeteer.launch({
             executablePath: chromiumPath,
-            args: globalsUtil.getDisableSandbox()
-                ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-                : [],
+            args: [
+                ...(globalsUtil.getDisableSandbox()
+                    ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+                    : []),
+                ...(proxyArgs.arg ? [proxyArgs.arg] : []),
+            ],
             handleSIGINT: !isSigintHandlerActive(),
         });
         const page = await browser.newPage();
+        if (proxyArgs.authenticate) {
+            await page.authenticate(proxyArgs.authenticate);
+        }
         page.setDefaultNavigationTimeout(30000);
 
         const cdp = await page.createCDPSession();

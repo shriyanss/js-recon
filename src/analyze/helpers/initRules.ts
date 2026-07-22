@@ -2,6 +2,7 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import extract from "extract-zip";
+import { withProxyDispatcher } from "../../proxy/proxyAgent.js";
 
 /**
  * Downloads and extracts the latest analysis rules from the GitHub repository.
@@ -14,12 +15,13 @@ import extract from "extract-zip";
  */
 const downloadRules = async (homeDir: string): Promise<void> => {
     console.log(chalk.cyan("[i] Rules not found. Downloading from GitHub..."));
-    const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest");
+    const fetchOpts = withProxyDispatcher();
+    const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest", fetchOpts);
     const release = await response.json();
     const zipballUrl = release.zipball_url;
 
     const zipPath = path.join(homeDir, "/.js-recon/rules.zip");
-    const downloadResponse = await fetch(zipballUrl);
+    const downloadResponse = await fetch(zipballUrl, fetchOpts);
 
     if (!downloadResponse.ok) {
         throw new Error(`Failed to download rules: ${downloadResponse.statusText}`);
@@ -133,7 +135,10 @@ const initRules = async (disableVersionCheck: boolean = false): Promise<void> =>
     // also, if the version.txt exist, check if the version.txt is latest as per the latest release on github
     const version = fs.readFileSync(versionPath, "utf8").trim();
     try {
-        const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest");
+        const response = await fetch(
+            "https://api.github.com/repos/js-recon/js-recon-rules/releases/latest",
+            withProxyDispatcher()
+        );
         const release = await response.json();
         const release_tag_name = release.tag_name;
         if (`v${version}` !== release_tag_name) {
