@@ -46,11 +46,7 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: [
-            "--disable-external-protocol-dialog",
-            ...sandboxArgs,
-            ...(proxyArgs.arg ? [proxyArgs.arg] : []),
-        ],
+        args: ["--disable-external-protocol-dialog", ...sandboxArgs, ...(proxyArgs.arg ? [proxyArgs.arg] : [])],
         handleSIGINT: !isSigintHandlerActive(),
     });
 

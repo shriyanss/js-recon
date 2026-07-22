@@ -3,15 +3,13 @@ import { composeOxylabsUsername, buildOxylabsProxyUrl } from "../../proxy/oxylab
 
 describe("composeOxylabsUsername", () => {
     it("composes base username only", () => {
-        expect(composeOxylabsUsername({ username: "testuser", password: "fakepassword123" })).toBe(
-            "customer-testuser"
-        );
+        expect(composeOxylabsUsername({ username: "testuser", password: "fakepassword123" })).toBe("customer-testuser");
     });
 
     it("appends country", () => {
-        expect(
-            composeOxylabsUsername({ username: "testuser", password: "fakepassword123", country: "US" })
-        ).toBe("customer-testuser-cc-US");
+        expect(composeOxylabsUsername({ username: "testuser", password: "fakepassword123", country: "US" })).toBe(
+            "customer-testuser-cc-US"
+        );
     });
 
     it("appends country and city", () => {

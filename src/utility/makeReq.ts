@@ -3,7 +3,11 @@ import puppeteer from "./puppeteerInstance.js";
 import { getChromiumPath } from "./getChromiumPath.js";
 import * as globals from "./globals.js";
 import { get } from "../proxy/genReq.js";
-import { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals, withProxyDispatcher } from "../proxy/proxyAgent.js";
+import {
+    buildPuppeteerProxyArgs,
+    getResolvedProxyConfigFromGlobals,
+    withProxyDispatcher,
+} from "../proxy/proxyAgent.js";
 import fs from "fs";
 import { EventEmitter } from "events";
 import { progressError, progressLog } from "./progressLog.js";
