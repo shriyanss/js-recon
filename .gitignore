@@ -169,3 +169,5 @@ CLAUDE.md
 **/CLAUDE.md
 .claude/skills/
 **/.claude/skills/
+.claude/agents/
+**/.claude/agents/

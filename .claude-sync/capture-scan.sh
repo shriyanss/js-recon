@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Walks the working tree for real (non-symlink) CLAUDE.md / .claude/skills files
-# and captures each into the sibling js-recon-agentic-files repo on the current
-# branch, replacing it with a symlink. This is the primary "new file" trigger —
-# .gitignore refuses `git add` on these paths outright, so a git-staged-diff-based
-# hook (see capture-new.sh) never sees them; a filesystem scan is required.
+# Walks the working tree for real (non-symlink) CLAUDE.md / .claude/skills /
+# .claude/agents files and captures each into the sibling js-recon-agentic-files
+# repo on the current branch, replacing it with a symlink. This is the primary
+# "new file" trigger — .gitignore refuses `git add` on these paths outright, so
+# a git-staged-diff-based hook (see capture-new.sh) never sees them; a
+# filesystem scan is required.
 set -euo pipefail
 
 JS_RECON_ROOT="$(git rev-parse --show-toplevel)"
@@ -47,7 +48,7 @@ while IFS= read -r f; do
     ln -s "$dest" "$f"
     echo "[claude-sync] captured $rel into js-recon-agentic-files (branch $CURRENT_BRANCH), replaced with symlink"
     captured=1
-done < <(find "$JS_RECON_ROOT" \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" -not -path "$AGENTIC_REPO_PATH/*" -type f)
+done < <(find "$JS_RECON_ROOT" \( -name "CLAUDE.md" -o -path "*/.claude/skills/*" -o -path "*/.claude/agents/*" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/build/*" -not -path "$AGENTIC_REPO_PATH/*" -type f)
 
 if [ "$captured" -eq 0 ]; then
     exit 0
