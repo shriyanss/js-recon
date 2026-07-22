@@ -2,6 +2,7 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import extract from "extract-zip";
+import { withProxyDispatcher } from "../../utility/makeReq.js";
 
 /**
  * Downloads and extracts the latest analysis rules from the GitHub repository.
@@ -14,12 +15,13 @@ import extract from "extract-zip";
  */
 const downloadRules = async (homeDir: string): Promise<void> => {
     console.log(chalk.cyan("[i] Rules not found. Downloading from GitHub..."));
-    const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest");
+    const fetchOpts = withProxyDispatcher();
+    const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest", fetchOpts);
     const release = await response.json();
     const zipballUrl = release.zipball_url;
 
     const zipPath = path.join(homeDir, "/.js-recon/rules.zip");
-    const downloadResponse = await fetch(zipballUrl);
+    const downloadResponse = await fetch(zipballUrl, fetchOpts);
 
     if (!downloadResponse.ok) {
         throw new Error(`Failed to download rules: ${downloadResponse.statusText}`);
@@ -63,17 +65,37 @@ const downloadRules = async (homeDir: string): Promise<void> => {
 };
 
 /**
+ * Determines whether the GitHub rules version check should be skipped.
+ *
+ * The check is only skipped when explicitly disabled (via the `--disable-rules-version-check`
+ * flag or the `JS_RECON_DISABLE_RULES_VERSION_CHECK` env var) AND rules are already cached
+ * locally — if the rules directory doesn't exist yet, the tool still needs to fetch them
+ * from GitHub at least once.
+ *
+ * @param disableFlag - Value of the `--disable-rules-version-check` CLI flag
+ * @param envValue - Value of the `JS_RECON_DISABLE_RULES_VERSION_CHECK` env var
+ * @param rulesDirExists - Whether `~/.js-recon/rules` already exists
+ * @returns Whether the version check should be skipped
+ */
+export const shouldSkipRulesVersionCheck = (
+    disableFlag: boolean,
+    envValue: string | undefined,
+    rulesDirExists: boolean
+): boolean => (disableFlag || envValue === "true") && rulesDirExists;
+
+/**
  * Initializes the analysis rules system by ensuring rules are available and up-to-date.
  *
  * This function:
  * 1. Creates the .js-recon directory if it doesn't exist
  * 2. Downloads rules if they're missing
  * 3. Validates rule integrity
- * 4. Checks for and downloads rule updates from GitHub
+ * 4. Checks for and downloads rule updates from GitHub (unless skipped, see `shouldSkipRulesVersionCheck`)
  *
+ * @param disableVersionCheck - Skip the GitHub version check and use cached rules as-is
  * @returns Promise that resolves when rules initialization is complete
  */
-const initRules = async (): Promise<void> => {
+const initRules = async (disableVersionCheck: boolean = false): Promise<void> => {
     console.log(chalk.cyan("[i] Initializing rules..."));
 
     // get the user's home dir
@@ -82,6 +104,18 @@ const initRules = async (): Promise<void> => {
     // check if the .js-recon directory exists
     if (!fs.existsSync(path.join(homeDir, "/.js-recon"))) {
         fs.mkdirSync(path.join(homeDir, "/.js-recon"));
+    }
+
+    const rulesDir = path.join(homeDir, "/.js-recon/rules");
+    if (
+        shouldSkipRulesVersionCheck(
+            disableVersionCheck,
+            process.env.JS_RECON_DISABLE_RULES_VERSION_CHECK,
+            fs.existsSync(rulesDir)
+        )
+    ) {
+        console.log(chalk.cyan("[i] Rules version check disabled — using cached rules as-is."));
+        return;
     }
 
     // now, check if the rules directory exists
@@ -101,7 +135,10 @@ const initRules = async (): Promise<void> => {
     // also, if the version.txt exist, check if the version.txt is latest as per the latest release on github
     const version = fs.readFileSync(versionPath, "utf8").trim();
     try {
-        const response = await fetch("https://api.github.com/repos/js-recon/js-recon-rules/releases/latest");
+        const response = await fetch(
+            "https://api.github.com/repos/js-recon/js-recon-rules/releases/latest",
+            withProxyDispatcher()
+        );
         const release = await response.json();
         const release_tag_name = release.tag_name;
         if (`v${version}` !== release_tag_name) {

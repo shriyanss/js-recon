@@ -5,7 +5,8 @@ import { FRAMEWORK_METHODS, VALID_METHODS } from "./lazyLoad/methodFilter.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
-import apiGateway from "./api_gateway/index.js";
+import proxy from "./proxy/index.js";
+import configureProxy from "./utility/configureProxy.js";
 import map from "./map/index.js";
 import * as globalsUtil from "./utility/globals.js";
 import refactor from "./refactor/index.js";
@@ -94,8 +95,8 @@ program
     .option("-t, --threads <threads>", "Number of threads to use", "1")
     .option("--subsequent-requests", "Download JS files from subsequent requests (Next.JS only)", false)
     .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
-    .option("--api-gateway", "Generate requests using API Gateway", false)
-    .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
+    .option("--proxy-config <file>", "Proxy config file (generated via the `proxy` module)", ".proxy_config.json")
+    .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("--cache-only", "Only use the response cache; never make network requests", false)
@@ -171,8 +172,7 @@ program
             process.exit(1);
         }
 
-        globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
-        globalsUtil.setUseApiGateway(cmd.apiGateway);
+        configureProxy(cmd);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setCacheOnly(cmd.cacheOnly);
@@ -254,39 +254,68 @@ program
     });
 
 program
-    .command("api-gateway")
-    .description("Configure AWS API Gateway to rotate IP addresses")
-    .option("-i, --init", "Initialize the config file (create API)", false)
-    .option("-d, --destroy <id>", "Destroy API with the given ID")
-    .option("--destroy-all", "Destroy all the API created by this tool in all regions", false)
-    .option("-r, --region <region>", "AWS region (default: random region)")
+    .command("proxy")
+    .description("Manage proxy configuration (AWS API Gateway IP rotation, SOCKS/HTTP, Oxylabs)")
+    .option("-i, --init", "Initialize the config file (create API) [aws method]", false)
+    .option("-d, --destroy <id>", "Destroy API with the given ID [aws method]")
+    .option("--destroy-all", "Destroy all the API created by this tool in all regions [aws method]", false)
+    .option("-r, --region <region>", "AWS region (default: random region) [aws method]")
     .option(
-        "-a, --access-key <access-key>",
-        "AWS access key (if not provided, AWS_ACCESS_KEY_ID environment variable will be used)"
+        "--aws-access-key <key>",
+        "AWS access key (if not provided, AWS_ACCESS_KEY_ID environment variable will be used) [aws method]"
     )
     .option(
-        "-s, --secret-key <secret-key>",
-        "AWS secret key (if not provided, AWS_SECRET_ACCESS_KEY environment variable will be used)"
+        "--aws-secret-key <key>",
+        "AWS secret key (if not provided, AWS_SECRET_ACCESS_KEY environment variable will be used) [aws method]"
     )
-    .option("-c, --config <config>", "Name of the config file", ".api_gateway_config.json")
-    .option("-l, --list", "List all the API created by this tool", false)
-    .option("--feasibility", "Check feasibility of API Gateway", false)
-    .option("--feasibility-url <url>", "URL to check feasibility of")
+    .option("-c, --config <config>", "Name of the config file", ".proxy_config.json")
+    .option("-l, --list", "List all the API created by this tool [aws method]", false)
+    .option("--feasibility", "Check feasibility of API Gateway [aws method]", false)
+    .option("--feasibility-url <url>", "URL to check feasibility of [aws method]")
+    .option(
+        "--proxy-method <method>",
+        "Proxy method to configure with -i/--init: aws, socks, http, or oxylabs (omit for an interactive prompt)"
+    )
+    .option(
+        "--proxy <url>",
+        "SOCKS5/HTTP proxy URL for -i/--init (socks5://[user:pass@]host:port or http://[user:pass@]host:port)"
+    )
+    .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username for -i/--init")
+    .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password for -i/--init")
+    .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code for -i/--init")
+    .option(
+        "--oxylabs-city <city>",
+        "Oxylabs datacenter proxy city for -i/--init (currently unsupported — no documented username-level city targeting)"
+    )
+    .option(
+        "--oxylabs-session-id <id>",
+        "Oxylabs datacenter proxy sticky session id for -i/--init (currently unsupported via username — sessions are selected by port)"
+    )
     .action(async (cmd) => {
-        globalsUtil.setApiGatewayConfigFile(cmd.config);
-        globalsUtil.setUseApiGateway(true);
-        await apiGateway(
-            cmd.init,
-            cmd.destroy,
-            cmd.destroyAll,
-            cmd.list,
-            cmd.region,
-            cmd.accessKey,
-            cmd.secretKey,
-            cmd.config,
-            cmd.feasibility,
-            cmd.feasibilityUrl
-        );
+        try {
+            await proxy({
+                init: cmd.init,
+                destroy: cmd.destroy,
+                destroyAll: cmd.destroyAll,
+                list: cmd.list,
+                region: cmd.region,
+                awsAccessKey: cmd.awsAccessKey,
+                awsSecretKey: cmd.awsSecretKey,
+                config: cmd.config,
+                feasibility: cmd.feasibility,
+                feasibilityUrl: cmd.feasibilityUrl,
+                proxyMethod: cmd.proxyMethod,
+                proxyUrl: cmd.proxy,
+                oxylabsUsername: cmd.oxylabsUsername,
+                oxylabsPassword: cmd.oxylabsPassword,
+                oxylabsCountry: cmd.oxylabsCountry,
+                oxylabsCity: cmd.oxylabsCity,
+                oxylabsSessionId: cmd.oxylabsSessionId,
+            });
+        } catch (err) {
+            console.error(chalk.red(`[!] ${err.message}`));
+            process.exit(1);
+        }
     });
 
 program
@@ -448,8 +477,18 @@ program
     .option("-l, --list", "List available technologies", false)
     .option("--validate", "Validate the rules", false)
     .option("-o, --output <file>", "Output JSON file name", "analyze.json")
+    .option("--disable-rules-version-check", "Skip the GitHub rules version check and use cached rules as-is", false)
     .action(async (cmd) => {
-        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate, cmd.output);
+        await analyze(
+            cmd.rules,
+            cmd.mappedJson,
+            cmd.tech,
+            cmd.list,
+            cmd.openapi,
+            cmd.validate,
+            cmd.output,
+            !!cmd.disableRulesVersionCheck
+        );
     });
 
 program
@@ -478,6 +517,11 @@ program
     .option("-u, --url <url/file>", "Target URL or a file containing a list of URLs (one per line)")
     .option("-r, --rules <file/dir>", "Rules file or directory (passed to analyze module)")
     .option(
+        "--disable-rules-version-check",
+        "Skip the GitHub rules version check and use cached rules as-is (passed to analyze module)",
+        false
+    )
+    .option(
         "-c, --command <command>",
         "Run an interactive-mode command on the mapped chunks non-interactively (forwarded to the map step). Can be passed multiple times, or chain several with `&&` inside a single value (e.g. -c 'list fetch && go to 1234').",
         (val: string, prev: string[]) => [...prev, ...val.split(/\s*&&\s*/).filter((c) => c.length > 0)],
@@ -487,8 +531,8 @@ program
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
     .option("-t, --threads <threads>", "Number of threads to use", "1")
-    .option("--api-gateway", "Generate requests using API Gateway", false)
-    .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
+    .option("--proxy-config <file>", "Proxy config file (generated via the `proxy` module)", ".proxy_config.json")
+    .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("--cache-only", "Only use the response cache; never make network requests", false)
@@ -532,6 +576,7 @@ program
         "Minimum CS-MAST-S signature matches required to detect bundler for the refactor step (0 = skip refactor)",
         "50"
     )
+    .option("--disable-refactor", "Skip the automatic refactor step after report", false)
     .action(async (cmd) => {
         // handle --list-methods before any network work
         if (cmd.listMethods !== undefined) {

@@ -11,11 +11,11 @@ import {
     TestInvokeMethodCommand,
     DeleteResourceCommand,
 } from "@aws-sdk/client-api-gateway";
-import fs from "fs";
 import md5 from "md5";
 import chalk from "chalk";
 import * as globals from "../utility/globals.js";
 import checkFireWallBlocking from "./checkFireWallBlocking.js";
+import { readAwsGatewayMap } from "./awsConfig.js";
 
 /**
  * Utility function to pause execution for a specified duration.
@@ -32,13 +32,12 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
  * @returns {Promise<string>} The response of the URL.
  */
 const get = async (url: string, headers: {} = {}): Promise<string> => {
-    // read the config file
-    // Load and parse API Gateway config with error handling
+    // read the aws gateway map from the proxy config file
     let config;
     try {
-        config = JSON.parse(fs.readFileSync(globals.apiGatewayConfigFile, "utf8"));
+        config = readAwsGatewayMap(globals.getProxyConfigFile());
     } catch (error) {
-        throw new Error(`Failed to read or parse API Gateway config file: ${error.message}`);
+        throw new Error(`Failed to read or parse proxy config file: ${error.message}`);
     }
     // select a random api gateway
     let apiGateway = Object.keys(config)[Math.floor(Math.random() * Object.keys(config).length)];

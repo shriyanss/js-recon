@@ -78,6 +78,15 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Checkout js-recon-rules
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: js-recon/js-recon-rules
+          path: js-recon-rules
+          # Don't persist the checkout token into js-recon-rules/.git/config —
+          # Dockerfile.w-rules builds from this context and would otherwise bake
+          # the writable GHCR credential into an image layer.
+          persist-credentials: false
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -100,6 +109,22 @@ jobs:
           docker push ghcr.io/js-recon/js-recon:$VERSION
           docker push ghcr.io/js-recon/js-recon:$TAG
 
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Build and push the rules-bundled (-w-rules) variant
+        run: |
+          # layer js-recon-rules on top of the image just built/pushed above
+          docker build -f Dockerfile.w-rules --build-arg BASE_IMAGE=ghcr.io/js-recon/js-recon:$VERSION -t ghcr.io/js-recon/js-recon:$VERSION-w-rules .
+
+          TAG="latest"
+          [[ "$VERSION" == *"beta"* ]] && TAG="beta"
+          [[ "$VERSION" == *"alpha"* ]] && TAG="alpha"
+
+          docker tag ghcr.io/js-recon/js-recon:$VERSION-w-rules ghcr.io/js-recon/js-recon:$TAG-w-rules
+
+          docker push ghcr.io/js-recon/js-recon:$VERSION-w-rules
+          docker push ghcr.io/js-recon/js-recon:$TAG-w-rules
         env:
           VERSION: ${{ inputs.version }}
 
@@ -218,6 +243,72 @@ jobs:
         run: |
           test -n "$(find /tmp/docker-output -name analyze.json)" || { echo "analyze.json missing"; exit 1; }
           test -n "$(find /tmp/docker-output -name js-recon.db)" || { echo "js-recon.db missing"; exit 1; }
+
+  verify-docker-w-rules-install:
+    runs-on: ubuntu-latest
+    needs: publish-ghcr
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout js-recon
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Checkout js-recon-labs
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: js-recon/js-recon-labs
+          path: js-recon-labs
+          persist-credentials: false
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install and start vulnerable app
+        working-directory: js-recon-labs/next_js/vuln-all-rules
+        run: |
+          npm ci
+          npm run build
+          npm start &
+
+      - name: Wait for app to be ready
+        run: timeout 60 bash -c 'until curl -sf --max-time 2 http://localhost:3001 > /dev/null; do sleep 2; done'
+
+      - name: Run the rules-bundled image against the lab app (no rules mount, no -r)
+        run: |
+          set -o pipefail
+          # Deliberately don't mount any rules directory and don't pass -r — the
+          # -w-rules image must be able to analyze using only what's baked in.
+          mkdir -p /tmp/docker-w-rules-output
+          chmod 777 /tmp/docker-w-rules-output
+          echo "http://localhost:3001" > /tmp/docker-w-rules-smoke-urls.txt
+          docker run --network host \
+            --name js-recon-w-rules-run \
+            -v /tmp/docker-w-rules-output:/tmp/js-recon-output \
+            -v /tmp/docker-w-rules-smoke-urls.txt:/tmp/urls.txt \
+            ghcr.io/js-recon/js-recon:${VERSION}-w-rules \
+            run -u /tmp/urls.txt -o /tmp/js-recon-output --no-sandbox -y -k \
+            | tee /tmp/docker-w-rules-run.log
+          docker rm js-recon-w-rules-run
+        env:
+          VERSION: ${{ inputs.version }}
+
+      - name: Verify the version check was actually skipped
+        run: |
+          grep -q "Rules version check disabled" /tmp/docker-w-rules-run.log || {
+            echo "Expected log line confirming JS_RECON_DISABLE_RULES_VERSION_CHECK was honored not found"
+            exit 1
+          }
+
+      - name: Verify all rules fired
+        run: node scripts/smoke-test.js "$(find /tmp/docker-w-rules-output -name analyze.json | head -n1)"
 
   verify-brew-install:
     runs-on: macos-latest

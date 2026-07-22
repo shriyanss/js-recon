@@ -3,6 +3,8 @@ import readline from "readline";
 
 let isBatchMode = false;
 let handling = false;
+let sigintHandlerActive = false;
+let pendingMenuPromise: Promise<void> | null = null;
 
 let skipStepResolver: (() => void) | null = null;
 let skipTarget = false;
@@ -64,7 +66,7 @@ const showMenu = async (): Promise<void> => {
 };
 
 const sigintHandler = () => {
-    showMenu().catch(() => {});
+    pendingMenuPromise = showMenu().catch(() => {});
 };
 
 export const installSigintHandler = (isBatch: boolean): void => {
@@ -72,11 +74,27 @@ export const installSigintHandler = (isBatch: boolean): void => {
     skipTarget = false;
     skipStepResolver = null;
     handling = false;
+    sigintHandlerActive = true;
     process.on("SIGINT", sigintHandler);
 };
 
 export const removeSigintHandler = (): void => {
+    sigintHandlerActive = false;
     process.removeListener("SIGINT", sigintHandler);
+};
+
+// While `run` owns SIGINT, Puppeteer's own default handleSIGINT must be disabled
+// on every `puppeteer.launch()` call — otherwise Puppeteer kills the browser
+// out-of-band the instant Ctrl-C is pressed, which throws the in-flight step and
+// races the outer `finally`'s `process.exit()` against this handler's pending prompt.
+export const isSigintHandlerActive = (): boolean => sigintHandlerActive;
+
+// Lets callers (e.g. the outer pipeline `finally`) avoid exiting while a menu
+// prompt triggered by this handler is still awaiting the user's answer.
+export const waitForPendingInterrupt = async (): Promise<void> => {
+    if (pendingMenuPromise) {
+        await pendingMenuPromise;
+    }
 };
 
 export const getSkipStepPromise = (): Promise<void> => {

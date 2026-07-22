@@ -6,11 +6,12 @@ import _traverse from "@babel/traverse";
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import inquirer from "inquirer";
 import cliProgress from "cli-progress";
-import makeRequest from "../../utility/makeReq.js";
+import makeRequest, { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../utility/makeReq.js";
 import execFunc from "../../utility/runSandboxed.js";
 import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js";
 import * as globals from "../../utility/globals.js";
 import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
+import { isSigintHandlerActive } from "../../run/interruptHandler.js";
 
 type MatchedFunction = {
     source: string;
@@ -40,13 +41,18 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const sandboxArgs = globals.getDisableSandbox()
         ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
         : [];
+    const proxyArgs = buildPuppeteerProxyArgs(getResolvedProxyConfigFromGlobals());
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: ["--disable-external-protocol-dialog", ...sandboxArgs],
+        args: ["--disable-external-protocol-dialog", ...sandboxArgs, ...(proxyArgs.arg ? [proxyArgs.arg] : [])],
+        handleSIGINT: !isSigintHandlerActive(),
     });
 
     const page = await browser.newPage();
+    if (proxyArgs.authenticate) {
+        await page.authenticate(proxyArgs.authenticate);
+    }
 
     const cdp = await page.createCDPSession();
     await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });

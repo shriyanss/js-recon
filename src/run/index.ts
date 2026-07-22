@@ -9,6 +9,8 @@ import CONFIG from "../globalConfig.js";
 import analyze from "../analyze/index.js";
 import report from "../report/index.js";
 import refactor from "../refactor/index.js";
+import initGlobalReportDb from "../report/utility/initGlobalReportDb.js";
+import mergeDomainIntoGlobalDb from "../report/utility/mergeDomainIntoGlobalDb.js";
 import { clearJsUrls, clearJsonUrls, getJsUrls } from "../lazyLoad/globals.js";
 import path from "path";
 import {
@@ -18,8 +20,10 @@ import {
     resetSkipStep,
     shouldSkipTarget,
     resetSkipTarget,
+    waitForPendingInterrupt,
 } from "./interruptHandler.js";
 import { detectBundler } from "./bundler-detect.js";
+import configureProxy from "../utility/configureProxy.js";
 
 /**
  * Determines the directory for a Content Delivery Network (CDN) if used by the target.
@@ -167,7 +171,16 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileReact, "react", false, openapiFile, false, analyzeFile),
+            analyze(
+                cmd.rules || "",
+                mappedJsonFileReact,
+                "react",
+                false,
+                openapiFile,
+                false,
+                analyzeFile,
+                !!cmd.disableRulesVersionCheck
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -186,25 +199,29 @@ const processUrl = async (
         console.log(chalk.bgGreen("[+] Report complete."));
         if (shouldSkipTarget()) return;
 
-        console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
-        const detectedBundlerTechReact = await detectBundler(
-            mappedJsonFileReact,
-            "react",
-            Number(cmd.csMastTechDetectThreshold ?? 50)
-        );
-        if (detectedBundlerTechReact) {
-            const refactorOutputDirReact = isBatch ? `${workingDir}/refactored` : "refactored";
-            if (fs.existsSync(refactorOutputDirReact)) fs.rmSync(refactorOutputDirReact, { recursive: true });
-            console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechReact})...`));
-            resetSkipStep();
-            await Promise.race([
-                refactor(mappedJsonFileReact, refactorOutputDirReact, detectedBundlerTechReact, false),
-                getSkipStepPromise(),
-            ]);
-            if (shouldSkipTarget()) return;
-            console.log(chalk.bgGreen("[+] Refactor complete."));
+        if (!cmd.disableRefactor) {
+            console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
+            const detectedBundlerTechReact = await detectBundler(
+                mappedJsonFileReact,
+                "react",
+                Number(cmd.csMastTechDetectThreshold ?? 50)
+            );
+            if (detectedBundlerTechReact) {
+                const refactorOutputDirReact = isBatch ? `${workingDir}/refactored` : "refactored";
+                if (fs.existsSync(refactorOutputDirReact)) fs.rmSync(refactorOutputDirReact, { recursive: true });
+                console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechReact})...`));
+                resetSkipStep();
+                await Promise.race([
+                    refactor(mappedJsonFileReact, refactorOutputDirReact, detectedBundlerTechReact, false),
+                    getSkipStepPromise(),
+                ]);
+                if (shouldSkipTarget()) return;
+                console.log(chalk.bgGreen("[+] Refactor complete."));
+            } else {
+                console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+            }
         } else {
-            console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+            console.log(chalk.yellow("[!] Refactor step disabled via --disable-refactor, skipping."));
         }
 
         console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
@@ -244,7 +261,16 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileVue, "vue", false, openapiFile, false, analyzeFile),
+            analyze(
+                cmd.rules || "",
+                mappedJsonFileVue,
+                "vue",
+                false,
+                openapiFile,
+                false,
+                analyzeFile,
+                !!cmd.disableRulesVersionCheck
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -264,25 +290,29 @@ const processUrl = async (
         console.log(chalk.bgGreen("[+] Report complete."));
         if (shouldSkipTarget()) return;
 
-        console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
-        const detectedBundlerTechVue = await detectBundler(
-            mappedJsonFileVue,
-            "vue",
-            Number(cmd.csMastTechDetectThreshold ?? 50)
-        );
-        if (detectedBundlerTechVue) {
-            const refactorOutputDirVue = isBatch ? `${workingDir}/refactored` : "refactored";
-            if (fs.existsSync(refactorOutputDirVue)) fs.rmSync(refactorOutputDirVue, { recursive: true });
-            console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechVue})...`));
-            resetSkipStep();
-            await Promise.race([
-                refactor(mappedJsonFileVue, refactorOutputDirVue, detectedBundlerTechVue, false),
-                getSkipStepPromise(),
-            ]);
-            if (shouldSkipTarget()) return;
-            console.log(chalk.bgGreen("[+] Refactor complete."));
+        if (!cmd.disableRefactor) {
+            console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
+            const detectedBundlerTechVue = await detectBundler(
+                mappedJsonFileVue,
+                "vue",
+                Number(cmd.csMastTechDetectThreshold ?? 50)
+            );
+            if (detectedBundlerTechVue) {
+                const refactorOutputDirVue = isBatch ? `${workingDir}/refactored` : "refactored";
+                if (fs.existsSync(refactorOutputDirVue)) fs.rmSync(refactorOutputDirVue, { recursive: true });
+                console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechVue})...`));
+                resetSkipStep();
+                await Promise.race([
+                    refactor(mappedJsonFileVue, refactorOutputDirVue, detectedBundlerTechVue, false),
+                    getSkipStepPromise(),
+                ]);
+                if (shouldSkipTarget()) return;
+                console.log(chalk.bgGreen("[+] Refactor complete."));
+            } else {
+                console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+            }
         } else {
-            console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+            console.log(chalk.yellow("[!] Refactor step disabled via --disable-refactor, skipping."));
         }
 
         console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
@@ -320,7 +350,16 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileNuxt, "vue", false, openapiFile, false, analyzeFile),
+            analyze(
+                cmd.rules || "",
+                mappedJsonFileNuxt,
+                "vue",
+                false,
+                openapiFile,
+                false,
+                analyzeFile,
+                !!cmd.disableRulesVersionCheck
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -339,25 +378,29 @@ const processUrl = async (
         console.log(chalk.bgGreen("[+] Report complete."));
         if (shouldSkipTarget()) return;
 
-        console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
-        const detectedBundlerTechNuxt = await detectBundler(
-            mappedJsonFileNuxt,
-            "nuxt",
-            Number(cmd.csMastTechDetectThreshold ?? 50)
-        );
-        if (detectedBundlerTechNuxt) {
-            const refactorOutputDirNuxt = isBatch ? `${workingDir}/refactored` : "refactored";
-            if (fs.existsSync(refactorOutputDirNuxt)) fs.rmSync(refactorOutputDirNuxt, { recursive: true });
-            console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechNuxt})...`));
-            resetSkipStep();
-            await Promise.race([
-                refactor(mappedJsonFileNuxt, refactorOutputDirNuxt, detectedBundlerTechNuxt, false),
-                getSkipStepPromise(),
-            ]);
-            if (shouldSkipTarget()) return;
-            console.log(chalk.bgGreen("[+] Refactor complete."));
+        if (!cmd.disableRefactor) {
+            console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
+            const detectedBundlerTechNuxt = await detectBundler(
+                mappedJsonFileNuxt,
+                "nuxt",
+                Number(cmd.csMastTechDetectThreshold ?? 50)
+            );
+            if (detectedBundlerTechNuxt) {
+                const refactorOutputDirNuxt = isBatch ? `${workingDir}/refactored` : "refactored";
+                if (fs.existsSync(refactorOutputDirNuxt)) fs.rmSync(refactorOutputDirNuxt, { recursive: true });
+                console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechNuxt})...`));
+                resetSkipStep();
+                await Promise.race([
+                    refactor(mappedJsonFileNuxt, refactorOutputDirNuxt, detectedBundlerTechNuxt, false),
+                    getSkipStepPromise(),
+                ]);
+                if (shouldSkipTarget()) return;
+                console.log(chalk.bgGreen("[+] Refactor complete."));
+            } else {
+                console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+            }
         } else {
-            console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+            console.log(chalk.yellow("[!] Refactor step disabled via --disable-refactor, skipping."));
         }
 
         console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
@@ -394,7 +437,16 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileSvelte, "svelte", false, openapiFile, false, analyzeFile),
+            analyze(
+                cmd.rules || "",
+                mappedJsonFileSvelte,
+                "svelte",
+                false,
+                openapiFile,
+                false,
+                analyzeFile,
+                !!cmd.disableRulesVersionCheck
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -451,7 +503,16 @@ const processUrl = async (
         resetSkipStep();
         // @ts-ignore
         await Promise.race([
-            analyze(cmd.rules || "", mappedJsonFileAngular, "angular", false, openapiFile, false, analyzeFile),
+            analyze(
+                cmd.rules || "",
+                mappedJsonFileAngular,
+                "angular",
+                false,
+                openapiFile,
+                false,
+                analyzeFile,
+                !!cmd.disableRulesVersionCheck
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -615,8 +676,16 @@ const processUrl = async (
     console.log(chalk.bgCyan("[7/8] Running analyze to extract endpoints..."));
     resetSkipStep();
     await Promise.race([
-        // @ts-ignore
-        analyze(cmd.rules || "", mappedJsonFile, detectedTech, false, openapiFile, false, analyzeFile),
+        analyze(
+            cmd.rules || "",
+            mappedJsonFile,
+            detectedTech as "next" | "vue" | "svelte" | "angular" | "react",
+            false,
+            openapiFile,
+            false,
+            analyzeFile,
+            !!cmd.disableRulesVersionCheck
+        ),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Analyze complete."));
@@ -631,25 +700,29 @@ const processUrl = async (
     console.log(chalk.bgGreen("[+] Report complete."));
     if (shouldSkipTarget()) return;
 
-    console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
-    const detectedBundlerTechNext = await detectBundler(
-        mappedJsonFile,
-        detectedTech,
-        Number(cmd.csMastTechDetectThreshold ?? 50)
-    );
-    if (detectedBundlerTechNext) {
-        const refactorOutputDirNext = isBatch ? `${workingDir}/refactored` : "refactored";
-        if (fs.existsSync(refactorOutputDirNext)) fs.rmSync(refactorOutputDirNext, { recursive: true });
-        console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechNext})...`));
-        resetSkipStep();
-        await Promise.race([
-            refactor(mappedJsonFile, refactorOutputDirNext, detectedBundlerTechNext, false),
-            getSkipStepPromise(),
-        ]);
-        if (shouldSkipTarget()) return;
-        console.log(chalk.bgGreen("[+] Refactor complete."));
+    if (!cmd.disableRefactor) {
+        console.log(chalk.bgCyan("[*] Detecting bundler via CS-MAST-S for refactor..."));
+        const detectedBundlerTechNext = await detectBundler(
+            mappedJsonFile,
+            detectedTech,
+            Number(cmd.csMastTechDetectThreshold ?? 50)
+        );
+        if (detectedBundlerTechNext) {
+            const refactorOutputDirNext = isBatch ? `${workingDir}/refactored` : "refactored";
+            if (fs.existsSync(refactorOutputDirNext)) fs.rmSync(refactorOutputDirNext, { recursive: true });
+            console.log(chalk.bgCyan(`[*] Running refactor (${detectedBundlerTechNext})...`));
+            resetSkipStep();
+            await Promise.race([
+                refactor(mappedJsonFile, refactorOutputDirNext, detectedBundlerTechNext, false),
+                getSkipStepPromise(),
+            ]);
+            if (shouldSkipTarget()) return;
+            console.log(chalk.bgGreen("[+] Refactor complete."));
+        } else {
+            console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+        }
     } else {
-        console.log(chalk.yellow("[!] Bundler not detected via CS-MAST-S, skipping refactor."));
+        console.log(chalk.yellow("[!] Refactor step disabled via --disable-refactor, skipping."));
     }
 
     console.log(chalk.bgGreenBright(`[+] Analysis complete for ${url}.`));
@@ -666,8 +739,7 @@ const processUrl = async (
  * @returns Promise that resolves when all URL processing is complete
  */
 export default async (cmd: any): Promise<void> => {
-    globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
-    globalsUtil.setUseApiGateway(cmd.apiGateway);
+    configureProxy(cmd);
     globalsUtil.setDisableCache(cmd.disableCache);
     globalsUtil.setRespCacheFile(cmd.cacheFile);
     globalsUtil.setYes(cmd.yes);
@@ -722,6 +794,9 @@ export default async (cmd: any): Promise<void> => {
                 fs.mkdirSync(cmd.output, { recursive: true });
             }
 
+            const globalDbPath = `${cmd.output}/js-recon.db`;
+            await initGlobalReportDb(globalDbPath);
+
             for (const url of urls) {
                 resetSkipTarget();
 
@@ -757,9 +832,27 @@ export default async (cmd: any): Promise<void> => {
                     cmd._includeMethods ?? [],
                     cmd._excludeMethods ?? []
                 );
+
+                const domainDbPath = `${thisTargetDir}/js-recon.db`;
+                if (fs.existsSync(domainDbPath)) {
+                    try {
+                        mergeDomainIntoGlobalDb(globalDbPath, domainDbPath, hostDir);
+                    } catch (error) {
+                        console.error(
+                            chalk.yellow(`[!] Failed to merge ${hostDir} into the global js-recon.db: ${error}`)
+                        );
+                    }
+                } else {
+                    console.log(
+                        chalk.yellow(
+                            `[i] No js-recon.db found for ${hostDir}, skipping merge into the global database.`
+                        )
+                    );
+                }
             }
         }
     } finally {
+        await waitForPendingInterrupt();
         removeSigintHandler();
         process.exit(process.exitCode ?? 0);
     }

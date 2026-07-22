@@ -137,7 +137,7 @@ output
 output/*
 strings.json
 extracted_urls*
-.api_gateway_config.json
+.proxy_config.json
 .resp_cache.json
 .vscode/*
 !.vscode/tasks.json
@@ -169,3 +169,5 @@ CLAUDE.md
 **/CLAUDE.md
 .claude/skills/
 **/.claude/skills/
+.claude/agents/
+**/.claude/agents/

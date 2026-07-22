@@ -1,23 +1,115 @@
-// API Gateway Configuration
-/** Path to the API Gateway configuration file */
-export let apiGatewayConfigFile = "";
-/** Whether to use API Gateway for requests */
-export let useApiGateway = false;
+// Proxy Configuration
+/** Path to the proxy configuration file */
+export let proxyConfigFile = ".proxy_config.json";
+/** Whether to route requests through a proxy */
+export let useProxy = false;
+/** Selected proxy method */
+export let proxyMethod: "aws" | "socks" | "http" | "oxylabs" | null = null;
+/** Resolved SOCKS/HTTP proxy URL (method === "socks" | "http") */
+export let proxyUrl: string | undefined;
+/** Resolved Oxylabs datacenter proxy config (method === "oxylabs") */
+export let oxylabsConfig:
+    { username: string; password: string; country?: string; city?: string; sessionId?: string } | undefined;
+/** Whether to skip reading JS_RECON_* env vars during proxy config resolution */
+export let ignoreProxyEnv = false;
 
 /**
- * Sets the API Gateway configuration file path.
- * @param file - Path to the API Gateway configuration file
+ * Sets the proxy configuration file path.
+ * @param file - Path to the proxy configuration file
  */
-export const setApiGatewayConfigFile = (file: string): void => {
-    apiGatewayConfigFile = file;
+export const setProxyConfigFile = (file: string): void => {
+    proxyConfigFile = file;
 };
 
 /**
- * Enables or disables the use of API Gateway.
- * @param value - Whether to use API Gateway
+ * Gets the proxy configuration file path.
+ * @returns Path to the proxy configuration file
  */
-export const setUseApiGateway = (value: boolean): void => {
-    useApiGateway = value;
+export const getProxyConfigFile = (): string => {
+    return proxyConfigFile;
+};
+
+/**
+ * Enables or disables routing requests through a proxy.
+ * @param value - Whether to use a proxy
+ */
+export const setUseProxy = (value: boolean): void => {
+    useProxy = value;
+};
+
+/**
+ * Gets whether requests should be routed through a proxy.
+ * @returns Whether to use a proxy
+ */
+export const getUseProxy = (): boolean => {
+    return useProxy;
+};
+
+/**
+ * Sets the selected proxy method.
+ * @param value - The proxy method
+ */
+export const setProxyMethod = (value: "aws" | "socks" | "http" | "oxylabs" | null): void => {
+    proxyMethod = value;
+};
+
+/**
+ * Gets the selected proxy method.
+ * @returns The proxy method
+ */
+export const getProxyMethod = (): "aws" | "socks" | "http" | "oxylabs" | null => {
+    return proxyMethod;
+};
+
+/**
+ * Sets the resolved SOCKS/HTTP proxy URL.
+ * @param value - The proxy URL
+ */
+export const setProxyUrl = (value: string | undefined): void => {
+    proxyUrl = value;
+};
+
+/**
+ * Gets the resolved SOCKS/HTTP proxy URL.
+ * @returns The proxy URL
+ */
+export const getProxyUrl = (): string | undefined => {
+    return proxyUrl;
+};
+
+/**
+ * Sets the resolved Oxylabs datacenter proxy config.
+ * @param value - The Oxylabs config
+ */
+export const setOxylabsConfig = (
+    value: { username: string; password: string; country?: string; city?: string; sessionId?: string } | undefined
+): void => {
+    oxylabsConfig = value;
+};
+
+/**
+ * Gets the resolved Oxylabs datacenter proxy config.
+ * @returns The Oxylabs config
+ */
+export const getOxylabsConfig = ():
+    { username: string; password: string; country?: string; city?: string; sessionId?: string } | undefined => {
+    return oxylabsConfig;
+};
+
+/**
+ * Sets whether to skip reading JS_RECON_* env vars during proxy config resolution.
+ * @param value - Whether to ignore proxy-related env vars
+ */
+export const setIgnoreProxyEnv = (value: boolean): void => {
+    ignoreProxyEnv = value;
+};
+
+/**
+ * Gets whether JS_RECON_* env vars are skipped during proxy config resolution.
+ * @returns Whether to ignore proxy-related env vars
+ */
+export const getIgnoreProxyEnv = (): boolean => {
+    return ignoreProxyEnv;
 };
 
 // Response Cache Configuration
@@ -88,6 +180,26 @@ export const setDisableSandbox = (value: boolean): void => {
  */
 export const getDisableSandbox = (): boolean => {
     return disableSandbox;
+};
+
+// Insecure Mode Configuration
+/** Whether SSL certificate verification is disabled */
+export let insecure = false;
+
+/**
+ * Sets the insecure mode flag.
+ * @param value - Whether SSL certificate verification is disabled
+ */
+export const setInsecure = (value: boolean): void => {
+    insecure = value;
+};
+
+/**
+ * Gets the current insecure mode status.
+ * @returns Whether SSL certificate verification is disabled
+ */
+export const getInsecure = (): boolean => {
+    return insecure;
 };
 
 // Auto-execution Configuration

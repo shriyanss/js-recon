@@ -95,6 +95,7 @@ const lazyLoad = async (
             console.error(chalk.yellow("[!] Browser sandbox disabled"));
         }
 
+        globals.setInsecure(insecure);
         if (insecure) {
             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
             console.error(chalk.yellow("[!] Running in insecure mode. SSL certificate verification disabled"));
