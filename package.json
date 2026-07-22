@@ -59,6 +59,9 @@
         "yaml": "^2.8.0",
         "zod": "^3.23.8"
     },
+    "overrides": {
+        "@hono/node-server": "^2.0.11"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/js-recon/js-recon.git"
