@@ -370,6 +370,7 @@ const lazyLoad = async (
                     }
 
                     // recursively follow ESM static imports (import ... from "./chunk.js")
+                    // svelte_followImports reuses react_followImports — tracked under react_followImports key
                     const visited = new Set<string>();
                     let toFollow = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
                     while (toFollow.length > 0) {
