@@ -675,11 +675,10 @@ const processUrl = async (
     console.log(chalk.bgCyan("[7/8] Running analyze to extract endpoints..."));
     resetSkipStep();
     await Promise.race([
-        // @ts-ignore
         analyze(
             cmd.rules || "",
             mappedJsonFile,
-            detectedTech,
+            detectedTech as "next" | "vue" | "svelte" | "angular" | "react",
             false,
             openapiFile,
             false,
