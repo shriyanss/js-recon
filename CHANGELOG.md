@@ -1,20 +1,21 @@
 # Change Log
 
-## 1.4.1-beta.3 - (unreleased)
+## 1.4.1-beta.2 - 2026-07-22
 
 ### Added
 
+- The `api-gateway` module has been renamed to **`proxy`** and now supports three outbound-proxy methods: AWS API Gateway IP rotation (as before), generic SOCKS5/HTTP proxies, and Oxylabs. Proxy setup is driven by an interactive configuration wizard, and `lazyload`/`run` now consume proxy settings exclusively from the generated config file (`proxy_config.json`). Proxy request logic is centralized in `makeReq.ts`. (`proxy`, `lazyload`, `run`)
+- `analyze`: added a `--disable-rules-version-check` flag (and a corresponding `JS_RECON_DISABLE_RULES_VERSION_CHECK` environment variable) so the rules version-compatibility check can be skipped. A new rules-bundled Docker image variant (`ghcr.io/js-recon/js-recon:<version>-w-rules`) ships with `js-recon-rules` baked in, allowing `analyze` to run without a rules mount or `-r` flag. (`analyze`, `docker`)
 - `run`: added `--disable-refactor` flag to skip the automatic bundler-detection and refactor step that otherwise runs after `report`. (`run`)
+- `run` (batch mode, `-u <file>`): each domain still gets its own `<output>/<host>/js-recon.db`, but a combined `<output>/js-recon.db` is now also maintained across the whole batch, so findings/endpoints/mapped chunks can be queried across every target without opening each per-domain database individually. Every table in the combined database gains a `domain` column (the sanitized host, doubling as a foreign key back to the corresponding output directory), and primary keys that were only unique within a single domain (`mapped`'s chunk `id`, `mapped_openapi`'s `(path, method)`, `endpoints`' `url`) are widened or replaced with an autoincrement `globalId` so rows from different domains never collide. (`run`, `report`)
 
 ### Fixed
 
 - Tech detection's intercepted-URL fallback (`techDetect/index.ts`) accepted a framework-shaped URL path (e.g. `/_nuxt/`, `/_next/`) as detection evidence without checking its actual response. A framework-shaped path resolving to a non-JS response (e.g. an error/maintenance page) could mis-fingerprint the whole target and send it down the wrong per-framework pipeline. The fallback now also confirms the captured response is a genuine 2xx JS response (status + `Content-Type` + body shape) before accepting the match. (`lazyload`)
-
-## 1.4.1-beta.2 - 2026-07-19
-
-### Added
-
-- `run` (batch mode, `-u <file>`): each domain still gets its own `<output>/<host>/js-recon.db`, but a combined `<output>/js-recon.db` is now also maintained across the whole batch, so findings/endpoints/mapped chunks can be queried across every target without opening each per-domain database individually. Every table in the combined database gains a `domain` column (the sanitized host, doubling as a foreign key back to the corresponding output directory), and primary keys that were only unique within a single domain (`mapped`'s chunk `id`, `mapped_openapi`'s `(path, method)`, `endpoints`' `url`) are widened or replaced with an autoincrement `globalId` so rows from different domains never collide. (`run`, `report`)
+- `proxy`: corrected the Oxylabs method to use the datacenter proxy scheme (verified against a live account); the module now fails cleanly on a malformed proxy config or URL, warns on a malformed config parse, and exits with an error when AWS credentials are missing for `-l`/`-d`. (`proxy`)
+- `run`: replaced a fragile `@ts-ignore` on the final `analyze()` call with an explicit cast, and the Ctrl-C interrupt menu now waits for user input instead of exiting immediately. (`run`)
+- Suppressed the misleading suggestion to pass `-k` when SSL verification is already disabled. (`run`, `lazyload`)
+- Resolved npm-audit advisories: a path-traversal advisory in `@hono/node-server`, plus `fast-uri`/`hono` and `body-parser`/`brace-expansion` advisories. (`deps`)
 
 ## 1.4.1-beta.1 - 2026-07-16
 
