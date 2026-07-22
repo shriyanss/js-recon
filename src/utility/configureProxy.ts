@@ -20,7 +20,10 @@ const configureProxy = (cmd): void => {
     if (fs.existsSync(configFile)) {
         try {
             configFileParsed = JSON.parse(fs.readFileSync(configFile, "utf8"));
-        } catch {
+        } catch (err) {
+            console.error(
+                chalk.yellow(`[!] Failed to parse proxy config file ${configFile}: ${err.message}. Proceeding with no proxy.`)
+            );
             configFileParsed = {};
         }
     }

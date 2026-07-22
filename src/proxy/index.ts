@@ -456,7 +456,7 @@ const proxy = async (opts: ProxyCliOptions): Promise<void> => {
 
         if (!aws_access_key || !aws_secret_key) {
             console.error(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
-            return;
+            process.exit(1);
         }
 
         if (opts.destroy) {
