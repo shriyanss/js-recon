@@ -5,7 +5,8 @@ import { FRAMEWORK_METHODS, VALID_METHODS } from "./lazyLoad/methodFilter.js";
 import endpoints from "./endpoints/index.js";
 import CONFIG from "./globalConfig.js";
 import strings from "./strings/index.js";
-import apiGateway from "./api_gateway/index.js";
+import proxy from "./proxy/index.js";
+import configureProxy from "./utility/configureProxy.js";
 import map from "./map/index.js";
 import * as globalsUtil from "./utility/globals.js";
 import refactor from "./refactor/index.js";
@@ -94,8 +95,17 @@ program
     .option("-t, --threads <threads>", "Number of threads to use", "1")
     .option("--subsequent-requests", "Download JS files from subsequent requests (Next.JS only)", false)
     .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
-    .option("--api-gateway", "Generate requests using API Gateway", false)
-    .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
+    .option("--proxy-method <method>", "Proxy method to use: aws, socks, http, or oxylabs")
+    .option("--proxy <url>", "SOCKS5/HTTP proxy URL (socks5://[user:pass@]host:port or http://[user:pass@]host:port)")
+    .option("--proxy-config <file>", "Proxy config file", ".proxy_config.json")
+    .option("--aws-access-key <key>", "AWS access key for the aws proxy method")
+    .option("--aws-secret-key <key>", "AWS secret key for the aws proxy method")
+    .option("--oxylabs-username <username>", "Oxylabs residential proxy username")
+    .option("--oxylabs-password <password>", "Oxylabs residential proxy password")
+    .option("--oxylabs-country <country>", "Oxylabs residential proxy country code")
+    .option("--oxylabs-city <city>", "Oxylabs residential proxy city")
+    .option("--oxylabs-session-id <id>", "Oxylabs residential proxy sticky session id")
+    .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("--cache-only", "Only use the response cache; never make network requests", false)
@@ -171,8 +181,7 @@ program
             process.exit(1);
         }
 
-        globalsUtil.setApiGatewayConfigFile(cmd.apiGatewayConfig);
-        globalsUtil.setUseApiGateway(cmd.apiGateway);
+        configureProxy(cmd);
         globalsUtil.setDisableCache(cmd.disableCache);
         globalsUtil.setRespCacheFile(cmd.cacheFile);
         globalsUtil.setCacheOnly(cmd.cacheOnly);
@@ -254,39 +263,45 @@ program
     });
 
 program
-    .command("api-gateway")
-    .description("Configure AWS API Gateway to rotate IP addresses")
-    .option("-i, --init", "Initialize the config file (create API)", false)
-    .option("-d, --destroy <id>", "Destroy API with the given ID")
-    .option("--destroy-all", "Destroy all the API created by this tool in all regions", false)
-    .option("-r, --region <region>", "AWS region (default: random region)")
+    .command("proxy")
+    .description("Manage proxy configuration (AWS API Gateway IP rotation, SOCKS/HTTP, Oxylabs)")
+    .option("-i, --init", "Initialize the config file (create API) [aws method]", false)
+    .option("-d, --destroy <id>", "Destroy API with the given ID [aws method]")
+    .option("--destroy-all", "Destroy all the API created by this tool in all regions [aws method]", false)
+    .option("-r, --region <region>", "AWS region (default: random region) [aws method]")
     .option(
-        "-a, --access-key <access-key>",
-        "AWS access key (if not provided, AWS_ACCESS_KEY_ID environment variable will be used)"
+        "--aws-access-key <key>",
+        "AWS access key (if not provided, AWS_ACCESS_KEY_ID environment variable will be used) [aws method]"
     )
     .option(
-        "-s, --secret-key <secret-key>",
-        "AWS secret key (if not provided, AWS_SECRET_ACCESS_KEY environment variable will be used)"
+        "--aws-secret-key <key>",
+        "AWS secret key (if not provided, AWS_SECRET_ACCESS_KEY environment variable will be used) [aws method]"
     )
-    .option("-c, --config <config>", "Name of the config file", ".api_gateway_config.json")
-    .option("-l, --list", "List all the API created by this tool", false)
-    .option("--feasibility", "Check feasibility of API Gateway", false)
-    .option("--feasibility-url <url>", "URL to check feasibility of")
+    .option("-c, --config <config>", "Name of the config file", ".proxy_config.json")
+    .option("-l, --list", "List all the API created by this tool [aws method]", false)
+    .option("--feasibility", "Check feasibility of API Gateway [aws method]", false)
+    .option("--feasibility-url <url>", "URL to check feasibility of [aws method]")
     .action(async (cmd) => {
-        globalsUtil.setApiGatewayConfigFile(cmd.config);
-        globalsUtil.setUseApiGateway(true);
-        await apiGateway(
-            cmd.init,
-            cmd.destroy,
-            cmd.destroyAll,
-            cmd.list,
-            cmd.region,
-            cmd.accessKey,
-            cmd.secretKey,
-            cmd.config,
-            cmd.feasibility,
-            cmd.feasibilityUrl
-        );
+        globalsUtil.setProxyConfigFile(cmd.config);
+        globalsUtil.setUseProxy(true);
+        globalsUtil.setProxyMethod("aws");
+        try {
+            await proxy(
+                cmd.init,
+                cmd.destroy,
+                cmd.destroyAll,
+                cmd.list,
+                cmd.region,
+                cmd.awsAccessKey,
+                cmd.awsSecretKey,
+                cmd.config,
+                cmd.feasibility,
+                cmd.feasibilityUrl
+            );
+        } catch (err) {
+            console.error(chalk.red(`[!] ${err.message}`));
+            process.exit(1);
+        }
     });
 
 program
@@ -502,8 +517,17 @@ program
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
     .option("-t, --threads <threads>", "Number of threads to use", "1")
-    .option("--api-gateway", "Generate requests using API Gateway", false)
-    .option("--api-gateway-config <file>", "API Gateway config file", ".api_gateway_config.json")
+    .option("--proxy-method <method>", "Proxy method to use: aws, socks, http, or oxylabs")
+    .option("--proxy <url>", "SOCKS5/HTTP proxy URL (socks5://[user:pass@]host:port or http://[user:pass@]host:port)")
+    .option("--proxy-config <file>", "Proxy config file", ".proxy_config.json")
+    .option("--aws-access-key <key>", "AWS access key for the aws proxy method")
+    .option("--aws-secret-key <key>", "AWS secret key for the aws proxy method")
+    .option("--oxylabs-username <username>", "Oxylabs residential proxy username")
+    .option("--oxylabs-password <password>", "Oxylabs residential proxy password")
+    .option("--oxylabs-country <country>", "Oxylabs residential proxy country code")
+    .option("--oxylabs-city <city>", "Oxylabs residential proxy city")
+    .option("--oxylabs-session-id <id>", "Oxylabs residential proxy sticky session id")
+    .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
     .option("--cache-only", "Only use the response cache; never make network requests", false)

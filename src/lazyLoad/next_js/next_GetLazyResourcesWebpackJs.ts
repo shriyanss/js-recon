@@ -12,6 +12,7 @@ import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals
 import * as globals from "../../utility/globals.js";
 import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 import { isSigintHandlerActive } from "../../run/interruptHandler.js";
+import { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../proxy/proxyAgent.js";
 
 type MatchedFunction = {
     source: string;
@@ -41,14 +42,18 @@ const next_GetLazyResourcesWebpackJs = async (url: string): Promise<string[]> =>
     const sandboxArgs = globals.getDisableSandbox()
         ? ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
         : [];
+    const proxyArgs = buildPuppeteerProxyArgs(getResolvedProxyConfigFromGlobals());
     const browser = await puppeteer.launch({
         headless: true,
         executablePath: chromiumPath,
-        args: ["--disable-external-protocol-dialog", ...sandboxArgs],
+        args: ["--disable-external-protocol-dialog", ...sandboxArgs, ...(proxyArgs.arg ? [proxyArgs.arg] : [])],
         handleSIGINT: !isSigintHandlerActive(),
     });
 
     const page = await browser.newPage();
+    if (proxyArgs.authenticate) {
+        await page.authenticate(proxyArgs.authenticate);
+    }
 
     const cdp = await page.createCDPSession();
     await cdp.send("Page.setDownloadBehavior", { behavior: "deny" });
