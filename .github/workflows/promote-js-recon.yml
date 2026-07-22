@@ -390,6 +390,20 @@ jobs:
             sleep 2
           done
 
+      - name: Ensure a Chrome is available for Puppeteer
+        run: |
+          # The Homebrew keg ships js-recon but not a Chromium — Puppeteer needs a
+          # browser to run lazyload. Prefer the runner's pre-installed Google Chrome
+          # (present on GitHub macOS images); fall back to a Chrome-for-Testing build.
+          CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          if [[ ! -x "$CHROME" ]]; then
+            echo "Pre-installed Chrome not found; downloading a Chrome-for-Testing build..."
+            LINE="$(npx --yes @puppeteer/browsers install chrome@stable | tail -1)"
+            CHROME="${LINE#* }"
+          fi
+          echo "Using Chrome at: $CHROME"
+          echo "PUPPETEER_EXECUTABLE_PATH=$CHROME" >> "$GITHUB_ENV"
+
       - name: Run installed js-recon against the lab app
         run: |
           echo "http://localhost:3001" > /tmp/brew-smoke-urls.txt
