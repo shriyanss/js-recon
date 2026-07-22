@@ -169,6 +169,9 @@ jobs:
         with:
           repository: js-recon/js-recon-rules
           path: js-recon-rules
+          # Keep the checkout token out of js-recon-rules/.git/config — this
+          # context is consumed by later build/run steps (incl. Dockerfile.w-rules).
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -230,6 +233,7 @@ jobs:
 
       - name: Run js-recon-w-rules via Docker against lab app (no rules mount, no -r)
         run: |
+          set -o pipefail
           mkdir -p output-w-rules
           docker run --name js-recon-w-rules-run \
             --network host \
@@ -279,6 +283,9 @@ jobs:
         with:
           repository: js-recon/js-recon-rules
           path: js-recon-rules
+          # Keep the checkout token out of js-recon-rules/.git/config — this
+          # context is consumed by later build/run steps (incl. Dockerfile.w-rules).
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
