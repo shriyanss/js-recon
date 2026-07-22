@@ -1,5 +1,5 @@
-import fs from "fs";
 import chalk from "chalk";
+import { readProxyConfigFile, writeProxyConfigFile } from "./configFile.js";
 
 /** Shape of a single AWS gateway entry in the config's `aws` map. */
 export interface AwsGatewayEntry {
@@ -33,24 +33,13 @@ const looksLikeLegacyGatewayMap = (value: unknown): value is Record<string, AwsG
     );
 };
 
-const readFullConfig = (configFile: string): Record<string, unknown> => {
-    if (!fs.existsSync(configFile)) {
-        return {};
-    }
-    try {
-        return JSON.parse(fs.readFileSync(configFile, "utf8"));
-    } catch (error) {
-        throw new Error(`Failed to parse proxy config file ${configFile}: ${error.message}`);
-    }
-};
-
 /**
  * Reads the `aws` gateway map from `.proxy_config.json`, falling back to treating the
  * whole file as a legacy `.api_gateway_config.json`-shaped flat map when no `aws` key
  * is present but the top-level values match that shape.
  */
 export const readAwsGatewayMap = (configFile: string): Record<string, AwsGatewayEntry> => {
-    const full = readFullConfig(configFile);
+    const full = readProxyConfigFile(configFile);
     if (full.aws && typeof full.aws === "object") {
         return full.aws as Record<string, AwsGatewayEntry>;
     }
@@ -70,11 +59,8 @@ export const readAwsGatewayMap = (configFile: string): Record<string, AwsGateway
 
 /** Persists the `aws` gateway map, preserving any other proxy-method keys already in the file. */
 export const writeAwsGatewayMap = (configFile: string, awsMap: Record<string, AwsGatewayEntry>): void => {
-    let full: Record<string, unknown> = {};
-    if (fs.existsSync(configFile)) {
-        const existing = readFullConfig(configFile);
-        full = looksLikeLegacyGatewayMap(existing) && !existing.aws ? {} : existing;
-    }
+    const existing = readProxyConfigFile(configFile);
+    const full = looksLikeLegacyGatewayMap(existing) && !existing.aws ? {} : existing;
     full.aws = awsMap;
-    fs.writeFileSync(configFile, JSON.stringify(full, null, 4));
+    writeProxyConfigFile(configFile, full);
 };

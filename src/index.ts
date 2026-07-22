@@ -95,22 +95,7 @@ program
     .option("-t, --threads <threads>", "Number of threads to use", "1")
     .option("--subsequent-requests", "Download JS files from subsequent requests (Next.JS only)", false)
     .option("--urls-file <file>", "Input JSON file containing URLs", "extracted_urls.json")
-    .option("--proxy-method <method>", "Proxy method to use: aws, socks, http, or oxylabs")
-    .option("--proxy <url>", "SOCKS5/HTTP proxy URL (socks5://[user:pass@]host:port or http://[user:pass@]host:port)")
-    .option("--proxy-config <file>", "Proxy config file", ".proxy_config.json")
-    .option("--aws-access-key <key>", "AWS access key for the aws proxy method")
-    .option("--aws-secret-key <key>", "AWS secret key for the aws proxy method")
-    .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username")
-    .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password")
-    .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code")
-    .option(
-        "--oxylabs-city <city>",
-        "Oxylabs datacenter proxy city (currently unsupported \u2014 no documented username-level city targeting)"
-    )
-    .option(
-        "--oxylabs-session-id <id>",
-        "Oxylabs datacenter proxy sticky session id (currently unsupported via username \u2014 sessions are selected by port)"
-    )
+    .option("--proxy-config <file>", "Proxy config file (generated via the `proxy` module)", ".proxy_config.json")
     .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
@@ -287,23 +272,46 @@ program
     .option("-l, --list", "List all the API created by this tool [aws method]", false)
     .option("--feasibility", "Check feasibility of API Gateway [aws method]", false)
     .option("--feasibility-url <url>", "URL to check feasibility of [aws method]")
+    .option(
+        "--proxy-method <method>",
+        "Proxy method to configure with -i/--init: aws, socks, http, or oxylabs (omit for an interactive prompt)"
+    )
+    .option(
+        "--proxy <url>",
+        "SOCKS5/HTTP proxy URL for -i/--init (socks5://[user:pass@]host:port or http://[user:pass@]host:port)"
+    )
+    .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username for -i/--init")
+    .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password for -i/--init")
+    .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code for -i/--init")
+    .option(
+        "--oxylabs-city <city>",
+        "Oxylabs datacenter proxy city for -i/--init (currently unsupported — no documented username-level city targeting)"
+    )
+    .option(
+        "--oxylabs-session-id <id>",
+        "Oxylabs datacenter proxy sticky session id for -i/--init (currently unsupported via username — sessions are selected by port)"
+    )
     .action(async (cmd) => {
-        globalsUtil.setProxyConfigFile(cmd.config);
-        globalsUtil.setUseProxy(true);
-        globalsUtil.setProxyMethod("aws");
         try {
-            await proxy(
-                cmd.init,
-                cmd.destroy,
-                cmd.destroyAll,
-                cmd.list,
-                cmd.region,
-                cmd.awsAccessKey,
-                cmd.awsSecretKey,
-                cmd.config,
-                cmd.feasibility,
-                cmd.feasibilityUrl
-            );
+            await proxy({
+                init: cmd.init,
+                destroy: cmd.destroy,
+                destroyAll: cmd.destroyAll,
+                list: cmd.list,
+                region: cmd.region,
+                awsAccessKey: cmd.awsAccessKey,
+                awsSecretKey: cmd.awsSecretKey,
+                config: cmd.config,
+                feasibility: cmd.feasibility,
+                feasibilityUrl: cmd.feasibilityUrl,
+                proxyMethod: cmd.proxyMethod,
+                proxyUrl: cmd.proxy,
+                oxylabsUsername: cmd.oxylabsUsername,
+                oxylabsPassword: cmd.oxylabsPassword,
+                oxylabsCountry: cmd.oxylabsCountry,
+                oxylabsCity: cmd.oxylabsCity,
+                oxylabsSessionId: cmd.oxylabsSessionId,
+            });
         } catch (err) {
             console.error(chalk.red(`[!] ${err.message}`));
             process.exit(1);
@@ -523,22 +531,7 @@ program
     .option("--strict-scope", "Download JS files from only the input URL domain", false)
     .option("-s, --scope <scope>", "Download JS files from specific domains (comma-separated)", "*")
     .option("-t, --threads <threads>", "Number of threads to use", "1")
-    .option("--proxy-method <method>", "Proxy method to use: aws, socks, http, or oxylabs")
-    .option("--proxy <url>", "SOCKS5/HTTP proxy URL (socks5://[user:pass@]host:port or http://[user:pass@]host:port)")
-    .option("--proxy-config <file>", "Proxy config file", ".proxy_config.json")
-    .option("--aws-access-key <key>", "AWS access key for the aws proxy method")
-    .option("--aws-secret-key <key>", "AWS secret key for the aws proxy method")
-    .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username")
-    .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password")
-    .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code")
-    .option(
-        "--oxylabs-city <city>",
-        "Oxylabs datacenter proxy city (currently unsupported \u2014 no documented username-level city targeting)"
-    )
-    .option(
-        "--oxylabs-session-id <id>",
-        "Oxylabs datacenter proxy sticky session id (currently unsupported via username \u2014 sessions are selected by port)"
-    )
+    .option("--proxy-config <file>", "Proxy config file (generated via the `proxy` module)", ".proxy_config.json")
     .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)

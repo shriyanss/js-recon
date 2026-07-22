@@ -6,13 +6,12 @@ import _traverse from "@babel/traverse";
 const traverse = (_traverse.default ?? _traverse) as typeof _traverse.default;
 import inquirer from "inquirer";
 import cliProgress from "cli-progress";
-import makeRequest from "../../utility/makeReq.js";
+import makeRequest, { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../utility/makeReq.js";
 import execFunc from "../../utility/runSandboxed.js";
 import { getJsonUrls, getJsUrls, pushToJsonUrls, pushToJsUrls } from "../globals.js";
 import * as globals from "../../utility/globals.js";
 import { setActiveBarLogger, computeBarSize, watchBarResize } from "../../utility/progressLog.js";
 import { isSigintHandlerActive } from "../../run/interruptHandler.js";
-import { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../proxy/proxyAgent.js";
 
 type MatchedFunction = {
     source: string;
