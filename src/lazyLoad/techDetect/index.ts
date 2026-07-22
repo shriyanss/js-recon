@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import * as cheerio from "cheerio";
-import makeRequest from "../../utility/makeReq.js";
+import makeRequest, { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../utility/makeReq.js";
 import puppeteer from "../../utility/puppeteerInstance.js";
 import * as globalsUtil from "../../utility/globals.js";
 import { getChromiumPath } from "../../utility/getChromiumPath.js";
@@ -13,7 +13,6 @@ import { checkAngularJS } from "./checkAngularJS.js";
 import { checkReact } from "./checkReact.js";
 import { isValidInterceptedJsEvidence } from "./checkInterceptedEvidence.js";
 import { isSigintHandlerActive } from "../../run/interruptHandler.js";
-import { buildPuppeteerProxyArgs, getResolvedProxyConfigFromGlobals } from "../../proxy/proxyAgent.js";
 
 /**
  * Detects the front-end framework used in a webpage.

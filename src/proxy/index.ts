@@ -1,7 +1,14 @@
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { APIGatewayClient, CreateRestApiCommand, DeleteRestApiCommand } from "@aws-sdk/client-api-gateway";
 import checkFeasibility from "./checkFeasibility.js";
 import { readAwsGatewayMap, writeAwsGatewayMap } from "./awsConfig.js";
+import { setActiveProxyMethod, writeMethodConfig } from "./configFile.js";
+import { parseProxyUrl } from "./genericProxy.js";
+import { composeOxylabsUsername, type OxylabsConfig } from "./oxylabsProxy.js";
+
+type ProxyMethod = "aws" | "socks" | "http" | "oxylabs";
+const VALID_PROXY_METHODS: ProxyMethod[] = ["aws", "socks", "http", "oxylabs"];
 
 // read the docs for all the methods for api gateway at https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/api-gateway/
 // for the rate limits, refer to https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html
@@ -229,83 +236,242 @@ const listGateways = async () => {
     }
 };
 
+/** Masks a credential for secure display by showing only the first and last 4 characters. */
+const keyMask = (key: string): string => {
+    if (key.length < 6) return key;
+    return key.slice(0, 4) + "..." + key.slice(-4);
+};
+
+/** Resolves the proxy method to configure: the `--proxy-method` flag if given, otherwise an interactive prompt. */
+const promptProxyMethod = async (methodInput?: string): Promise<ProxyMethod> => {
+    if (methodInput) {
+        if (!VALID_PROXY_METHODS.includes(methodInput as ProxyMethod)) {
+            throw new Error(`Invalid proxy method: ${methodInput}. Expected one of: ${VALID_PROXY_METHODS.join(", ")}`);
+        }
+        return methodInput as ProxyMethod;
+    }
+    const { method } = await inquirer.prompt([
+        {
+            type: "list",
+            name: "method",
+            message: "Select proxy method to configure",
+            choices: [
+                { name: "aws     - AWS API Gateway IP rotation", value: "aws" },
+                { name: "socks   - Generic SOCKS5 proxy", value: "socks" },
+                { name: "http    - Generic HTTP proxy", value: "http" },
+                { name: "oxylabs - Oxylabs residential proxy", value: "oxylabs" },
+            ],
+        },
+    ]);
+    return method;
+};
+
+/** Resolves the socks/http proxy URL: the `--proxy` flag if given (validated), otherwise an interactive prompt. */
+const promptProxyUrl = async (method: "socks" | "http", urlInput?: string): Promise<string> => {
+    if (urlInput) {
+        parseProxyUrl(urlInput);
+        return urlInput;
+    }
+    const example = method === "socks" ? "socks5://user:pass@host:1080" : "http://user:pass@host:8080";
+    const { url } = await inquirer.prompt([
+        {
+            type: "input",
+            name: "url",
+            message: `${method === "socks" ? "SOCKS5" : "HTTP"} proxy URL (e.g. ${example})`,
+            validate: (value: string) => {
+                try {
+                    parseProxyUrl(value);
+                    return true;
+                } catch (err) {
+                    return err.message;
+                }
+            },
+        },
+    ]);
+    return url;
+};
+
+/** Resolves the oxylabs config field-by-field: CLI flags where given, otherwise interactive prompts. */
+const promptOxylabsConfig = async (opts: ProxyCliOptions): Promise<OxylabsConfig> => {
+    const answers = await inquirer.prompt([
+        {
+            type: "input",
+            name: "username",
+            message: "Oxylabs username",
+            when: !opts.oxylabsUsername,
+            validate: (value: string) => !!value || "Username is required",
+        },
+        {
+            type: "password",
+            name: "password",
+            mask: "*",
+            message: "Oxylabs password",
+            when: !opts.oxylabsPassword,
+            validate: (value: string) => !!value || "Password is required",
+        },
+        {
+            type: "input",
+            name: "country",
+            message: "Country code (optional, e.g. US)",
+            when: opts.oxylabsCountry === undefined,
+        },
+        {
+            type: "input",
+            name: "city",
+            message: "City (optional, requires country)",
+            when: (currentAnswers: { country?: string }) =>
+                opts.oxylabsCity === undefined && !!(opts.oxylabsCountry || currentAnswers.country),
+        },
+        {
+            type: "input",
+            name: "sessionId",
+            message: "Sticky session id (optional)",
+            when: opts.oxylabsSessionId === undefined,
+        },
+    ]);
+
+    const cfg: OxylabsConfig = {
+        username: opts.oxylabsUsername || answers.username,
+        password: opts.oxylabsPassword || answers.password,
+        country: opts.oxylabsCountry || answers.country || undefined,
+        city: opts.oxylabsCity || answers.city || undefined,
+        sessionId: opts.oxylabsSessionId || answers.sessionId || undefined,
+    };
+    composeOxylabsUsername(cfg); // throws if city was given without country
+    return cfg;
+};
+
+/** Resolves AWS credentials/region for the interactive `--init` flow: flags/env first, prompts for whatever's missing. */
+const resolveAwsCredentialsInteractive = async (opts: ProxyCliOptions): Promise<void> => {
+    aws_access_key = opts.awsAccessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
+    aws_secret_key = opts.awsSecretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
+    region = opts.region || undefined;
+
+    const answers = await inquirer.prompt([
+        {
+            type: "input",
+            name: "accessKey",
+            message: "AWS access key",
+            when: !aws_access_key,
+            validate: (value: string) => !!value || "Required",
+        },
+        {
+            type: "password",
+            name: "secretKey",
+            mask: "*",
+            message: "AWS secret key",
+            when: !aws_secret_key,
+            validate: (value: string) => !!value || "Required",
+        },
+        {
+            type: "input",
+            name: "region",
+            message: "AWS region (leave blank for random)",
+            when: !region,
+        },
+    ]);
+
+    aws_access_key = aws_access_key || answers.accessKey;
+    aws_secret_key = aws_secret_key || answers.secretKey;
+    region = region || answers.region || randomRegion();
+};
+
+export interface ProxyCliOptions {
+    init: boolean;
+    destroy: string;
+    destroyAll: boolean;
+    list: boolean;
+    region: string;
+    awsAccessKey: string;
+    awsSecretKey: string;
+    config: string;
+    feasibility: boolean;
+    feasibilityUrl: string;
+    proxyMethod?: string;
+    proxyUrl?: string;
+    oxylabsUsername?: string;
+    oxylabsPassword?: string;
+    oxylabsCountry?: string;
+    oxylabsCity?: string;
+    oxylabsSessionId?: string;
+}
+
 /**
- * Main function for API Gateway.
+ * Main entry point for the `proxy` module.
+ *
+ * `-i/--init` runs the interactive config wizard covering all 4 methods (aws/socks/http/oxylabs),
+ * writing the result to `.proxy_config.json`. `-d/--destroy`, `--destroy-all`, and `-l/--list`
+ * remain AWS-only lifecycle actions, unchanged from the original api-gateway module.
  *
  * @async
- * @param {boolean} initInput - Whether to initialize the API Gateway.
- * @param {string} destroyInput - The ID of the API Gateway to destroy.
- * @param {boolean} destroyAllInput - Whether to destroy all API Gateways.
- * @param {boolean} listInput - Whether to list all API Gateways.
- * @param {string} regionInput - The region to use.
- * @param {string} accessKey - The access key to use.
- * @param {string} secretKey - The secret key to use.
- * @param {string} configInput - The config file to use.
- * @param {boolean} feasibilityInput - Whether to check feasibility.
- * @param {string} feasibilityUrlInput - The URL to check feasibility for.
+ * @param opts - Resolved CLI options for the `proxy` command.
  * @returns {Promise<void>}
  */
-const proxy = async (
-    initInput: boolean,
-    destroyInput: string,
-    destroyAllInput: boolean,
-    listInput: boolean,
-    regionInput: string,
-    accessKey: string,
-    secretKey: string,
-    configInput: string,
-    feasibilityInput: boolean,
-    feasibilityUrlInput: string
-): Promise<void> => {
-    console.log(chalk.cyan("[i] Loading 'Proxy' module (aws method)"));
+const proxy = async (opts: ProxyCliOptions): Promise<void> => {
+    configFile = opts.config || ".proxy_config.json";
 
     // if feasibility is true, check feasibility
-    if (feasibilityInput) {
-        if (!feasibilityUrlInput) {
+    if (opts.feasibility) {
+        if (!opts.feasibilityUrl) {
             console.error(chalk.red("[!] Please provide a URL to check feasibility of"));
             return;
         }
-        await checkFeasibility(feasibilityUrlInput);
+        await checkFeasibility(opts.feasibilityUrl);
         return;
     }
 
-    // configure the access and secret key
-    aws_access_key = accessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
-    aws_secret_key = secretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
-    region = regionInput || randomRegion();
-    configFile = configInput || ".proxy_config.json";
+    if (opts.init) {
+        const method = await promptProxyMethod(opts.proxyMethod);
 
-    if (!aws_access_key || !aws_secret_key) {
-        console.error(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
+        if (method === "aws") {
+            console.log(chalk.cyan("[i] Configuring 'Proxy' module (aws method)"));
+            await resolveAwsCredentialsInteractive(opts);
+            console.log(chalk.cyan(`[i] Using region: ${region}`));
+            console.log(chalk.cyan(`[i] Using access key: ${keyMask(aws_access_key)}`));
+
+            await createGateway();
+            setActiveProxyMethod(configFile, "aws");
+            return;
+        }
+
+        if (method === "socks" || method === "http") {
+            const url = await promptProxyUrl(method, opts.proxyUrl);
+            writeMethodConfig(configFile, method, { url });
+            console.log(chalk.green(`[✓] Saved ${method} proxy config to ${configFile}`));
+            return;
+        }
+
+        // method === "oxylabs"
+        const oxylabsConfig = await promptOxylabsConfig(opts);
+        writeMethodConfig(configFile, "oxylabs", oxylabsConfig);
+        console.log(chalk.green(`[✓] Saved oxylabs proxy config to ${configFile}`));
         return;
     }
 
-    console.log(chalk.cyan(`[i] Using region: ${region}`));
+    // destroy / destroy-all / list remain AWS-only, non-interactive
+    if (opts.destroy || opts.destroyAll || opts.list) {
+        aws_access_key = opts.awsAccessKey || process.env.AWS_ACCESS_KEY_ID || undefined;
+        aws_secret_key = opts.awsSecretKey || process.env.AWS_SECRET_ACCESS_KEY || undefined;
+        region = opts.region || randomRegion();
 
-    /**
-     * Masks an API key for secure display by showing only first and last 4 characters.
-     *
-     * @param key - The API key to mask
-     * @returns Masked version of the key
-     */
-    const keyMask = (key: string): string => {
-        if (key.length < 6) return key;
-        return key.slice(0, 4) + "..." + key.slice(-4);
-    };
-    console.log(chalk.cyan(`[i] Using access key: ${keyMask(aws_access_key)}`));
+        if (!aws_access_key || !aws_secret_key) {
+            console.error(chalk.red("[!] AWS Access Key or Secret Key not found. Run with -h to see help"));
+            return;
+        }
 
-    // create a new API gateway
-    if (initInput) {
-        await createGateway();
-    } else if (destroyInput) {
-        await destroyGateway(destroyInput);
-    } else if (destroyAllInput) {
-        await destroyAllGateways();
-    } else if (listInput) {
-        await listGateways();
-    } else {
-        console.error(chalk.red("[!] Please provide a valid action (-i/--init or -d/--destroy or --destroy-all)"));
+        if (opts.destroy) {
+            await destroyGateway(opts.destroy);
+        } else if (opts.destroyAll) {
+            await destroyAllGateways();
+        } else {
+            await listGateways();
+        }
+        return;
     }
+
+    console.error(
+        chalk.red("[!] Please provide a valid action (-i/--init, -d/--destroy, --destroy-all, or -l/--list)")
+    );
 };
 
 export default proxy;

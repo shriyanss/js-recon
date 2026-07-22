@@ -5,8 +5,12 @@ import { resolveProxyConfig } from "../proxy/resolveProxyConfig.js";
 import { parseProxyUrl } from "../proxy/genericProxy.js";
 
 /**
- * Reads the proxy config file (if present), resolves CLI > env > file precedence via
- * resolveProxyConfig, and sets the resulting proxy-related globals.
+ * Reads the proxy config file (if present) and resolves env (unless --ignore-proxy-env) > file
+ * precedence via resolveProxyConfig, then sets the resulting proxy-related globals.
+ *
+ * `lazyload`/`run` only ever pass a config file reference (`--proxy-config`) — all method
+ * selection and credentials live in `.proxy_config.json`, generated interactively via the
+ * `proxy` module's `-i/--init` wizard. There is no per-run CLI override for credentials here.
  * @param cmd - The commander command object.
  */
 const configureProxy = (cmd): void => {
@@ -22,15 +26,7 @@ const configureProxy = (cmd): void => {
     }
 
     const resolved = resolveProxyConfig({
-        cli: {
-            proxyMethod: cmd.proxyMethod,
-            proxyUrl: cmd.proxy,
-            oxylabsUsername: cmd.oxylabsUsername,
-            oxylabsPassword: cmd.oxylabsPassword,
-            oxylabsCountry: cmd.oxylabsCountry,
-            oxylabsCity: cmd.oxylabsCity,
-            oxylabsSessionId: cmd.oxylabsSessionId,
-        },
+        cli: {},
         env: process.env,
         ignoreEnv: cmd.ignoreProxyEnv === true,
         configFileParsed,

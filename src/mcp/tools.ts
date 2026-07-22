@@ -91,7 +91,6 @@ export const runFullPipeline = async (
             strictScope: false,
             scope: "*",
             threads: String(threads),
-            proxyMethod: undefined,
             proxyConfig: ".proxy_config.json",
             cacheFile: ".resp_cache.json",
             disableCache: false,

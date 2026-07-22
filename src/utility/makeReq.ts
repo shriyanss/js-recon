@@ -1,17 +1,95 @@
 import chalk from "chalk";
+import { ProxyAgent, Socks5ProxyAgent, type Dispatcher } from "undici";
 import puppeteer from "./puppeteerInstance.js";
 import { getChromiumPath } from "./getChromiumPath.js";
 import * as globals from "./globals.js";
 import { get } from "../proxy/genReq.js";
-import {
-    buildPuppeteerProxyArgs,
-    getResolvedProxyConfigFromGlobals,
-    withProxyDispatcher,
-} from "../proxy/proxyAgent.js";
+import { parseProxyUrl } from "../proxy/genericProxy.js";
+import { buildOxylabsProxyUrl, composeOxylabsUsername } from "../proxy/oxylabsProxy.js";
+import type { ResolvedProxyConfig } from "../proxy/resolveProxyConfig.js";
 import fs from "fs";
 import { EventEmitter } from "events";
 import { progressError, progressLog } from "./progressLog.js";
 import { isSigintHandlerActive } from "../run/interruptHandler.js";
+
+/**
+ * Proxy-wiring layer. This is the single place a resolved proxy config (see
+ * `../proxy/resolveProxyConfig.ts`) is turned into an actual dispatcher/launch args — every
+ * request-issuing call site (Puppeteer launches here and in `lazyLoad/`, `initRules.ts`'s rules
+ * download) imports these helpers rather than re-deriving proxy semantics itself.
+ */
+
+/** Reconstructs a ResolvedProxyConfig from the current proxy-related globals. */
+export const getResolvedProxyConfigFromGlobals = (): ResolvedProxyConfig => {
+    return {
+        method: globals.getProxyMethod(),
+        url: globals.getProxyUrl(),
+        oxylabs: globals.getOxylabsConfig(),
+    };
+};
+
+/** `RequestInit` extended with undici's `dispatcher` option (absent from the DOM lib's fetch types). */
+export type FetchOptsWithDispatcher = RequestInit & { dispatcher?: Dispatcher };
+
+/** Merges a proxy dispatcher (derived from the current globals) into fetch options, if a proxy is configured. */
+export const withProxyDispatcher = (opts: RequestInit = {}): FetchOptsWithDispatcher => {
+    const dispatcher = buildUndiciDispatcher(getResolvedProxyConfigFromGlobals());
+    return dispatcher ? { ...opts, dispatcher } : opts;
+};
+
+/**
+ * Builds an undici dispatcher for the resolved proxy config, to pass as `fetch(url, { dispatcher })`.
+ * Returns null for the `aws` method (routed separately via genReq.ts) or no proxy configured.
+ */
+export const buildUndiciDispatcher = (resolved: ResolvedProxyConfig): Dispatcher | null => {
+    if (resolved.method === "socks") {
+        if (!resolved.url) return null;
+        parseProxyUrl(resolved.url); // validates before constructing the agent
+        return new Socks5ProxyAgent(resolved.url);
+    }
+    if (resolved.method === "http") {
+        if (!resolved.url) return null;
+        parseProxyUrl(resolved.url); // validates before constructing the agent
+        return new ProxyAgent(resolved.url);
+    }
+    if (resolved.method === "oxylabs") {
+        if (!resolved.oxylabs) return null;
+        return new ProxyAgent(buildOxylabsProxyUrl(resolved.oxylabs));
+    }
+    return null;
+};
+
+export interface PuppeteerProxyArgs {
+    arg: string | null;
+    authenticate?: { username: string; password: string };
+}
+
+/**
+ * Builds the Puppeteer `--proxy-server=` launch arg plus optional `page.authenticate()` credentials.
+ * `aws` never applies here (Puppeteer never went through API Gateway).
+ */
+export const buildPuppeteerProxyArgs = (resolved: ResolvedProxyConfig): PuppeteerProxyArgs => {
+    if (resolved.method === "socks" || resolved.method === "http") {
+        if (!resolved.url) return { arg: null };
+        const parsed = parseProxyUrl(resolved.url);
+        const arg = `--proxy-server=${parsed.protocol}://${parsed.host}:${parsed.port}`;
+        if (parsed.username && parsed.password) {
+            return { arg, authenticate: { username: parsed.username, password: parsed.password } };
+        }
+        return { arg };
+    }
+    if (resolved.method === "oxylabs") {
+        if (!resolved.oxylabs) return { arg: null };
+        return {
+            arg: "--proxy-server=pr.oxylabs.io:7777",
+            authenticate: {
+                username: composeOxylabsUsername(resolved.oxylabs),
+                password: resolved.oxylabs.password,
+            },
+        };
+    }
+    return { arg: null };
+};
 
 const reportedFailures = new Set<string>();
 

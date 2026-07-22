@@ -234,7 +234,6 @@ export const startMcpServer = async (): Promise<void> => {
                 strictScope: false,
                 scope: "*",
                 threads: String(args.threads),
-                proxyMethod: undefined,
                 proxyConfig: ".proxy_config.json",
                 cacheFile: ".resp_cache.json",
                 disableCache: false,

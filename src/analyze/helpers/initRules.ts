@@ -2,7 +2,7 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import extract from "extract-zip";
-import { withProxyDispatcher } from "../../proxy/proxyAgent.js";
+import { withProxyDispatcher } from "../../utility/makeReq.js";
 
 /**
  * Downloads and extracts the latest analysis rules from the GitHub repository.
