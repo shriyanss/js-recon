@@ -18,7 +18,9 @@ const reportFailure = (url: string, err: unknown): void => {
         return;
     }
     progressError(chalk.red(`[!] Failed to fetch ${url} : ${err}`));
-    progressLog(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
+    if (!globals.getInsecure()) {
+        progressLog(chalk.dim("[i] Often, using -k flag (ignore SSL errors) fixes the problem"));
+    }
 };
 
 // random user agents

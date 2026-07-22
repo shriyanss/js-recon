@@ -90,6 +90,26 @@ export const getDisableSandbox = (): boolean => {
     return disableSandbox;
 };
 
+// Insecure Mode Configuration
+/** Whether SSL certificate verification is disabled */
+export let insecure = false;
+
+/**
+ * Sets the insecure mode flag.
+ * @param value - Whether SSL certificate verification is disabled
+ */
+export const setInsecure = (value: boolean): void => {
+    insecure = value;
+};
+
+/**
+ * Gets the current insecure mode status.
+ * @returns Whether SSL certificate verification is disabled
+ */
+export const getInsecure = (): boolean => {
+    return insecure;
+};
+
 // Auto-execution Configuration
 /** Whether to auto-approve code execution */
 export let yes = false;
