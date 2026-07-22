@@ -14,7 +14,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:build": "node build/index.js -h",
-        "cleanup": "rm -rf build output output_refactored .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json,-openapi.postman_collection.json} analyze.json test{.yaml,.js} js-recon-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js extracted/ research.json results* out.* && tsc"
+        "cleanup": "rm -rf build output output_refactored .resp_cache.json endpoints.json extracted_urls{.txt,.json,-openapi.json} strings.json mapped{-openapi.json,.json,-openapi.postman_collection.json} analyze.json test{.yaml,.js} js-recon-js-recon-*.tgz js-recon.db report.{html,md} js_recon_run_output *_test.js extracted/ research.json results* out.* swagger-jacker-results.json && tsc"
     },
     "keywords": [],
     "author": "Shriyans Sudhi",
@@ -40,6 +40,7 @@
         "datatables.net": "^2.3.6",
         "datatables.net-dt": "^2.3.6",
         "esquery": "^1.6.0",
+        "extract-zip": "^2.0.1",
         "fs": "^0.0.2",
         "graphql": "^16.14.1",
         "highlight.js": "^11.11.1",
@@ -50,12 +51,12 @@
         "openai": "^5.8.2",
         "path": "^0.12.7",
         "prettier": "^3.7.4",
-        "extract-zip": "^2.0.1",
         "puppeteer": "^25.0.2",
         "puppeteer-extra": "^3.3.6",
         "puppeteer-extra-plugin-stealth": "^2.11.2",
         "readline": "^1.3.0",
         "ses": "^1.13.0",
+        "shell-quote": "^1.10.0",
         "yaml": "^2.8.0",
         "zod": "^3.23.8"
     },
@@ -73,6 +74,7 @@
         "@types/blessed": "^0.1.25",
         "@types/graphql": "^14.2.3",
         "@types/node": "^24.12.4",
+        "@types/shell-quote": "^1.7.5",
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.9.2",

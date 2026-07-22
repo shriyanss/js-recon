@@ -187,7 +187,17 @@ const processUrl = async (
         }
         resetSkipStep();
         await Promise.race([
-            report(reportDbFile, mappedJsonFileReact, analyzeFile, endpointsJson, openapiFile, reportFile),
+            report(
+                reportDbFile,
+                mappedJsonFileReact,
+                analyzeFile,
+                endpointsJson,
+                openapiFile,
+                reportFile,
+                cmd.sj,
+                cmd.sjBin,
+                cmd.sjArgs
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Report complete."));
@@ -265,7 +275,17 @@ const processUrl = async (
         }
         resetSkipStep();
         await Promise.race([
-            report(reportDbFile, mappedJsonFileVue, analyzeFile, endpointsJson, openapiFile, reportFile),
+            report(
+                reportDbFile,
+                mappedJsonFileVue,
+                analyzeFile,
+                endpointsJson,
+                openapiFile,
+                reportFile,
+                cmd.sj,
+                cmd.sjBin,
+                cmd.sjArgs
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Report complete."));
@@ -340,7 +360,17 @@ const processUrl = async (
         }
         resetSkipStep();
         await Promise.race([
-            report(reportDbFile, mappedJsonFileNuxt, analyzeFile, endpointsJson, openapiFile, reportFile),
+            report(
+                reportDbFile,
+                mappedJsonFileNuxt,
+                analyzeFile,
+                endpointsJson,
+                openapiFile,
+                reportFile,
+                cmd.sj,
+                cmd.sjBin,
+                cmd.sjArgs
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Report complete."));
@@ -414,7 +444,17 @@ const processUrl = async (
         }
         resetSkipStep();
         await Promise.race([
-            report(reportDbFile, mappedJsonFileSvelte, analyzeFile, endpointsJson, openapiFile, reportFile),
+            report(
+                reportDbFile,
+                mappedJsonFileSvelte,
+                analyzeFile,
+                endpointsJson,
+                openapiFile,
+                reportFile,
+                cmd.sj,
+                cmd.sjBin,
+                cmd.sjArgs
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Report complete."));
@@ -471,7 +511,17 @@ const processUrl = async (
         }
         resetSkipStep();
         await Promise.race([
-            report(reportDbFile, mappedJsonFileAngular, analyzeFile, endpointsJson, openapiFile, reportFile),
+            report(
+                reportDbFile,
+                mappedJsonFileAngular,
+                analyzeFile,
+                endpointsJson,
+                openapiFile,
+                reportFile,
+                cmd.sj,
+                cmd.sjBin,
+                cmd.sjArgs
+            ),
             getSkipStepPromise(),
         ]);
         console.log(chalk.bgGreen("[+] Report complete."));
@@ -644,7 +694,17 @@ const processUrl = async (
     console.log(chalk.bgCyan("[8/8] Running report module..."));
     resetSkipStep();
     await Promise.race([
-        report(reportDbFile, mappedJsonFile, analyzeFile, `${endpointsFile}.json`, openapiFile, reportFile),
+        report(
+            reportDbFile,
+            mappedJsonFile,
+            analyzeFile,
+            `${endpointsFile}.json`,
+            openapiFile,
+            reportFile,
+            cmd.sj,
+            cmd.sjBin,
+            cmd.sjArgs
+        ),
         getSkipStepPromise(),
     ]);
     console.log(chalk.bgGreen("[+] Report complete."));

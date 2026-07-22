@@ -519,6 +519,9 @@ program
     .option("-e, --endpoints-json <file>", "Endpoints JSON file")
     .option("--map-openapi, --mapped-openapi-json <file>", "Mapped OpenAPI JSON file")
     .option("-o, --output <file>", "Output file name (without the extension)", "report")
+    .option("--sj", "Run sj (swagger-jacker) against the mapped OpenAPI spec", false)
+    .option("--sj-bin <path>", "Path to the sj binary", "sj")
+    .option("--sj-args <args>", "Extra arguments passed through to `sj automate`", "")
     .action(async (cmd) => {
         await report(
             cmd.sqliteDb,
@@ -526,7 +529,10 @@ program
             cmd.analyzeJson,
             cmd.endpointsJson,
             cmd.mappedOpenapiJson,
-            cmd.output
+            cmd.output,
+            cmd.sj,
+            cmd.sjBin,
+            cmd.sjArgs
         );
     });
 
@@ -553,6 +559,9 @@ program
     .option("-y, --yes", "Auto-approve executing JS code from the target", false)
     .option("--secrets", "Scan for secrets", false)
     .option("--trufflehog", "Run TruffleHog secret scanner on the output directory", false)
+    .option("--sj", "Run sj (swagger-jacker) against the mapped OpenAPI spec", false)
+    .option("--sj-bin <path>", "Path to the sj binary", "sj")
+    .option("--sj-args <args>", "Extra arguments passed through to `sj automate`", "")
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
     .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
