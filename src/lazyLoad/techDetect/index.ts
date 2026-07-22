@@ -11,6 +11,7 @@ import { checkSvelte } from "./checkSvelte.js";
 import { checkVueJS } from "./checkVueJS.js";
 import { checkAngularJS } from "./checkAngularJS.js";
 import { checkReact } from "./checkReact.js";
+import { isValidInterceptedJsEvidence } from "./checkInterceptedEvidence.js";
 import { isSigintHandlerActive } from "../../run/interruptHandler.js";
 
 /**
@@ -50,6 +51,10 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     // get the page source in the browser (skipped in cache-only mode — no network allowed)
     let pageSource = "";
     const interceptedUrls: string[] = [];
+    // Keyed by URL: the response status/content-type/body for every request Puppeteer
+    // saw during page load. Populated below so the intercepted-URL fallback can confirm
+    // a framework-shaped URL's response actually looks like JS, not just its path shape.
+    const responseEvidence = new Map<string, { status: number; contentType: string | null; body: string }>();
     if (!globalsUtil.getCacheOnly()) {
         const chromiumPath = getChromiumPath();
         const browser = await puppeteer.launch({
@@ -77,6 +82,24 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
                 req.abort().catch(() => {});
             }
         });
+        // Captures each response's status/content-type/body as it arrives — reading the
+        // body must happen while the page/CDP session is still alive, so this can't be
+        // deferred until after browser.close(). Body-read failures (redirects, aborted
+        // responses) are swallowed to an empty string rather than dropping the entry.
+        const responseBodyPromises: Promise<void>[] = [];
+        page.on("response", (httpRes) => {
+            const responseUrl = httpRes.url();
+            const status = httpRes.status();
+            const contentType = httpRes.headers()["content-type"] ?? null;
+            responseBodyPromises.push(
+                httpRes
+                    .text()
+                    .catch(() => "")
+                    .then((body) => {
+                        responseEvidence.set(responseUrl, { status, contentType, body });
+                    })
+            );
+        });
         try {
             await page.goto(url, {
                 waitUntil: "load",
@@ -99,6 +122,9 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
         } catch (err) {
             log(chalk.yellow("[!] Page navigation/content failed, falling back to fetch response if available"));
         } finally {
+            // Wait for in-flight response body reads so responseEvidence is populated
+            // before the CDP session backing them goes away.
+            await Promise.allSettled(responseBodyPromises);
             await browser.close().catch(() => {});
         }
     }
@@ -177,21 +203,33 @@ const frameworkDetect = async (url: string): Promise<{ name: string; evidence: s
     // Fallback: check URLs intercepted by Puppeteer during page load.
     // Some sites load framework chunks dynamically via JavaScript rather than referencing
     // them in static HTML attributes — those won't be caught by the HTML-based checks above.
-    // Matching on well-known path prefixes gives us a reliable signal without fetching extra files.
+    // A path-shape match alone isn't sufficient evidence, though — a framework-shaped path
+    // that actually resolves to an error/maintenance page would otherwise be enough to
+    // mis-fingerprint the whole target. Only accept the match once the captured response
+    // for that URL confirms it's a genuine 2xx JS response.
     for (const interceptedUrl of interceptedUrls) {
+        let candidateName: string | null = null;
         if (interceptedUrl.includes("/_nuxt/")) {
-            return { name: "nuxt", evidence: `intercepted request: ${interceptedUrl}` };
+            candidateName = "nuxt";
+        } else if (interceptedUrl.includes("/_next/")) {
+            candidateName = "next";
+        } else if (interceptedUrl.includes("/_app/immutable/")) {
+            candidateName = "svelte";
+        } else if (interceptedUrl.includes("/@react-refresh")) {
+            // Vite React plugin dev-mode HMR runtime — requested by every Vite/React dev server.
+            candidateName = "react";
         }
-        if (interceptedUrl.includes("/_next/")) {
-            return { name: "next", evidence: `intercepted request: ${interceptedUrl}` };
+        if (candidateName === null) continue;
+
+        const evidence = responseEvidence.get(interceptedUrl);
+        if (evidence && isValidInterceptedJsEvidence(evidence.status, evidence.contentType, evidence.body)) {
+            return { name: candidateName, evidence: `intercepted request: ${interceptedUrl}` };
         }
-        if (interceptedUrl.includes("/_app/immutable/")) {
-            return { name: "svelte", evidence: `intercepted request: ${interceptedUrl}` };
-        }
-        // Vite React plugin dev-mode HMR runtime — requested by every Vite/React dev server.
-        if (interceptedUrl.includes("/@react-refresh")) {
-            return { name: "react", evidence: `intercepted request: ${interceptedUrl}` };
-        }
+        log(
+            chalk.yellow(
+                `[!] Framework-shaped URL rejected as detection evidence (response is not JS): ${interceptedUrl}`
+            )
+        );
     }
 
     return null;

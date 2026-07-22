@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-beta.3 - (unreleased)
+
+### Fixed
+
+- Tech detection's intercepted-URL fallback (`techDetect/index.ts`) accepted a framework-shaped URL path (e.g. `/_nuxt/`, `/_next/`) as detection evidence without checking its actual response. A framework-shaped path resolving to a non-JS response (e.g. an error/maintenance page) could mis-fingerprint the whole target and send it down the wrong per-framework pipeline. The fallback now also confirms the captured response is a genuine 2xx JS response (status + `Content-Type` + body shape) before accepting the match. (`lazyload`)
+
 ## 1.4.1-beta.2 - 2026-07-19
 
 ### Added
