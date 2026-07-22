@@ -103,8 +103,14 @@ program
     .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username")
     .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password")
     .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code")
-    .option("--oxylabs-city <city>", "Oxylabs datacenter proxy city (currently unsupported \u2014 no documented username-level city targeting)")
-    .option("--oxylabs-session-id <id>", "Oxylabs datacenter proxy sticky session id (currently unsupported via username \u2014 sessions are selected by port)")
+    .option(
+        "--oxylabs-city <city>",
+        "Oxylabs datacenter proxy city (currently unsupported \u2014 no documented username-level city targeting)"
+    )
+    .option(
+        "--oxylabs-session-id <id>",
+        "Oxylabs datacenter proxy sticky session id (currently unsupported via username \u2014 sessions are selected by port)"
+    )
     .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
@@ -525,8 +531,14 @@ program
     .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username")
     .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password")
     .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code")
-    .option("--oxylabs-city <city>", "Oxylabs datacenter proxy city (currently unsupported \u2014 no documented username-level city targeting)")
-    .option("--oxylabs-session-id <id>", "Oxylabs datacenter proxy sticky session id (currently unsupported via username \u2014 sessions are selected by port)")
+    .option(
+        "--oxylabs-city <city>",
+        "Oxylabs datacenter proxy city (currently unsupported \u2014 no documented username-level city targeting)"
+    )
+    .option(
+        "--oxylabs-session-id <id>",
+        "Oxylabs datacenter proxy sticky session id (currently unsupported via username \u2014 sessions are selected by port)"
+    )
     .option("--ignore-proxy-env", "Skip JS_RECON_* proxy environment variables during resolution", false)
     .option("--cache-file <file>", "File to store response cache", ".resp_cache.json")
     .option("--disable-cache", "Disable response caching", false)
