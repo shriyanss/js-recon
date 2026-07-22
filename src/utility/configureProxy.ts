@@ -23,7 +23,9 @@ const configureProxy = (cmd): void => {
             configFileParsed = JSON.parse(fs.readFileSync(configFile, "utf8"));
         } catch (err) {
             console.error(
-                chalk.yellow(`[!] Failed to parse proxy config file ${configFile}: ${err.message}. Proceeding with no proxy.`)
+                chalk.yellow(
+                    `[!] Failed to parse proxy config file ${configFile}: ${err.message}. Proceeding with no proxy.`
+                )
             );
             configFileParsed = {};
         }
