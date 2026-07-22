@@ -7,7 +7,7 @@ export let useProxy = false;
 export let proxyMethod: "aws" | "socks" | "http" | "oxylabs" | null = null;
 /** Resolved SOCKS/HTTP proxy URL (method === "socks" | "http") */
 export let proxyUrl: string | undefined;
-/** Resolved Oxylabs residential proxy config (method === "oxylabs") */
+/** Resolved Oxylabs datacenter proxy config (method === "oxylabs") */
 export let oxylabsConfig:
     { username: string; password: string; country?: string; city?: string; sessionId?: string } | undefined;
 /** Whether to skip reading JS_RECON_* env vars during proxy config resolution */
@@ -78,7 +78,7 @@ export const getProxyUrl = (): string | undefined => {
 };
 
 /**
- * Sets the resolved Oxylabs residential proxy config.
+ * Sets the resolved Oxylabs datacenter proxy config.
  * @param value - The Oxylabs config
  */
 export const setOxylabsConfig = (
@@ -88,7 +88,7 @@ export const setOxylabsConfig = (
 };
 
 /**
- * Gets the resolved Oxylabs residential proxy config.
+ * Gets the resolved Oxylabs datacenter proxy config.
  * @returns The Oxylabs config
  */
 export const getOxylabsConfig = ():

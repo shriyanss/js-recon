@@ -259,7 +259,7 @@ const promptProxyMethod = async (methodInput?: string): Promise<ProxyMethod> => 
                 { name: "aws     - AWS API Gateway IP rotation", value: "aws" },
                 { name: "socks   - Generic SOCKS5 proxy", value: "socks" },
                 { name: "http    - Generic HTTP proxy", value: "http" },
-                { name: "oxylabs - Oxylabs residential proxy", value: "oxylabs" },
+                { name: "oxylabs - Oxylabs datacenter proxy", value: "oxylabs" },
             ],
         },
     ]);

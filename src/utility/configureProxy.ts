@@ -3,6 +3,7 @@ import chalk from "chalk";
 import * as globalsUtil from "./globals.js";
 import { resolveProxyConfig } from "../proxy/resolveProxyConfig.js";
 import { parseProxyUrl } from "../proxy/genericProxy.js";
+import { composeOxylabsUsername } from "../proxy/oxylabsProxy.js";
 
 /**
  * Reads the proxy config file (if present) and resolves env (unless --ignore-proxy-env) > file
@@ -40,6 +41,15 @@ const configureProxy = (cmd): void => {
             parseProxyUrl(resolved.url);
         } catch (err) {
             console.error(chalk.red(`[!] Invalid proxy URL: ${err.message}`));
+            process.exit(1);
+        }
+    }
+
+    if (resolved.method === "oxylabs" && resolved.oxylabs) {
+        try {
+            composeOxylabsUsername(resolved.oxylabs);
+        } catch (err) {
+            console.error(chalk.red(`[!] Invalid Oxylabs config: ${err.message}`));
             process.exit(1);
         }
     }

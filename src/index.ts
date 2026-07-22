@@ -280,11 +280,17 @@ program
         "--proxy <url>",
         "SOCKS5/HTTP proxy URL for -i/--init (socks5://[user:pass@]host:port or http://[user:pass@]host:port)"
     )
-    .option("--oxylabs-username <username>", "Oxylabs residential proxy username for -i/--init")
-    .option("--oxylabs-password <password>", "Oxylabs residential proxy password for -i/--init")
-    .option("--oxylabs-country <country>", "Oxylabs residential proxy country code for -i/--init")
-    .option("--oxylabs-city <city>", "Oxylabs residential proxy city for -i/--init")
-    .option("--oxylabs-session-id <id>", "Oxylabs residential proxy sticky session id for -i/--init")
+    .option("--oxylabs-username <username>", "Oxylabs datacenter proxy username for -i/--init")
+    .option("--oxylabs-password <password>", "Oxylabs datacenter proxy password for -i/--init")
+    .option("--oxylabs-country <country>", "Oxylabs datacenter proxy country code for -i/--init")
+    .option(
+        "--oxylabs-city <city>",
+        "Oxylabs datacenter proxy city for -i/--init (currently unsupported — no documented username-level city targeting)"
+    )
+    .option(
+        "--oxylabs-session-id <id>",
+        "Oxylabs datacenter proxy sticky session id for -i/--init (currently unsupported via username — sessions are selected by port)"
+    )
     .action(async (cmd) => {
         try {
             await proxy({
