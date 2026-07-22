@@ -229,6 +229,7 @@ const FLAGS: Record<string, string[]> = {
         "--exclude-methods",
         "--list-methods",
         "--cs-mast-tech-detect-threshold",
+        "--disable-refactor",
     ],
     load: ["-c", "--caido", "-u", "--url", "--cache-file"],
     fingerprint: [

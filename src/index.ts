@@ -532,6 +532,7 @@ program
         "Minimum CS-MAST-S signature matches required to detect bundler for the refactor step (0 = skip refactor)",
         "50"
     )
+    .option("--disable-refactor", "Skip the automatic refactor step after report", false)
     .action(async (cmd) => {
         // handle --list-methods before any network work
         if (cmd.listMethods !== undefined) {
