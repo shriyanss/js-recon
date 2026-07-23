@@ -205,7 +205,8 @@ const lazyLoad = async (
                         maxJsSizeMb,
                         onFilesDiscovered,
                         includeMethods,
-                        excludeMethods
+                        excludeMethods,
+                        threads
                     );
 
                     // recurse the same pipeline through every client-side path we found
@@ -245,7 +246,7 @@ const lazyLoad = async (
                         includeMethods,
                         excludeMethods
                     )
-                        ? await nuxt_stringAnalysisJSFiles(url)
+                        ? await nuxt_stringAnalysisJSFiles(url, threads)
                         : [];
                     queue.push(jsFilesFromStringAnalysis);
 
@@ -311,7 +312,7 @@ const lazyLoad = async (
                     let jsFilesFromStringAnalysis: string[] = [];
                     let mapFilesFromStringAnalysis: string[] = [];
                     if (shouldRunMethod("svelte_stringAnalysisJSFiles", includeMethods, excludeMethods)) {
-                        const result = await svelte_stringAnalysisJSFiles(url);
+                        const result = await svelte_stringAnalysisJSFiles(url, threads);
                         jsFilesFromStringAnalysis = result.jsFiles;
                         mapFilesFromStringAnalysis = result.mapFiles;
                         queue.push(jsFilesFromStringAnalysis);
@@ -324,7 +325,7 @@ const lazyLoad = async (
                     const visited = new Set<string>();
                     let toFollow = [...new Set([...jsFilesFromPageSource, ...jsFilesFromStringAnalysis])];
                     while (toFollow.length > 0) {
-                        const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                        const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited, threads);
                         if (newFiles.length === 0) break;
                         console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
                         queue.push(newFiles);
@@ -351,7 +352,7 @@ const lazyLoad = async (
                         includeMethods,
                         excludeMethods
                     )
-                        ? await svelte_discoverPagesFromJs(url)
+                        ? await svelte_discoverPagesFromJs(url, threads)
                         : [];
                     if (jsFilesFromPathScan.length > 0) {
                         queue.push(jsFilesFromPathScan);
@@ -363,7 +364,7 @@ const lazyLoad = async (
                         shouldRunMethod("svelte_stringAnalysisJSFiles", includeMethods, excludeMethods)
                     ) {
                         const { jsFiles: jsFilesFromStringAnalysis2, mapFiles: mapFilesFromStringAnalysis2 } =
-                            await svelte_stringAnalysisJSFiles(url);
+                            await svelte_stringAnalysisJSFiles(url, threads);
                         queue.push(jsFilesFromStringAnalysis2);
                         if (mapFilesFromStringAnalysis2.length > 0) {
                             queue.push(mapFilesFromStringAnalysis2);
@@ -424,7 +425,7 @@ const lazyLoad = async (
 
                     // webpack-style chunk path builders (CRA / custom webpack configs)
                     const webpackChunkPaths = shouldRunMethod("react_webpackChunkPaths", includeMethods, excludeMethods)
-                        ? await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource)
+                        ? await react_webpackChunkPaths(url, maxJsSizeMb, jsFilesFromPageSource, threads)
                         : [];
                     queue.push(webpackChunkPaths);
 
@@ -434,7 +435,7 @@ const lazyLoad = async (
                     if (shouldRunMethod("react_followImports", includeMethods, excludeMethods)) {
                         let toFollow = [...new Set([...jsFilesFromPageSource, ...webpackChunkPaths])];
                         while (toFollow.length > 0) {
-                            const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited);
+                            const newFiles = await react_followImports(toFollow, maxJsSizeMb, url, visited, threads);
                             if (newFiles.length === 0) break;
                             console.log(chalk.green(`[✓] Discovered ${newFiles.length} more JS file(s) via imports`));
                             queue.push(newFiles);
@@ -444,7 +445,7 @@ const lazyLoad = async (
 
                     // Sourcemaps for everything discovered
                     if (shouldRunMethod("react_sourcemapUrls", includeMethods, excludeMethods)) {
-                        const sourcemapUrls = await react_sourcemapUrls([...visited]);
+                        const sourcemapUrls = await react_sourcemapUrls([...visited], threads);
                         queue.push(sourcemapUrls);
                     }
 

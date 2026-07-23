@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.4.1-beta.3 - (unreleased)
+
+### Fixed
+
+- `-t/--threads` was ignored by most of the per-file discovery loops in `lazyLoad` (sourcemap URL discovery, import-following, webpack chunk-path brute forcing, string-reference scanning, layout.js parsing, and several Next.js/Vue/Svelte helpers), which fetched one file at a time regardless of the configured thread count. These loops now use a shared bounded-concurrency helper (`utility/concurrency.ts`) and respect `-t`. (`lazyload`, `run`)
+
 ## 1.4.1-beta.2 - 2026-07-22
 
 ### Added

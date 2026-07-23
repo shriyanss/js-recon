@@ -100,7 +100,8 @@ const vue_recursiveClientSidePathDownload = async (
                             maxJsSizeMb,
                             onFilesDiscovered,
                             includeMethods,
-                            excludeMethods
+                            excludeMethods,
+                            threads
                         );
 
                         for (const file of jsFiles) {
