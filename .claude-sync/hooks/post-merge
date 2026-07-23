@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# git post-merge hook: merges the corresponding js-recon-agentic-files branch
+# whenever a merge/pull brings another branch's history in here.
+exec "$(git rev-parse --show-toplevel)/.claude-sync/merge-agentic.sh" "$@"
