@@ -57,6 +57,7 @@ const EXPECTED_RULES = [
     "detect_insecure_random_token_storage",
     "detect_cloud_credentials_in_bundle",
     "detect_hardcoded_hmac_signing_key",
+    "detect_non_global_regex_sanitizer",
     // Request rules
     "api_path",
     "admin_api",
