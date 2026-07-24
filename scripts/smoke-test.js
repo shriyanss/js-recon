@@ -50,6 +50,9 @@ const EXPECTED_RULES = [
     "detect_postmessage_weak_origin_check",
     "detect_hardcoded_secrets",
     "detect_css_injection_style_sink",
+    "detect_react_createelement_dynamic_type",
+    "detect_jquery_html_injection_url_param",
+    "detect_dompurify_forcekeepattr_hook",
     // Request rules
     "api_path",
     "admin_api",
