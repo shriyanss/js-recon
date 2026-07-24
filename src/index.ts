@@ -506,8 +506,28 @@ program
     .option("-l, --list", "List available technologies", false)
     .option("--validate", "Validate the rules", false)
     .option("-o, --output <file>", "Output JSON file name", "analyze.json")
+    .option(
+        "--determine-compatible-version",
+        "Report the js_recon_version/js_recon_max_version each rule actually requires, based on the features it uses",
+        false
+    )
+    .option(
+        "--apply-compatible-versions",
+        "Same as --determine-compatible-version, but rewrites the rule files in place",
+        false
+    )
     .action(async (cmd) => {
-        await analyze(cmd.rules, cmd.mappedJson, cmd.tech, cmd.list, cmd.openapi, cmd.validate, cmd.output);
+        await analyze(
+            cmd.rules,
+            cmd.mappedJson,
+            cmd.tech,
+            cmd.list,
+            cmd.openapi,
+            cmd.validate,
+            cmd.output,
+            cmd.determineCompatibleVersion,
+            cmd.applyCompatibleVersions
+        );
     });
 
 program

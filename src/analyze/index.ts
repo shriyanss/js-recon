@@ -2,6 +2,7 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 import validateRules from "./helpers/validate.js";
+import checkOrApplyRuleVersions from "./helpers/determineCompatibleVersion.js";
 import { Rule } from "./types/index.js";
 import engine from "./engine/index.js";
 import yaml from "yaml";
@@ -56,6 +57,8 @@ const getRuleFilesRecursive = (dir: string): string[] => {
  * @param openapi - Path to OpenAPI specification file for API analysis
  * @param validate - Whether to only validate rules without running analysis
  * @param outputFile - Output file name for analysis results
+ * @param determineCompatibleVersion - Whether to report the compatible js_recon_version/js_recon_max_version for each rule
+ * @param applyCompatibleVersions - Whether to rewrite rule files with the compatible versions
  * @returns Promise that resolves when analysis is complete
  */
 const analyze = async (
@@ -65,7 +68,9 @@ const analyze = async (
     list: boolean,
     openapi: string,
     validate: boolean,
-    outputFile: string
+    outputFile: string,
+    determineCompatibleVersion: boolean,
+    applyCompatibleVersions: boolean
 ) => {
     console.log(chalk.cyan(`[i] Loading analyze module...`));
 
@@ -97,6 +102,14 @@ const analyze = async (
     if (!allValidated) {
         console.error(chalk.red("[!] Some rules are invalid"));
         process.exit(20);
+    }
+
+    if (determineCompatibleVersion || applyCompatibleVersions) {
+        const allCorrect = await checkOrApplyRuleVersions(ruleFiles, applyCompatibleVersions);
+        if (!allCorrect && !applyCompatibleVersions) {
+            process.exit(20);
+        }
+        return;
     }
 
     if (validate) {

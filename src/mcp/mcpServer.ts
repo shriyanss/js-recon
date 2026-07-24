@@ -176,7 +176,7 @@ export const startMcpServer = async (): Promise<void> => {
         },
         async (args) => {
             const { captured } = await captureStdout(async () => {
-                await analyze(args.rulesPath, args.mappedJson, args.tech, false, args.openapi, false, args.outputFile);
+                await analyze(args.rulesPath, args.mappedJson, args.tech, false, args.openapi, false, args.outputFile, false, false);
             });
             return textResult(`${captured}\n\n[Output] ${path.resolve(args.outputFile)}`);
         }
