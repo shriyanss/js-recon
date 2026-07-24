@@ -55,6 +55,7 @@ const EXPECTED_RULES = [
     "detect_dompurify_forcekeepattr_hook",
     "detect_client_side_authz_gate",
     "detect_insecure_random_token_storage",
+    "detect_cloud_credentials_in_bundle",
     // Request rules
     "api_path",
     "admin_api",
