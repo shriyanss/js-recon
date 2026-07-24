@@ -54,6 +54,7 @@ const EXPECTED_RULES = [
     "detect_jquery_html_injection_url_param",
     "detect_dompurify_forcekeepattr_hook",
     "detect_client_side_authz_gate",
+    "detect_insecure_random_token_storage",
     // Request rules
     "api_path",
     "admin_api",
