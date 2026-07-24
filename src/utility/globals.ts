@@ -133,11 +133,11 @@ export const getRequestTimeout = (): number => {
 // AI Configuration
 /** Array of AI analysis options */
 export let ai: string[] = [];
-/** OpenAI API key */
-export let openaiApiKey = "";
+/** API key for the configured AI provider */
+export let aiApiKey = "";
 /** AI model to use for analysis */
 export let aiModel = "gpt-4o-mini";
-/** AI service provider (openai, ollama, etc.) */
+/** AI service provider (openai, ollama, anthropic, etc.) */
 export let aiServiceProvider = "openai";
 /** Number of AI analysis threads */
 export let aiThreads = 5;
@@ -153,11 +153,11 @@ export const setAi = (value: string[]): void => {
 };
 
 /**
- * Sets the OpenAI API key.
- * @param value - OpenAI API key
+ * Sets the API key for the configured AI provider.
+ * @param value - AI provider API key
  */
-export const setOpenaiApiKey = (value: string): void => {
-    openaiApiKey = value;
+export const setAiApiKey = (value: string): void => {
+    aiApiKey = value;
 };
 
 /**
@@ -169,11 +169,11 @@ export const getAi = (): string[] => {
 };
 
 /**
- * Gets the OpenAI API key.
- * @returns OpenAI API key
+ * Gets the API key for the configured AI provider.
+ * @returns AI provider API key
  */
-export const getOpenaiApiKey = (): string => {
-    return openaiApiKey;
+export const getAiApiKey = (): string => {
+    return aiApiKey;
 };
 
 /**

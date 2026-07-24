@@ -364,9 +364,9 @@ program
     )
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
-    .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
+    .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama, anthropic)", "openai")
     .option("--ai-endpoint <endpoint>", "Endpoint to use for AI service (for Ollama, etc)")
-    .option("--openai-api-key <key>", "OpenAI API key")
+    .option("--ai-api-key <key>", "API key for the configured AI provider")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--openapi", "Generate OpenAPI spec from the code", false)
     .option("--openapi-output <file>", "Output file for OpenAPI spec", "mapped-openapi.json")
@@ -384,7 +384,7 @@ program
         globalsUtil.setAi(cmd.ai?.split(",") || []);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setOpenapiChunkTag(cmd.openapiChunkTag);
-        globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
+        globalsUtil.setAiApiKey(cmd.aiApiKey);
         globalsUtil.setAiModel(cmd.model);
         if (cmd.aiEndpoint) globalsUtil.setAiEndpoint(cmd.aiEndpoint);
         globalsUtil.setAiThreads(cmd.aiThreads);
@@ -564,9 +564,9 @@ program
     .option("--sj-args <args>", "Extra arguments passed through to `sj automate`", "")
     .option("--ai <options>", "Use AI to analyze the code (comma-separated; available: description)")
     .option("--ai-threads <threads>", "Number of threads to use for AI", "5")
-    .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama)", "openai")
+    .option("--ai-provider <provider>", "Service provider to use for AI (available: openai, ollama, anthropic)", "openai")
     .option("--ai-endpoint <endpoint>", "Endpoint to use for AI service (for Ollama, etc)")
-    .option("--openai-api-key <key>", "OpenAI API key")
+    .option("--ai-api-key <key>", "API key for the configured AI provider")
     .option("--model <model>", "AI model to use", "gpt-4o-mini")
     .option("--map-openapi-chunk-tag", "Add chunk ID tag to OpenAPI spec for each request found (map module)", false)
     .option("--no-graphql", "Disable GraphQL operation extraction during OpenAPI generation")
@@ -693,7 +693,7 @@ program
         if (cmd.maxHeap !== undefined) applyHeapLimit(parseMaxHeapMb(cmd.maxHeap));
         validateAndSetTimeout(cmd.timeout);
         globalsUtil.setAi(cmd.ai?.split(",") || []);
-        globalsUtil.setOpenaiApiKey(cmd.openaiApiKey);
+        globalsUtil.setAiApiKey(cmd.aiApiKey);
         globalsUtil.setAiModel(cmd.model);
         globalsUtil.setAiServiceProvider(cmd.aiProvider);
         globalsUtil.setAiThreads(cmd.aiThreads);

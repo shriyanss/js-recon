@@ -101,7 +101,7 @@ export const runFullPipeline = async (
             aiThreads: "5",
             aiProvider: "openai",
             aiEndpoint: undefined,
-            openaiApiKey: undefined,
+            aiApiKey: undefined,
             model: "gpt-4o-mini",
             mapOpenapiChunkTag: false,
             timeout: "30000",

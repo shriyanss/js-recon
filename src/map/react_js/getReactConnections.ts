@@ -45,11 +45,22 @@ const getReactConnections = async (directory: string, output: string, formats: s
         );
         const provider = globals.getAiServiceProvider();
         if (provider === "openai") {
-            const apiKey = globals.getOpenaiApiKey() || process.env.OPENAI_API_KEY;
+            const apiKey = globals.getAiApiKey() || process.env.OPENAI_API_KEY;
             if (!apiKey) {
                 console.error(
                     chalk.red(
-                        "[!] OpenAI API key not found. Please provide it via --openai-api-key or OPENAI_API_KEY environment variable."
+                        "[!] OpenAI API key not found. Please provide it via --ai-api-key or OPENAI_API_KEY environment variable."
+                    )
+                );
+                process.exit(19);
+            }
+        }
+        if (provider === "anthropic") {
+            const apiKey = globals.getAiApiKey() || process.env.ANTHROPIC_API_KEY;
+            if (!apiKey) {
+                console.error(
+                    chalk.red(
+                        "[!] Anthropic API key not found. Please provide it via --ai-api-key or ANTHROPIC_API_KEY environment variable."
                     )
                 );
                 process.exit(19);
